@@ -29,6 +29,7 @@ import marauroa.server.game.db.DatabaseFactory;
 
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import utilities.PlayerTestHelper;
@@ -65,6 +66,7 @@ public class HealerNPCTest {
         slh = (LinkedHashMap<String, Integer>) sl.get("healing");
 	}
 	
+	@Ignore
 	@Test
 	public void createDialogTest() {
 		assertTrue(en.step(player, "hi"));
