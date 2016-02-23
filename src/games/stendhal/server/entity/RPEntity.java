@@ -410,10 +410,7 @@ public abstract class RPEntity extends GuidedEntity {
 
 		if (given != 0) {
 			put("heal", given);
-			
-			// Bug!! Issue #2, shoudl not setHP to give
-			//setHP(given);
-			setHP(baseHP);
+			setHP(given);
 		}
 
 		return given;
