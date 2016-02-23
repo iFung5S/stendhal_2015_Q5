@@ -55,6 +55,7 @@ public class AdminHelpNPCTest extends PlayerTestHelper {
 	/**
 	 * Tests for hiAndBye.
 	 */
+	
 	@Ignore
 	@Test
 	public void testHiAndBye() {
