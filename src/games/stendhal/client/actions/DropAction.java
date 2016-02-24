@@ -51,7 +51,7 @@ class DropAction implements SlashAction {
 			itemName = remainder;
 		} else {
 			quantity = 1;
-			itemName = (firstWord + remainder).trim();
+			itemName = (firstWord + " " + remainder).trim();
 		}
 
 		final String singularItemName = Grammar.singular(itemName);
