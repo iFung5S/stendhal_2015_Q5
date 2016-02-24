@@ -31,7 +31,6 @@ import utilities.ZonePlayerAndNPCTestImpl;
  * JUnit test for the McPeglegIOU quest.
  * @author bluelads, M. Fuchs
  */
-
 public class McPeglegIOUTest extends ZonePlayerAndNPCTestImpl {
 
 	private SpeakerNPC npc = null;
