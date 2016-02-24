@@ -196,6 +196,35 @@ public class DropActionTest {
 		assertTrue(action.execute(new String[]{"silver"}, "sword"));
 		assertEquals("", clientUI.getEventBuffer());
 	}
+	
+	@Test
+	public void testDropLeatherArmour() {
+		// create client UI
+		final MockClientUI clientUI = new MockClientUI();
+		
+		// create client
+		new MockStendhalClient() {
+			@Override
+			public void send(final RPAction action) {
+				client = null;
+				assertEquals("drop", action.get("type"));
+				assertEquals(USER_ID, action.getInt("baseobject"));
+				assertEquals(0, action.getInt("x"));
+				assertEquals(0, action.getInt("y"));
+				assertEquals("bag", action.get("baseslot"));
+				assertEquals(1, action.getInt("quantity"));
+			}
+		};
+
+		// create a player and give him leather armour
+		final RPObject player = createPlayer();
+		player.getSlot("bag").addPreservingId(createItem("leather armour", 777, 1));
+
+		// issue "/drop leather armour"
+		final DropAction action = new DropAction();
+		assertTrue(action.execute(new String[]{"leather"}, "armour"));
+		assertEquals("", clientUI.getEventBuffer());
+	}
 
 	/**
 	 * Tests for getMaximumParameters.
