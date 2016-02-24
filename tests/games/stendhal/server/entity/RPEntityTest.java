@@ -746,7 +746,7 @@ public class RPEntityTest {
 		player.setBaseHP(100);
         player.setHP(0);
         player.heal();
-        assertEquals(player.getHP(),100);
+        assertEquals(100, player.getHP());
 	}
 	
 	@Test
@@ -756,7 +756,7 @@ public class RPEntityTest {
 		player.setBaseHP(100);
         player.setHP(1);
         player.heal();
-        assertEquals(player.getHP(),100);
+        assertEquals(100, player.getHP());
 	}
 	
 	@Test
@@ -766,7 +766,7 @@ public class RPEntityTest {
 		player.setBaseHP(100);
         player.setHP(100);
         player.heal();
-        assertEquals(player.getHP(),100);
+        assertEquals(100, player.getHP());
 	}
 	
 	@Test
@@ -776,7 +776,7 @@ public class RPEntityTest {
 		player.setBaseHP(100);
         player.setHP(60);
         player.heal();
-        assertEquals(player.getHP(),100);
+        assertEquals(100, player.getHP());
 	}
 	
 	@Test
@@ -786,6 +786,6 @@ public class RPEntityTest {
 		player.setBaseHP(100);
         player.setHP(50);
         player.heal();
-        assertEquals(player.getHP(),100);
+        assertEquals(100, player.getHP());
 	}
 }
