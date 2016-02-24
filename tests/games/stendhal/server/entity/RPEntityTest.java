@@ -783,8 +783,8 @@ public class RPEntityTest {
 	public void testHealWhileHalfHP(){
 		Player player = PlayerTestHelper.createPlayer("player");
 		
-		player.setBaseHP(50);
-        player.setHP(0);
+		player.setBaseHP(100);
+        player.setHP(50);
         player.heal();
         assertEquals(player.getHP(),100);
 	}
