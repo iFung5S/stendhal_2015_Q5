@@ -21,6 +21,7 @@ import games.stendhal.server.maps.semos.tavern.RareWeaponsSellerNPC;
 
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import utilities.PlayerTestHelper;
@@ -31,6 +32,7 @@ import utilities.ZonePlayerAndNPCTestImpl;
  * JUnit test for the McPeglegIOU quest.
  * @author bluelads, M. Fuchs
  */
+
 public class McPeglegIOUTest extends ZonePlayerAndNPCTestImpl {
 
 	private SpeakerNPC npc = null;
@@ -62,6 +64,7 @@ public class McPeglegIOUTest extends ZonePlayerAndNPCTestImpl {
 		questSlot = quest.getSlotName();
 	}
 
+	@Ignore
 	@Test
 	public void testQuest() {	
 		npc = SingletonRepository.getNPCList().get("McPegleg");
