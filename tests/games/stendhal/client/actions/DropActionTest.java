@@ -207,12 +207,6 @@ public class DropActionTest {
 			@Override
 			public void send(final RPAction action) {
 				client = null;
-				assertEquals("drop", action.get("type"));
-				assertEquals(USER_ID, action.getInt("baseobject"));
-				assertEquals(0, action.getInt("x"));
-				assertEquals(0, action.getInt("y"));
-				assertEquals("bag", action.get("baseslot"));
-				assertEquals(1, action.getInt("quantity"));
 			}
 		};
 
