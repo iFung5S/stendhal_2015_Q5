@@ -733,4 +733,59 @@ public class RPEntityTest {
 		}
 		assertThat(entity.getDef(), is(100));
 	}
+	
+	/**
+	 * Tests for heal().
+	 * @author : Tim Xiao
+	 * Time: 24 Feb. 2016
+	 */
+	@Test
+	public void testHealWhileNoHP(){
+		Player player = PlayerTestHelper.createPlayer("player");
+		
+		player.setBaseHP(100);
+        player.setHP(0);
+        player.heal();
+        assertEquals(100, player.getHP());
+	}
+	
+	@Test
+	public void testHealWhileOneHP(){
+		Player player = PlayerTestHelper.createPlayer("player");
+		
+		player.setBaseHP(100);
+        player.setHP(1);
+        player.heal();
+        assertEquals(100, player.getHP());
+	}
+	
+	@Test
+	public void testHealWhileFullHP(){
+		Player player = PlayerTestHelper.createPlayer("player");
+		
+		player.setBaseHP(100);
+        player.setHP(100);
+        player.heal();
+        assertEquals(100, player.getHP());
+	}
+	
+	@Test
+	public void testHealWhileMoreThanHalfHP(){
+		Player player = PlayerTestHelper.createPlayer("player");
+		
+		player.setBaseHP(100);
+        player.setHP(60);
+        player.heal();
+        assertEquals(100, player.getHP());
+	}
+	
+	@Test
+	public void testHealWhileHalfHP(){
+		Player player = PlayerTestHelper.createPlayer("player");
+		
+		player.setBaseHP(100);
+        player.setHP(50);
+        player.heal();
+        assertEquals(100, player.getHP());
+	}
 }
