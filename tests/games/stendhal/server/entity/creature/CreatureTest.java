@@ -18,8 +18,9 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
-import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.core.engine.SingletonRepository;
 import games.stendhal.server.entity.creature.impl.DropItem;
+import games.stendhal.server.core.engine.StendhalRPZone;
 import games.stendhal.server.entity.RPEntity;
 import games.stendhal.server.entity.player.Player;
 import games.stendhal.server.maps.MockStendlRPWorld;
@@ -111,17 +112,17 @@ public class CreatureTest {
 		}
 		assertThat(counter, is(2));
 	}
+	
 
 	@Test 
 	public void mageGnomeTest(){
 		Creature mageGnome = SingletonRepository.getEntityManager().getCreature("mage gnome");
 		boolean itemFound = false;
-		foreach(DropItem item : mageGnome.dropsItems)
-		{
-			if(item.name.equals("minor potion"))
+		for(DropItem item : mageGnome.dropsItems) // iterate all items may be dropped from mage gnomes
+			if(item.name.equals("minor potion"))  // check if mage gnomes may drop minor potion
 				itemFound = true;
-		}
 		assertTrue(itemFound);
+
 	}
 	
 }
