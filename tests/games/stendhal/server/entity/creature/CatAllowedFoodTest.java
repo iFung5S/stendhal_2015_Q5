@@ -1,8 +1,6 @@
 package games.stendhal.server.entity.creature;
 
 import static org.junit.Assert.*;
-import games.stendhal.client.entity.Player;
-import games.stendhal.server.entity.item.Item;
 import games.stendhal.server.maps.MockStendlRPWorld;
 
 import java.util.List;
