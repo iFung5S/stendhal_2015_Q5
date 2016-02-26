@@ -110,23 +110,5 @@ public class CreatureTest {
 		}
 		assertThat(counter, is(2));
 	}
-
-	@Test 
-	public void mageGnomeTest(){
-		Creature mageGnome = SingletonRepository.getEntityManager().getCreature("mage gnome");
-		boolean itemFound = false;
-		foreach(DropItem item : mageGnome.dropsItems)
-		{
-			if(item.name.equals("minor potion"))
-				itemFound = true;
-		}
-		assertTrue(itemFound);
-		assertFalse(!itemFound)
-
-	}
-
-
-
-
 	
 }
