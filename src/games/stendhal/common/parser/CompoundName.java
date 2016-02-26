@@ -51,9 +51,7 @@ public class CompoundName extends ArrayList<String> {
 	 * @return true for matching between expressions and the compound name
 	 */
 	public boolean matches(AbstractList<Expression> expressions, int idx) {
-		int originalIdx = idx;
-		int i = 0;
-		while(i<size()) {
+		for(int i=0; i<size(); ++idx,++i) {
 			if (idx >= expressions.size()) {
 				return false;
 			}
@@ -70,13 +68,6 @@ public class CompoundName extends ArrayList<String> {
 	        if (i<size()-1 && curr.getBreakFlag()) {
 	            return false;
 	        }
-	        
-	        ++idx;
-	        ++i;
-		}
-		
-		if (i<expressions.size()-originalIdx) {
-			return false;
 		}
 
 		return true;
