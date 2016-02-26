@@ -24,7 +24,6 @@ import marauroa.common.game.RPAction;
 import marauroa.common.game.RPObject;
 import marauroa.common.game.RPObject.ID;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
 /**
@@ -168,7 +167,6 @@ public class DropActionTest {
 	/**
 	 * Tests for spaceHandling.
 	 */
-	@Ignore
 	@Test
 	public void testSpaceHandling() {
 		// create client UI

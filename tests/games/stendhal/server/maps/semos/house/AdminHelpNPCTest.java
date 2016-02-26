@@ -21,7 +21,6 @@ import games.stendhal.server.maps.MockStendlRPWorld;
 
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import utilities.PlayerTestHelper;
@@ -56,7 +55,6 @@ public class AdminHelpNPCTest extends PlayerTestHelper {
 	 * Tests for hiAndBye.
 	 */
 	
-	@Ignore
 	@Test
 	public void testHiAndBye() {
 
