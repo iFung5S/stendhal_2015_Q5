@@ -76,7 +76,7 @@ public class PieCollection extends AbstractQuest {
      * The delay between repeating quests.
      * 1 day
      */
-	private static final int REQUIRED_MINUTES = 1;//1440;
+	private static final int REQUIRED_MINUTES = 1440;
     
     /**
 	 * Required items for the quest.
