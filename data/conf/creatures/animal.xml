@@ -890,6 +890,36 @@
     </ai>
   </creature>
   
+  <creature name="Peter's goat">
+    <type class="farm_animal" subclass="goat" tileid="farm_animal.png:12"/>
+    <description>You see a goat, which belongs to Peter. DON NOT ENGAGE!!.</description>
+    <attributes>
+      <atk value="52"/>
+      <def value="90"/>
+      <hp value="300"/>
+      <speed value="0.3"/>
+      <size value="1,1"/>
+    </attributes>
+    <level value="2"/>
+    <experience value="2"/>
+    <respawn value="10"/>
+    <corpse name="animal"/>
+    <drops>
+      <item value="meat" quantity="[1,2]" probability="1.0"/>
+    </drops>
+    <equips>
+    </equips>
+    <ai>
+      <says>
+        <sound value="goat-1" />
+        <sound value="goat-2" />
+      </says>
+      <profile name="animal"/>
+      <profile name="non_offensive"/>
+      <profile name="patrolling"/>
+    </ai>
+  </creature>
+  
   <creature name="horse">
     <type class="farm_animal" subclass="horse" tileid="farm_animal.png:7"/>
     <description>You see a horse, don't slap it or it will run away!</description>

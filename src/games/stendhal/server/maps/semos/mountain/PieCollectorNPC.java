@@ -36,7 +36,7 @@ public class PieCollectorNPC implements ZoneConfigurator {
 				addGreeting("Hello, I am Peter, the king of 0_semos_mountain_n2_w.");
 				addJob("I have special power, which is herding goats.");
 				addHelp("I can heal you here for free!       Just joking, you really believe that?");
-				addGoodbye("Have a nice day! Don't kill my sheeps by the way.");
+				addGoodbye("Have a nice day! Don't kill my goats by the way.");
 				
 			}
 
@@ -55,6 +55,17 @@ public class PieCollectorNPC implements ZoneConfigurator {
 				nodes.add(new Node(52, 28));
 				nodes.add(new Node(57, 28));
 				nodes.add(new Node(57, 16));
+				nodes.add(new Node(57, 28));
+				nodes.add(new Node(52, 28));
+				nodes.add(new Node(52, 39));
+				nodes.add(new Node(40, 39));
+				nodes.add(new Node(40, 33));
+				nodes.add(new Node(37, 33));
+				nodes.add(new Node(37, 31));
+				nodes.add(new Node(33, 31));
+				nodes.add(new Node(33, 23));
+				nodes.add(new Node(35, 23));
+
 				setPath(new FixedPath(nodes, true));
 			}
 		};
