@@ -89,7 +89,7 @@ public class GossipNPC implements ZoneConfigurator {
 		};
 
 		npc.setEntityClass("kid6npc");
-		npc.setPosition(20, 3);
+		npc.setPosition(22, 4);
 		npc.initHP(100);
 		npc.setDescription("You see Jef. He seems like waiting for someone.");
 		zone.add(npc);
