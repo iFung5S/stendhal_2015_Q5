@@ -1648,6 +1648,7 @@
 
   <zone name="int_kirdneh_inn" file="interiors/kirdneh/inn.tmx">
     <configurator class-name="games.stendhal.server.maps.kirdneh.inn.HealerNPC" />
+    <configurator class-name="games.stendhal.server.maps.kirdneh.city.GossipNPC" />
     <configurator class-name="games.stendhal.server.maps.kirdneh.inn.BarmanNPC" />
     <configurator class-name="games.stendhal.server.maps.kirdneh.inn.ItemsOnTable" />
     <portal x="17" y="23" ref="entrance_left">

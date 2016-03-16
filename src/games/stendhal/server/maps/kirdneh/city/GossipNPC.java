@@ -18,7 +18,12 @@ import games.stendhal.server.core.engine.StendhalRPZone;
 import games.stendhal.server.entity.RPEntity;
 import games.stendhal.server.entity.npc.SpeakerNPC;
 
+import games.stendhal.server.entity.npc.behaviour.adder.ProducerAdder;
+import games.stendhal.server.entity.npc.behaviour.impl.ProducerBehaviour;
+
 import java.util.Map;
+import java.util.TreeMap;
+
 
 /**
  * Builds a information giving NPC in Kirdneh city. 
@@ -84,7 +89,7 @@ public class GossipNPC implements ZoneConfigurator {
 		};
 
 		npc.setEntityClass("kid6npc");
-		npc.setPosition(114, 67);
+		npc.setPosition(20, 3);
 		npc.initHP(100);
 		npc.setDescription("You see Jef. He seems like waiting for someone.");
 		zone.add(npc);
