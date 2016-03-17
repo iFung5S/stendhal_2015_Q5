@@ -975,7 +975,7 @@
 	
 	<item name="cheese and onion pie">
 		<type class="food" subclass="piesmall" tileid="-1" />
-		<description>You see a meat and vegetable pie.</description>
+		<description>You see a cheese and onion pie.</description>
 		<implementation class-name="games.stendhal.server.entity.item.Food" />
 		<attributes>
 			<amount value="100" />

@@ -84,7 +84,7 @@ public class GossipNPC implements ZoneConfigurator {
 		 	
 		  	    new ProducerAdder().addProducer(this, behaviour,
 		 	                                    "Hello, pal! You have probably heard about the delicious pie "
-		 	                                    + "I make and want me to make one for you, is that right?");
+		 	                                    + "I make and want me to #make one for you, is that right?");
 		    } // createDialog	
 		};
 
