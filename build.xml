@@ -1037,6 +1037,7 @@ d = 9017093486007323270605414717455737376618092805104733236083857811315606869372
 	                <fileset dir="${src}" />
 	            </sourcefiles>
 	        </structure>
+	    	<html destdir="${build_tests_report}" />
 	    	<xml destfile="${build_tests_report}/jacoco.xml" />
 	    </jacoco:report>
 		
