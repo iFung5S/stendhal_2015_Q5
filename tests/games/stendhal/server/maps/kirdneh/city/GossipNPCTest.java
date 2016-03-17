@@ -27,7 +27,7 @@ import utilities.QuestHelper;
 import utilities.ZonePlayerAndNPCTestImpl;
 
 /**
- * Test buying roses.
+ * Test making pies from Jef.
  * @author Cheuk Man Fung
  */
 public class GossipNPCTest extends ZonePlayerAndNPCTestImpl {
