@@ -143,7 +143,7 @@ public PieCollectionQuestTest() {
 
 		// -----------------------------------------------
 
-		assertEquals("Bye.", getReply(npc));
+		assertEquals("Have a nice day! Don't kill my goats by the way.", getReply(npc));
 
 		// -----------------------------------------------
 
@@ -170,7 +170,7 @@ public PieCollectionQuestTest() {
 
 		// -----------------------------------------------
 
-		assertEquals("You are so kind!! I'd like all kind of pie: [items].", getReply(npc));
+		assertEquals("You are so kind!! I'd like all kind of pie: an #'apple pie', a #'cherry pie', a #'fish pie', and a #pie.", getReply(npc));
 
 		// -----------------------------------------------
 
@@ -178,7 +178,7 @@ public PieCollectionQuestTest() {
 
 		// -----------------------------------------------
 
-		assertEquals("Bye.", getReply(npc));
+		assertEquals("Have a nice day! Don't kill my goats by the way.", getReply(npc));
 
 		// -----------------------------------------------
 
@@ -198,7 +198,7 @@ public PieCollectionQuestTest() {
 
 		// -----------------------------------------------
 
-		assertEquals("I'd still like [items]. Have you brought any?", getReply(npc));
+		assertEquals("I'd still like an #'apple pie', a #'cherry pie', a #'fish pie', and a #pie. Have you brought any?", getReply(npc));
 
 		// -----------------------------------------------
 
@@ -214,7 +214,7 @@ public PieCollectionQuestTest() {
 
 		// -----------------------------------------------
 
-		assertEquals("Oh, that's a shame, do tell me when you find some. I'd still like [items].", getReply(npc));
+		assertEquals("Oh, that's a shame, do tell me when you find some. I'd still like a #'cherry pie', a #'fish pie', and a #pie.", getReply(npc));
 
 		// -----------------------------------------------
 
@@ -222,7 +222,7 @@ public PieCollectionQuestTest() {
 
 		// -----------------------------------------------
 
-		assertEquals("Bye.", getReply(npc));
+		assertEquals("Have a nice day! Don't kill my goats by the way.", getReply(npc));
 
 		// -----------------------------------------------
 
@@ -242,7 +242,7 @@ public PieCollectionQuestTest() {
 
 		// -----------------------------------------------
 
-		assertEquals("I'd still like [items]. Have you brought any?", getReply(npc));
+		assertEquals("I'd still like a #'cherry pie', a #'fish pie', and a #pie. Have you brought any?", getReply(npc));
 
 		// -----------------------------------------------
 
@@ -286,7 +286,7 @@ public PieCollectionQuestTest() {
 
 		// -----------------------------------------------
 
-		assertEquals("Bye.", getReply(npc));
+		assertEquals("Have a nice day! Don't kill my goats by the way.", getReply(npc));
 
 		// -----------------------------------------------
 
@@ -301,7 +301,7 @@ public PieCollectionQuestTest() {
 
 		// -----------------------------------------------
 
-		en.step(player, "hat");
+		en.step(player, "food");
 
 		// -----------------------------------------------
 
@@ -313,7 +313,7 @@ public PieCollectionQuestTest() {
 
 		// -----------------------------------------------
 
-		assertEquals("Bye.", getReply(npc));
+		assertEquals("Have a nice day! Don't kill my goats by the way.", getReply(npc));
 
 		// -----------------------------------------------
 
@@ -328,7 +328,7 @@ public PieCollectionQuestTest() {
 
 		// -----------------------------------------------
 
-		en.step(player, "hat");
+		en.step(player, "pie");
 
 		// -----------------------------------------------
 
