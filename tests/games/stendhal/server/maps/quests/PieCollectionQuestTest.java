@@ -12,22 +12,16 @@
 package games.stendhal.server.maps.quests;
 
 import static org.hamcrest.Matchers.greaterThan;
-
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertThat;
-
 import static utilities.SpeakerNPCTestHelper.getReply;
 import games.stendhal.server.core.engine.SingletonRepository;
 import games.stendhal.server.core.engine.StendhalRPZone;
-import games.stendhal.server.entity.item.Item;
 import games.stendhal.server.entity.npc.SpeakerNPC;
 import games.stendhal.server.entity.npc.fsm.Engine;
 import games.stendhal.server.entity.player.Player;
 import games.stendhal.server.maps.semos.mountain.PieCollectorNPC;
-
-import java.util.Arrays;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -35,7 +29,6 @@ import org.junit.Test;
 import utilities.PlayerTestHelper;
 import utilities.QuestHelper;
 import utilities.ZonePlayerAndNPCTestImpl;
-import utilities.RPClass.ItemTestHelper;
 
 /*
 *
@@ -43,9 +36,6 @@ import utilities.RPClass.ItemTestHelper;
 *
 *
 */
-
-final ItemCollection missingItems = new ItemCollection();
-			missingItems.addFromQuestStateString(questState);
 
 /*private static final String HISTORY_DEFAULT = "Peter asked me for all kind of hot pies for his stomach.";
 	private static final String HISTORY_REJECTED = "I decided not find Peter any pie, someone else will help him.";
@@ -57,15 +47,19 @@ public class PieCollectionQuestTest extends ZonePlayerAndNPCTestImpl {
 
    private Player player = null;
    private SpeakerNPC npc = null;
-	  private Engine en = null;
-  
-	  private String questSlot;
+   private Engine en = null;
+   
+   private String questSlot;
    private static final String ZONE_SEMOS = "0_semos_mountains_n2_w";
    private static final String NPC_PETER = "Peter";
 
+   /*final ItemCollection missingItems = new ItemCollection();
+	missingItems.addFromQuestStateString(questState);
+	*/
+   
 	@BeforeClass
-	public static void setupclass() throws Exception {
-			QuestHelper.setupclass();
+	public static void setUpBeforeClass() throws Exception {
+		QuestHelper.setUpBeforeClass();
 		 setupZone(ZONE_SEMOS);
 	}
 
@@ -73,6 +67,7 @@ public PieCollectionQuestTest() {
 		super(ZONE_SEMOS, NPC_PETER);
 	}
 
+@Override
 @Before
 	public void setUp() throws Exception {
    final StendhalRPZone mountains = new StendhalRPZone(ZONE_SEMOS);
@@ -82,11 +77,6 @@ public PieCollectionQuestTest() {
 		questSlot = quest.getSlotName();
 		
   player = PlayerTestHelper.createPlayer("sally");
-	}
-
-@After
-	public void tearDown() throws Exception {
-		PlayerTestHelper.removeNPC(NPC_PETER);
 	}
 
 /**
