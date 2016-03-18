@@ -88,6 +88,15 @@ public PieCollectionQuestTest() {
 		assertEquals("pies_peter", pc.getSlotName());
 	}
 
+	
+	/**
+	 * Tests for getNPCName.
+	 */
+	@Test
+	public final void testgetNPCName() {
+		final PieCollection pc = new PieCollection();
+		assertEquals("Peter", pc.getNPCName());
+	}
 @Test
 	public void testQuest() {
 		npc = SingletonRepository.getNPCList().get(NPC_PETER);
