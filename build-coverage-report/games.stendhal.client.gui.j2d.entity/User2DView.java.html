@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>User2DView.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui.j2d.entity</a> &gt; <span class="el_source">User2DView.java</span></div><h1>User2DView.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui.j2d.entity;
+
+import games.stendhal.client.entity.ActionType;
+import games.stendhal.client.entity.IEntity;
+import games.stendhal.client.entity.User;
+import games.stendhal.client.gui.j2DClient;
+import games.stendhal.common.constants.Testing;
+
+import java.util.List;
+
+/**
+ * The 2D view of a user.
+ * 
+ * @param &lt;T&gt; user 
+ */
+<span class="nc" id="L28">class User2DView&lt;T extends User&gt; extends Player2DView&lt;T&gt; {</span>
+	@Override
+	public void initialize(final T entity) {
+		// A hack to prevent centering on coloring only zone updates
+<span class="nc bnc" id="L32" title="All 2 branches missed.">		boolean updatePosition = this.entity == null;</span>
+<span class="nc" id="L33">		super.initialize(entity);</span>
+<span class="nc bnc" id="L34" title="All 2 branches missed.">		if (updatePosition) {</span>
+<span class="nc" id="L35">			j2DClient.get().setPosition(entity.getX(), entity.getY());</span>
+		}
+<span class="nc" id="L37">	}</span>
+	//
+	// RPEntity2DView
+	//
+
+	/**
+	 * Determine is the user can see this entity while in ghostmode.
+	 * 
+	 * @return &lt;code&gt;true&lt;/code&gt; if the client user can see this entity while in
+	 *         ghostmode.
+	 */
+	@Override
+	protected boolean isVisibleGhost() {
+<span class="nc" id="L50">		return true;</span>
+	}
+
+	//
+	// Entity2DView
+	//
+
+	/**
+	 * Build a list of entity specific actions. &lt;strong&gt;NOTE: The first entry
+	 * should be the default.&lt;/strong&gt;
+	 * 
+	 * @param list
+	 *            The list to populate.
+	 */
+	@Override
+	protected void buildActions(final List&lt;String&gt; list) {
+<span class="nc" id="L66">		super.buildActions(list);</span>
+
+<span class="nc" id="L68">		list.remove(ActionType.ATTACK.getRepresentation());</span>
+<span class="nc" id="L69">		list.remove(ActionType.ADD_BUDDY.getRepresentation());</span>
+<span class="nc" id="L70">		list.remove(ActionType.IGNORE.getRepresentation());</span>
+<span class="nc" id="L71">		list.remove(ActionType.UNIGNORE.getRepresentation());</span>
+<span class="nc" id="L72">		list.remove(ActionType.PUSH.getRepresentation());</span>
+<span class="nc" id="L73">		list.remove(ActionType.TRADE.getRepresentation());</span>
+<span class="nc" id="L74">		list.remove(ActionType.INVITE.getRepresentation());</span>
+		
+		/* Walk/Stop action. */
+<span class="nc bnc" id="L77" title="All 2 branches missed.">		if (Testing.MOVEMENT) {</span>
+<span class="nc bnc" id="L78" title="All 2 branches missed.">			if (this.getEntity().stopped()) {</span>
+<span class="nc" id="L79">				list.add(ActionType.WALK_START.getRepresentation());</span>
+			} else {
+<span class="nc" id="L81">				list.add(ActionType.WALK_STOP.getRepresentation());</span>
+			}
+		}
+<span class="nc" id="L84">		list.add(ActionType.SET_OUTFIT.getRepresentation());</span>
+<span class="nc" id="L85">		list.add(ActionType.WHERE.getRepresentation());</span>
+
+<span class="nc" id="L87">		User user = entity;</span>
+<span class="nc bnc" id="L88" title="All 2 branches missed.">		if (user != null) {</span>
+<span class="nc bnc" id="L89" title="All 2 branches missed.">			if (user.hasSheep()) {</span>
+<span class="nc" id="L90">				list.add(ActionType.LEAVE_SHEEP.getRepresentation());</span>
+			}
+
+<span class="nc bnc" id="L93" title="All 2 branches missed.">			if (user.hasPet()) {</span>
+<span class="nc" id="L94">				list.add(ActionType.LEAVE_PET.getRepresentation());</span>
+			}
+		}
+<span class="nc" id="L97">	}</span>
+
+	@Override
+	void entityChanged(final Object property) {
+<span class="nc" id="L101">		super.entityChanged(property);</span>
+
+<span class="nc bnc" id="L103" title="All 2 branches missed.">		if (property == IEntity.PROP_POSITION) {</span>
+<span class="nc" id="L104">			j2DClient.get().setPosition(entity.getX(), entity.getY());</span>
+		}
+<span class="nc" id="L106">	}</span>
+
+	//
+	// EntityView
+	//
+
+	/**
+	 * Perform an action.
+	 * 
+	 * @param at
+	 *            The action.
+	 */
+	@Override
+	public void onAction(final ActionType at) {
+<span class="nc bnc" id="L120" title="All 2 branches missed.">		if (at == null) {</span>
+<span class="nc" id="L121">			super.onAction(null);</span>
+<span class="nc" id="L122">			return;</span>
+		}
+
+<span class="nc bnc" id="L125" title="All 3 branches missed.">		switch (at) {</span>
+		case SET_OUTFIT:
+<span class="nc" id="L127">			j2DClient.get().chooseOutfit();</span>
+<span class="nc" id="L128">			break;</span>
+			
+		case WALK_START:
+		case WALK_STOP:
+		case WHERE:
+		case LEAVE_SHEEP:
+		case LEAVE_PET:
+<span class="nc" id="L135">			at.send(at.fillTargetInfo(entity));</span>
+<span class="nc" id="L136">			break;</span>
+
+		default:
+<span class="nc" id="L139">			super.onAction(at);</span>
+<span class="nc" id="L140">			break;</span>
+		}
+<span class="nc" id="L142">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

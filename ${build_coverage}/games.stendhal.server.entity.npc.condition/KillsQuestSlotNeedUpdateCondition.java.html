@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>KillsQuestSlotNeedUpdateCondition.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.npc.condition</a> &gt; <span class="el_source">KillsQuestSlotNeedUpdateCondition.java</span></div><h1>KillsQuestSlotNeedUpdateCondition.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.npc.condition;
+
+import static com.google.common.base.Preconditions.checkNotNull;
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.core.config.annotations.Dev;
+import games.stendhal.server.core.config.annotations.Dev.Category;
+import games.stendhal.server.entity.Entity;
+import games.stendhal.server.entity.npc.ChatCondition;
+import games.stendhal.server.entity.player.Player;
+
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.log4j.Logger;
+
+/**
+ * Checking if player's quest slot need update with newer creatures and update it if required
+ * Quest string should have in proper quest index string like &quot;creature1,w,x,y,z,creature2,a,b,c,d,creature3,...&quot;
+ * Where creature1, creature2 - names of creatures to kill;
+ *       w,x and a,b - number of creatures to kill, solo and shared;
+ *       y,z and c,d - number of creatures killed by player before starting this quest, both solo and shared.
+ *
+ * @see games.stendhal.server.entity.npc.action.StartRecordingKillsAction
+ * @see games.stendhal.server.entity.npc.condition.KilledForQuestCondition
+ * @see games.stendhal.server.entity.npc.condition.KilledInSumForQuestCondition
+ *
+ * @author yoriy
+ */
+@Dev(category=Category.IGNORE, label=&quot;Kills?&quot;)
+public class KillsQuestSlotNeedUpdateCondition implements ChatCondition {
+<span class="fc" id="L45">	private static Logger logger = Logger.getLogger(KilledInSumForQuestCondition.class);</span>
+	private final String questSlot;
+	private final int questIndex;
+	private final int questGroupIndex;
+	private final List&lt;String&gt; creatures;
+	private final boolean do_update;
+    private final Map&lt;String, List&lt;String&gt;&gt; allcreatures;	
+
+	/**
+	 * Creates a new KillsQuestSlotNeedUpdateCondition.
+	 *
+	 * @param quest - the quest slot
+	 * @param index - quest slot index where information stored (creatures records)
+	 * @param creatures - list of creatures required to kill by npc
+	 * @param do_update - if true then player's quest slot would update
+	 */
+<span class="fc" id="L61">	public KillsQuestSlotNeedUpdateCondition(String quest, int index, List&lt;String&gt; creatures, boolean do_update) {</span>
+<span class="fc" id="L62">		this.questSlot = checkNotNull(quest);</span>
+<span class="fc" id="L63">		this.questIndex = index;</span>
+<span class="fc" id="L64">		this.creatures = creatures;</span>
+<span class="fc" id="L65">		this.do_update = do_update;</span>
+		// not applicable in this case
+<span class="fc" id="L67">		this.questGroupIndex = -1;</span>
+<span class="fc" id="L68">		this.allcreatures = null;</span>
+<span class="fc" id="L69">	}</span>
+
+	
+	/**
+	 * Creates a new KillsQuestSlotNeedUpdateCondition.
+	 *
+	 * @param quest - the quest slot
+	 * @param index - quest slot index where information stored (creatures group string followed by creatures records)
+	 * @param allcreatures - map of creatures groups, required to kill by npc
+	 * @param do_update - if true then player's quest slot would update
+	 */
+<span class="fc" id="L80">	public KillsQuestSlotNeedUpdateCondition(String quest, int index, Map&lt;String, List&lt;String&gt;&gt; allcreatures, boolean do_update) {</span>
+<span class="fc" id="L81">		this.questSlot = checkNotNull(quest);</span>
+<span class="fc" id="L82">		this.questGroupIndex = index;</span>
+<span class="fc" id="L83">		this.questIndex = index+1;</span>
+<span class="fc" id="L84">		this.allcreatures = allcreatures;</span>
+<span class="fc" id="L85">		this.do_update = do_update;</span>
+		// not applicable in this case
+<span class="fc" id="L87">		this.creatures = null;</span>
+<span class="fc" id="L88">	}</span>
+	
+	
+	/**
+	 * return true if player need update, or if required update was unsuccessful.
+	 */
+	@Override
+	public boolean fire(final Player player, final Sentence sentence, final Entity npc) {
+<span class="fc" id="L96">		String toadd=&quot;&quot;;</span>
+		List&lt;String&gt; neededcreatures;
+		// checking what we have
+<span class="fc bfc" id="L99" title="All 2 branches covered.">		if(allcreatures==null) {</span>
+			// simple call
+<span class="fc" id="L101">			neededcreatures=creatures;</span>
+		} else {
+			// taking from player's quest slot
+<span class="fc" id="L104">	        final String givenEnemies = player.getQuest(questSlot, questGroupIndex);</span>
+<span class="fc" id="L105">	        neededcreatures=allcreatures.get(givenEnemies);</span>
+		};
+
+<span class="fc" id="L108">		final String temp = player.getQuest(questSlot, questIndex);</span>
+<span class="pc bpc" id="L109" title="1 of 2 branches missed.">		if (temp == null) {</span>
+<span class="nc" id="L110">			return false;</span>
+		}
+<span class="fc" id="L112">		final List&lt;String&gt; tokens = Arrays.asList(temp.split(&quot;,&quot;));</span>
+		// check for size - it should be able to divide by 5 without reminder.
+<span class="pc bpc" id="L114" title="1 of 2 branches missed.">		if ((tokens.size() % 5) != 0) {</span>
+<span class="nc" id="L115">			logger.error(&quot;Wrong record in player's &quot;+player.getName()+</span>
+					&quot; quest slot (&quot;+questSlot+
+					&quot;), position &quot;+questIndex+
+					&quot; : [&quot;+	player.getQuest(questSlot)+
+					&quot;]&quot;);
+			//npc.say(&quot;something wrong with you, i dont see how much monsters you killed.&quot;);
+			// TODO: clear player's quest slot
+<span class="nc" id="L122">			return true;</span>
+		}
+		// gathering creatures names
+<span class="fc" id="L125">		LinkedList&lt;String&gt; mycreatures=new LinkedList&lt;String&gt;(); </span>
+<span class="fc bfc" id="L126" title="All 2 branches covered.">		for(int i=0; i&lt;tokens.size()/5; i++) {</span>
+<span class="fc" id="L127">			mycreatures.add(tokens.get(i*5));</span>
+		}
+		
+		// check for creatures from list
+<span class="fc bfc" id="L131" title="All 2 branches covered.">		for(String monster:neededcreatures) {</span>
+<span class="pc bpc" id="L132" title="1 of 2 branches missed.">			if(!mycreatures.contains(monster)) {</span>
+<span class="nc bnc" id="L133" title="All 2 branches missed.">			   if(do_update) {</span>
+				   // adding creature name to user quest slot (tail)
+<span class="nc" id="L135">				   toadd=toadd+&quot;,&quot;+monster+&quot;,0,0,0,0&quot;;</span>
+<span class="nc" id="L136">				   logger.debug(&quot;Will add &lt;&quot;+monster+</span>
+						        &quot;&gt; to player &lt;&quot;+player.getName()+
+						        &quot;&gt; quest &lt;&quot;+questSlot+
+						        &quot;&gt; slot &lt;&quot;+Integer.toString(questIndex)+
+						        &quot;&gt;&quot;);
+			   }
+			   else {
+<span class="nc" id="L143">				   return true;</span>
+			   }
+			}
+<span class="fc" id="L146">		}</span>
+		
+<span class="pc bpc" id="L148" title="2 of 4 branches missed.">		if(do_update &amp;&amp; !toadd.isEmpty()) {</span>
+		    // now adding whole string to player's quest slot
+<span class="nc" id="L150">			String finalcreatures=temp+toadd;</span>
+<span class="nc" id="L151">			logger.debug(&quot;new player &lt;&quot;+player.getName()+</span>
+					     &quot;&gt; quest &lt;&quot;+questSlot+
+					     &quot;&gt; slot &lt;&quot;+Integer.toString(questIndex)+
+					     &quot;&gt; value: (&quot;+finalcreatures+&quot;)&quot;);
+<span class="nc" id="L155">			player.setQuest(questSlot, questIndex, finalcreatures);</span>
+		}
+		
+<span class="fc" id="L158">		return false;</span>
+	}
+
+	@Override
+	public String toString() {
+<span class="nc" id="L163">		return &quot;KilledForQuestCondition&quot;;</span>
+	}
+
+	@Override
+	public int hashCode() {
+<span class="nc" id="L168">		return 43691 * questSlot.hashCode() + 43711 * questIndex;</span>
+	}
+
+	@Override
+	public boolean equals(final Object obj) {
+<span class="nc bnc" id="L173" title="All 2 branches missed.">		if (!(obj instanceof KillsQuestSlotNeedUpdateCondition)) {</span>
+<span class="nc" id="L174">			return false;</span>
+		}
+<span class="nc" id="L176">		KillsQuestSlotNeedUpdateCondition other = (KillsQuestSlotNeedUpdateCondition) obj;</span>
+<span class="nc bnc" id="L177" title="All 6 branches missed.">		return (questIndex == other.questIndex)</span>
+			&amp;&amp; (creatures.equals(other.creatures)
+			&amp;&amp; questSlot.equals(other.questSlot));
+	}
+
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

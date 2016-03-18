@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ServerModeUtil.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.core.config.annotations</a> &gt; <span class="el_source">ServerModeUtil.java</span></div><h1>ServerModeUtil.java</h1><pre class="source lang-java linenums">package games.stendhal.server.core.config.annotations;
+/**
+ * Utility class that distinguishes between testservers and normal servers
+ * 
+ * @author madmetzger
+ */
+<span class="nc" id="L7">public abstract class ServerModeUtil {</span>
+	
+	/**
+	 * Determines if the current running server is a testserver
+	 * 
+	 * @return &lt;code&gt;true&lt;/code&gt; if the server is a test server, otherwise
+	 * 	&lt;code&gt;false&lt;/code&gt;
+	 */
+	public static boolean isTestServer() {
+<span class="fc bfc" id="L16" title="All 2 branches covered.">		return System.getProperty(TestServerOnly.TEST_SERVER_PROPERTY) != null;</span>
+	}
+	
+	/**
+	 * Determines if the given object should be active in the current server
+	 * 
+	 * @param obj
+	 * @return true if object should be active
+	 */
+	public static boolean isActiveInCurrentServerContext(Object obj) {
+<span class="fc" id="L26">		boolean hasTestServerAnnotation = obj.getClass().isAnnotationPresent(TestServerOnly.class);</span>
+<span class="fc" id="L27">		boolean isTestServer = isTestServer();</span>
+<span class="fc bfc" id="L28" title="All 2 branches covered.">		if(!isTestServer) {</span>
+<span class="fc bfc" id="L29" title="All 2 branches covered.">			return !hasTestServerAnnotation;</span>
+		}
+<span class="fc" id="L31">		return true;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>LookUpQuote.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests</a> &gt; <span class="el_source">LookUpQuote.java</span></div><h1>LookUpQuote.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2011 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests;
+
+import games.stendhal.common.Rand;
+import games.stendhal.common.parser.ConversationParser;
+import games.stendhal.common.parser.Expression;
+import games.stendhal.common.parser.JokerExprMatcher;
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.common.parser.SimilarExprMatcher;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.entity.item.Item;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.condition.GreetingMatchesNameCondition;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.maps.Region;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * QUEST: Quest to get a fishing rod 
+ * &lt;p&gt;
+ * 
+ * PARTICIPANTS: &lt;ul&gt;&lt;li&gt; Pequod the fisherman&lt;/ul&gt;
+ * 
+ * 
+ * STEPS: &lt;ul&gt;&lt;li&gt; The fisherman asks you to go to the library to get him a quote of a
+ * famous fisherman. &lt;li&gt; The player goes to the library where a book with some
+ * quotes lies on the table and looks the correct one up. &lt;li&gt;The player goes back
+ * to the fisherman and tells him the quote.&lt;/ul&gt;
+ * 
+ * 
+ * REWARD:
+ * &lt;ul&gt;
+ * &lt;li&gt; 750 XP
+ * &lt;li&gt; some karma (10)
+ * &lt;li&gt; A fishing rod
+ * &lt;/ul&gt;
+ * 
+ * REPETITIONS: &lt;ul&gt;&lt;li&gt; no repetitions&lt;/ul&gt;
+ * 
+ * @author dine
+ */
+
+<span class="fc" id="L62">public class LookUpQuote extends AbstractQuest {</span>
+	private static final String QUEST_SLOT = &quot;get_fishing_rod&quot;;
+
+<span class="fc" id="L65">	private static Map&lt;String, String&gt; quotes = new HashMap&lt;String, String&gt;();</span>
+	static {
+<span class="fc" id="L67">		quotes.put(&quot;fisherman Bully&quot;, &quot;Clownfish are always good for a laugh.&quot;);</span>
+<span class="fc" id="L68">		quotes.put(&quot;fisherman Jacky&quot;,</span>
+						&quot;Don't mistake your trout for your old trout, she wouldn't taste so good.&quot;);
+<span class="fc" id="L70">		quotes.put(&quot;fisherman Tommy&quot;,</span>
+						&quot;I wouldn't trust a surgeonfish in a hospital, there's something fishy about them.&quot;);
+<span class="fc" id="L72">		quotes.put(&quot;fisherman Sody&quot;,</span>
+				&quot;Devout Crustaceans believe in the One True Cod.&quot;);
+<span class="fc" id="L74">		quotes.put(&quot;fisherman Humphrey&quot;,</span>
+						&quot;I don't understand why no-one buys my fish. The sign says 'Biggest Roaches in town'.&quot;);
+<span class="fc" id="L76">		quotes.put(&quot;fisherman Monty&quot;,</span>
+						&quot;My parrot doesn't like to sit on a perch. He says it smells fishy.&quot;);
+<span class="fc" id="L78">		quotes.put(&quot;fisherman Charby&quot;,</span>
+						&quot;That fish restaurant really overcooks everything. It even advertises char fish.&quot;);
+<span class="fc" id="L80">		quotes.put(&quot;fisherman Ally&quot;, &quot;Holy mackerel! These chips are tasty.&quot;);</span>
+<span class="fc" id="L81">	}</span>
+
+
+	@Override
+	public String getSlotName() {
+<span class="nc" id="L86">		return QUEST_SLOT;</span>
+	}
+	@Override
+	public List&lt;String&gt; getHistory(final Player player) {
+<span class="fc" id="L90">		final List&lt;String&gt; res = new ArrayList&lt;String&gt;();</span>
+<span class="fc bfc" id="L91" title="All 2 branches covered.">		if (!player.hasQuest(QUEST_SLOT)) {</span>
+<span class="fc" id="L92">			return res;</span>
+		}
+<span class="fc" id="L94">		res.add(&quot;I met Pequod in a hut in Ados city and he asked me to look up a quote by a famous fisherman.&quot;);</span>
+<span class="fc bfc" id="L95" title="All 2 branches covered.">		if (!player.isQuestCompleted(QUEST_SLOT)) {</span>
+<span class="fc" id="L96">			res.add(&quot;The quote I must find is by &quot; + player.getQuest(QUEST_SLOT) + &quot;.&quot;);</span>
+		} else {
+<span class="fc" id="L98">			res.add(&quot;I got the quote for Pequod and he gave me a fishing rod.&quot;);</span>
+		}
+<span class="fc" id="L100">		return res;</span>
+	}
+
+	private void createFishingRod() {
+<span class="fc" id="L104">		final SpeakerNPC fisherman = npcs.get(&quot;Pequod&quot;);</span>
+
+<span class="fc" id="L106">		fisherman.add(ConversationStates.IDLE,</span>
+			ConversationPhrases.GREETING_MESSAGES,
+			new GreetingMatchesNameCondition(fisherman.getName()), true,
+			ConversationStates.ATTENDING, null,
+<span class="fc" id="L110">			new ChatAction() {</span>
+				@Override
+				public void fire(final Player player, final Sentence sentence, final EventRaiser npc) {
+<span class="fc bfc" id="L113" title="All 2 branches covered.">					if (!player.hasQuest(QUEST_SLOT)) {</span>
+<span class="fc" id="L114">						npc.say(&quot;Hello newcomer! I can #help you on your way to become a real fisherman!&quot;);</span>
+<span class="fc bfc" id="L115" title="All 2 branches covered.">					} else if (!player.isQuestCompleted(QUEST_SLOT)) {</span>
+<span class="fc" id="L116">						final String name = player.getQuest(QUEST_SLOT);</span>
+<span class="fc" id="L117">						npc.say(&quot;Welcome back! Did you look up the famous quote by &quot; + name + &quot;?&quot;);</span>
+<span class="fc" id="L118">						npc.setCurrentState(ConversationStates.QUESTION_1);</span>
+<span class="fc" id="L119">					} else {</span>
+<span class="fc" id="L120">						npc.say(&quot;Welcome back!&quot;);</span>
+					}
+<span class="fc" id="L122">				}</span>
+			});
+
+		// TODO: rewrite this to use standard conditions and actions
+<span class="fc" id="L126">		fisherman.add(ConversationStates.ATTENDING,</span>
+			ConversationPhrases.QUEST_MESSAGES, null,
+			ConversationStates.QUEST_OFFERED, null,
+<span class="fc" id="L129">			new ChatAction() {</span>
+				@Override
+				public void fire(final Player player, final Sentence sentence, final EventRaiser npc) {
+<span class="fc bfc" id="L132" title="All 2 branches covered.">					if (player.isQuestCompleted(QUEST_SLOT)) {</span>
+<span class="fc" id="L133">						npc.say(&quot;No, thanks. I have all I need.&quot;);</span>
+<span class="fc" id="L134">						npc.setCurrentState(ConversationStates.ATTENDING);</span>
+<span class="fc bfc" id="L135" title="All 2 branches covered.">					} else if (player.hasQuest(QUEST_SLOT)) {</span>
+<span class="fc" id="L136">						final String name = player.getQuest(QUEST_SLOT);</span>
+<span class="fc" id="L137">						npc.say(&quot;I already asked you for a favor already! Have you already looked up the famous quote by &quot; + name + &quot;?&quot;);</span>
+<span class="fc" id="L138">						npc.setCurrentState(ConversationStates.QUESTION_1);</span>
+<span class="fc" id="L139">					} else {</span>
+<span class="fc" id="L140">						npc.say(&quot;Well, I once had a book with quotes of famous fishermen, but I lost it. And now I cannot remember a certain quote. Can you look it up for me?&quot;);</span>
+					}
+<span class="fc" id="L142">				}</span>
+			});
+
+<span class="fc" id="L145">		fisherman.add(ConversationStates.QUEST_OFFERED,</span>
+			ConversationPhrases.NO_MESSAGES, null,
+			ConversationStates.ATTENDING,
+			&quot;Then I don't do you a favour, either.&quot;, null);
+
+<span class="fc" id="L150">		fisherman.add(ConversationStates.QUEST_OFFERED,</span>
+			ConversationPhrases.YES_MESSAGES, null,
+			ConversationStates.ATTENDING, null,
+<span class="fc" id="L153">			new ChatAction() {</span>
+				@Override
+				public void fire(final Player player, final Sentence sentence, final EventRaiser npc) {
+<span class="fc" id="L156">					final String name = Rand.rand(quotes.keySet());</span>
+<span class="fc" id="L157">					npc.say(&quot;Please look up the famous quote by &quot; + name + &quot;.&quot;);</span>
+<span class="fc" id="L158">					player.setQuest(QUEST_SLOT, name);</span>
+<span class="fc" id="L159">				}</span>
+			});
+
+<span class="fc" id="L162">		fisherman.add(ConversationStates.QUESTION_1,</span>
+			ConversationPhrases.YES_MESSAGES, null,
+			ConversationStates.QUESTION_2, &quot;So, what is it?&quot;, null);
+
+<span class="fc" id="L166">		fisherman.add(ConversationStates.QUESTION_1,</span>
+			ConversationPhrases.NO_MESSAGES, null,
+			ConversationStates.ATTENDING,
+			&quot;Too bad. I would have had a nice reward for you.&quot;, null);
+
+		// TODO: rewrite this to use standard conditions and actions
+<span class="fc" id="L172">		fisherman.addMatching(ConversationStates.QUESTION_2, Expression.JOKER, new JokerExprMatcher(), null,</span>
+			ConversationStates.ATTENDING, null,
+<span class="fc" id="L174">			new ChatAction() {</span>
+				@Override
+				public void fire(final Player player, final Sentence sentence, final EventRaiser npc) {
+<span class="fc" id="L177">					final String name = player.getQuest(QUEST_SLOT);</span>
+<span class="fc" id="L178">					final String quote = quotes.get(name);</span>
+
+<span class="fc" id="L180">					final Sentence answer = sentence.parseAsMatchingSource();</span>
+<span class="fc" id="L181">					final Sentence expected = ConversationParser.parse(quote, new SimilarExprMatcher());</span>
+
+<span class="fc bfc" id="L183" title="All 2 branches covered.">					if (answer.matchesFull(expected)) {</span>
+<span class="fc" id="L184">						npc.say(&quot;Oh right, that's it! How could I forget this? Here, take this handy fishing rod as an acknowledgement of my gratitude!&quot;);</span>
+<span class="fc" id="L185">						final Item fishingRod = SingletonRepository.getEntityManager().getItem(&quot;fishing rod&quot;);</span>
+<span class="fc" id="L186">						fishingRod.setBoundTo(player.getName());</span>
+<span class="fc" id="L187">						player.equipOrPutOnGround(fishingRod);</span>
+<span class="fc" id="L188">						player.addXP(750);</span>
+<span class="fc" id="L189">						player.addKarma(10);</span>
+<span class="fc" id="L190">						player.setQuest(QUEST_SLOT, &quot;done&quot;);</span>
+<span class="fc" id="L191">						player.notifyWorldAboutChanges();</span>
+<span class="pc bpc" id="L192" title="1 of 2 branches missed.">					} else if (ConversationPhrases.GOODBYE_MESSAGES.contains(sentence.getTriggerExpression().getNormalized())) {</span>
+<span class="fc" id="L193">						npc.say(&quot;Good bye - see you next time!&quot;);</span>
+<span class="fc" id="L194">						npc.setCurrentState(ConversationStates.IDLE);</span>
+					} else {
+<span class="nc" id="L196">						npc.say(&quot;I think you made a mistake. Come back if you can tell me the correct quote.&quot;);</span>
+<span class="nc" id="L197">						npc.setCurrentState(ConversationStates.IDLE);</span>
+					}
+<span class="fc" id="L199">				}</span>
+			});
+<span class="fc" id="L201">	}</span>
+
+	@Override
+	public void addToWorld() {
+<span class="fc" id="L205">		fillQuestInfo(</span>
+				&quot;Look Up Quote&quot;,
+				&quot;Pequod has forgotten a quote by a famous fisherman.&quot;,
+				false);
+<span class="fc" id="L209">		createFishingRod();</span>
+<span class="fc" id="L210">	}</span>
+	@Override
+	public String getName() {
+<span class="nc" id="L213">		return &quot;LookUpQuote&quot;;</span>
+	}
+	
+	@Override
+	public String getRegion() {
+<span class="nc" id="L218">		return Region.ADOS_CITY;</span>
+	}
+	@Override
+	public String getNPCName() {
+<span class="nc" id="L222">		return &quot;Pequod&quot;;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

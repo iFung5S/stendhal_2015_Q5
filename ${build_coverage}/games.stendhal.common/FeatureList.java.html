@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>FeatureList.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.common</a> &gt; <span class="el_source">FeatureList.java</span></div><h1>FeatureList.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2013 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.common;
+
+
+import java.util.HashMap;
+import java.util.Iterator;
+
+/**
+ * A list of [enabled] features.
+ */
+public class FeatureList implements Iterable&lt;String&gt; {
+	private HashMap&lt;String, String&gt; list;
+
+	/**
+	 * Create a list of [enabled] features.
+	 */
+<span class="nc" id="L27">	public FeatureList() {</span>
+<span class="nc" id="L28">		list = new HashMap&lt;String, String&gt;();</span>
+<span class="nc" id="L29">	}</span>
+
+	//
+	// FeatureList
+	//
+
+	/**
+	 * Clear the list of features.
+	 */
+	public void clear() {
+<span class="nc" id="L39">		list.clear();</span>
+<span class="nc" id="L40">	}</span>
+
+	/**
+	 * Read an encoded features list.
+	 * 
+	 * Encoded features are in the form of:&lt;br&gt;
+	 * &lt;em&gt;name&lt;/em&gt;[&lt;code&gt;=&lt;/code&gt;&lt;em&gt;value&lt;/em&gt;][&lt;code&gt;:&lt;/code&gt;&lt;em&gt;name&lt;/em&gt;[&lt;code&gt;=&lt;/code&gt;&lt;em&gt;value&lt;/em&gt;]...]
+	 * @param encoded encoded string to decode
+	 */
+	public void decode(final String encoded) {
+		int len;
+		int pos;
+		int epos;
+		int cpos;
+		String name;
+		String value;
+
+<span class="nc" id="L57">		list.clear();</span>
+
+<span class="nc" id="L59">		len = encoded.length();</span>
+<span class="nc" id="L60">		pos = 0;</span>
+
+<span class="nc bnc" id="L62" title="All 4 branches missed.">		while (pos &lt; len) {</span>
+<span class="nc" id="L63">			cpos = encoded.indexOf(':', pos);</span>
+<span class="nc bnc" id="L64" title="All 4 branches missed.">			if (cpos == -1) {</span>
+<span class="nc" id="L65">				cpos = len;</span>
+			}
+<span class="nc" id="L67">			epos = encoded.indexOf('=', pos);</span>
+<span class="nc bnc" id="L68" title="All 8 branches missed.">			if ((epos == -1) || (epos &gt; cpos)) {</span>
+<span class="nc" id="L69">				epos = cpos;</span>
+			}
+
+<span class="nc" id="L72">			name = encoded.substring(pos, epos);</span>
+
+<span class="nc bnc" id="L74" title="All 4 branches missed.">			if (epos &lt; cpos) {</span>
+<span class="nc" id="L75">				value = encoded.substring(epos + 1, cpos);</span>
+			} else {
+<span class="nc" id="L77">				value = &quot;&quot;;</span>
+			}
+
+<span class="nc" id="L80">			list.put(name, value);</span>
+
+<span class="nc" id="L82">			pos = cpos + 1;</span>
+		}
+<span class="nc" id="L84">	}</span>
+
+
+
+	/**
+	 * Get a feature value.
+	 *
+	 * @param name key
+	 * @return A feature value, or &lt;code&gt;null&lt;/code&gt; if not-enabled.
+	 */
+	public String get(final String name) {
+<span class="nc" id="L95">		return list.get(name);</span>
+	}
+
+	
+	//
+	// Iterable
+	//
+	@Override
+	public Iterator&lt;String&gt; iterator() {
+<span class="nc" id="L104">		return list.keySet().iterator();</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

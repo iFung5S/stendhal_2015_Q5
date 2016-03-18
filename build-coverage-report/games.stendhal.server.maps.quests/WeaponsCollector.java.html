@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>WeaponsCollector.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests</a> &gt; <span class="el_source">WeaponsCollector.java</span></div><h1>WeaponsCollector.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests;
+
+import games.stendhal.common.grammar.Grammar;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.entity.item.Item;
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.maps.Region;
+import games.stendhal.server.maps.quests.logic.BringListOfItemsQuest;
+import games.stendhal.server.maps.quests.logic.BringListOfItemsQuestLogic;
+
+import java.util.Arrays;
+import java.util.List;
+
+/**
+ * QUEST: The Weapons Collector
+ * &lt;p&gt;
+ * PARTICIPANTS:
+ * &lt;ul&gt;
+ * &lt;li&gt; Balduin, a hermit living on a mountain between Semos and Ados &lt;/li&gt;
+ * &lt;/ul&gt;
+ * &lt;p&gt;
+ * STEPS:
+ * &lt;ul&gt;
+ * &lt;li&gt; Balduin asks you for some weapons. &lt;/li&gt;
+ * &lt;li&gt; You get one of the weapons somehow, e.g. by killing a monster. &lt;/li&gt;
+ * &lt;li&gt; You bring the weapon up the mountain and give it to Balduin. &lt;/li&gt;
+ * &lt;li&gt; Repeat until Balduin received all weapons. (Of course you can bring up several weapons at the same time.) &lt;/li&gt;
+ * &lt;li&gt; Balduin gives you an ice sword in exchange. &lt;/li&gt;
+ * &lt;/ul&gt;
+ * &lt;p&gt;
+ * REWARD:
+ * &lt;ul&gt;
+ * &lt;li&gt; ice sword &lt;/li&gt;
+ * &lt;li&gt; 5000 XP &lt;/li&gt;
+ * &lt;li&gt; 30 karma &lt;/li&gt;
+ * &lt;/ul&gt;
+ * &lt;p&gt;
+ * REPETITIONS: None
+ */
+<span class="fc" id="L54">public class WeaponsCollector extends AbstractQuest implements</span>
+		BringListOfItemsQuest {
+
+<span class="fc" id="L57">	private static final List&lt;String&gt; neededWeapons = Arrays.asList(&quot;bardiche&quot;,</span>
+			&quot;battle axe&quot;, &quot;broadsword&quot;, &quot;flail&quot;, &quot;halberd&quot;, &quot;katana&quot;,
+			&quot;golden mace&quot;, &quot;scimitar&quot;, &quot;scythe&quot;, &quot;war hammer&quot;);
+
+	private static final String QUEST_SLOT = &quot;weapons_collector&quot;;
+	
+	private BringListOfItemsQuestLogic bringItems;
+	
+	@Override
+	public List&lt;String&gt; getHistory(final Player player) {
+<span class="nc" id="L67">		return bringItems.getHistory(player);</span>
+	}
+
+	@Override
+	public void addToWorld() {
+<span class="fc" id="L72">		fillQuestInfo(</span>
+				&quot;Weapon Collector&quot;,
+				&quot;Balduin, the hermit who is living on Ados rock, wants to expand his weapons collection.&quot;,
+				true);
+<span class="fc" id="L76">		setupAbstractQuest();</span>
+<span class="fc" id="L77">	}</span>
+
+	private void setupAbstractQuest() {
+<span class="fc" id="L80">		final BringListOfItemsQuest concreteQuest = this;</span>
+<span class="fc" id="L81">		bringItems = new BringListOfItemsQuestLogic(concreteQuest);</span>
+<span class="fc" id="L82">		bringItems.addToWorld();</span>
+<span class="fc" id="L83">	}</span>
+
+	@Override
+	public SpeakerNPC getNPC() {
+<span class="fc" id="L87">		return npcs.get(&quot;Balduin&quot;);</span>
+	}
+
+	@Override
+	public List&lt;String&gt; getNeededItems() {
+<span class="fc" id="L92">		return neededWeapons;</span>
+	}
+
+	@Override
+	public String getSlotName() {
+<span class="fc" id="L97">		return QUEST_SLOT;</span>
+	}
+
+	@Override
+	public List&lt;String&gt; getTriggerPhraseToEnumerateMissingItems() {
+<span class="fc" id="L102">		return Arrays.asList(&quot;collection&quot;);</span>
+	}
+
+	@Override
+	public List&lt;String&gt; getAdditionalTriggerPhraseForQuest() {
+<span class="fc" id="L107">		return ConversationPhrases.EMPTY;</span>
+	}
+
+	@Override
+	public double getKarmaDiffForQuestResponse() {
+<span class="fc" id="L112">		return 0;</span>
+	}
+
+	@Override
+	public String welcomeBeforeStartingQuest() {
+<span class="fc" id="L117">		return &quot;Greetings. I am Balduin. Are you interested in weapons? &quot;</span>
+				+ &quot;I certainly am, I have been collecting them since I was &quot;
+				+ &quot;young. Maybe you can do a little #task for me.&quot;;
+	}
+
+	@Override
+	public String welcomeDuringActiveQuest() {
+<span class="fc" id="L124">		return &quot;Welcome back. I hope you have come to help me with my #collection.&quot;;</span>
+	}
+
+	@Override
+	public String welcomeAfterQuestIsCompleted() {
+<span class="nc" id="L129">		return &quot;Welcome! Thanks again for completing my collection.&quot;;</span>
+	}
+
+	@Override
+	public boolean shouldWelcomeAfterQuestIsCompleted() {
+		// because of WeaponsCollector2
+<span class="fc" id="L135">		return false; </span>
+	}
+
+	@Override
+	public String respondToQuest() {
+<span class="fc" id="L140">		return &quot;Although I have collected weapons for such a long time, I &quot;</span>
+				+ &quot;still don't have everything I want. I need &quot;
+				+ &quot;help to complete my #collection.&quot;;
+	}
+
+	@Override
+	public String respondToQuestAfterItHasAlreadyBeenCompleted() {
+<span class="nc" id="L147">		return &quot;My collection is now complete! Thanks again.&quot;;</span>
+	}
+
+	@Override
+	public String respondToQuestAcception() {
+<span class="fc" id="L152">		return &quot;If you help me to complete my collection, I will give you &quot;</span>
+				+ &quot;something very interesting and useful in exchange. Bye&quot;;
+	}
+
+	@Override
+	public String respondToQuestRefusal() {
+<span class="fc" id="L158">		return &quot;Well, maybe someone else will happen by and help me. Bye&quot;;</span>
+	}
+
+	@Override
+	public String askForMissingItems(final List&lt;String&gt; missingItems) {
+<span class="nc" id="L163">		return &quot;There &quot; + Grammar.isare(missingItems.size()) + &quot; &quot;</span>
+				+ Grammar.quantityplnoun(missingItems.size(), &quot;weapon&quot;, &quot;a&quot;)
+				+ &quot; still missing from my collection: &quot;
+				+ Grammar.enumerateCollection(missingItems)
+				+ &quot;. Do you have anything of that nature with you?&quot;;
+	}
+	@Override
+	public String firstAskForMissingItems(final List&lt;String&gt; missingItems) {
+<span class="fc" id="L171">		return &quot;There &quot; + Grammar.isare(missingItems.size()) + &quot; &quot;</span>
+				+ Grammar.quantityplnoun(missingItems.size(), &quot;weapon&quot;, &quot;a&quot;)
+				+ &quot; missing from my collection: &quot;
+				+ Grammar.enumerateCollection(missingItems)
+				+ &quot;. Will you bring them to me?&quot;;
+	}
+
+
+	@Override
+	public String respondToPlayerSayingHeHasNoItems(final List&lt;String&gt; missingItems) {
+<span class="nc" id="L181">		return &quot;Let me know as soon as you find &quot;</span>
+				+ Grammar.itthem(missingItems.size()) + &quot;. Farewell.&quot;;
+	}
+
+	@Override
+	public String askForItemsAfterPlayerSaidHeHasItems() {
+<span class="fc" id="L187">		return &quot;What is it that you found?&quot;;</span>
+	}
+
+	@Override
+	public String respondToItemBrought() {
+<span class="fc" id="L192">		return &quot;Thank you very much! Do you have anything else for me?&quot;;</span>
+	}
+
+	@Override
+	public String respondToLastItemBrought() {
+<span class="fc" id="L197">		return &quot;At last, my collection is complete! Thank you very much; &quot;</span>
+				+ &quot;here, take this #'ice sword' in exchange!&quot;;
+	}
+
+	@Override
+	public void rewardPlayer(final Player player) {
+<span class="fc" id="L203">		final Item iceSword = SingletonRepository.getEntityManager().getItem(&quot;ice sword&quot;);</span>
+<span class="fc" id="L204">		iceSword.setBoundTo(player.getName());</span>
+<span class="fc" id="L205">		player.equipOrPutOnGround(iceSword);</span>
+<span class="fc" id="L206">		player.addXP(5000);</span>
+<span class="fc" id="L207">		player.addKarma(30);</span>
+<span class="fc" id="L208">	}</span>
+
+	@Override
+	public String respondToOfferOfNotExistingItem(final String itemName) {
+<span class="fc" id="L212">		return &quot;I may be old, but I'm not senile, and you clearly don't have &quot;</span>
+				+ Grammar.a_noun(itemName)
+				+ &quot;. What do you really have for me?&quot;;
+	}
+
+	@Override
+	public String respondToOfferOfNotMissingItem() {
+<span class="fc" id="L219">		return &quot;I already have that one. Do you have any other weapon for me?&quot;;</span>
+	}
+
+	@Override
+	public String respondToOfferOfNotNeededItem() {
+<span class="fc" id="L224">		return &quot;Oh, that is not an interesting weapon&quot;;</span>
+	}
+
+	@Override
+	public String getName() {
+<span class="nc" id="L229">		return &quot;WeaponsCollector&quot;;</span>
+	}
+	
+	// it can be a long quest so they can always start it before they can necessarily finish all
+	@Override
+	public int getMinLevel() {
+<span class="fc" id="L235">		return 30;</span>
+	}
+
+	@Override
+	public String getNPCName() {
+<span class="nc" id="L240">		return &quot;Balduin&quot;;</span>
+	}
+	
+	@Override
+	public String getRegion() {
+<span class="nc" id="L245">		return Region.ADOS_SURROUNDS;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

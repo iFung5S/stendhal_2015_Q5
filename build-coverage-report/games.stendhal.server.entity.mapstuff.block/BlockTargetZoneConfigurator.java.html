@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>BlockTargetZoneConfigurator.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.mapstuff.block</a> &gt; <span class="el_source">BlockTargetZoneConfigurator.java</span></div><h1>BlockTargetZoneConfigurator.java</h1><pre class="source lang-java linenums">package games.stendhal.server.entity.mapstuff.block;
+
+import java.util.Map;
+
+import org.codehaus.groovy.control.CompilationFailedException;
+
+import games.stendhal.server.core.config.ZoneConfigurator;
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ChatCondition;
+import groovy.lang.Binding;
+import groovy.lang.GroovyShell;
+/**
+ * Configurator for a block target
+ * 
+ * required parameters
+ * - x and y coordinate
+ * 
+ * optional parameters
+ * - condition the condition to evaluate when a block target can be triggered
+ * - action the trigger action when the block target is triggered
+ * 
+ * @author madmetzger
+ */
+<span class="nc" id="L25">public class BlockTargetZoneConfigurator implements ZoneConfigurator {</span>
+
+	@Override
+	public void configureZone(StendhalRPZone zone,
+			Map&lt;String, String&gt; attributes) {
+<span class="nc" id="L30">		int x = Integer.parseInt(attributes.get(&quot;x&quot;));</span>
+<span class="nc" id="L31">		int y = Integer.parseInt(attributes.get(&quot;y&quot;));</span>
+<span class="nc" id="L32">		String condition = attributes.get(&quot;condition&quot;);</span>
+<span class="nc" id="L33">		String action = attributes.get(&quot;action&quot;);</span>
+		
+<span class="nc" id="L35">		BlockTarget blockTarget = new BlockTarget(x, y);</span>
+		
+		try {
+<span class="nc bnc" id="L38" title="All 2 branches missed.">			if(condition != null) {</span>
+<span class="nc" id="L39">				ChatCondition created = createCondition(condition);</span>
+<span class="nc bnc" id="L40" title="All 2 branches missed.">				if(created != null) {</span>
+<span class="nc" id="L41">					blockTarget.setCondition(created);</span>
+				}
+			}
+<span class="nc bnc" id="L44" title="All 2 branches missed.">			if(action != null) {</span>
+<span class="nc" id="L45">				ChatAction created = createAction(action);</span>
+<span class="nc bnc" id="L46" title="All 2 branches missed.">				if(created != null) {</span>
+<span class="nc" id="L47">					blockTarget.setAction(created);</span>
+				}
+			}
+<span class="nc" id="L50">		} catch (CompilationFailedException e) {</span>
+<span class="nc" id="L51">			throw new IllegalArgumentException(e);</span>
+<span class="nc" id="L52">		}</span>
+		
+<span class="nc" id="L54">		zone.add(blockTarget);</span>
+<span class="nc" id="L55">	}</span>
+
+	/**
+	 * Create a ChatAction
+	 * 
+	 * @param action the configuration String
+	 * @return the action or null
+	 * @throws CompilationFailedException
+	 */
+	private ChatAction createAction(String action)
+			throws CompilationFailedException {
+<span class="nc" id="L66">		final GroovyShell interp = createGroovyShell();</span>
+<span class="nc" id="L67">		String code = &quot;import games.stendhal.server.entity.npc.action.*;\r\n&quot;</span>
+			+ action;
+<span class="nc" id="L69">		ChatAction created = (ChatAction) interp.evaluate(code);</span>
+<span class="nc" id="L70">		return created;</span>
+	}
+
+	/**
+	 * Create a ChatCondtion
+	 * 
+	 * @param condition the configuration String
+	 * @return the condition or null
+	 * @throws CompilationFailedException
+	 */
+	private ChatCondition createCondition(String condition)
+			throws CompilationFailedException {
+<span class="nc" id="L82">		final GroovyShell interp = createGroovyShell();</span>
+<span class="nc" id="L83">		String code = &quot;import games.stendhal.server.entity.npc.condition.*;\r\n&quot;</span>
+			+ condition;
+<span class="nc" id="L85">		ChatCondition created = (ChatCondition) interp.evaluate(code);</span>
+<span class="nc" id="L86">		return created;</span>
+	}
+
+	/**
+	 * Create a GroovyShell
+	 * 
+	 * @return a fresh GroovyShell
+	 */
+	private GroovyShell createGroovyShell() {
+<span class="nc" id="L95">		Binding groovyBinding = new Binding();</span>
+<span class="nc" id="L96">		final GroovyShell interp = new GroovyShell(groovyBinding);</span>
+<span class="nc" id="L97">		return interp;</span>
+	}
+	
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

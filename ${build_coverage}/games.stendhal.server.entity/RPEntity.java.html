@@ -1,0 +1,3339 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>RPEntity.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity</a> &gt; <span class="el_source">RPEntity.java</span></div><h1>RPEntity.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                      (C) Copyright 2003 - Marauroa                      *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity;
+
+
+import games.stendhal.common.EquipActionConsts;
+import games.stendhal.common.Level;
+import games.stendhal.common.NotificationType;
+import games.stendhal.common.Rand;
+import games.stendhal.common.constants.Nature;
+import games.stendhal.common.constants.SoundLayer;
+import games.stendhal.common.constants.Testing;
+import games.stendhal.common.grammar.Grammar;
+import games.stendhal.common.parser.WordList;
+import games.stendhal.server.actions.equip.DropAction;
+import games.stendhal.server.core.engine.GameEvent;
+import games.stendhal.server.core.engine.ItemLogger;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.core.engine.db.StendhalKillLogDAO;
+import games.stendhal.server.core.engine.dbcommand.LogKillEventCommand;
+import games.stendhal.server.core.events.TurnListener;
+import games.stendhal.server.core.events.TutorialNotifier;
+import games.stendhal.server.entity.creature.Creature;
+import games.stendhal.server.entity.item.CaptureTheFlagFlag;
+import games.stendhal.server.entity.item.Corpse;
+import games.stendhal.server.entity.item.Item;
+import games.stendhal.server.entity.item.StackableItem;
+import games.stendhal.server.entity.mapstuff.portal.Portal;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.entity.slot.EntitySlot;
+import games.stendhal.server.entity.slot.Slots;
+import games.stendhal.server.entity.status.Status;
+import games.stendhal.server.entity.status.StatusAttacker;
+import games.stendhal.server.entity.status.StatusList;
+import games.stendhal.server.entity.status.StatusType;
+import games.stendhal.server.events.AttackEvent;
+import games.stendhal.server.events.SoundEvent;
+import games.stendhal.server.events.TextEvent;
+import games.stendhal.server.util.CounterMap;
+
+import java.awt.geom.Rectangle2D;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.WeakHashMap;
+
+import marauroa.common.game.RPAction;
+import marauroa.common.game.RPObject;
+import marauroa.common.game.RPSlot;
+import marauroa.common.game.SyntaxException;
+import marauroa.server.db.command.DBCommandQueue;
+import marauroa.server.game.Statistics;
+import marauroa.server.game.db.DAORegister;
+
+import org.apache.log4j.Logger;
+
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableList.Builder;
+
+public abstract class RPEntity extends GuidedEntity {
+
+	private static final float WEAPON_DEF_MULTIPLIER = 4.0f;
+
+	private static final float BOOTS_DEF_MULTIPLIER = 1.0f;
+
+	private static final float LEG_DEF_MULTIPLIER = 1.0f;
+
+	private static final float HELMET_DEF_MULTIPLIER = 1.0f;
+
+	private static final float CLOAK_DEF_MULTIPLIER = 1.5f;
+
+	private static final float ARMOR_DEF_MULTIPLIER = 2.0f;
+
+	private static final float SHIELD_DEF_MULTIPLIER = 4.0f;
+
+	/**
+	 * The title attribute name.
+	 */
+	protected static final String ATTR_TITLE = &quot;title&quot;;
+
+	/** the logger instance. */
+<span class="fc" id="L97">	private static final Logger logger = Logger.getLogger(RPEntity.class);</span>
+
+	private static Statistics stats;
+
+	private String name;
+
+	protected int atk;
+
+	private int atk_xp;
+
+	protected int def;
+
+	private int def_xp;
+	
+	protected int ratk;
+	
+	private int ratk_xp;
+
+	private int base_hp;
+
+	private int hp;
+
+	private int xp;
+
+	protected int level;
+
+	private int mana;
+
+	private int base_mana;
+
+	protected boolean ignoreCollision;
+
+	private String deathSound;
+	
+	private String bloodClass;
+
+	/** Entity uses a status attack */
+<span class="fc" id="L134">	protected ImmutableList&lt;StatusAttacker&gt; statusAttackers = ImmutableList.of();</span>
+
+	/** a list of current statuses */
+	protected StatusList statusList;
+	
+	/**
+	 * Maps each enemy which has recently damaged this RPEntity to the turn when
+	 * the last damage has occurred.
+	 *
+	 * You only get ATK and DEF experience by fighting against a creature that
+	 * is in this list.
+	 */
+	private final Map&lt;RPEntity, Integer&gt; enemiesThatGiveFightXP;
+
+	/** List of all enemies that are currently attacking this entity. */
+	private final List&lt;Entity&gt; attackSources;
+
+	/** the enemy that is currently attacked by this entity. */
+	private RPEntity attackTarget;
+
+	/**
+	 * Maps each attacker to the sum of hitpoint loss it has caused to this
+	 * RPEntity.
+	 */
+	protected CounterMap&lt;Entity&gt; damageReceived;
+
+	protected int totalDamageReceived;
+
+	/**
+	 * To prevent players from gaining attack and defense experience by fighting
+	 * against very weak creatures, they only gain atk and def xp for so many
+	 * turns after they have actually been damaged by the enemy. //
+	 */
+	private static final int TURNS_WHILE_FIGHT_XP_INCREASES = 12;
+
+	/**
+	 * To avoid using karma for damage calculations when the natural ability of
+	 * the fighters would mean they need no luck, we only use karma when the
+	 * levels are significantly different.
+	 */
+
+	private static final double IGNORE_KARMA_MULTIPLIER = 0.2;
+
+	/**
+	 * Level bonus for defence given to everyone. Prevents newbies killing each
+	 * other too fast.
+	 */
+	private static final double NEWBIE_DEF = 10.0;
+	/**
+	 * Armor value of no armor. Prevents unarmored or lightly armored entities
+	 * from being completely helpless
+	 */
+	private static final double SKIN_DEF = 10.0;
+	/** Adjusts the weight of level. Larger means weight more */
+	private static final double LEVEL_ATK = 0.03;
+	/** Adjusts the weight of level. Larger means weight more */
+	private static final double LEVEL_DEF = 0.03;
+	/** General parameter for damage. Larger means more damage. */
+	private static final double WEIGHT_ATK = 8.0;
+	/** the level where relative damage curves start being linear. */
+	private static final double EVEN_POINT = 1.2;
+	/**
+	 * Steepness of the damage vs level curves. The maximum bonus/penalty with
+	 * weak enemies
+	 */
+	private static final double WEIGHT_EFFECT = 0.5;
+	
+	/**
+	 * A helper class for building a size limited list of killer names. If there
+	 * are more killers than the limit, then &quot;others&quot; is set as the last killer.
+	 * Only living creatures and online players are included in the killer name
+	 * list. RPEntities on other zones are not included.
+	 */
+<span class="fc" id="L207">	private class KillerList {</span>
+		/** Maximum amount of killer names. */
+		private static final int MAX_SIZE = 10;
+		/** List of killer names. */
+<span class="fc" id="L211">		private final LinkedList&lt;String&gt; list = new LinkedList&lt;String&gt;();</span>
+		/**
+		 * A flag for detecting when the killer list has grown over the maximum size.
+		 */
+		private boolean more;
+		
+		/**
+		 * Add an entity to the killer list.
+		 * 
+		 * @param e entity
+		 */
+		void addEntity(Entity e) {
+<span class="pc bpc" id="L223" title="1 of 2 branches missed.">			if (e instanceof RPEntity) {</span>
+				// Only list the killers on the zone where the death happened.
+<span class="pc bpc" id="L225" title="1 of 2 branches missed.">				if (e.getZone() != getZone()) {</span>
+<span class="nc" id="L226">					return;</span>
+				}
+				// Try to keep player names at the start of the list
+<span class="pc bpc" id="L229" title="1 of 2 branches missed.">				if (e instanceof Player) {</span>
+<span class="pc bpc" id="L230" title="1 of 2 branches missed.">					if (((Player) e).isDisconnected()) {</span>
+<span class="nc" id="L231">						return;</span>
+					}
+<span class="fc" id="L233">					list.addFirst(e.getName());</span>
+				} else {
+<span class="nc bnc" id="L235" title="All 2 branches missed.">					if (((RPEntity) e).getHP() &lt;= 0) {</span>
+<span class="nc" id="L236">						return;</span>
+					}
+<span class="nc" id="L238">					list.add(e.getName());</span>
+				}
+			} else {
+<span class="nc" id="L241">				list.add(e.getName());</span>
+			}
+<span class="fc" id="L243">			trim();</span>
+<span class="fc" id="L244">		}</span>
+		
+		/**
+		 * Set the official killer. If the killer was already on the list, move
+		 * it first. Otherwise prepend the list with the official killer. This
+		 * means that a creature can appear before players if it is the official
+		 * killer. Also an item &quot;poison&quot; can be the first on the list this way.
+		 * (And, as of this writing (2015-04-01) it is the only way anything but
+		 * RPEntities can be shown on the killer list).
+		 * 
+		 * @param killer The official killer
+		 */
+		void setKiller(String killer) {
+<span class="fc bfc" id="L257" title="All 2 branches covered.">			if (list.contains(killer)) {</span>
+<span class="fc" id="L258">				list.remove(killer);</span>
+<span class="fc" id="L259">				list.addFirst(killer);</span>
+			} else {
+<span class="fc" id="L261">				list.addFirst(killer);</span>
+<span class="fc" id="L262">				trim();</span>
+			}
+<span class="fc" id="L264">		}</span>
+		
+		/**
+		 * Keep the name list at most {@link #MAX_SIZE}.
+		 */
+		private void trim() {
+<span class="pc bpc" id="L270" title="1 of 2 branches missed.">			if (list.size() &gt; MAX_SIZE) {</span>
+<span class="nc" id="L271">				list.remove(list.size() - 1);</span>
+<span class="nc" id="L272">				more = true;</span>
+			}
+<span class="fc" id="L274">		}</span>
+		
+		/**
+		 * Get the name list of the added entities.
+		 * 
+		 * @return name list.
+		 */
+		List&lt;String&gt; asList() {
+<span class="pc bpc" id="L282" title="1 of 2 branches missed.">			if (more) {</span>
+<span class="nc" id="L283">				list.set(list.size() - 1, &quot;others&quot;);</span>
+			}
+<span class="fc" id="L285">			return Collections.unmodifiableList(list);</span>
+		}
+	}
+
+	@Override
+	protected boolean handlePortal(final Portal portal) {
+<span class="nc bnc" id="L291" title="All 2 branches missed.">		if (isZoneChangeAllowed()) {</span>
+<span class="nc bnc" id="L292" title="All 4 branches missed.">			if (logger.isDebugEnabled() || Testing.DEBUG) {</span>
+<span class="nc" id="L293">				logger.debug(&quot;Using portal &quot; + portal);</span>
+			}
+			
+<span class="nc" id="L296">			return portal.onUsed(this);</span>
+		}
+<span class="nc" id="L298">		return super.handlePortal(portal);</span>
+	}
+
+    public static void generateRPClass() {
+        try {
+<span class="fc" id="L303">            stats = Statistics.getStatistics();</span>
+<span class="fc" id="L304">            RPEntityRPClass.generateRPClass(ATTR_TITLE);</span>
+<span class="nc" id="L305">        } catch (final SyntaxException e) {</span>
+<span class="nc" id="L306">            logger.error(&quot;cannot generateRPClass&quot;, e);</span>
+<span class="fc" id="L307">        }</span>
+<span class="fc" id="L308">    }</span>
+
+	public RPEntity(final RPObject object) {
+<span class="fc" id="L311">		super(object);</span>
+<span class="fc" id="L312">		attackSources = new ArrayList&lt;Entity&gt;();</span>
+<span class="fc" id="L313">		damageReceived = new CounterMap&lt;Entity&gt;(true);</span>
+<span class="fc" id="L314">		totalDamageReceived = 0;</span>
+<span class="fc" id="L315">		ignoreCollision = false;</span>
+<span class="fc" id="L316">		enemiesThatGiveFightXP = new WeakHashMap&lt;RPEntity, Integer&gt;();</span>
+<span class="fc" id="L317">	}</span>
+
+	public RPEntity() {
+<span class="fc" id="L320">		super();</span>
+<span class="fc" id="L321">		attackSources = new ArrayList&lt;Entity&gt;();</span>
+<span class="fc" id="L322">		damageReceived = new CounterMap&lt;Entity&gt;(true);</span>
+<span class="fc" id="L323">		totalDamageReceived = 0;</span>
+<span class="fc" id="L324">		ignoreCollision = false;</span>
+<span class="fc" id="L325">		enemiesThatGiveFightXP = new WeakHashMap&lt;RPEntity, Integer&gt;();</span>
+<span class="fc" id="L326">	}</span>
+
+	/**
+	 * Give the player some karma (good or bad).
+	 *
+	 * @param karma
+	 *            An amount of karma to add/subtract.
+	 */
+	public void addKarma(final double karma) {
+		// Do nothing
+<span class="nc" id="L336">	}</span>
+
+	/**
+	 * Get the current amount of karma.
+	 *
+	 * @return The current amount of karma.
+	 *
+	 * @see #addKarma(double)
+	 */
+	public double getKarma() {
+		// No karma (yet)
+<span class="fc" id="L347">		return 0.0;</span>
+	}
+
+	/**
+	 * Get some of the player's karma. A positive value indicates good
+	 * luck/energy. A negative value indicates bad luck/energy. A value of zero
+	 * should cause no change on an action or outcome.
+	 *
+	 * @param scale
+	 *            A positive number.
+	 *
+	 * @return A number between -scale and scale.
+	 */
+	public double useKarma(final double scale) {
+		// No impact
+<span class="fc" id="L362">		return 0.0;</span>
+	}
+
+	/**
+	 * Get some of the player's karma. A positive value indicates good
+	 * luck/energy. A negative value indicates bad luck/energy. A value of zero
+	 * should cause no change on an action or outcome.
+	 *
+	 * @param negLimit
+	 *            The lowest negative value returned.
+	 * @param posLimit
+	 *            The highest positive value returned.
+	 *
+	 * @return A number within negLimit &amp;lt;= 0 &amp;lt;= posLimit.
+	 */
+	public double useKarma(final double negLimit, final double posLimit) {
+		// No impact
+<span class="nc" id="L379">		return 0.0;</span>
+	}
+
+	/**
+	 * Use some of the player's karma. A positive value indicates good
+	 * luck/energy. A negative value indicates bad luck/energy. A value of zero
+	 * should cause no change on an action or outcome.
+	 *
+	 * @param negLimit
+	 *            The lowest negative value returned.
+	 * @param posLimit
+	 *            The highest positive value returned.
+	 * @param granularity
+	 *            The amount that any extracted karma is a multiple of.
+	 *
+	 * @return A number within negLimit &amp;lt;= 0 &amp;lt;= posLimit.
+	 */
+	public double useKarma(final double negLimit, final double posLimit,
+			final double granularity) {
+		// No impact
+<span class="nc" id="L399">		return 0.0;</span>
+	}
+
+	/**
+	 * Heal this entity completely.
+	 *
+	 * @return The amount actually healed.
+	 */
+	public int heal() {
+<span class="fc" id="L408">		final int baseHP = getBaseHP();</span>
+<span class="fc" id="L409">		final int given = baseHP - getHP();</span>
+
+<span class="fc bfc" id="L411" title="All 2 branches covered.">		if (given != 0) {</span>
+<span class="fc" id="L412">			put(&quot;heal&quot;, given);</span>
+<span class="fc" id="L413">			setHP(baseHP);</span>
+		}
+
+<span class="fc" id="L416">		return given;</span>
+	}
+
+	/**
+	 * Heal this entity.
+	 *
+	 * @param amount
+	 *            The [maximum] amount to heal by.
+	 *
+	 * @return The amount actually healed.
+	 */
+	public int heal(final int amount) {
+<span class="fc" id="L428">		return heal(amount, false);</span>
+	}
+
+	/**
+	 * Heal this entity.
+	 *
+	 * @param amount
+	 *            The [maximum] amount to heal by.
+	 * @param tell
+	 *            Whether to tell the entity they've been healed.
+	 *
+	 * @return The amount actually healed.
+	 */
+	public int heal(final int amount, final boolean tell) {
+<span class="fc" id="L442">		int tempHp = getHP();</span>
+<span class="fc" id="L443">		int given = 0;</span>
+
+		// Avoid creating zombies out of dead creatures
+<span class="pc bpc" id="L446" title="1 of 2 branches missed.">		if (tempHp &gt; 0) {</span>
+<span class="fc" id="L447">			given = Math.min(amount, getBaseHP() - tempHp);</span>
+
+<span class="fc bfc" id="L449" title="All 2 branches covered.">			if (given != 0) {</span>
+<span class="fc" id="L450">				tempHp += given;</span>
+
+<span class="fc bfc" id="L452" title="All 2 branches covered.">				if (tell) {</span>
+<span class="fc" id="L453">					put(&quot;heal&quot;, given);</span>
+				}
+
+<span class="fc" id="L456">				setHP(tempHp);</span>
+			}
+		}
+
+<span class="fc" id="L460">		return given;</span>
+	}
+
+	/**
+	 * Give mana to the entity.
+	 *
+	 * @param mana
+	 * 			The amount of mana to add/substract.
+	 * @param tell
+	 * 			Whether to tell the entity that mana has been added.
+	 *
+	 * @return Amount of mana actually refilled.
+	 */
+	public int addMana(int mana, boolean tell) {
+<span class="fc" id="L474">		int old_mana = getMana();</span>
+<span class="fc" id="L475">		int new_mana = old_mana + mana;</span>
+<span class="fc" id="L476">		int given = 0;</span>
+
+		// no negative mana
+<span class="fc" id="L479">		new_mana = Math.max(new_mana, 0);</span>
+
+		// maximum is base_mana
+<span class="fc" id="L482">		new_mana = Math.min(new_mana, getBaseMana());</span>
+
+<span class="fc" id="L484">		given = new_mana - old_mana;</span>
+
+<span class="pc bpc" id="L486" title="1 of 2 branches missed.">		if(tell) {</span>
+			//TODO: Add notification for increased mana
+		}
+
+<span class="fc" id="L490">		setMana(new_mana);</span>
+
+<span class="fc" id="L492">		return given;</span>
+	}
+
+	@Override
+	public void update() {
+<span class="fc" id="L497">		super.update();</span>
+
+<span class="fc bfc" id="L499" title="All 2 branches covered.">		if (has(&quot;name&quot;)) {</span>
+<span class="fc" id="L500">			final String newName = get(&quot;name&quot;);</span>
+<span class="fc" id="L501">			registerNewName(newName, name);</span>
+<span class="fc" id="L502">			name = newName;</span>
+		}
+
+<span class="fc bfc" id="L505" title="All 2 branches covered.">		if (has(&quot;atk_xp&quot;)) {</span>
+<span class="fc" id="L506">			atk_xp = getInt(&quot;atk_xp&quot;);</span>
+<span class="fc" id="L507">			setAtkXpInternal(atk_xp, false);</span>
+		}
+
+<span class="fc bfc" id="L510" title="All 2 branches covered.">		if (has(&quot;def_xp&quot;)) {</span>
+<span class="fc" id="L511">			def_xp = getInt(&quot;def_xp&quot;);</span>
+<span class="fc" id="L512">			setDefXpInternal(def_xp, false);</span>
+		}
+		
+		/* TODO: Remove condition after ranged stat testing is finished. */
+<span class="pc bpc" id="L516" title="1 of 2 branches missed.">		if (Testing.COMBAT) {</span>
+<span class="nc bnc" id="L517" title="All 2 branches missed.">			if (has(&quot;ratk_xp&quot;)) {</span>
+<span class="nc" id="L518">				ratk_xp = getInt(&quot;ratk_xp&quot;);</span>
+<span class="nc" id="L519">				setRatkXPInternal(ratk_xp, false);</span>
+			}
+		}
+
+<span class="fc bfc" id="L523" title="All 2 branches covered.">		if (has(&quot;base_hp&quot;)) {</span>
+<span class="fc" id="L524">			base_hp = getInt(&quot;base_hp&quot;);</span>
+		}
+<span class="fc bfc" id="L526" title="All 2 branches covered.">		if (has(&quot;hp&quot;)) {</span>
+<span class="fc" id="L527">			hp = getInt(&quot;hp&quot;);</span>
+		}
+
+<span class="fc bfc" id="L530" title="All 2 branches covered.">		if (has(&quot;level&quot;)) {</span>
+<span class="fc" id="L531">			level = getInt(&quot;level&quot;);</span>
+		}
+<span class="fc bfc" id="L533" title="All 2 branches covered.">		if (has(&quot;xp&quot;)) {</span>
+<span class="fc" id="L534">			xp = getInt(&quot;xp&quot;);</span>
+		}
+<span class="fc bfc" id="L536" title="All 2 branches covered.">		if (has(&quot;mana&quot;)) {</span>
+<span class="fc" id="L537">			mana = getInt(&quot;mana&quot;);</span>
+		}
+<span class="fc bfc" id="L539" title="All 2 branches covered.">		if (has(&quot;base_mana&quot;)) {</span>
+<span class="fc" id="L540">			base_mana = getInt(&quot;base_mana&quot;);</span>
+		}
+<span class="pc bpc" id="L542" title="1 of 2 branches missed.">		if (has(&quot;base_speed&quot;)) {</span>
+<span class="nc" id="L543">			setBaseSpeed(getDouble(&quot;base_speed&quot;));</span>
+		}
+<span class="fc" id="L545">	}</span>
+
+	/**
+	 * Register the new name in the conversation parser word list.
+	 *
+	 * @param newName
+	 * @param oldName
+	 */
+	private static void registerNewName(final String newName, final String oldName) {
+<span class="fc bfc" id="L554" title="All 4 branches covered.">		if ((oldName != null) &amp;&amp; !oldName.equals(newName)) {</span>
+<span class="fc" id="L555">			WordList.getInstance().unregisterSubjectName(oldName);</span>
+		}
+
+<span class="fc bfc" id="L558" title="All 4 branches covered.">		if ((oldName == null) || !oldName.equals(newName)) {</span>
+<span class="fc" id="L559">			WordList.getInstance().registerSubjectName(newName);</span>
+		}
+<span class="fc" id="L561">	}</span>
+
+	/**
+	 * Is called when this has hit the given defender. Determines how much
+	 * hitpoints the defender will lose, based on this's ATK experience and
+	 * weapon(s), the defender's DEF experience and defensive items, and a
+	 * random generator.
+	 *
+	 * @param defender
+	 *            The defender.
+	 * @param attackingWeaponsValue
+	 * 			  ATK-value of all attacking weapons/spells
+	 * @param damageType nature of damage
+	 * @param isRanged &lt;code&gt;true&lt;/code&gt; if this is a ranged attack, otherwise
+	 * 	&lt;code&gt;false&lt;/code&gt;
+	 * @param maxRange maximum range of a ranged attack
+	 *
+	 * @return The number of hitpoints that the target should lose. 0 if the
+	 *         attack was completely blocked by the defender.
+	 */
+	int damageDone(RPEntity defender, double attackingWeaponsValue, Nature damageType,
+			boolean isRanged, int maxRange) {
+		// Don't start from 0 to mitigate weird behaviour at very low levels
+<span class="fc" id="L584">		final int effectiveAttackerLevel = getLevel() + 5;</span>
+<span class="fc" id="L585">		final int effectiveDefenderLevel = defender.getLevel() + 5;</span>
+
+		// Defending side
+<span class="fc" id="L588">		final double armor = defender.getItemDef();</span>
+<span class="fc" id="L589">		final int targetDef = defender.getCappedDef();</span>
+		// Even strong players are vulnerable without any armor.
+		// Armor def gets much higher with high level players unlike
+		// weapon atk, so it can not be treated similarly. Using geometric
+		// / mean to balance things a bit.
+<span class="fc" id="L594">		final double maxDefence = Math.sqrt(targetDef * (SKIN_DEF + armor))</span>
+				* (NEWBIE_DEF + LEVEL_DEF * effectiveDefenderLevel);
+
+<span class="fc" id="L597">		double defence = Rand.rand() * maxDefence;</span>
+		/*
+		 * Account for karma (+/-10%) But, the defender doesn't need luck to
+		 * help him defend if he's a much higher level than this attacker
+		 */
+<span class="fc" id="L602">		final int levelDifferenceToNotNeedKarmaDefending = (int) (IGNORE_KARMA_MULTIPLIER * defender.getLevel());</span>
+
+<span class="fc bfc" id="L604" title="All 2 branches covered.">		if (!(effectiveDefenderLevel - levelDifferenceToNotNeedKarmaDefending  &gt; effectiveAttackerLevel)) {</span>
+<span class="fc" id="L605">			defence += defence * defender.useKarma(0.1);</span>
+		}
+		
+		/* Attacking with ranged weapon uses a separate strength value.
+		 * 
+		 * XXX: atkStrength never used outside of debugger.
+		 */
+		final int atkStrength, sourceAtk;
+		/* TODO: Remove COMBAT condition when ranged attack testing is
+		 *       finished.
+		 */
+<span class="pc bpc" id="L616" title="3 of 4 branches missed.">		if (isRanged &amp;&amp; Testing.COMBAT) {</span>
+<span class="nc" id="L617">			atkStrength = this.getRatk();</span>
+<span class="nc" id="L618">			sourceAtk = this.getCappedRatk();</span>
+		} else {
+<span class="fc" id="L620">			atkStrength = this.getAtk();</span>
+<span class="fc" id="L621">			sourceAtk = this.getCappedAtk();</span>
+		}
+
+		// Attacking
+<span class="pc bpc" id="L625" title="2 of 4 branches missed.">		if (logger.isDebugEnabled() || Testing.DEBUG) {</span>
+<span class="nc" id="L626">			logger.debug(&quot;attacker has &quot; + atkStrength + &quot; (&quot; + getCappedAtk()</span>
+					+ &quot;) and uses a weapon of &quot; + getItemAtk());
+		}
+		
+		// Make fast weapons efficient against weak enemies, and heavy
+		// better against strong enemies.
+		// Half a parabola; desceding for rate &lt; 5; ascending for &gt; 5
+<span class="fc" id="L633">		double speedEffect = 1.0;</span>
+<span class="fc bfc" id="L634" title="All 2 branches covered.">		if (effectiveDefenderLevel &lt; EVEN_POINT * effectiveAttackerLevel) {</span>
+<span class="fc" id="L635">			final double levelPart = 1.0 - effectiveDefenderLevel</span>
+					                       / (EVEN_POINT * effectiveAttackerLevel);
+			// Gets values -1 at rate = 1, 0 at rate = 5, and approaches 1 when rate approaches infinity.
+			// We can't use a much simpler function as long as we need to deal with open ended rate values.
+<span class="fc" id="L639">			final double speedPart = 1 - 8 / (getAttackRate() + 3.0);</span>
+
+<span class="fc" id="L641">			speedEffect = 1.0 - WEIGHT_EFFECT * speedPart * levelPart</span>
+					* levelPart;
+		}
+
+<span class="fc" id="L645">		final double weaponComponent = 1.0 + attackingWeaponsValue;</span>
+		// XXX: Is correct to use sourceAtk here instead of atkStrength?
+<span class="fc" id="L647">		final double maxAttack = sourceAtk * weaponComponent</span>
+				* (1 + LEVEL_ATK * effectiveAttackerLevel) * speedEffect;
+<span class="fc" id="L649">		double attack = Rand.rand() * maxAttack;</span>
+
+		/*
+		 * Account for karma (+/-10%) But, don't need luck to help you attack if
+		 * you're a much higher level than what you attack
+		 */
+<span class="fc" id="L655">		final int levelDifferenceToNotNeedKarmaAttacking = (int) (IGNORE_KARMA_MULTIPLIER * getLevel());</span>
+<span class="fc bfc" id="L656" title="All 2 branches covered.">		if (!(effectiveAttackerLevel - levelDifferenceToNotNeedKarmaAttacking &gt; effectiveDefenderLevel)) {</span>
+<span class="fc" id="L657">			attack += attack * useKarma(0.1);</span>
+		}
+
+<span class="pc bpc" id="L660" title="2 of 4 branches missed.">		if (logger.isDebugEnabled() || Testing.DEBUG) {</span>
+<span class="nc" id="L661">			logger.debug(&quot;DEF MAX: &quot; + maxDefence + &quot;\t DEF VALUE: &quot; + defence);</span>
+		}
+
+		// Apply defense and damage type effect
+<span class="fc" id="L665">		int damage = (int) (defender.getSusceptibility(damageType)</span>
+				* (WEIGHT_ATK * attack - defence) / maxDefence);
+		
+		/* FIXME: Can argument be removed and just use
+		 *        RPEntity.usingRangedAttack() here?
+		 */
+<span class="pc bpc" id="L671" title="1 of 2 branches missed.">		if (isRanged) {</span>
+			// The attacker is attacking either using a range weapon with ammunition
+			// such as a bow and arrows, or a missile such as a spear.
+<span class="nc" id="L674">			damage = applyDistanceAttackModifiers(damage,</span>
+					squaredDistance(defender), maxRange);
+		}
+
+<span class="fc" id="L678">		return damage;</span>
+	}
+
+	/**
+	 * Is called when this has hit the given defender. Determines how much
+	 * hitpoints the defender will lose, based on this's ATK experience and
+	 * weapon(s), the defender's DEF experience and defensive items, and a
+	 * random generator.
+	 *
+	 * @param defender
+	 *            The defender.
+	 * @param attackingWeaponsValue
+	 * 			  ATK-value of all attacking weapons/spells
+	 * @param damageType nature of damage
+	 * @return The number of hitpoints that the target should lose. 0 if the
+	 *         attack was completely blocked by the defender.
+	 */
+	public int damageDone(final RPEntity defender, double attackingWeaponsValue, Nature damageType) {
+<span class="fc" id="L696">		final int maxRange = getMaxRangeForArcher();</span>
+<span class="pc bpc" id="L697" title="3 of 4 branches missed.">		boolean isRanged = ((maxRange &gt; 0) &amp;&amp; canDoRangeAttack(defender, maxRange));</span>
+
+<span class="fc" id="L699">		return damageDone(defender, attackingWeaponsValue, damageType, isRanged, maxRange);</span>
+	}
+
+	/**
+	 * Calculates the damage that will be done in a distance attack (bow and
+	 * arrows, spear, etc.).
+	 *
+	 * @param damage
+	 *            The damage that would have been done if there would be no
+	 *            modifiers for distance attacks.
+	 * @param squareDistance
+	 *            the distance
+	 * @param maxrange maximum attack range
+	 * @return The damage that will be done with the distance attack.
+	 */
+	public static int applyDistanceAttackModifiers(final int damage, final double squareDistance, final double maxrange) {
+<span class="fc" id="L715">		final double maxRangeSquared = maxrange * maxrange;</span>
+<span class="fc bfc" id="L716" title="All 2 branches covered.">		if (maxRangeSquared &lt; squareDistance) {</span>
+<span class="fc" id="L717">			return 0;</span>
+<span class="fc bfc" id="L718" title="All 2 branches covered.">		} else if (squareDistance == 0) {</span>
+			// as a special case, make archers switch to melee when the enemy is
+			// next to them
+<span class="fc" id="L721">			return (int) (0.8 * damage);</span>
+		}
+
+<span class="fc" id="L724">		final double outOfRange = maxrange + 1;</span>
+<span class="fc" id="L725">		final double distance = Math.sqrt(squareDistance);</span>
+
+		// a downward parabola with zero points at 0 and outOfRange
+<span class="fc" id="L728">		return (int) (damage * ((distance * 4) / outOfRange - 4</span>
+				* squareDistance / (outOfRange * outOfRange)));
+	}
+
+	/**
+	 * Set the entity's name.
+	 *
+	 * @param name
+	 *            The new name.
+	 */
+	public void setName(final String name) {
+<span class="fc" id="L739">		registerNewName(name, this.name);</span>
+
+<span class="fc" id="L741">		this.name = name;</span>
+<span class="fc" id="L742">		put(&quot;name&quot;, name);</span>
+<span class="fc" id="L743">	}</span>
+
+	/**
+	 * Get the entity's name.
+	 *
+	 * @return The entity's name.
+	 */
+	@Override
+	public String getName() {
+<span class="fc bfc" id="L752" title="All 2 branches covered.">		if (name != null) {</span>
+<span class="fc" id="L753">			return name;</span>
+		}
+<span class="fc" id="L755">		return super.getName();</span>
+	}
+
+	public void setLevel(final int level) {
+<span class="fc" id="L759">		this.level = level;</span>
+<span class="fc" id="L760">		put(&quot;level&quot;, level);</span>
+<span class="fc" id="L761">		this.updateModifiedAttributes();</span>
+<span class="fc" id="L762">	}</span>
+
+	public int getLevel() {
+<span class="fc" id="L765">		return this.level;</span>
+	}
+
+	public void setAtk(final int atk) {
+<span class="fc" id="L769">		setAtkInternal(atk, true);</span>
+<span class="fc" id="L770">	}</span>
+
+	private void setAtkInternal(final int atk, boolean notifyAtkUpdated) {
+<span class="fc" id="L773">		this.atk = atk;</span>
+<span class="fc" id="L774">		put(&quot;atk&quot;, atk);  // visible atk</span>
+<span class="fc bfc" id="L775" title="All 2 branches covered.">		if(notifyAtkUpdated) {</span>
+<span class="fc" id="L776">			this.updateModifiedAttributes();</span>
+		}
+<span class="fc" id="L778">	}</span>
+
+	public int getAtk() {
+<span class="fc" id="L781">		return this.atk;</span>
+	}
+
+	/**
+	 * gets the capped atk level, which prevent players from training their atk way beyond what is reasonable for their level
+	 *
+	 * @return capped atk
+	 */
+	public int getCappedAtk() {
+<span class="fc" id="L790">		return this.atk;</span>
+	}
+
+	/**
+	 * Set attack XP.
+	 *
+	 * @param atk the new value
+	 */
+	public void setAtkXP(final int atk) {
+<span class="fc" id="L799">		setAtkXpInternal(atk, true);</span>
+<span class="fc" id="L800">	}</span>
+
+	private void setAtkXpInternal(final int atk, boolean notify) {
+<span class="fc" id="L803">		this.atk_xp = atk;</span>
+<span class="fc" id="L804">		put(&quot;atk_xp&quot;, atk_xp);</span>
+
+		// Handle level changes
+<span class="fc" id="L807">		final int newLevel = Level.getLevel(atk_xp);</span>
+<span class="fc" id="L808">		final int levels = newLevel - (this.atk - 10);</span>
+
+		// In case we level up several levels at a single time.
+<span class="fc bfc" id="L811" title="All 2 branches covered.">		for (int count = 0; count &lt; Math.abs(levels); count++) {</span>
+<span class="fc" id="L812">			setAtkInternal(this.atk + (int) Math.signum(levels) * 1, notify);</span>
+<span class="pc bpc" id="L813" title="1 of 2 branches missed.">			if (this.atk &gt; 0) {</span>
+<span class="fc" id="L814">				new GameEvent(getName(), &quot;atk&quot;, Integer.toString(getAtk())).raise();</span>
+			}
+		}
+<span class="fc" id="L817">	}</span>
+
+	public int getAtkXP() {
+<span class="fc" id="L820">		return atk_xp;</span>
+	}
+
+	/**
+	 * Increase attack XP by 1.
+	 */
+	public void incAtkXP() {
+<span class="fc" id="L827">		setAtkXP(atk_xp + 1);</span>
+<span class="fc" id="L828">	}</span>
+
+	public void setDef(final int def) {
+<span class="fc" id="L831">		setDefInternal(def, true);</span>
+<span class="fc" id="L832">	}</span>
+
+	private void setDefInternal(final int def, boolean notifyDefUpdated) {
+<span class="fc" id="L835">		this.def = def;</span>
+<span class="fc" id="L836">		put(&quot;def&quot;, def);</span>
+<span class="fc bfc" id="L837" title="All 2 branches covered.">		if(notifyDefUpdated) {</span>
+<span class="fc" id="L838">			this.updateModifiedAttributes();</span>
+		}
+<span class="fc" id="L840">	}</span>
+
+	public int getDef() {
+<span class="fc" id="L843">		return this.def;</span>
+	}
+
+	/**
+	 * gets the capped def level, which prevent players from training their def way beyond what is reasonable for their level
+	 *
+	 * @return capped def
+	 */
+	public int getCappedDef() {
+<span class="fc" id="L852">		return this.def;</span>
+	}
+
+	/**
+	 * Set defense XP.
+	 *
+	 * @param defXp the new value
+	 */
+	public void setDefXP(final int defXp) {
+<span class="fc" id="L861">		setDefXpInternal(defXp, true);</span>
+<span class="fc" id="L862">	}</span>
+
+	private void setDefXpInternal(final int defXp, boolean notify) {
+<span class="fc" id="L865">		this.def_xp = defXp;</span>
+<span class="fc" id="L866">		put(&quot;def_xp&quot;, def_xp);</span>
+
+		// Handle level changes
+<span class="fc" id="L869">		final int newLevel = Level.getLevel(def_xp);</span>
+<span class="fc" id="L870">		final int levels = newLevel - (this.def-10);</span>
+
+		// In case we level up several levels at a single time.
+<span class="fc bfc" id="L873" title="All 2 branches covered.">		for (int i = 0; i &lt; Math.abs(levels); i++) {</span>
+<span class="fc" id="L874">			setDefInternal(this.def + (int) Math.signum(levels) * 1, notify);</span>
+<span class="pc bpc" id="L875" title="1 of 2 branches missed.">			if (this.def &gt; 0) {</span>
+<span class="fc" id="L876">				new GameEvent(getName(), &quot;def&quot;, Integer.toString(this.def)).raise();</span>
+			}
+		}
+<span class="fc" id="L879">	}</span>
+
+	public int getDefXP() {
+<span class="fc" id="L882">		return def_xp;</span>
+	}
+
+	/**
+	 * Increase defense XP by 1.
+	 */
+	public void incDefXP() {
+<span class="fc" id="L889">		int newDefXP = def_xp+1;</span>
+<span class="fc" id="L890">		setDefXP(newDefXP);</span>
+<span class="fc" id="L891">	}</span>
+
+
+/* ### --- START RANGED --- ### */
+	
+	/**
+	 * Set the value of the entity's ranged attack level.
+	 * 
+	 * @param ratk
+	 * 		Integer value representing new ranged attack level
+	 */
+	public void setRatk(final int ratk) {
+<span class="nc" id="L903">		setRatkInternal(ratk, true);</span>
+<span class="nc" id="L904">	}</span>
+
+	/**
+	 * Set the entity's ranged attack level.
+	 * 
+	 * @param ratk
+	 * 		Integer value representing new ranged attack level
+	 * @param notifyRAtkUpdated
+	 * 		Update stat in real-time
+	 */
+	private void setRatkInternal(final int ratk, boolean notifyRAtkUpdated) {
+<span class="nc" id="L915">		this.ratk = ratk;</span>
+<span class="nc" id="L916">		put(&quot;ratk&quot;, ratk);  // visible ratk</span>
+<span class="nc bnc" id="L917" title="All 2 branches missed.">		if(notifyRAtkUpdated) {</span>
+<span class="nc" id="L918">			this.updateModifiedAttributes();</span>
+		}
+<span class="nc" id="L920">	}</span>
+
+	/**
+	 * Gets the entity's current ranged attack level.
+	 * 
+	 * @return
+	 * 		Integer value of ranged attack level
+	 */
+	public int getRatk() {
+<span class="nc" id="L929">		return this.ratk;</span>
+	}
+
+	/**
+	 * gets the capped ranged attack level which prevents players from training
+	 * ranged attack way beyond what is reasonable for their level.
+	 *
+	 * @return
+	 * 		The maximum value player's ranged attack level can be at current
+	 * 		level
+	 */
+	public int getCappedRatk() {
+<span class="nc" id="L941">		return this.ratk;</span>
+	}
+
+	/**
+	 * Sets the entity's ranged attack experience.
+	 *
+	 * @param ratkXP
+	 * 		Integer value of the target experience
+	 */
+	public void setRatkXP(final int ratkXP) {
+<span class="nc" id="L951">		setRatkXPInternal(ratkXP, true);</span>
+<span class="nc" id="L952">	}</span>
+
+	/**
+	 * Sets the entity's ranged attack experience.
+	 * 
+	 * @param ratkXP
+	 * 		Integer value of the target experience
+	 * @param notifyRAtkUpdated
+	 * 		Update ranged attack experience in real-time
+	 */
+	protected void setRatkXPInternal(final int ratkXP, boolean notifyRAtkUpdated) {
+<span class="nc" id="L963">		this.ratk_xp = ratkXP;</span>
+<span class="nc" id="L964">		put(&quot;ratk_xp&quot;, ratk_xp);</span>
+
+		// Handle level changes
+<span class="nc" id="L967">		final int newLevel = Level.getLevel(ratk_xp);</span>
+<span class="nc" id="L968">		final int levels = newLevel - (this.ratk - 10);</span>
+
+		// In case we level up several levels at a single time.
+<span class="nc bnc" id="L971" title="All 2 branches missed.">		for (int i = 0; i &lt; Math.abs(levels); i++) {</span>
+<span class="nc" id="L972">			setRatkInternal(this.ratk + (int) Math.signum(levels) * 1, notifyRAtkUpdated);</span>
+<span class="nc" id="L973">			new GameEvent(getName(), &quot;ratk&quot;, Integer.toString(this.ratk)).raise();</span>
+		}
+<span class="nc" id="L975">	}</span>
+
+	/**
+	 * Get's the entity's current ranged attack experience.
+	 * 
+	 * @return
+	 * 		Integer representation of current experience
+	 */
+	public int getRatkXP() {
+<span class="nc" id="L984">		return ratk_xp;</span>
+	}
+
+	/**
+	 * Increase ranged XP by 1.
+	 */
+	public void incRatkXP() {
+<span class="nc" id="L991">		setRatkXP(ratk_xp + 1);</span>
+<span class="nc" id="L992">	}</span>
+
+/* ### --- END RANGED --- ### */
+
+
+	/**
+	 * Set the base and current HP.
+	 *
+	 * @param hp
+	 *            The HP to set.
+	 */
+	public void initHP(final int hp) {
+<span class="fc" id="L1004">		setBaseHP(hp);</span>
+<span class="fc" id="L1005">		setHP(hp);</span>
+<span class="fc" id="L1006">	}</span>
+
+	/**
+	 * Set the base HP.
+	 *
+	 * @param updatedHP
+	 *            The base HP to set.
+	 */
+	public void setBaseHP(final int updatedHP) {
+<span class="fc" id="L1015">		this.base_hp = updatedHP;</span>
+		try {
+<span class="fc" id="L1017">			put(&quot;base_hp&quot;, updatedHP);</span>
+<span class="nc" id="L1018">		} catch (IllegalArgumentException e) {</span>
+<span class="nc" id="L1019">			logger.error(&quot;Failed to set base HP to &quot; + updatedHP + &quot;. Entity was: &quot; + this, e);</span>
+<span class="fc" id="L1020">		}</span>
+<span class="fc" id="L1021">		this.updateModifiedAttributes();</span>
+<span class="fc" id="L1022">	}</span>
+
+	/**
+	 * Get the base HP.
+	 *
+	 * @return The current HP.
+	 */
+	public int getBaseHP() {
+<span class="fc" id="L1030">		return this.base_hp;</span>
+	}
+
+	/**
+	 * Set the HP. &lt;br&gt;
+	 * DO NOT USE THIS UNLESS YOU REALLY KNOW WHAT YOU ARE DOING. &lt;br&gt;
+	 * Use the appropriate damage(), and heal() methods instead.
+	 *
+	 * @param hp
+	 *            The HP to set.
+	 */
+	public void setHP(final int hp) {
+<span class="fc" id="L1042">		setHpInternal(hp, true);</span>
+<span class="fc" id="L1043">	}</span>
+
+	private void setHpInternal(final int hp, final boolean notifyHPUpdated) {
+<span class="fc" id="L1046">		this.hp = hp;</span>
+		try {
+<span class="fc" id="L1048">			put(&quot;hp&quot;, hp);</span>
+<span class="nc" id="L1049">		} catch (IllegalArgumentException e) {</span>
+<span class="nc" id="L1050">			logger.error(&quot;Failed to set HP to &quot; + hp + &quot;. Entity was: &quot; + this, e);</span>
+<span class="fc" id="L1051">		}</span>
+<span class="pc bpc" id="L1052" title="1 of 2 branches missed.">		if(notifyHPUpdated) {</span>
+<span class="fc" id="L1053">			this.updateModifiedAttributes();</span>
+		}
+<span class="fc" id="L1055">	}</span>
+
+	/**
+	 * Get the current HP.
+	 *
+	 * @return The current HP.
+	 */
+	public int getHP() {
+<span class="fc" id="L1063">		return this.hp;</span>
+	}
+
+	/**
+	 * Gets the mana (magic).
+	 *
+	 * @return mana
+	 */
+	public int getMana() {
+<span class="fc" id="L1072">		return this.mana;</span>
+	}
+
+	/**
+	 * Gets the base mana (like base_hp).
+	 *
+	 * @return base mana
+	 */
+	public int getBaseMana() {
+<span class="fc" id="L1081">		return this.base_mana;</span>
+	}
+
+	/**
+	 * Sets the available mana.
+	 *
+	 * @param newMana
+	 *            new amount of mana
+	 */
+	public void setMana(final int newMana) {
+<span class="fc" id="L1091">		setManaInternal(newMana, true);</span>
+<span class="fc" id="L1092">	}</span>
+
+	private void setManaInternal(final int newMana, boolean notify) {
+<span class="fc" id="L1095">		mana = newMana;</span>
+<span class="fc" id="L1096">		put(&quot;mana&quot;, newMana);</span>
+<span class="pc bpc" id="L1097" title="1 of 2 branches missed.">		if(notify) {</span>
+<span class="fc" id="L1098">			this.updateModifiedAttributes();</span>
+		}
+<span class="fc" id="L1100">	}</span>
+
+	/**
+	 * Sets the base mana (like base_hp).
+	 *
+	 * @param newBaseMana
+	 *            new amount of base mana
+	 */
+	public void setBaseMana(final int newBaseMana) {
+<span class="fc" id="L1109">		base_mana = newBaseMana;</span>
+<span class="fc" id="L1110">		put(&quot;base_mana&quot;, newBaseMana);</span>
+<span class="fc" id="L1111">		this.updateModifiedAttributes();</span>
+<span class="fc" id="L1112">	}</span>
+
+	/**
+	 * adds to base mana (like addXP).
+	 *
+	 * @param newBaseMana
+	 *            amount of base mana to be added
+	 */
+	public void addBaseMana(final int newBaseMana) {
+<span class="nc" id="L1121">		base_mana += newBaseMana;</span>
+<span class="nc" id="L1122">		put(&quot;base_mana&quot;, base_mana);</span>
+<span class="nc" id="L1123">	}</span>
+
+	public final void setXP(final int newxp) {
+<span class="fc bfc" id="L1126" title="All 2 branches covered.">		if (newxp &lt; 0) {</span>
+<span class="fc" id="L1127">			return;</span>
+		}
+<span class="fc" id="L1129">		this.xp = newxp;</span>
+<span class="fc" id="L1130">		put(&quot;xp&quot;, xp);</span>
+<span class="fc" id="L1131">	}</span>
+
+	public void subXP(final int newxp) {
+<span class="fc" id="L1134">		addXP(-newxp);</span>
+<span class="fc" id="L1135">	}</span>
+
+	public void addXP(final int newxp) {
+<span class="fc bfc" id="L1138" title="All 2 branches covered.">		if (Integer.MAX_VALUE - this.xp &lt;= newxp) {</span>
+<span class="fc" id="L1139">			return;</span>
+		}
+<span class="fc bfc" id="L1141" title="All 2 branches covered.">		if (newxp == 0) {</span>
+<span class="fc" id="L1142">			return;</span>
+		}
+
+		// Increment experience points
+<span class="fc" id="L1146">		this.xp += newxp;</span>
+<span class="fc" id="L1147">		put(&quot;xp&quot;, xp);</span>
+<span class="fc" id="L1148">		String[] params = { Integer.toString(newxp) };</span>
+
+<span class="fc" id="L1150">		new GameEvent(getName(), &quot;added xp&quot;, params).raise();</span>
+<span class="fc" id="L1151">		new GameEvent(getName(), &quot;xp&quot;, String.valueOf(xp)).raise();</span>
+
+<span class="fc" id="L1153">		updateLevel();</span>
+<span class="fc" id="L1154">	}</span>
+
+	/**
+	 * Change the level to match the XP, if needed.
+	 */
+	protected void updateLevel() {
+<span class="fc" id="L1160">		final int newLevel = Level.getLevel(getXP());</span>
+<span class="fc bfc" id="L1161" title="All 2 branches covered.">		final int oldLevel = has(&quot;level&quot;) ? getInt(&quot;level&quot;) : 0;</span>
+<span class="fc" id="L1162">		final int levels = newLevel - oldLevel;</span>
+
+		// In case we level up several levels at a single time.
+<span class="fc bfc" id="L1165" title="All 2 branches covered.">		for (int i = 0; i &lt; Math.abs(levels); i++) {</span>
+<span class="fc" id="L1166">			setBaseHP(getBaseHP() + (int) Math.signum(levels) * 10);</span>
+<span class="fc" id="L1167">			setHP(getBaseHP());</span>
+<span class="fc" id="L1168">			new GameEvent(getName(), &quot;level&quot;, Integer.toString(oldLevel+(i+1)*((int) Math.signum(levels)))).raise();</span>
+<span class="fc" id="L1169">			setLevel(newLevel);</span>
+		}
+<span class="fc" id="L1171">	}</span>
+
+	public int getXP() {
+<span class="fc" id="L1174">		return xp;</span>
+	}
+
+	/**
+	 * Get a multiplier for a given damage type when this
+	 * entity is damaged.
+	 *
+	 * @param type Type of the damage
+	 * @return damage multiplier
+	 */
+	protected double getSusceptibility(Nature type) {
+<span class="fc" id="L1185">		return 1.0;</span>
+	}
+
+	/**
+	 * Get the type of the damage this entity inflicts
+	 *
+	 * @return type of damage
+	 */
+	protected Nature getDamageType() {
+<span class="fc" id="L1194">		return Nature.CUT;</span>
+	}
+
+	/**
+	 * Get the nature of the damage the entity inflicts in ranged attacks.
+	 *
+	 * @return type of damage
+	 */
+	protected Nature getRangedDamageType() {
+		/*
+		 * Default to the same as the base damage type. Entities needing more
+		 * complicated behavior (ie. fire breathing dragons) should override the
+		 * method.
+		 */
+<span class="nc" id="L1208">		return getDamageType();</span>
+	}
+
+	/***************************************************************************
+	 * * Attack handling code. * *
+	 **************************************************************************/
+
+	/**
+	 * @return true if this RPEntity is attackable.
+	 */
+	public boolean isAttackable() {
+<span class="fc" id="L1219">		return true;</span>
+	}
+
+	/**
+	 * Modify the entity to order to attack the target entity.
+	 *
+	 * @param target
+	 */
+	public void setTarget(final RPEntity target) {
+<span class="fc" id="L1228">		put(&quot;target&quot;, target.getID().getObjectID());</span>
+<span class="fc bfc" id="L1229" title="All 2 branches covered.">		if (attackTarget != null) {</span>
+<span class="fc" id="L1230">			attackTarget.attackSources.remove(this);</span>
+		}
+<span class="fc" id="L1232">		attackTarget = target;</span>
+<span class="fc" id="L1233">	}</span>
+
+	/** Modify the entity to stop attacking. */
+	public void stopAttack() {
+<span class="pc bpc" id="L1237" title="1 of 2 branches missed.">		if (has(&quot;heal&quot;)) {</span>
+<span class="nc" id="L1238">			remove(&quot;heal&quot;);</span>
+		}
+<span class="fc bfc" id="L1240" title="All 2 branches covered.">		if (has(&quot;target&quot;)) {</span>
+<span class="fc" id="L1241">			remove(&quot;target&quot;);</span>
+		}
+
+<span class="fc bfc" id="L1244" title="All 2 branches covered.">		if (attackTarget != null) {</span>
+<span class="fc" id="L1245">			attackTarget.attackSources.remove(this);</span>
+
+			// remove opponent here to avoid memory leak
+<span class="fc" id="L1248">			enemiesThatGiveFightXP.remove(attackTarget);</span>
+
+<span class="fc" id="L1250">			attackTarget = null;</span>
+		}
+<span class="fc" id="L1252">	}</span>
+
+	public boolean getsFightXpFrom(final RPEntity enemy) {
+<span class="fc" id="L1255">		final Integer turnWhenLastDamaged = enemiesThatGiveFightXP.get(enemy);</span>
+<span class="fc bfc" id="L1256" title="All 2 branches covered.">		if (turnWhenLastDamaged == null) {</span>
+<span class="fc" id="L1257">			return false;</span>
+		}
+<span class="fc" id="L1259">		final int currentTurn = SingletonRepository.getRuleProcessor()</span>
+				.getTurn();
+<span class="pc bpc" id="L1261" title="1 of 2 branches missed.">		if (currentTurn - turnWhenLastDamaged &gt; TURNS_WHILE_FIGHT_XP_INCREASES) {</span>
+<span class="nc" id="L1262">			enemiesThatGiveFightXP.remove(enemy);</span>
+<span class="nc" id="L1263">			return false;</span>
+		}
+<span class="fc" id="L1265">		return true;</span>
+	}
+
+	public void stopAttacking(final Entity attacker) {
+<span class="nc bnc" id="L1269" title="All 2 branches missed.">		if (attacker.has(&quot;target&quot;)) {</span>
+<span class="nc" id="L1270">			attacker.remove(&quot;target&quot;);</span>
+		}
+<span class="nc" id="L1272">	}</span>
+
+	public void rememberAttacker(final Entity attacker) {
+<span class="fc bfc" id="L1275" title="All 2 branches covered.">		if (!attackSources.contains(attacker)) {</span>
+<span class="fc" id="L1276">			attackSources.add(attacker);</span>
+		}
+<span class="fc" id="L1278">	}</span>
+
+	/**
+	 * sets the blood class
+	 *
+	 * @param name name of blood class
+	 */
+	public final void setBlood(final String name) {
+<span class="fc" id="L1286">		this.bloodClass = name;</span>
+<span class="fc" id="L1287">	}</span>
+
+	/**
+	 * gets the name of the blood class
+	 *
+	 * @return bloodClass or &lt;code&gt;null&lt;/code&gt;
+	 */
+	public final String getBloodClass() {
+<span class="fc" id="L1295">		return this.bloodClass;</span>
+	}
+
+	/**
+	 * Creates a blood pool on the ground under this entity, but only if there
+	 * isn't a blood pool at that position already.
+	 */
+	private void bleedOnGround() {
+<span class="fc" id="L1303">		final Rectangle2D rect = getArea();</span>
+<span class="fc" id="L1304">		final int bx = (int) rect.getX();</span>
+<span class="fc" id="L1305">		final int by = (int) rect.getY();</span>
+<span class="fc" id="L1306">		final StendhalRPZone zone = getZone();</span>
+
+<span class="fc bfc" id="L1308" title="All 2 branches covered.">		if (zone.getBlood(bx, by) == null) {</span>
+<span class="fc" id="L1309">			final Blood blood = new Blood(bloodClass);</span>
+<span class="fc" id="L1310">			blood.setPosition(bx, by);</span>
+
+<span class="fc" id="L1312">			zone.add(blood);</span>
+		}
+<span class="fc" id="L1314">	}</span>
+
+	/**
+	 * return list of all droppable items in entity's hands.
+	 *
+	 * currently only considers items in hands.  no other part of body
+	 *
+	 * currently, there is only one type of droppable item - CaptureTheFlagFlag.
+	 *     need some more general solution
+	 *
+	 * @return list of droppable items.  returns null if no droppable items found
+	 */
+	public List&lt;Item&gt; getDroppables() {
+
+<span class="fc" id="L1328">		ArrayList&lt;Item&gt; droppables = null;</span>
+
+<span class="fc" id="L1330">		final String[] slots = { &quot;lhand&quot;, &quot;rhand&quot; };</span>
+
+<span class="fc bfc" id="L1332" title="All 2 branches covered.">		for (String slot : slots) {</span>
+
+<span class="fc" id="L1334">			RPSlot rpslot = getSlot(slot);</span>
+
+<span class="fc bfc" id="L1336" title="All 2 branches covered.">			if (rpslot == null) {</span>
+<span class="fc" id="L1337">				continue;</span>
+			}
+
+			// traverse all items in that slot, looking for droppables.
+<span class="fc bfc" id="L1341" title="All 2 branches covered.">			for (RPObject object : rpslot) {</span>
+				// XXX hack - need some generic isDroppable
+<span class="fc bfc" id="L1343" title="All 2 branches covered.">				if (object instanceof CaptureTheFlagFlag) {</span>
+<span class="pc bpc" id="L1344" title="1 of 2 branches missed.">					if (droppables == null) {</span>
+<span class="fc" id="L1345">						droppables = new ArrayList&lt;Item&gt;();</span>
+					}
+<span class="fc" id="L1347">					droppables.add((Item)object);</span>
+				}
+<span class="fc" id="L1349">			}</span>
+		}
+<span class="fc" id="L1351">		return droppables;</span>
+	}
+
+	/**
+	 * Drop specified item from entity's equipment
+	 *
+	 * note: seems like this.drop(droppable) should work, but
+	 *       the item just disappears - does not end up on ground.
+	 *
+	 * TODO: probably need to refactor this in to the general drop system
+	 *       (maybe fixing some of the other code paths)
+	 *
+	 * @param droppable item to be dropped
+	 */
+	public void dropDroppableItem(Item droppable) {
+
+		// note: this.drop() does not do all necessary operations -
+		//       item disappears from hand, but disappears competely
+
+<span class="fc" id="L1370">		Player    player = (Player) this;</span>
+<span class="fc" id="L1371">		RPObject  parent = droppable.getContainer();</span>
+<span class="fc" id="L1372">		RPAction  action = new RPAction();</span>
+
+<span class="fc" id="L1374">		action.put(&quot;type&quot;,                        &quot;drop&quot;);</span>
+<span class="fc" id="L1375">		action.put(&quot;baseitem&quot;,                    droppable.getID().getObjectID());</span>
+<span class="fc" id="L1376">		action.put(EquipActionConsts.BASE_OBJECT, parent.getID().getObjectID());</span>
+<span class="fc" id="L1377">		action.put(EquipActionConsts.BASE_SLOT,   droppable.getContainerSlot().getName());</span>
+
+		// TODO: better to drop &quot;behind&quot; the player, if they have been running
+<span class="fc" id="L1380">		action.put(&quot;x&quot;, this.getX());</span>
+<span class="fc" id="L1381">		action.put(&quot;y&quot;, this.getY() + 1);</span>
+
+<span class="fc" id="L1383">		DropAction dropAction = new DropAction();</span>
+<span class="fc" id="L1384">		dropAction.onAction(player, action);</span>
+
+		// TODO: send message to player - you dropped ...
+
+<span class="fc" id="L1388">		this.notifyWorldAboutChanges();</span>
+<span class="fc" id="L1389">	}</span>
+
+
+
+	/**
+	 * if defender (this entity) is carrying a droppable item,
+	 * then attacker and defender both roll d20, and if attacker
+	 * rolls higher, the defender drops the droppable.
+	 *
+	 * note that separate rolls are performed for each droppable
+	 * that the entity is carrying.
+	 *
+	 * XXX this does not belong here - should be in some Effect framework
+	 *
+	 * returns string - what happened.  no effect returns null
+	 *
+	 * @param attacker
+	 * @return event description
+	 */
+	public String maybeDropDroppables(RPEntity attacker) {
+
+<span class="fc" id="L1410">		List&lt;Item&gt; droppables = this.getDroppables();</span>
+<span class="pc bpc" id="L1411" title="1 of 2 branches missed.">		if (droppables == null) {</span>
+<span class="nc" id="L1412">			return null;</span>
+		}
+
+<span class="pc bpc" id="L1415" title="1 of 2 branches missed.">		for (Item droppable : droppables) {</span>
+			// roll two dice, tie goes to defender
+			//   TODO: integrate skills, ctf atk/def
+<span class="fc" id="L1418">			int attackerRoll = Rand.roll1D20();</span>
+<span class="fc" id="L1419">			int defenderRoll = Rand.roll1D20();</span>
+
+<span class="fc" id="L1421">System.out.printf(&quot;  drop: %2d %2d\n&quot;, attackerRoll, defenderRoll);</span>
+
+<span class="pc bpc" id="L1423" title="1 of 2 branches missed.">			if (attackerRoll &gt; defenderRoll) {</span>
+<span class="fc" id="L1424">				this.dropDroppableItem(droppable);</span>
+				// XXX get description from droppable - what color, ...
+<span class="fc" id="L1426">				return &quot;dropped the flag&quot;;</span>
+			}
+<span class="nc" id="L1428">		}</span>
+<span class="nc" id="L1429">		return null;</span>
+	}
+
+
+
+	/**
+	 * This method is called when this entity has been attacked by Entity
+	 * attacker and it has been damaged with damage points.
+	 *
+	 * @param attacker
+	 * @param damage
+	 */
+	public void onDamaged(final Entity attacker, final int damage) {
+<span class="pc bpc" id="L1442" title="2 of 4 branches missed.">		if (logger.isDebugEnabled() || Testing.DEBUG) {</span>
+<span class="nc" id="L1443">			logger.debug(&quot;Damaged &quot; + damage + &quot; points by &quot; + attacker.getID());</span>
+		}
+
+<span class="fc" id="L1446">		bleedOnGround();</span>
+<span class="pc bpc" id="L1447" title="1 of 2 branches missed.">		if (attacker instanceof RPEntity) {</span>
+<span class="fc" id="L1448">			final int currentTurn = SingletonRepository.getRuleProcessor()</span>
+					.getTurn();
+<span class="fc" id="L1450">			enemiesThatGiveFightXP.put((RPEntity) attacker, currentTurn);</span>
+		}
+
+<span class="fc" id="L1453">		final int leftHP = getHP() - damage;</span>
+
+<span class="fc" id="L1455">		totalDamageReceived += damage;</span>
+
+		// remember the damage done so that the attacker can later be rewarded
+		// XP etc.
+<span class="fc" id="L1459">		damageReceived.add(attacker, damage);</span>
+
+<span class="fc bfc" id="L1461" title="All 2 branches covered.">		if (leftHP &gt; 0) {</span>
+<span class="fc" id="L1462">			setHP(leftHP);</span>
+		} else {
+<span class="fc" id="L1464">			kill(attacker);</span>
+		}
+
+<span class="fc" id="L1467">		notifyWorldAboutChanges();</span>
+<span class="fc" id="L1468">	}</span>
+
+	/**
+	 * Apply damage to this entity. This is normally called from one of the
+	 * other damage() methods to account for death.
+	 *
+	 * @param amount
+	 *            The HP to take.
+	 *
+	 * @return The damage actually taken (in case HP was &lt; amount).
+	 */
+	private int damage(final int amount) {
+<span class="fc" id="L1480">		int tempHp = getHP();</span>
+<span class="fc" id="L1481">		final int taken = Math.min(amount, tempHp);</span>
+
+<span class="fc" id="L1483">		tempHp -= taken;</span>
+<span class="fc" id="L1484">		setHP(tempHp);</span>
+
+<span class="fc" id="L1486">		return taken;</span>
+	}
+
+	/**
+	 * Apply damage to this entity, and call onDead() if HP reaches 0.
+	 *
+	 * @param amount
+	 *            The HP to take.
+	 * @param attacker
+	 *            The attacking entity.
+	 *
+	 * @return The damage actually taken (in case HP was &lt; amount).
+	 */
+	public int damage(final int amount, final Killer attacker) {
+<span class="fc" id="L1500">		final int taken = damage(amount);</span>
+
+<span class="fc bfc" id="L1502" title="All 2 branches covered.">		if (hp &lt;= 0) {</span>
+<span class="fc" id="L1503">			onDead(attacker);</span>
+		}
+
+<span class="fc" id="L1506">		return taken;</span>
+	}
+
+	/**
+	 * Apply damage to this entity, delaying the damage to happen in a turn
+	 * notifier. To be used when dying could result in concurrent modification
+	 * in the zone's entity list, such as sheep starving. Call onDead() if HP
+	 * reaches 0.
+	 *
+	 * @param amount
+	 *            The HP to take.
+	 * @param attackerName
+	 *            The name of the attacker.
+	 */
+	public void delayedDamage(final int amount, final String attackerName) {
+<span class="fc" id="L1521">		final RPEntity me = this;</span>
+		/*
+		 * Use a dummy damager rpentity, so that we can follow the
+		 * normal code path. Important when dying.
+		 */
+<span class="fc" id="L1526">		final Entity attacker = new RPEntity(this) {</span>
+			@Override
+			public String getTitle() {
+<span class="nc" id="L1529">				return attackerName;</span>
+			}
+
+			@Override
+			protected void dropItemsOn(Corpse corpse) {
+
+<span class="nc" id="L1535">			}</span>
+
+			@Override
+			public void logic() {
+
+<span class="nc" id="L1540">			}</span>
+		};
+
+<span class="fc" id="L1543">		SingletonRepository.getTurnNotifier().notifyInTurns(1, new TurnListener() {</span>
+			@Override
+			public void onTurnReached(int turn) {
+<span class="fc" id="L1546">				me.damage(amount, attacker);</span>
+<span class="fc" id="L1547">			}</span>
+		});
+<span class="fc" id="L1549">	}</span>
+
+	/**
+	 * Kills this RPEntity.
+	 *
+	 * @param killer
+	 *            The killer
+	 */
+	private void kill(final Entity killer) {
+<span class="fc" id="L1558">		setHP(0);</span>
+<span class="fc" id="L1559">		SingletonRepository.getRuleProcessor().killRPEntity(this, killer);</span>
+<span class="fc" id="L1560">	}</span>
+
+	/**
+	 * For rewarding killers. Get the entity as a Player, if the entity is a
+	 * Player. If the player has logged out, try to get the corresponding online
+	 * player.
+	 *
+	 * @param entity entity to be checked
+	 * @return online Player corresponding to the entity, or {@code null} if the
+	 * 	entity is not a Player, or if the equivalent player is not online
+	 */
+	protected Player entityAsOnlinePlayer(Entity entity) {
+<span class="pc bpc" id="L1572" title="1 of 2 branches missed.">		if (!(entity instanceof Player)) {</span>
+<span class="nc" id="L1573">			return null;</span>
+		}
+<span class="fc" id="L1575">		Player killer = (Player) entity;</span>
+<span class="pc bpc" id="L1576" title="1 of 2 branches missed.">		if (killer.isDisconnected()) {</span>
+			// Try to get the corresponding online player:
+<span class="nc" id="L1578">			killer = SingletonRepository.getRuleProcessor().getPlayer(killer.getName());</span>
+		}
+<span class="fc" id="L1580">		return killer;</span>
+	}
+
+	/**
+	 * Gives XP to every player who has helped killing this RPEntity.
+	 *
+	 * @param oldXP
+	 *            The XP that this RPEntity had before being killed.
+	 */
+	protected void rewardKillers(final int oldXP) {
+<span class="fc" id="L1590">		final int xpReward = (int) (oldXP * 0.05);</span>
+
+<span class="fc bfc" id="L1592" title="All 2 branches covered.">		for (Entry&lt;Entity, Integer&gt; entry : damageReceived.entrySet()) {</span>
+<span class="fc" id="L1593">			final int damageDone = entry.getValue();</span>
+<span class="pc bpc" id="L1594" title="1 of 2 branches missed.">			if (damageDone == 0) {</span>
+<span class="nc" id="L1595">				continue;</span>
+			}
+			
+<span class="fc" id="L1598">			Player killer = entityAsOnlinePlayer(entry.getKey());</span>
+<span class="pc bpc" id="L1599" title="1 of 2 branches missed.">			if (killer == null) {</span>
+<span class="nc" id="L1600">				continue;</span>
+			}
+
+<span class="fc" id="L1603">			TutorialNotifier.killedSomething(killer);</span>
+
+<span class="pc bpc" id="L1605" title="2 of 4 branches missed.">			if (logger.isDebugEnabled() || Testing.DEBUG) {</span>
+				final String killName;
+<span class="nc bnc" id="L1607" title="All 2 branches missed.">				if (killer.has(&quot;name&quot;)) {</span>
+<span class="nc" id="L1608">					killName = killer.get(&quot;name&quot;);</span>
+				} else {
+<span class="nc" id="L1610">					killName = killer.get(&quot;type&quot;);</span>
+				}
+
+<span class="nc" id="L1613">				logger.debug(killName + &quot; did &quot; + damageDone + &quot; of &quot;</span>
+						+ totalDamageReceived + &quot;. Reward was &quot; + xpReward);
+			}
+
+<span class="fc" id="L1617">			final int xpEarn = (int) (xpReward * ((float) damageDone / (float) totalDamageReceived));</span>
+
+<span class="pc bpc" id="L1619" title="2 of 4 branches missed.">			if (logger.isDebugEnabled() || Testing.DEBUG) {</span>
+<span class="nc" id="L1620">				logger.debug(&quot;OnDead: &quot; + xpReward + &quot;\t&quot; + damageDone + &quot;\t&quot;</span>
+						+ totalDamageReceived + &quot;\t&quot;);
+			}
+
+<span class="fc" id="L1624">			int reward = xpEarn;</span>
+
+			// We ensure that the player gets at least 1 experience
+			// point, because getting nothing lowers motivation.
+<span class="pc bpc" id="L1628" title="1 of 2 branches missed.">			if (reward == 0) {</span>
+<span class="nc" id="L1629">				reward = 1;</span>
+			}
+
+<span class="fc" id="L1632">			killer.addXP(reward);</span>
+
+			// For some quests etc., it is required that the player kills a
+			// certain creature without the help of others.
+			// Find out if the player killed this RPEntity on his own, but
+			// don't overwrite solo with shared.
+<span class="fc" id="L1638">			final String killedName = getName();</span>
+
+<span class="pc bpc" id="L1640" title="1 of 2 branches missed.">			if (killedName == null) {</span>
+<span class="nc" id="L1641">				logger.warn(&quot;This entity returns null as name: &quot; + this);</span>
+			} else {
+<span class="pc bpc" id="L1643" title="1 of 2 branches missed.">				if (damageDone == totalDamageReceived) {</span>
+<span class="fc" id="L1644">					killer.setSoloKill(killedName);</span>
+				} else {
+<span class="nc" id="L1646">					killer.setSharedKill(killedName);</span>
+				}
+			}
+
+<span class="fc" id="L1650">			SingletonRepository.getAchievementNotifier().onKill(killer);</span>
+
+<span class="fc" id="L1652">			killer.notifyWorldAboutChanges();</span>
+<span class="fc" id="L1653">		}</span>
+<span class="fc" id="L1654">	}</span>
+
+	/**
+	 * This method is called when the entity has been killed ( hp==0 ).
+	 *
+	 * @param killer
+	 *            The entity who caused the death
+	 */
+	public final void onDead(final Killer killer) {
+<span class="fc" id="L1663">	    onDead(killer, true);</span>
+<span class="fc" id="L1664">	}</span>
+
+	/**
+	 * This method is called when this entity has been killed (hp == 0).
+	 *
+	 * @param killer
+	 *            The entity who caused the death, i.e. who did the last hit.
+	 * @param remove
+	 *            true iff this entity should be removed from the world. For
+	 *            almost everything remove is true, but not for the players, who
+	 *            are instead moved to afterlife (&quot;reborn&quot;).
+	 */
+	public void onDead(final Killer killer, final boolean remove) {
+<span class="fc" id="L1677">		StendhalKillLogDAO killLog = DAORegister.get().get(StendhalKillLogDAO.class);</span>
+<span class="fc" id="L1678">		String killerName = killer.getName();</span>
+
+<span class="pc bpc" id="L1680" title="1 of 2 branches missed.">		if (killer instanceof RPEntity) {</span>
+<span class="fc" id="L1681">			new GameEvent(killerName, &quot;killed&quot;, this.getName(), killLog.entityToType(killer), killLog.entityToType(this)).raise();</span>
+		}
+
+<span class="fc" id="L1684">		DBCommandQueue.get().enqueue(new LogKillEventCommand(this, killer));</span>
+
+<span class="fc" id="L1686">		die(killer, remove);</span>
+<span class="fc" id="L1687">	}</span>
+	
+	/**
+	 * Build a list of killer names.
+	 * 
+	 * @param killerName The &quot;official&quot; killer. This will be always included in
+	 *	the list
+	 * @return list of killers
+	 */
+	private List&lt;String&gt; buildKillerList(String killerName) {
+<span class="fc" id="L1697">		KillerList killers = new KillerList();</span>
+		
+<span class="fc bfc" id="L1699" title="All 2 branches covered.">		for (Entry&lt;Entity, Integer&gt; entry : damageReceived.entrySet()) {</span>
+<span class="fc" id="L1700">			final int damageDone = entry.getValue();</span>
+<span class="pc bpc" id="L1701" title="1 of 2 branches missed.">			if (damageDone == 0) {</span>
+<span class="nc" id="L1702">				continue;</span>
+			}
+			
+<span class="fc" id="L1705">			killers.addEntity(entry.getKey());</span>
+<span class="fc" id="L1706">		}</span>
+<span class="pc bpc" id="L1707" title="1 of 2 branches missed.">		if (killerName != null) {</span>
+<span class="fc" id="L1708">			killers.setKiller(killerName);</span>
+		}
+<span class="fc" id="L1710">		return killers.asList();</span>
+	}
+
+	/**
+	 * This method is called when this entity has been killed (hp == 0).
+	 *
+	 * @param killer the &quot;official&quot; killer
+	 * @param remove
+	 *            &lt;code&gt;true&lt;/code&gt; to remove entity from world.
+	 */
+	private void die(Killer killer, final boolean remove) {
+<span class="fc" id="L1721">		StendhalRPZone zone = this.getZone();</span>
+<span class="pc bpc" id="L1722" title="1 of 4 branches missed.">		if ((zone == null) || !zone.has(this.getID())) {</span>
+<span class="fc" id="L1723">			logger.warn(&quot;RPEntity died but is not in a zone&quot;);</span>
+<span class="fc" id="L1724">			return;</span>
+		}
+		
+<span class="fc" id="L1727">		String killerName = killer.getName();</span>
+		// Needs to be done while the killer map still has the contents
+<span class="fc" id="L1729">		List&lt;String&gt; killers = buildKillerList(killerName);</span>
+
+<span class="fc" id="L1731">		final int oldXP = this.getXP();</span>
+
+		// Establish how much xp points your are rewarded
+		// give XP to everyone who helped killing this RPEntity
+<span class="fc" id="L1735">		rewardKillers(oldXP);</span>
+
+<span class="pc bpc" id="L1737" title="1 of 4 branches missed.">		if (!(killer instanceof Player) &amp;&amp; !(killer instanceof Status)) {</span>
+			/*
+			 * Prettify the killer name for the corpse. Should be done only
+			 * after the more plain version has been used for the killer list.
+			 * Players are unique, so they should not get an article. Also
+			 * statuses should not, so that &quot;killed by poison&quot; does not become
+			 * &quot;killed by a bottle of poison&quot;.
+			 */
+<span class="fc" id="L1745">			killerName = Grammar.a_noun(killerName);</span>
+		}
+		// Add a corpse
+<span class="fc" id="L1748">		final Corpse corpse = makeCorpse(killerName);</span>
+<span class="fc" id="L1749">		damageReceived.clear();</span>
+<span class="fc" id="L1750">		totalDamageReceived = 0;</span>
+
+		// Stats about dead
+<span class="fc bfc" id="L1753" title="All 2 branches covered.">		if (has(&quot;name&quot;)) {</span>
+<span class="fc" id="L1754">			stats.add(&quot;Killed &quot; + get(&quot;name&quot;), 1);</span>
+		} else {
+<span class="fc" id="L1756">			stats.add(&quot;Killed &quot; + get(&quot;type&quot;), 1);</span>
+		}
+
+		// Add some reward inside the corpse
+<span class="fc" id="L1760">		dropItemsOn(corpse);</span>
+<span class="fc" id="L1761">		updateItemAtkDef();</span>
+
+		// Adding to zone clears events, so the sound needs to be added after that.
+<span class="fc" id="L1764">		zone.add(corpse);</span>
+<span class="pc bpc" id="L1765" title="1 of 2 branches missed.">		if (deathSound != null) {</span>
+<span class="nc" id="L1766">			corpse.addEvent(new SoundEvent(deathSound, 23, 100, SoundLayer.FIGHTING_NOISE));</span>
+<span class="nc" id="L1767">			corpse.notifyWorldAboutChanges();</span>
+		}
+		
+<span class="fc" id="L1770">		StringBuilder deathMessage = new StringBuilder(getName());</span>
+<span class="fc" id="L1771">		deathMessage.append(&quot; has been killed&quot;);</span>
+<span class="pc bpc" id="L1772" title="1 of 2 branches missed.">		if (!killers.isEmpty()) {</span>
+<span class="fc" id="L1773">			deathMessage.append(&quot; by &quot;);</span>
+<span class="fc" id="L1774">			deathMessage.append(Grammar.enumerateCollection(killers));</span>
+		}
+<span class="fc" id="L1776">		corpse.addEvent(new TextEvent(deathMessage.toString()));</span>
+
+		// Corpse may want to know who this entity was attacking (RaidCreatureCorpse does),
+		// so defer stopping.
+<span class="fc" id="L1780">		stopAttack();</span>
+<span class="pc bpc" id="L1781" title="1 of 2 branches missed.">		if (statusList != null) {</span>
+<span class="nc" id="L1782">			statusList.removeAll();</span>
+		}
+<span class="fc bfc" id="L1784" title="All 2 branches covered.">		if (remove) {</span>
+<span class="fc" id="L1785">			zone.remove(this);</span>
+		}
+<span class="fc" id="L1787">	}</span>
+
+	/**
+	 * Make a corpse belonging to this entity
+	 *
+	 * @param killer Name of the killer
+	 * @return The corpse of a dead RPEntity
+	 */
+	protected Corpse makeCorpse(String killer) {
+<span class="fc" id="L1796">		return new Corpse(this, killer);</span>
+	}
+
+	/**
+	 * Get the corpse image name to be used for the entity.
+	 * Defaults to a player corpse.
+	 *
+	 * @return Identification string for corpse. This is the corpse
+	 * image shown by the client without the path or file extension.
+	 */
+	public String getCorpseName() {
+<span class="fc" id="L1807">		return &quot;player&quot;;</span>
+	}
+
+	public String getHarmlessCorpseName() {
+<span class="fc" id="L1811">		return &quot;harmless_player&quot;;</span>
+	}
+
+	public int getCorpseWidth() {
+<span class="fc" id="L1815">		return 1;</span>
+	}
+
+	public int getCorpseHeight() {
+<span class="fc" id="L1819">		return 1;</span>
+	}
+
+	protected abstract void dropItemsOn(Corpse corpse);
+
+	/**
+	 * Determine if the entity is invisible to creatures.
+	 *
+	 * @return &lt;code&gt;true&lt;/code&gt; if invisible.
+	 */
+	public boolean isInvisibleToCreatures() {
+<span class="fc" id="L1830">		return false;</span>
+	}
+
+	/**
+	 * Return true if this entity is attacked.
+	 *
+	 * @return true if no attack sources found
+	 */
+	public boolean isAttacked() {
+<span class="nc bnc" id="L1839" title="All 2 branches missed.">		return !attackSources.isEmpty();</span>
+	}
+
+	/**
+	 * Returns the Entities that are attacking this character.
+	 *
+	 * @return list of all attacking entities
+	 */
+	public List&lt;Entity&gt; getAttackSources() {
+<span class="fc" id="L1848">		return attackSources;</span>
+	}
+
+	/**
+	 * Returns the RPEntities that are attacking this character.
+	 *
+	 * @return list of all attacking RPEntities
+	 */
+	public List&lt;RPEntity&gt; getAttackingRPEntities() {
+<span class="fc" id="L1857">		final List&lt;RPEntity&gt; list = new ArrayList&lt;RPEntity&gt;();</span>
+
+<span class="fc bfc" id="L1859" title="All 2 branches covered.">		for (final Entity entity : getAttackSources()) {</span>
+<span class="pc bpc" id="L1860" title="1 of 2 branches missed.">			if (entity instanceof RPEntity) {</span>
+<span class="fc" id="L1861">				list.add((RPEntity) entity);</span>
+			}
+<span class="fc" id="L1863">		}</span>
+<span class="fc" id="L1864">		return list;</span>
+	}
+
+	/**
+	 * Checks whether the attacktarget is null. Sets attacktarget to null if hp
+	 * of attacktarget &lt;=0;
+	 *
+	 * @return true if attacktarget != null and not dead
+	 */
+	public boolean isAttacking() {
+<span class="fc bfc" id="L1874" title="All 2 branches covered.">		if (attackTarget != null) {</span>
+<span class="fc bfc" id="L1875" title="All 2 branches covered.">			if (attackTarget.getHP() &lt;= 0) {</span>
+<span class="fc" id="L1876">				attackTarget = null;</span>
+			}
+		} else {
+<span class="fc" id="L1879">			return false;</span>
+		}
+<span class="fc bfc" id="L1881" title="All 2 branches covered.">		return attackTarget != null;</span>
+	}
+
+	/**
+	 * Return the RPEntity that this entity is attacking.
+	 *
+	 * @return the attack target of this
+	 */
+	public RPEntity getAttackTarget() {
+<span class="fc" id="L1890">		return attackTarget;</span>
+	}
+
+	/***************************************************************************
+	 * * Equipment handling. * *
+	 **************************************************************************/
+
+	/**
+	 * Tries to equip an item in the appropriate slot.
+	 *
+	 * @param item
+	 *            the item
+	 * @return true if the item can be equipped, else false
+	 */
+	public final boolean equipToInventoryOnly(final Item item) {
+<span class="fc" id="L1905">		final RPSlot slot = getSlotToEquip(item);</span>
+<span class="pc bpc" id="L1906" title="1 of 2 branches missed.">		if (slot != null) {</span>
+<span class="fc" id="L1907">			return equipIt(slot, item);</span>
+		} else {
+<span class="nc" id="L1909">			return false;</span>
+		}
+	}
+
+	/**
+	 * Check if an object is a stackable item that can be merged to an existing
+	 * item stack.
+	 *
+	 * @param item stackable item
+	 * @param object merge candidate
+	 * @return &lt;code&gt;true&lt;/code&gt; if the items can be merged, &lt;code&gt;false&lt;/code&gt;
+	 * 	otherwise
+	 */
+	private boolean canMergeItems(StackableItem item, RPObject object) {
+<span class="fc bfc" id="L1923" title="All 2 branches covered.">		if (object instanceof StackableItem) {</span>
+<span class="fc" id="L1924">			final StackableItem other = (StackableItem) object;</span>
+<span class="fc bfc" id="L1925" title="All 2 branches covered.">			if (other.isStackable(item)) {</span>
+<span class="fc" id="L1926">				return true;</span>
+			}
+		}
+<span class="fc" id="L1929">		return false;</span>
+	}
+
+	/**
+	 * Find slot where an item could be merged, looking recursively inside a
+	 * slot and the content slots of the items in that slot.
+	 *
+	 * @param item item for which the merge location is sought for
+	 * @param slot starting location slot
+	 * @return slot where the item can be merged, or &lt;code&gt;null&lt;/code&gt; if no
+	 * 	suitable location was found
+	 */
+	private RPSlot getSlotToMerge(StackableItem item, RPSlot slot) {
+<span class="pc bpc" id="L1942" title="1 of 2 branches missed.">		if (slot instanceof EntitySlot) {</span>
+<span class="fc bfc" id="L1943" title="All 2 branches covered.">			if (!((EntitySlot) slot).isReachableForThrowingThingsIntoBy(this)) {</span>
+<span class="fc" id="L1944">				return null;</span>
+			}
+		}
+		// Try first merging the item in the parent slot, so that the item
+		// appears as visibly as possible
+<span class="fc bfc" id="L1949" title="All 2 branches covered.">		if (item.getPossibleSlots().contains(slot.getName())) {</span>
+<span class="fc bfc" id="L1950" title="All 2 branches covered.">			for (RPObject obj : slot) {</span>
+<span class="fc bfc" id="L1951" title="All 2 branches covered.">				if (canMergeItems(item, obj)) {</span>
+<span class="fc" id="L1952">					return slot;</span>
+				}
+<span class="fc" id="L1954">			}</span>
+		}
+		// Then check the slots of the contained items
+<span class="fc bfc" id="L1957" title="All 2 branches covered.">		for (RPObject obj : slot) {</span>
+<span class="fc bfc" id="L1958" title="All 2 branches covered.">			for (RPSlot childSlot : obj.slots()) {</span>
+<span class="fc" id="L1959">				RPSlot tmp = getSlotToMerge(item, childSlot);</span>
+<span class="pc bpc" id="L1960" title="1 of 2 branches missed.">				if (tmp != null) {</span>
+<span class="nc" id="L1961">					return tmp;</span>
+				}
+<span class="fc" id="L1963">			}</span>
+<span class="fc" id="L1964">		}</span>
+
+<span class="fc" id="L1966">		return null;</span>
+	}
+
+	/**
+	 * Find a target slot where an item can be equipped. The slots are sought
+	 * recursively starting from a specified initial slot, and then proceeding
+	 * to the content slots of the items in that slot.
+	 *
+	 * @param item item to be equipped
+	 * @param slot starting slot
+	 * @return slot where the item can be equipped, or &lt;code&gt;null&lt;/code&gt; if no
+	 * 	suitable location was found
+	 */
+	private RPSlot getSlotToEquip(Item item, RPSlot slot) {
+<span class="fc bfc" id="L1980" title="All 2 branches covered.">		if (slot instanceof EntitySlot) {</span>
+<span class="fc bfc" id="L1981" title="All 2 branches covered.">			if (!((EntitySlot) slot).isReachableForThrowingThingsIntoBy(this)) {</span>
+<span class="fc" id="L1982">				return null;</span>
+			}
+		}
+<span class="fc bfc" id="L1985" title="All 2 branches covered.">		if (item.getPossibleSlots().contains(slot.getName())) {</span>
+<span class="fc bfc" id="L1986" title="All 2 branches covered.">			if (!slot.isFull()) {</span>
+<span class="fc" id="L1987">				return slot;</span>
+			}
+		}
+<span class="pc bpc" id="L1990" title="1 of 2 branches missed.">		for (RPObject obj : slot) {</span>
+<span class="nc bnc" id="L1991" title="All 2 branches missed.">			for (RPSlot childSlot : obj.slots()) {</span>
+<span class="nc" id="L1992">				RPSlot tmp = getSlotToEquip(item, childSlot);</span>
+<span class="nc bnc" id="L1993" title="All 2 branches missed.">				if (tmp != null) {</span>
+<span class="nc" id="L1994">					return tmp;</span>
+				}
+<span class="nc" id="L1996">			}</span>
+<span class="nc" id="L1997">		}</span>
+
+<span class="fc" id="L1999">		return null;</span>
+	}
+
+	/**
+	 * Gets the slot in which the entity can equip the item, preferring
+	 * locations where the item can be merged with existing item stacks.
+	 *
+	 * @param item
+	 * @return the slot for the item or null if there is no matching slot
+	 *         in the entity
+	 */
+	public final RPSlot getSlotToEquip(final Item item) {
+<span class="fc bfc" id="L2011" title="All 2 branches covered.">		if (item instanceof StackableItem) {</span>
+			// Try merging the item first
+<span class="fc bfc" id="L2013" title="All 2 branches covered.">			for (RPSlot slot : slots()) {</span>
+<span class="fc" id="L2014">				RPSlot tmp = getSlotToMerge((StackableItem) item, slot);</span>
+<span class="fc bfc" id="L2015" title="All 2 branches covered.">				if (tmp != null) {</span>
+<span class="fc" id="L2016">					return tmp;</span>
+				}
+<span class="fc" id="L2018">			}</span>
+		}
+
+		// We can't stack it on another item. Check if we can simply
+		// add it to an empty cell.
+<span class="fc bfc" id="L2023" title="All 2 branches covered.">		for (RPSlot slot : slots()) {</span>
+<span class="fc" id="L2024">			RPSlot tmp = getSlotToEquip(item, slot);</span>
+<span class="fc bfc" id="L2025" title="All 2 branches covered.">			if (tmp != null) {</span>
+<span class="fc" id="L2026">				return tmp;</span>
+			}
+<span class="fc" id="L2028">		}</span>
+<span class="fc" id="L2029">		return null;</span>
+	}
+
+	/**
+	 * Tries to equip an item in the appropriate slot.
+	 *
+	 * @param item the item
+	 * @return true if the item can be equipped, else false
+	 */
+	public final boolean equipOrPutOnGround(final Item item) {
+<span class="pc bpc" id="L2039" title="1 of 2 branches missed.">		if (equipToInventoryOnly(item)) {</span>
+<span class="fc" id="L2040">			return true;</span>
+		} else {
+<span class="nc" id="L2042">			item.setPosition(getX(), getY());</span>
+<span class="nc" id="L2043">			getZone().add(item);</span>
+<span class="nc" id="L2044">			this.sendPrivateText(&quot;You dropped the new item onto the ground because your bag is full.&quot;);</span>
+<span class="nc" id="L2045">			return false;</span>
+		}
+	}
+
+
+
+	/**
+	 * Tries to equip one unit of an item in the given slot. Note: This doesn't
+	 * check if it is allowed to put the given item into the given slot, e.g. it
+	 * is possible to wear your helmet at your feet using this method.
+	 *
+	 * @param slotName
+	 *            the name of the slot
+	 * @param item
+	 *            the item
+	 * @return true if the item can be equipped, else false
+	 */
+	public final boolean equip(final String slotName, final Item item) {
+<span class="fc" id="L2063">		RPSlot slot = getSlot(slotName);</span>
+<span class="pc bpc" id="L2064" title="1 of 2 branches missed.">		if (equipIt(slot, item)) {</span>
+<span class="fc" id="L2065">			updateItemAtkDef();</span>
+<span class="fc" id="L2066">			return true;</span>
+		}
+<span class="nc" id="L2068">		return false;</span>
+	}
+
+	/**
+	 * Removes a specific amount of an item from the RPEntity. The item can
+	 * either be stackable or non-stackable. The units can be distributed over
+	 * different slots. If the RPEntity doesn't have enough units of the item,
+	 * doesn't remove anything.
+	 *
+	 * @param name
+	 *            The name of the item
+	 * @param amount
+	 *            The number of units that should be dropped
+	 * @return true iff dropping the desired amount was successful.
+	 */
+	public boolean drop(final String name, final int amount) {
+		// first of all we check that this RPEntity has enough of the
+		// specified item. We need to do this to ensure an atomic transaction
+		// semantic later on because the required amount may be distributed
+		// to several stacks.
+<span class="fc bfc" id="L2088" title="All 2 branches covered.">		if (!isEquipped(name, amount)) {</span>
+<span class="fc" id="L2089">			return false;</span>
+		}
+
+<span class="fc" id="L2092">		int toDrop = amount;</span>
+
+<span class="pc bpc" id="L2094" title="1 of 2 branches missed.">		for (RPSlot slot : this.slots(Slots.CARRYING)) {</span>
+
+<span class="fc" id="L2096">			Iterator&lt;RPObject&gt; objectsIterator = slot.iterator();</span>
+<span class="fc bfc" id="L2097" title="All 2 branches covered.">			while (objectsIterator.hasNext()) {</span>
+<span class="fc" id="L2098">				final RPObject object = objectsIterator.next();</span>
+<span class="pc bpc" id="L2099" title="1 of 2 branches missed.">				if (!(object instanceof Item)) {</span>
+<span class="nc" id="L2100">					continue;</span>
+				}
+
+<span class="fc" id="L2103">				final Item item = (Item) object;</span>
+
+<span class="fc bfc" id="L2105" title="All 2 branches covered.">				if (!item.getName().equals(name)) {</span>
+<span class="fc" id="L2106">					continue;</span>
+				}
+
+<span class="fc bfc" id="L2109" title="All 2 branches covered.">				if (item instanceof StackableItem) {</span>
+					// The item is stackable, we try to remove
+					// multiple ones.
+<span class="fc" id="L2112">					final int quantity = item.getQuantity();</span>
+<span class="fc bfc" id="L2113" title="All 2 branches covered.">					if (toDrop &gt;= quantity) {</span>
+<span class="fc" id="L2114">						new ItemLogger().destroy(this, slot, item);</span>
+<span class="fc" id="L2115">						slot.remove(item.getID());</span>
+<span class="fc" id="L2116">						toDrop -= quantity;</span>
+						// Recreate the iterator to prevent
+						// ConcurrentModificationExceptions.
+						// This inefficient, but simple.
+<span class="fc" id="L2120">						objectsIterator = slot.iterator();</span>
+					} else {
+<span class="fc" id="L2122">						((StackableItem) item).setQuantity(quantity - toDrop);</span>
+<span class="fc" id="L2123">						new ItemLogger().splitOff(this, item, toDrop);</span>
+<span class="fc" id="L2124">						toDrop = 0;</span>
+					}
+<span class="fc" id="L2126">				} else {</span>
+					// The item is not stackable, so we only remove a
+					// single one.
+<span class="fc" id="L2129">					slot.remove(item.getID());</span>
+<span class="fc" id="L2130">					new ItemLogger().destroy(this, slot, item);</span>
+<span class="fc" id="L2131">					toDrop--;</span>
+					// recreate the iterator to prevent
+					// ConcurrentModificationExceptions.
+<span class="fc" id="L2134">					objectsIterator = slot.iterator();</span>
+				}
+
+<span class="fc bfc" id="L2137" title="All 2 branches covered.">				if (toDrop == 0) {</span>
+<span class="fc" id="L2138">					updateItemAtkDef();</span>
+<span class="fc" id="L2139">					notifyWorldAboutChanges();</span>
+<span class="fc" id="L2140">					return true;</span>
+				}
+<span class="fc" id="L2142">			}</span>
+<span class="fc" id="L2143">		}</span>
+		// This will never happen because we ran isEquipped() earlier.
+<span class="nc" id="L2145">		return false;</span>
+	}
+
+	/**
+	 * Removes one unit of an item from the RPEntity. The item can either be
+	 * stackable or non-stackable. If the RPEntity doesn't have enough the item,
+	 * doesn't remove anything.
+	 *
+	 * @param name
+	 *            The name of the item
+	 * @return true iff dropping the item was successful.
+	 */
+	public boolean drop(final String name) {
+<span class="fc" id="L2158">		return drop(name, 1);</span>
+	}
+
+	/**
+	 * Removes the given item from the RPEntity. The item can either be
+	 * stackable or non-stackable. If the RPEntity doesn't have the item,
+	 * doesn't remove anything.
+	 *
+	 * @param item
+	 *            the item that should be removed
+	 * @return true iff dropping the item was successful.
+	 */
+	public boolean drop(final Item item) {
+<span class="pc bpc" id="L2171" title="1 of 2 branches missed.">		for (RPSlot slot : this.slots(Slots.CARRYING)) {</span>
+
+<span class="fc" id="L2173">			final Iterator&lt;RPObject&gt; objectsIterator = slot.iterator();</span>
+<span class="fc bfc" id="L2174" title="All 2 branches covered.">			while (objectsIterator.hasNext()) {</span>
+<span class="fc" id="L2175">				final RPObject object = objectsIterator.next();</span>
+<span class="pc bpc" id="L2176" title="1 of 2 branches missed.">				if (object instanceof Item) {</span>
+<span class="fc bfc" id="L2177" title="All 2 branches covered.">					if (object == item) {</span>
+<span class="fc" id="L2178">						slot.remove(object.getID());</span>
+<span class="fc" id="L2179">						new ItemLogger().destroy(this, slot, item);</span>
+<span class="fc" id="L2180">						return true;</span>
+					}
+				}
+<span class="fc" id="L2183">			}</span>
+<span class="fc" id="L2184">		}</span>
+<span class="nc" id="L2185">		return false;</span>
+	}
+
+	/**
+	 * Determine if this entity is equipped with a minimum quantity of an item.
+	 *
+	 * @param name
+	 *            The item name.
+	 * @param amount
+	 *            The minimum amount.
+	 *
+	 * @return &lt;code&gt;true&lt;/code&gt; if the item is equipped with the minimum
+	 *         number.
+	 */
+	public boolean isEquipped(final String name, final int amount) {
+<span class="pc bpc" id="L2200" title="1 of 2 branches missed.">		if (amount &lt;= 0) {</span>
+<span class="nc" id="L2201">			return false;</span>
+		}
+
+<span class="fc" id="L2204">		int found = 0;</span>
+
+<span class="fc bfc" id="L2206" title="All 2 branches covered.">		for (RPSlot slot : this.slots(Slots.CARRYING)) {</span>
+
+<span class="fc bfc" id="L2208" title="All 2 branches covered.">			for (final RPObject object : slot) {</span>
+<span class="pc bpc" id="L2209" title="1 of 2 branches missed.">				if (!(object instanceof Item)) {</span>
+<span class="nc" id="L2210">					continue;</span>
+				}
+
+<span class="fc" id="L2213">				found += getItemCount(name, (Item) object);</span>
+<span class="fc bfc" id="L2214" title="All 2 branches covered.">				if (found &gt;= amount) {</span>
+<span class="fc" id="L2215">					return true;</span>
+				}
+<span class="fc" id="L2217">			}</span>
+<span class="fc" id="L2218">		}</span>
+
+<span class="fc" id="L2220">		return false;</span>
+	}
+
+	/**
+	 * Determine if this entity is equipped with an item.
+	 *
+	 * @param name
+	 *            The item name.
+	 *
+	 * @return &lt;code&gt;true&lt;/code&gt; if the item is equipped.
+	 */
+	public boolean isEquipped(final String name) {
+<span class="fc" id="L2232">		return isEquipped(name, 1);</span>
+	}
+
+	/**
+	 * Gets the number of items of the given name that are carried by the
+	 * RPEntity. The item can either be stackable or non-stackable.
+	 *
+	 * @param name
+	 *            The item's name
+	 * @return The number of carried items
+	 */
+	public int getNumberOfEquipped(final String name) {
+<span class="fc" id="L2244">		int result = 0;</span>
+
+<span class="fc bfc" id="L2246" title="All 2 branches covered.">		for (RPSlot slot : this.slots(Slots.CARRYING)) {</span>
+
+<span class="fc bfc" id="L2248" title="All 2 branches covered.">			for (final RPObject object : slot) {</span>
+<span class="pc bpc" id="L2249" title="1 of 2 branches missed.">				if (object instanceof Item) {</span>
+<span class="fc" id="L2250">					result += getItemCount(name, (Item) object);</span>
+				}
+<span class="fc" id="L2252">			}</span>
+<span class="fc" id="L2253">		}</span>
+
+<span class="fc" id="L2255">		return result;</span>
+	}
+
+	/**
+	 * Get count of items of a given name, including items in the slots of
+	 * items. The count is started from topItem, and topItem is included in the
+	 * count, if applicable.
+	 *
+	 * @param name name of items to be counted
+	 * @param topItem item where to start the recursive count
+	 * @return count of items of the given name
+	 */
+	private int getItemCount(String name, Item topItem) {
+<span class="fc" id="L2268">		int count = 0;</span>
+<span class="fc bfc" id="L2269" title="All 2 branches covered.">		if (topItem.getName().equals(name)) {</span>
+<span class="fc" id="L2270">			count += topItem.getQuantity();</span>
+		}
+<span class="fc bfc" id="L2272" title="All 2 branches covered.">		for (RPSlot slot : topItem.slots()) {</span>
+<span class="fc bfc" id="L2273" title="All 2 branches covered.">			for (RPObject obj : slot) {</span>
+<span class="pc bpc" id="L2274" title="1 of 2 branches missed.">				if (obj instanceof Item) {</span>
+<span class="fc" id="L2275">					count += getItemCount(name, (Item) obj);</span>
+				}
+<span class="fc" id="L2277">			}</span>
+<span class="fc" id="L2278">		}</span>
+
+<span class="fc" id="L2280">		return count;</span>
+	}
+
+	/**
+	 * Gets the number of items of the given name including bank.
+	 * The item can either be stackable or non-stackable.
+	 *
+	 * @param name
+	 *            The item's name
+	 * @return The number of carried items
+	 */
+	public int getTotalNumberOf(final String name) {
+<span class="fc" id="L2292">		int result = 0;</span>
+
+<span class="fc bfc" id="L2294" title="All 2 branches covered.">		for (final RPSlot slot : slots()) {</span>
+<span class="fc bfc" id="L2295" title="All 2 branches covered.">			for (final RPObject object : slot) {</span>
+<span class="fc bfc" id="L2296" title="All 2 branches covered.">				if (object instanceof Item) {</span>
+<span class="fc" id="L2297">					result += getItemCount(name, (Item) object);</span>
+				}
+<span class="fc" id="L2299">			}</span>
+<span class="fc" id="L2300">		}</span>
+
+<span class="fc" id="L2302">		return result;</span>
+	}
+
+	/**
+	 * Gets an item that is carried by the RPEntity. If the item is stackable,
+	 * gets all that are on the first stack that is found.
+	 *
+	 * @param name
+	 *            The item's name
+	 * @return The item, or a stack of stackable items, or null if nothing was
+	 *         found
+	 */
+	public Item getFirstEquipped(final String name) {
+<span class="fc bfc" id="L2315" title="All 2 branches covered.">		for (RPSlot slot : this.slots(Slots.CARRYING)) {</span>
+
+<span class="fc bfc" id="L2317" title="All 2 branches covered.">			for (final RPObject object : slot) {</span>
+<span class="fc" id="L2318">				Item item = getFirstNestedEquipped(name, object);</span>
+<span class="fc bfc" id="L2319" title="All 2 branches covered.">				if (item != null) {</span>
+<span class="fc" id="L2320">					return item;</span>
+				}
+<span class="fc" id="L2322">			}</span>
+<span class="fc" id="L2323">		}</span>
+
+<span class="fc" id="L2325">		return null;</span>
+	}
+
+	/**
+	 * Search recursively the first item of specified name inside an object.
+	 *
+	 * @param name item name to find
+	 * @param obj object where to start the seach
+	 *
+	 * @return First item matching the item name. The returned item can be the
+	 * 	starting object, if that matches the searching criterion. If no matching
+	 * 	item is found, &lt;code&gt;null&lt;/code&gt; is returned
+	 */
+	private Item getFirstNestedEquipped(String name, RPObject obj) {
+<span class="pc bpc" id="L2339" title="1 of 2 branches missed.">		if (obj instanceof Item) {</span>
+<span class="fc" id="L2340">			Item item = (Item) obj;</span>
+<span class="fc bfc" id="L2341" title="All 2 branches covered.">			if (item.getName().equals(name)) {</span>
+<span class="fc" id="L2342">				return item;</span>
+			}
+<span class="pc bpc" id="L2344" title="1 of 2 branches missed.">			for (RPSlot slot : obj.slots()) {</span>
+<span class="nc bnc" id="L2345" title="All 2 branches missed.">				for (RPObject subobj : slot) {</span>
+<span class="nc" id="L2346">					Item tmp = getFirstNestedEquipped(name, subobj);</span>
+<span class="nc bnc" id="L2347" title="All 2 branches missed.">					if (tmp != null) {</span>
+<span class="nc" id="L2348">						return tmp;</span>
+					}
+<span class="nc" id="L2350">				}</span>
+<span class="nc" id="L2351">			}</span>
+		}
+<span class="fc" id="L2353">		return null;</span>
+	}
+
+	/**
+	 * Gets an item that is carried by the RPEntity. If the item is stackable,
+	 * gets all that are on the first stack that is found.
+	 *
+	 * @param name
+	 *            The item's name
+	 * @return The item, or a stack of stackable items, or an empty list if nothing was
+	 *         found
+	 */
+	public List&lt;Item&gt; getAllEquipped(final String name) {
+<span class="fc" id="L2366">		final List&lt;Item&gt; result = new LinkedList&lt;Item&gt;();</span>
+
+<span class="fc bfc" id="L2368" title="All 2 branches covered.">		for (RPSlot slot : this.slots(Slots.CARRYING)) {</span>
+
+<span class="fc bfc" id="L2370" title="All 2 branches covered.">			for (final RPObject object : slot) {</span>
+<span class="pc bpc" id="L2371" title="1 of 2 branches missed.">				if (object instanceof Item) {</span>
+<span class="fc" id="L2372">					final Item item = (Item) object;</span>
+<span class="fc bfc" id="L2373" title="All 2 branches covered.">					if (item.getName().equals(name)) {</span>
+<span class="fc" id="L2374">						result.add(item);</span>
+					}
+				}
+<span class="fc" id="L2377">			}</span>
+<span class="fc" id="L2378">		}</span>
+<span class="fc" id="L2379">		return result;</span>
+	}
+
+	/**
+	 * checks if an item of class &lt;i&gt;clazz&lt;/i&gt; is equipped in slot &lt;i&gt;slot&lt;/i&gt;
+	 * returns true if it is, else false.
+	 *
+	 * @param slot
+	 * @param clazz
+	 * @return true if so false otherwise
+	 */
+	public boolean isEquippedItemClass(final String slot, final String clazz) {
+<span class="fc bfc" id="L2391" title="All 2 branches covered.">		if (hasSlot(slot)) {</span>
+			// get slot if the this entity has one
+<span class="fc" id="L2393">			final RPSlot rpslot = getSlot(slot);</span>
+			// traverse all slot items
+<span class="fc bfc" id="L2395" title="All 2 branches covered.">			for (final RPObject item : rpslot) {</span>
+<span class="pc bpc" id="L2396" title="1 of 4 branches missed.">				if ((item instanceof Item) &amp;&amp; ((Item) item).isOfClass(clazz)) {</span>
+<span class="fc" id="L2397">					return true;</span>
+				}
+<span class="fc" id="L2399">			}</span>
+		}
+
+		// no slot, free slot or wrong item type
+<span class="fc" id="L2403">		return false;</span>
+	}
+
+
+	/**
+	 * checks if an item is equipped in a slot
+	 *
+	 * @param slot
+	 * @param item
+	 * @return true if so false otherwise
+	 */
+	public boolean isEquippedItemInSlot(final String slot, final String item) {
+<span class="pc bpc" id="L2415" title="1 of 2 branches missed.">		if (hasSlot(slot)) {</span>
+<span class="fc" id="L2416">			final RPSlot rpslot = getSlot(slot);</span>
+<span class="fc bfc" id="L2417" title="All 2 branches covered.">			for (final RPObject object : rpslot) {</span>
+<span class="pc bpc" id="L2418" title="2 of 4 branches missed.">				if ((object instanceof Item) &amp;&amp; ((Item) object).getName().equals(item)) {</span>
+<span class="fc" id="L2419">					return true;</span>
+				}
+<span class="nc" id="L2421">			}</span>
+		}
+
+		// no slot, free slot or wrong item type
+<span class="fc" id="L2425">		return false;</span>
+	}
+	
+	/**
+	 * Finds the first item of class &lt;i&gt;clazz&lt;/i&gt; from the slot.
+	 *
+	 * @param slot
+	 * @param clazz
+	 * @return the item or &lt;code&gt;null&lt;/code&gt; if there is no item with the
+	 *         requested clazz.
+	 */
+	public Item getEquippedItemClass(final String slot, final String clazz) {
+<span class="fc bfc" id="L2437" title="All 2 branches covered.">		if (hasSlot(slot)) {</span>
+			// get slot if the this entity has one
+<span class="fc" id="L2439">			final RPSlot rpslot = getSlot(slot);</span>
+			// traverse all slot items
+<span class="fc bfc" id="L2441" title="All 2 branches covered.">			for (final RPObject object : rpslot) {</span>
+				// is it the right type
+<span class="pc bpc" id="L2443" title="1 of 2 branches missed.">				if (object instanceof Item) {</span>
+<span class="fc" id="L2444">					final Item item = (Item) object;</span>
+<span class="fc bfc" id="L2445" title="All 2 branches covered.">					if (item.isOfClass(clazz)) {</span>
+<span class="fc" id="L2446">						return item;</span>
+					}
+				}
+<span class="fc" id="L2449">			}</span>
+		}
+
+		// no slot, free slot or wrong item type
+<span class="fc" id="L2453">		return null;</span>
+	}
+
+
+	/**
+	 * Gets the weapon that this entity is holding in its hands.
+	 *
+	 * @return The weapon, or null if this entity is not holding a weapon. If
+	 *         the entity has a weapon in each hand, returns the weapon in its
+	 *         left hand.
+	 */
+	public Item getWeapon() {
+<span class="fc" id="L2465">		final String[] weaponsClasses = {&quot;club&quot;, &quot;sword&quot;, &quot;axe&quot;, &quot;ranged&quot;, &quot;missile&quot;};</span>
+
+<span class="fc bfc" id="L2467" title="All 2 branches covered.">		for (final String weaponClass : weaponsClasses) {</span>
+<span class="fc" id="L2468">			final String[] slots = { &quot;lhand&quot;, &quot;rhand&quot; };</span>
+<span class="fc bfc" id="L2469" title="All 2 branches covered.">			for (final String slot : slots) {</span>
+<span class="fc" id="L2470">				final Item item = getEquippedItemClass(slot, weaponClass);</span>
+<span class="fc bfc" id="L2471" title="All 2 branches covered.">				if (item != null) {</span>
+<span class="fc" id="L2472">					return item;</span>
+				}
+			}
+		}
+
+<span class="fc" id="L2477">		return null;</span>
+	}
+
+	public List&lt;Item&gt; getWeapons() {
+<span class="fc" id="L2481">		final List&lt;Item&gt; weapons = new ArrayList&lt;Item&gt;();</span>
+<span class="fc" id="L2482">		Item weaponItem = getWeapon();</span>
+<span class="fc bfc" id="L2483" title="All 2 branches covered.">		if (weaponItem != null) {</span>
+<span class="fc" id="L2484">			weapons.add(weaponItem);</span>
+
+			// pair weapons
+<span class="fc bfc" id="L2487" title="All 2 branches covered.">			if (weaponItem.getName().startsWith(&quot;l hand &quot;)) {</span>
+				// check if there is a matching right-hand weapon in
+				// the other hand.
+<span class="fc" id="L2490">				final String rpclass = weaponItem.getItemClass();</span>
+<span class="fc" id="L2491">				weaponItem = getEquippedItemClass(&quot;rhand&quot;, rpclass);</span>
+<span class="fc bfc" id="L2492" title="All 4 branches covered.">				if ((weaponItem != null)</span>
+						&amp;&amp; (weaponItem.getName().startsWith(&quot;r hand &quot;))) {
+<span class="fc" id="L2494">					weapons.add(weaponItem);</span>
+				} else {
+					// You can't use a left-hand weapon without the matching
+					// right-hand weapon. Hmmm... but why not?
+<span class="fc" id="L2498">					weapons.clear();</span>
+				}
+<span class="fc" id="L2500">			} else {</span>
+				// You can't hold a right-hand weapon with your left hand, for
+				// ergonomic reasons ;)
+<span class="fc bfc" id="L2503" title="All 2 branches covered.">				if (weaponItem.getName().startsWith(&quot;r hand &quot;)) {</span>
+<span class="fc" id="L2504">					weapons.clear();</span>
+				}
+			}
+		}
+
+<span class="fc" id="L2509">		return weapons;</span>
+	}
+
+	/**
+	 * Gets the range weapon (bow etc.) that this entity is holding in its
+	 * hands.
+	 *
+	 * @return The range weapon, or null if this entity is not holding a range
+	 *         weapon. If the entity has a range weapon in each hand, returns
+	 *         one in its left hand.
+	 */
+	public Item getRangeWeapon() {
+<span class="fc bfc" id="L2521" title="All 2 branches covered.">		for (final Item weapon : getWeapons()) {</span>
+<span class="pc bpc" id="L2522" title="1 of 2 branches missed.">			if (weapon.isOfClass(&quot;ranged&quot;)) {</span>
+<span class="nc" id="L2523">				return weapon;</span>
+			}
+<span class="fc" id="L2525">		}</span>
+
+<span class="fc" id="L2527">		return null;</span>
+	}
+
+	/**
+	 * Gets the stack of ammunition (arrows or similar) that this entity is
+	 * holding in its hands.
+	 *
+	 * @return The ammunition, or null if this entity is not holding ammunition.
+	 *         If the entity has ammunition in each hand, returns the ammunition
+	 *         in its left hand.
+	 */
+	public StackableItem getAmmunition() {
+<span class="fc" id="L2539">		final String[] slots = { &quot;lhand&quot;, &quot;rhand&quot; };</span>
+
+<span class="fc bfc" id="L2541" title="All 2 branches covered.">		for (final String slot : slots) {</span>
+<span class="fc" id="L2542">			final StackableItem item = (StackableItem) getEquippedItemClass(</span>
+					slot, &quot;ammunition&quot;);
+<span class="pc bpc" id="L2544" title="1 of 2 branches missed.">			if (item != null) {</span>
+<span class="nc" id="L2545">				return item;</span>
+			}
+		}
+
+<span class="fc" id="L2549">		return null;</span>
+	}
+
+	/**
+	 * Gets the stack of missiles (spears or similar) that this entity is
+	 * holding in its hands, but only if it is not holding another, non-missile
+	 * weapon in the other hand.
+	 *
+	 * You can only throw missiles while you're not holding another weapon. This
+	 * restriction is a workaround because of the way attack strength is
+	 * determined; otherwise, one could increase one's spear attack strength by
+	 * holding an ice sword in the other hand.
+	 *
+	 * @return The missiles, or null if this entity is not holding missiles. If
+	 *         the entity has missiles in each hand, returns the missiles in its
+	 *         left hand.
+	 */
+	public StackableItem getMissileIfNotHoldingOtherWeapon() {
+<span class="fc" id="L2567">		StackableItem missileWeaponItem = null;</span>
+<span class="fc" id="L2568">		boolean holdsOtherWeapon = false;</span>
+
+<span class="pc bpc" id="L2570" title="1 of 2 branches missed.">		for (final Item weaponItem : getWeapons()) {</span>
+<span class="nc bnc" id="L2571" title="All 2 branches missed.">			if (weaponItem.isOfClass(&quot;missile&quot;)) {</span>
+<span class="nc" id="L2572">				missileWeaponItem = (StackableItem) weaponItem;</span>
+			} else {
+<span class="nc" id="L2574">				holdsOtherWeapon = true;</span>
+			}
+<span class="nc" id="L2576">		}</span>
+
+<span class="pc bpc" id="L2578" title="1 of 2 branches missed.">		if (holdsOtherWeapon) {</span>
+<span class="nc" id="L2579">			return null;</span>
+		} else {
+<span class="fc" id="L2581">			return missileWeaponItem;</span>
+		}
+	}
+
+	/** @return true if the entity has an item of class shield equipped. */
+	public boolean hasShield() {
+<span class="pc bpc" id="L2587" title="2 of 4 branches missed.">		return isEquippedItemClass(&quot;lhand&quot;, &quot;shield&quot;)</span>
+				|| isEquippedItemClass(&quot;rhand&quot;, &quot;shield&quot;);
+	}
+
+	public Item getShield() {
+<span class="fc" id="L2592">		final Item item = getEquippedItemClass(&quot;lhand&quot;, &quot;shield&quot;);</span>
+<span class="pc bpc" id="L2593" title="1 of 2 branches missed.">		if (item != null) {</span>
+<span class="nc" id="L2594">			return item;</span>
+		} else {
+<span class="fc" id="L2596">			return getEquippedItemClass(&quot;rhand&quot;, &quot;shield&quot;);</span>
+		}
+	}
+
+	public boolean hasArmor() {
+<span class="fc" id="L2601">		return isEquippedItemClass(&quot;armor&quot;, &quot;armor&quot;);</span>
+	}
+
+	public Item getArmor() {
+<span class="fc" id="L2605">		return getEquippedItemClass(&quot;armor&quot;, &quot;armor&quot;);</span>
+	}
+
+	public boolean hasHelmet() {
+<span class="fc" id="L2609">		return isEquippedItemClass(&quot;head&quot;, &quot;helmet&quot;);</span>
+	}
+
+	public Item getHelmet() {
+<span class="fc" id="L2613">		return getEquippedItemClass(&quot;head&quot;, &quot;helmet&quot;);</span>
+	}
+
+	public boolean hasLegs() {
+<span class="fc" id="L2617">		return isEquippedItemClass(&quot;legs&quot;, &quot;legs&quot;);</span>
+	}
+
+	public Item getLegs() {
+<span class="fc" id="L2621">		return getEquippedItemClass(&quot;legs&quot;, &quot;legs&quot;);</span>
+	}
+
+	public boolean hasBoots() {
+<span class="fc" id="L2625">		return isEquippedItemClass(&quot;feet&quot;, &quot;boots&quot;);</span>
+	}
+
+	public Item getBoots() {
+<span class="fc" id="L2629">		return getEquippedItemClass(&quot;feet&quot;, &quot;boots&quot;);</span>
+	}
+
+	public boolean hasCloak() {
+<span class="fc" id="L2633">		return isEquippedItemClass(&quot;cloak&quot;, &quot;cloak&quot;);</span>
+	}
+
+	public Item getCloak() {
+<span class="fc" id="L2637">		return getEquippedItemClass(&quot;cloak&quot;, &quot;cloak&quot;);</span>
+	}
+
+	public boolean hasRing() {
+<span class="nc" id="L2641">		return isEquippedItemClass(&quot;finger&quot;, &quot;ring&quot;);</span>
+	}
+
+	public Item getRing() {
+<span class="nc" id="L2645">		return getEquippedItemClass(&quot;finger&quot;, &quot;ring&quot;);</span>
+	}
+
+	@Override
+	public String describe() {
+<span class="fc" id="L2650">		String text = super.describe();</span>
+<span class="pc bpc" id="L2651" title="1 of 2 branches missed.">		if (getLevel() &gt; 0) {</span>
+<span class="nc" id="L2652">			text += &quot; It is level &quot; + getLevel() + &quot;.&quot;;</span>
+		}
+
+<span class="fc" id="L2655">		return text;</span>
+	}
+
+	/**
+	 * Sends a message that only this RPEntity can read. In this default
+	 * implementation, this method does nothing; it can be overridden in
+	 * subclasses.
+	 *
+	 * @param text
+	 *            The message.
+	 */
+	public void sendPrivateText(final String text) {
+		// does nothing in this implementation.
+<span class="fc" id="L2668">	}</span>
+
+	/**
+	 * Sends a message that only this player can read.
+	 *
+	 * @param type
+	 *            NotificationType
+	 * @param text
+	 *            the message.
+	 */
+	public void sendPrivateText(final NotificationType type, final String text) {
+		// does nothing in this implementation.
+<span class="nc" id="L2680">	}</span>
+
+	public float getItemAtk() {
+<span class="fc" id="L2683">		int weapon = 0;</span>
+<span class="fc" id="L2684">		final List&lt;Item&gt; weapons = getWeapons();</span>
+<span class="fc bfc" id="L2685" title="All 2 branches covered.">		for (final Item weaponItem : weapons) {</span>
+<span class="fc" id="L2686">			weapon += weaponItem.getAttack();</span>
+<span class="fc" id="L2687">		}</span>
+
+		// range weapons
+<span class="fc" id="L2690">		StackableItem ammunitionItem = null;</span>
+<span class="fc bfc" id="L2691" title="All 2 branches covered.">		if (weapons.size() &gt; 0) {</span>
+<span class="pc bpc" id="L2692" title="1 of 2 branches missed.">			if (weapons.get(0).isOfClass(&quot;ranged&quot;)) {</span>
+<span class="nc" id="L2693">				ammunitionItem = getAmmunition();</span>
+
+<span class="nc bnc" id="L2695" title="All 2 branches missed.">				if (ammunitionItem != null) {</span>
+<span class="nc" id="L2696">					weapon += ammunitionItem.getAttack();</span>
+				} else {
+					// If there is no ammunition...
+<span class="nc" id="L2699">					weapon = 0;</span>
+				}
+			}
+		}
+
+<span class="fc" id="L2704">		return weapon;</span>
+	}
+
+	public float getItemDef() {
+<span class="fc" id="L2708">		int shield = 0;</span>
+<span class="fc" id="L2709">		int armor = 0;</span>
+<span class="fc" id="L2710">		int helmet = 0;</span>
+<span class="fc" id="L2711">		int legs = 0;</span>
+<span class="fc" id="L2712">		int boots = 0;</span>
+<span class="fc" id="L2713">		int cloak = 0;</span>
+<span class="fc" id="L2714">		int weapon = 0;</span>
+
+		Item item;
+
+<span class="pc bpc" id="L2718" title="1 of 2 branches missed.">		if (hasShield()) {</span>
+<span class="nc" id="L2719">			item = getShield();</span>
+<span class="nc" id="L2720">			shield = (int) (item.getDefense() / getItemLevelModifier(item));</span>
+		}
+
+<span class="fc bfc" id="L2723" title="All 2 branches covered.">		if (hasArmor()) {</span>
+<span class="fc" id="L2724">			item = getArmor();</span>
+<span class="fc" id="L2725">			armor = (int) (item.getDefense() / getItemLevelModifier(item));</span>
+		}
+
+<span class="pc bpc" id="L2728" title="1 of 2 branches missed.">		if (hasHelmet()) {</span>
+<span class="nc" id="L2729">			item = getHelmet();</span>
+<span class="nc" id="L2730">			helmet = (int) (item.getDefense() / getItemLevelModifier(item));</span>
+		}
+
+<span class="fc bfc" id="L2733" title="All 2 branches covered.">		if (hasLegs()) {</span>
+<span class="fc" id="L2734">			item = getLegs();</span>
+<span class="fc" id="L2735">			legs = (int) (item.getDefense() / getItemLevelModifier(item));</span>
+		}
+
+<span class="pc bpc" id="L2738" title="1 of 2 branches missed.">		if (hasBoots()) {</span>
+<span class="nc" id="L2739">			item = getBoots();</span>
+<span class="nc" id="L2740">			boots = (int) (item.getDefense() / getItemLevelModifier(item));</span>
+		}
+
+<span class="pc bpc" id="L2743" title="1 of 2 branches missed.">		if (hasCloak()) {</span>
+<span class="nc" id="L2744">			item = getCloak();</span>
+<span class="nc" id="L2745">			cloak = (int) (item.getDefense() / getItemLevelModifier(item));</span>
+		}
+
+<span class="fc" id="L2748">		final List&lt;Item&gt; targetWeapons = getWeapons();</span>
+<span class="fc bfc" id="L2749" title="All 2 branches covered.">		for (final Item weaponItem : targetWeapons) {</span>
+<span class="fc" id="L2750">			weapon += weaponItem.getDefense() / getItemLevelModifier(weaponItem);</span>
+<span class="fc" id="L2751">		}</span>
+
+<span class="fc" id="L2753">		return SHIELD_DEF_MULTIPLIER * shield + ARMOR_DEF_MULTIPLIER * armor</span>
+				+ CLOAK_DEF_MULTIPLIER * cloak + HELMET_DEF_MULTIPLIER * helmet
+				+ LEG_DEF_MULTIPLIER * legs + BOOTS_DEF_MULTIPLIER * boots
+				+ WEAPON_DEF_MULTIPLIER * weapon;
+	}
+
+	/**
+	 * get all items that affect a player's defensive value except the weapon
+	 *
+	 * @return a list of all equipped defensive items
+	 */
+	public List&lt;Item&gt; getDefenseItems() {
+<span class="fc" id="L2765">		List&lt;Item&gt; items = new LinkedList&lt;Item&gt;();</span>
+<span class="pc bpc" id="L2766" title="1 of 2 branches missed.">		if (hasShield()) {</span>
+<span class="nc" id="L2767">			items.add(getShield());</span>
+		}
+<span class="pc bpc" id="L2769" title="1 of 2 branches missed.">		if (hasArmor()) {</span>
+<span class="nc" id="L2770">			items.add(getArmor());</span>
+		}
+<span class="pc bpc" id="L2772" title="1 of 2 branches missed.">		if (hasHelmet()) {</span>
+<span class="nc" id="L2773">			items.add(getHelmet());</span>
+		}
+<span class="pc bpc" id="L2775" title="1 of 2 branches missed.">		if (hasLegs()) {</span>
+<span class="nc" id="L2776">			items.add(getLegs());</span>
+		}
+
+<span class="pc bpc" id="L2779" title="1 of 2 branches missed.">		if (hasBoots()) {</span>
+<span class="nc" id="L2780">			items.add(getBoots());</span>
+		}
+<span class="pc bpc" id="L2782" title="1 of 2 branches missed.">		if (hasCloak()) {</span>
+<span class="nc" id="L2783">			items.add(getCloak());</span>
+		}
+<span class="fc" id="L2785">		return items;</span>
+	}
+
+	/**
+	 * Recalculates item based atk and def.
+	 */
+	public void updateItemAtkDef() {
+<span class="fc" id="L2792">		put(&quot;atk_item&quot;, ((int) getItemAtk()));</span>
+<span class="fc" id="L2793">		put(&quot;def_item&quot;, ((int) getItemDef()));</span>
+<span class="fc" id="L2794">		notifyWorldAboutChanges();</span>
+<span class="fc" id="L2795">	}</span>
+
+	/**
+	 * Can this entity do a distance attack on the given target?
+	 *
+	 * @param target
+	 * @param maxrange maximum attack distance
+	 *
+	 * @return true if this entity is armed with a distance weapon and if the
+	 *         target is in range.
+	 */
+	public boolean canDoRangeAttack(final RPEntity target, final int maxrange) {
+		// the target's in range
+<span class="pc bpc" id="L2808" title="1 of 2 branches missed.">		return (squaredDistance(target) &lt;= maxrange * maxrange);</span>
+	}
+
+	/**
+	 * Check if the entity has a line of sight to the the center of another
+	 * entity. Only static collisions are checked.
+	 *
+	 * @param target target entity
+	 * @return &lt;code&gt;true&lt;/code&gt; if there are no collisions blocking the line
+	 *	of sight, &lt;code&gt;false&lt;/code&gt; otherwise
+	 */
+	public boolean hasLineOfSight(final Entity target) {
+<span class="nc bnc" id="L2820" title="All 2 branches missed.">		return !getZone().collidesOnLine((int) (getX() + getWidth() / 2),</span>
+				(int) (getY() + getHeight() / 2),
+				(int) (target.getX() + target.getWidth() / 2),
+				(int) (target.getY() + target.getHeight() / 2));
+	}
+
+	/**
+	 * Get the maximum distance attack range.
+	 *
+	 * @return maximum range, or 0 if the entity can't attack from distance
+	 */
+	public int getMaxRangeForArcher() {
+<span class="fc" id="L2832">		final Item rangeWeapon = getRangeWeapon();</span>
+<span class="fc" id="L2833">		final StackableItem ammunition = getAmmunition();</span>
+<span class="fc" id="L2834">		final StackableItem missiles = getMissileIfNotHoldingOtherWeapon();</span>
+		int maxRange;
+<span class="pc bpc" id="L2836" title="5 of 6 branches missed.">		if ((rangeWeapon != null) &amp;&amp; (ammunition != null)</span>
+				&amp;&amp; (ammunition.getQuantity() &gt; 0)) {
+<span class="nc" id="L2838">			maxRange = rangeWeapon.getInt(&quot;range&quot;) + ammunition.getInt(&quot;range&quot;);</span>
+<span class="pc bpc" id="L2839" title="3 of 4 branches missed.">		} else if ((missiles != null) &amp;&amp; (missiles.getQuantity() &gt; 0)) {</span>
+<span class="nc" id="L2840">			maxRange = missiles.getInt(&quot;range&quot;);</span>
+		} else {
+			// The entity doesn't hold the necessary distance weapons.
+<span class="fc" id="L2843">			maxRange = 0;</span>
+		}
+<span class="fc" id="L2845">		return maxRange;</span>
+	}
+
+	/**
+	 * Gets this RPEntity's outfit.
+	 *
+	 * Note: some RPEntities (e.g. sheep, many NPC's, all monsters) don't use
+	 * the outfit system.
+	 *
+	 * @return The outfit, or null if this RPEntity is represented as a single
+	 *         sprite rather than an outfit combination.
+	 */
+	public Outfit getOutfit() {
+<span class="fc bfc" id="L2858" title="All 2 branches covered.">		if (has(&quot;outfit&quot;)) {</span>
+<span class="fc" id="L2859">			return new Outfit(getInt(&quot;outfit&quot;));</span>
+		}
+<span class="fc" id="L2861">		return null;</span>
+	}
+
+	/**
+	 * gets the color map
+	 *
+	 * @return color map
+	 */
+	public Map&lt;String, String&gt; getOutfitColors() {
+<span class="fc" id="L2870">		return getMap(&quot;outfit_colors&quot;);</span>
+	}
+
+	/**
+	 * Sets this RPEntity's outfit.
+	 *
+	 * Note: some RPEntities (e.g. sheep, many NPC's, all monsters) don't use
+	 * the outfit system.
+	 *
+	 * @param outfit
+	 *            The new outfit.
+	 */
+	public void setOutfit(final Outfit outfit) {
+<span class="fc" id="L2883">		put(&quot;outfit&quot;, outfit.getCode());</span>
+<span class="fc" id="L2884">	}</span>
+
+	/**
+	 * Set the entity's formatted title.
+	 *
+	 * @param title
+	 *            The title, or &lt;code&gt;null&lt;/code&gt;.
+	 */
+	public void setTitle(final String title) {
+<span class="pc bpc" id="L2893" title="1 of 2 branches missed.">		if (title != null) {</span>
+<span class="fc" id="L2894">			put(ATTR_TITLE, title);</span>
+<span class="nc bnc" id="L2895" title="All 2 branches missed.">		} else if (has(ATTR_TITLE)) {</span>
+<span class="nc" id="L2896">			remove(ATTR_TITLE);</span>
+		}
+<span class="fc" id="L2898">	}</span>
+
+	//
+	// Entity
+	//
+
+	/**
+	 * Returns the name or something that can be used to identify the entity for
+	 * the player.
+	 *
+	 * @param definite
+	 *            &lt;code&gt;true&lt;/code&gt; for &quot;the&quot;, and &lt;code&gt;false&lt;/code&gt; for &quot;a/an&quot;
+	 *            in case the entity has no name.
+	 *
+	 * @return The description name.
+	 */
+	@Override
+	public String getDescriptionName(final boolean definite) {
+<span class="pc bpc" id="L2916" title="1 of 2 branches missed.">		if (name != null) {</span>
+<span class="fc" id="L2917">			return name;</span>
+		} else {
+<span class="nc" id="L2919">			return super.getDescriptionName(definite);</span>
+		}
+	}
+
+	/**
+	 * Get the nicely formatted entity title/name.
+	 *
+	 * @return The title, or &lt;code&gt;null&lt;/code&gt; if unknown.
+	 */
+	@Override
+	public String getTitle() {
+<span class="fc bfc" id="L2930" title="All 2 branches covered.">		if (has(ATTR_TITLE)) {</span>
+<span class="fc" id="L2931">			return get(ATTR_TITLE);</span>
+<span class="fc bfc" id="L2932" title="All 2 branches covered.">		} else if (name != null) {</span>
+<span class="fc" id="L2933">			return name;</span>
+		} else {
+<span class="fc" id="L2935">			return super.getTitle();</span>
+		}
+	}
+
+	/**
+	 * Perform cycle logic.
+	 */
+	public abstract void logic();
+
+	/**
+	 * Chooses randomly if this has hit the defender, or if this missed him.
+	 * Note that, even if this method returns true, the damage done might be 0
+	 * (if the defender blocks the attack).
+	 *
+	 * @param defender
+	 *            The attacked RPEntity.
+	 * @return true if the attacker has hit the defender (the defender may still
+	 *         block this); false if the attacker has missed the defender.
+	 */
+	public boolean canHit(final RPEntity defender) {
+<span class="fc" id="L2955">		int roll = Rand.roll1D20();</span>
+<span class="fc" id="L2956">		final int defenderDEF = defender.getCappedDef();</span>
+		
+		// Check if attacking from distance
+<span class="fc" id="L2959">		boolean usesRanged = false;</span>
+<span class="pc bpc" id="L2960" title="1 of 2 branches missed.">		if (!this.nextTo(defender)) {</span>
+<span class="nc" id="L2961">			usesRanged = true;</span>
+		}
+		
+		final int attackerATK;
+		/* TODO: Remove Testing.COMBAT condition check when ranged stat
+		 * testing is finished.
+		 */
+<span class="pc bpc" id="L2968" title="3 of 4 branches missed.">		if (usesRanged &amp;&amp; Testing.COMBAT) {</span>
+<span class="nc" id="L2969">			attackerATK = this.getCappedRatk(); // player is using ranged weapon</span>
+		} else {
+<span class="fc" id="L2971">			attackerATK = this.getCappedAtk(); // player is using hand-to-hand</span>
+		}
+
+		/*
+		 * Use some karma unless attacker is much stronger than defender, in
+		 * which case attacker doesn't need luck to help him hit.
+		 */
+<span class="fc" id="L2978">		final int levelDifferenceToNotNeedKarmaAttacking = (int) (IGNORE_KARMA_MULTIPLIER * getLevel());</span>
+<span class="fc bfc" id="L2979" title="All 2 branches covered.">		if (!(getLevel() - levelDifferenceToNotNeedKarmaAttacking &gt; defender</span>
+				.getLevel())) {
+<span class="fc" id="L2981">			final double karma = this.useKarma(0.1);</span>
+			// the karma effect must be cast to an integer to affect the roll
+			// but in most cases this means the karma use was lost. so multiply by 2 to
+			// make the same amount of karma use be more useful
+<span class="fc" id="L2985">			final double karmaEffect = roll * karma * 2.0;</span>
+<span class="fc" id="L2986">			roll -= (int) karmaEffect;</span>
+		}
+<span class="fc" id="L2988">		int risk = calculateRiskForCanHit(roll, defenderDEF, attackerATK);</span>
+
+<span class="pc bpc" id="L2990" title="2 of 4 branches missed.">		if (logger.isDebugEnabled() || Testing.DEBUG) {</span>
+<span class="nc" id="L2991">			logger.debug(&quot;attack from &quot; + this + &quot; to &quot; + defender</span>
+					+ &quot;: Risk to strike: &quot; + risk);
+		}
+
+<span class="fc bfc" id="L2995" title="All 2 branches covered.">		if (risk &lt; 0) {</span>
+<span class="fc" id="L2996">			risk = 0;</span>
+		}
+
+<span class="fc bfc" id="L2999" title="All 2 branches covered.">		if (risk &gt; 1) {</span>
+<span class="fc" id="L3000">			risk = 1;</span>
+		}
+
+<span class="fc bfc" id="L3003" title="All 2 branches covered.">		return (risk != 0);</span>
+	}
+
+	int calculateRiskForCanHit(final int roll, final int defenderDEF,
+			final int attackerATK) {
+<span class="fc" id="L3008">		return 20 * attackerATK - roll * defenderDEF;</span>
+	}
+
+	/**
+	 * Returns the attack rate, the lower the better.
+	 *
+	 * @return the attack rate
+	 */
+	public int getAttackRate() {
+
+<span class="fc" id="L3018">		final List&lt;Item&gt; weapons = getWeapons();</span>
+
+<span class="pc bpc" id="L3020" title="1 of 2 branches missed.">		if (weapons.isEmpty()) {</span>
+<span class="fc" id="L3021">			return 5;</span>
+		}
+<span class="nc" id="L3023">		int best = weapons.get(0).getAttackRate();</span>
+<span class="nc bnc" id="L3024" title="All 2 branches missed.">		for (final Item weapon : weapons) {</span>
+<span class="nc" id="L3025">			final int res = weapon.getAttackRate();</span>
+<span class="nc bnc" id="L3026" title="All 2 branches missed.">			if (res &lt; best) {</span>
+<span class="nc" id="L3027">				best = res;</span>
+			}
+<span class="nc" id="L3029">		}</span>
+
+		// Level effect
+<span class="nc" id="L3032">		best = (int) Math.ceil(best * getItemLevelModifier(weapons.get(0)));</span>
+
+<span class="nc" id="L3034">		return best;</span>
+	}
+
+	/**
+	 * Get a modifier to be used when an item has a higher min_level
+	 * than the entity's level. For any item where the entity's level
+	 * is high enough, the modifier is 1. For anything else, &gt; 1 depending
+	 * on the ratio between the required, and the possessed level.
+	 *
+	 * @param item the item to be examined
+	 * @return modifier for item properties
+	 */
+	private double getItemLevelModifier(Item item) {
+<span class="fc" id="L3047">		final String minLevelS = item.get(&quot;min_level&quot;);</span>
+
+<span class="pc bpc" id="L3049" title="1 of 2 branches missed.">		if (minLevelS != null) {</span>
+<span class="nc" id="L3050">			final int minLevel = Integer.parseInt(minLevelS);</span>
+<span class="nc" id="L3051">			final int level = getLevel();</span>
+<span class="nc bnc" id="L3052" title="All 2 branches missed.">			if (minLevel &gt; level) {</span>
+<span class="nc" id="L3053">				return 1 - Math.log(((double) level + 1) / (minLevel + 1));</span>
+			}
+		}
+
+<span class="fc" id="L3057">		return 1.0;</span>
+	}
+
+	/**
+	 * Lets the attacker attack its target.
+	 *
+	 * @return true iff the attacker has done damage to the defender.
+	 *
+	 */
+	public boolean attack() {
+<span class="fc" id="L3067">		boolean result = false;</span>
+<span class="fc" id="L3068">		final RPEntity defender = this.getAttackTarget();</span>
+
+		// isInZoneandNotDead(defender);
+
+<span class="fc" id="L3072">		defender.rememberAttacker(this);</span>
+
+<span class="fc" id="L3074">		final int maxRange = getMaxRangeForArcher();</span>
+		/*
+		 * The second part (damage type check) ensures that normal archers need
+		 * distance attack modifiers for melee, but creatures with special
+		 * ranged attacks (dragons) pay the price only when using their ranged
+		 * powers (yes, it's a bit of a hack).
+		 */
+<span class="pc bpc" id="L3081" title="7 of 8 branches missed.">		boolean isRanged = ((maxRange &gt; 0) &amp;&amp; canDoRangeAttack(defender, maxRange))</span>
+			&amp;&amp; (((getDamageType() == getRangedDamageType()) || squaredDistance(defender) &gt; 0));
+
+		Nature nature;
+<span class="pc bpc" id="L3085" title="1 of 2 branches missed.">		if (isRanged) {</span>
+<span class="nc" id="L3086">			nature = getRangedDamageType();</span>
+		} else {
+<span class="fc" id="L3088">			nature = getDamageType();</span>
+		}
+
+		// Try to inflict a status effect
+<span class="pc bpc" id="L3092" title="1 of 2 branches missed.">		for (StatusAttacker statusAttacker : statusAttackers) {</span>
+<span class="nc" id="L3093">			statusAttacker.onAttackAttempt(defender, this);</span>
+<span class="nc" id="L3094">		}</span>
+		
+		// Weapon for the use in the attack event
+<span class="fc" id="L3097">		Item attackWeapon = getWeapon();</span>
+<span class="fc" id="L3098">		String weaponName = null;</span>
+<span class="pc bpc" id="L3099" title="1 of 2 branches missed.">		if (attackWeapon != null) {</span>
+<span class="nc" id="L3100">			weaponName = attackWeapon.getWeaponType();</span>
+		}
+
+<span class="pc bpc" id="L3103" title="1 of 2 branches missed.">		if (this.canHit(defender)) {</span>
+<span class="fc" id="L3104">			defender.applyDefXP(this);</span>
+
+<span class="fc" id="L3106">			int damage = damageDone(defender, getItemAtk(), nature, isRanged, maxRange);</span>
+
+<span class="fc bfc" id="L3108" title="All 2 branches covered.">			if (damage &gt; 0) {</span>
+
+				// limit damage to target HP
+<span class="fc" id="L3111">				damage = Math.min(damage, defender.getHP());</span>
+<span class="fc" id="L3112">				this.handleLifesteal(this, this.getWeapons(), damage);</span>
+
+<span class="fc" id="L3114">				defender.onDamaged(this, damage);</span>
+				
+<span class="pc bpc" id="L3116" title="2 of 4 branches missed.">				if (logger.isDebugEnabled() || Testing.DEBUG) {</span>
+<span class="nc" id="L3117">					logger.debug(&quot;attack from &quot; + this.getID() + &quot; to &quot;</span>
+							+ defender.getID() + &quot;: Damage: &quot; + damage);
+				}
+				
+<span class="fc" id="L3121">				result = true;</span>
+			} else {
+				// The attack was too weak, it was blocked
+				
+<span class="pc bpc" id="L3125" title="2 of 4 branches missed.">				if (logger.isDebugEnabled() || Testing.DEBUG) {</span>
+<span class="nc" id="L3126">					logger.debug(&quot;attack from &quot; + this.getID() + &quot; to &quot;</span>
+							+ defender.getID() + &quot;: Damage: &quot; + 0);
+				}
+			}
+<span class="fc" id="L3130">			this.addEvent(new AttackEvent(true, damage, nature, weaponName, isRanged));</span>
+
+			// Try to inflict a status effect
+<span class="pc bpc" id="L3133" title="1 of 2 branches missed.">			for (StatusAttacker statusAttacker : statusAttackers) {</span>
+<span class="nc" id="L3134">				statusAttacker.onHit(defender, this, damage);</span>
+<span class="nc" id="L3135">			}</span>
+
+<span class="fc" id="L3137">		} else {</span>
+			// Missed
+<span class="nc bnc" id="L3139" title="All 4 branches missed.">			if (logger.isDebugEnabled() || Testing.DEBUG) {</span>
+<span class="nc" id="L3140">				logger.debug(&quot;attack from &quot; + this.getID() + &quot; to &quot;</span>
+						+ defender.getID() + &quot;: Missed&quot;);
+			}
+			
+<span class="nc" id="L3144">			this.addEvent(new AttackEvent(false, 0, nature, weaponName, isRanged));</span>
+		}
+
+<span class="fc" id="L3147">		this.notifyWorldAboutChanges();</span>
+<span class="fc" id="L3148">		return result;</span>
+	}
+
+	protected void applyDefXP(final RPEntity entity) {
+		// implemented in sub classes
+<span class="fc" id="L3153">	}</span>
+
+	/**
+	 * Calculate lifesteal and update hp of source.
+	 *
+	 * @param attacker
+	 *            the RPEntity doing the hit
+	 * @param attackerWeapons
+	 *            the weapons of the RPEntity doing the hit
+	 * @param damage
+	 *            the damage done by this hit.
+	 */
+	public void handleLifesteal(final RPEntity attacker,
+			final List&lt;Item&gt; attackerWeapons, final int damage) {
+
+		// Calculate the lifesteal value based on the configured factor
+		// In case of a lifesteal weapon used together with a non-lifesteal
+		// weapon,
+		// weight it based on the atk-values of the weapons.
+<span class="fc" id="L3172">		float sumAll = 0;</span>
+<span class="fc" id="L3173">		float sumLifesteal = 0;</span>
+
+		// Creature with lifesteal profile?
+<span class="fc bfc" id="L3176" title="All 2 branches covered.">		if (attacker instanceof Creature) {</span>
+<span class="fc" id="L3177">			sumAll = 1;</span>
+<span class="fc" id="L3178">			final String value = ((Creature) attacker)</span>
+					.getAIProfile(&quot;lifesteal&quot;);
+<span class="pc bpc" id="L3180" title="1 of 2 branches missed.">			if (value == null) {</span>
+				// The creature doesn't steal life.
+<span class="fc" id="L3182">				return;</span>
+			}
+<span class="nc" id="L3184">			sumLifesteal = Float.parseFloat(value);</span>
+<span class="nc" id="L3185">		} else {</span>
+			// weapons with lifesteal attribute for players
+<span class="pc bpc" id="L3187" title="1 of 2 branches missed.">			for (final Item weaponItem : attackerWeapons) {</span>
+<span class="nc" id="L3188">				sumAll += weaponItem.getAttack();</span>
+<span class="nc bnc" id="L3189" title="All 2 branches missed.">				if (weaponItem.has(&quot;lifesteal&quot;)) {</span>
+<span class="nc" id="L3190">					sumLifesteal += weaponItem.getAttack()</span>
+							* weaponItem.getDouble(&quot;lifesteal&quot;);
+				}
+<span class="nc" id="L3193">			}</span>
+		}
+
+		// process the lifesteal
+<span class="pc bpc" id="L3197" title="1 of 2 branches missed.">		if (sumLifesteal != 0) {</span>
+			// 0.5f is used for rounding
+<span class="nc" id="L3199">			final int lifesteal = (int) (damage * sumLifesteal / sumAll + 0.5f);</span>
+
+<span class="nc bnc" id="L3201" title="All 2 branches missed.">			if (lifesteal &gt;= 0) {</span>
+<span class="nc" id="L3202">				attacker.heal(lifesteal, true);</span>
+			} else {
+				/*
+				 * Negative lifesteal means that we hurt ourselves.
+				 */
+<span class="nc" id="L3207">				attacker.damage(-lifesteal, attacker);</span>
+			}
+
+<span class="nc" id="L3210">			attacker.notifyWorldAboutChanges();</span>
+		}
+<span class="fc" id="L3212">	}</span>
+
+	/**
+	 * Equips the item in the specified slot.
+	 *
+	 * @param rpslot
+	 * @param item
+	 * @return true if successful*/
+	private boolean equipIt(final RPSlot rpslot, final Item item) {
+<span class="pc bpc" id="L3221" title="2 of 4 branches missed.">		if (rpslot  == null || (item == null)) {</span>
+<span class="nc" id="L3222">			return false;</span>
+		}
+
+<span class="fc bfc" id="L3225" title="All 2 branches covered.">		if (item instanceof StackableItem) {</span>
+<span class="fc" id="L3226">			final StackableItem stackEntity = (StackableItem) item;</span>
+			// find a stackable item of the same type
+<span class="fc bfc" id="L3228" title="All 2 branches covered.">			for (final RPObject object : rpslot) {</span>
+<span class="fc bfc" id="L3229" title="All 2 branches covered.">				if (object instanceof StackableItem) {</span>
+					// found another stackable
+<span class="fc" id="L3231">					final StackableItem other = (StackableItem) object;</span>
+<span class="fc bfc" id="L3232" title="All 2 branches covered.">					if (other.isStackable(stackEntity)) {</span>
+						// other is the same type...merge them
+<span class="fc" id="L3234">						new ItemLogger().merge(this, stackEntity, other);</span>
+<span class="fc" id="L3235">						other.add(stackEntity);</span>
+<span class="fc" id="L3236">						updateItemAtkDef();</span>
+<span class="fc" id="L3237">						return true;</span>
+					}
+				}
+<span class="fc" id="L3240">			}</span>
+		}
+
+		// We can't stack it on another item. Check if we can simply
+		// add it to an empty cell.
+<span class="pc bpc" id="L3245" title="1 of 2 branches missed.">		if (rpslot.isFull()) {</span>
+<span class="nc" id="L3246">			return false;</span>
+		} else {
+<span class="fc" id="L3248">			rpslot.add(item);</span>
+<span class="fc" id="L3249">			updateItemAtkDef();</span>
+<span class="fc" id="L3250">			return true;</span>
+		}
+	}
+
+	/**
+	 * Gets the name of the player who deserves the corpse.
+	 *
+	 * @return name of player who deserves the corpse or &lt;code&gt;null&lt;/code&gt;.
+	 */
+	public String getCorpseDeserver() {
+<span class="fc" id="L3260">		return null;</span>
+	}
+
+	/**
+	 * gets the language
+	 *
+	 * @return language
+	 */
+	public String getLanguage() {
+<span class="nc" id="L3269">		return null;</span>
+	}
+
+	/**
+	 * Sets the sound played at entity death
+	 *
+	 * @param sound Name of sound
+	 */
+	public void setDeathSound(final String sound) {
+<span class="fc" id="L3278">		deathSound = sound;</span>
+<span class="fc" id="L3279">	}</span>
+
+	/**
+	 * @return Name of sound played at entity death
+	 */
+	public String getDeathSound() {
+<span class="nc" id="L3285">		return deathSound;</span>
+	}
+
+	/**
+	 * Add a status attack type to the entity
+	 *
+	 * @param statusAttacker Status attacker
+	 */
+	public void addStatusAttacker(final StatusAttacker statusAttacker) {
+		// the immutable statusAttackers list is shared between multiple instances of Creatures to reduce memory usage
+<span class="fc" id="L3295">		Builder&lt;StatusAttacker&gt; builder = ImmutableList.builder();</span>
+<span class="fc" id="L3296">		statusAttackers = builder.addAll(statusAttackers).add(statusAttacker).build();</span>
+<span class="fc" id="L3297">	}</span>
+	
+	/**
+	 * gets the status list
+	 *
+	 * @return StatusList
+	 */
+	public StatusList getStatusList() {
+<span class="fc bfc" id="L3305" title="All 2 branches covered.">		if (statusList == null) {</span>
+<span class="fc" id="L3306">			statusList = new StatusList(this);</span>
+		}
+<span class="fc" id="L3308">		return statusList;</span>
+	}
+
+	/**
+	 * Find if the entity has a specified status
+	 *
+	 * @param statusType the status type to check for
+	 * @return true, if the entity has status; false otherwise
+	 */
+	public boolean hasStatus(StatusType statusType) {
+<span class="fc bfc" id="L3318" title="All 2 branches covered.">		if (statusList == null) {</span>
+<span class="fc" id="L3319">			return false;</span>
+		}
+<span class="fc" id="L3321">		return statusList.hasStatus(statusType);</span>
+	}
+	
+	@Override
+	public void onRemoved(StendhalRPZone zone) {
+<span class="fc" id="L3326">		super.onRemoved(zone);</span>
+
+		// Stop other creatures and players attacks on me.
+		// Probably I am dead, and I don't want to die again with a second corpse.
+<span class="fc bfc" id="L3330" title="All 2 branches covered.">		for (Entity attacker : new LinkedList&lt;Entity&gt;(attackSources)) {</span>
+<span class="pc bpc" id="L3331" title="1 of 2 branches missed.">			if (attacker instanceof RPEntity) {</span>
+<span class="fc" id="L3332">				((RPEntity) attacker).stopAttack();</span>
+			}
+<span class="fc" id="L3334">		}</span>
+<span class="fc" id="L3335">	}</span>
+
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Interruptor.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.sound.system.processors</a> &gt; <span class="el_source">Interruptor.java</span></div><h1>Interruptor.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.sound.system.processors;
+
+import games.stendhal.client.sound.facade.Time;
+import games.stendhal.client.sound.system.SignalProcessor;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+
+/**
+ * Signal processor stage to pause sound signals.
+ * @author silvio
+ */
+<span class="nc" id="L24">public class Interruptor extends SignalProcessor</span>
+{
+    private static final int PLAY  = 0;
+    private static final int STOP  = 1;
+    private static final int PAUSE = 2;
+
+<span class="nc" id="L30">    private AtomicInteger mState = new AtomicInteger(PLAY);</span>
+<span class="nc" id="L31">    private AtomicLong    mDelay = new AtomicLong(0);</span>
+
+    public void play()
+    {
+<span class="nc" id="L35">        mState.set(PLAY);</span>
+<span class="nc" id="L36">        mDelay.set(0);</span>
+<span class="nc" id="L37">    }</span>
+
+    public void pause(Time delay)
+    {
+<span class="nc" id="L41">        mState.set(PAUSE);</span>
+<span class="nc" id="L42">        mDelay.set(delay.getInNanoSeconds());</span>
+<span class="nc" id="L43">    }</span>
+
+    public void stop(Time delay)
+    {
+<span class="nc" id="L47">        mState.set(STOP);</span>
+<span class="nc" id="L48">        mDelay.set(delay.getInNanoSeconds());</span>
+<span class="nc" id="L49">    }</span>
+
+    @Override
+    public synchronized boolean request()
+    {
+<span class="nc bnc" id="L54" title="All 2 branches missed.">        if(mDelay.get() &lt;= 0)</span>
+        {
+<span class="nc bnc" id="L56" title="All 3 branches missed.">            switch(mState.get())</span>
+            {
+            case PAUSE:
+<span class="nc" id="L59">                return true;</span>
+
+            case STOP:
+<span class="nc" id="L62">                quit();</span>
+<span class="nc" id="L63">                return false;</span>
+            }
+        }
+        
+<span class="nc" id="L67">        return super.request();</span>
+    }
+
+    @Override
+    protected void modify(float[] data, int frames, int channels, int rate)
+    {
+<span class="nc bnc" id="L73" title="All 2 branches missed.">        if(mState.get() != PLAY)</span>
+        {
+            //Time delay        = new Time(mDelay.get(), Time.Unit.NANO);
+<span class="nc" id="L76">            Time delaySegment = new Time(frames, rate);</span>
+<span class="nc" id="L77">            mDelay.addAndGet(-delaySegment.getInNanoSeconds());</span>
+        }
+
+<span class="nc" id="L80">        super.propagate(data, frames, channels, rate);</span>
+<span class="nc" id="L81">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

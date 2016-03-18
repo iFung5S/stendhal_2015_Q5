@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>TutorialNotifier.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.core.events</a> &gt; <span class="el_source">TutorialNotifier.java</span></div><h1>TutorialNotifier.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2015 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.core.events;
+
+import games.stendhal.common.NotificationType;
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.entity.item.Item;
+import games.stendhal.server.entity.item.StackableItem;
+import games.stendhal.server.entity.player.Player;
+
+/**
+ * manages the tutorial based on events created all over the game.
+ * 
+ * @author hendrik
+ */
+<span class="nc" id="L25">public class TutorialNotifier {</span>
+
+	/**
+	 * If the specified event is unknown, add it to the list and send the text
+	 * to the player.
+	 * 
+	 * @param player
+	 *            Player
+	 * @param type
+	 *            EventType
+	 */
+	private static void process(final Player player, final TutorialEventType type) {
+<span class="fc" id="L37">		final String key = type.name().toLowerCase();</span>
+<span class="fc bfc" id="L38" title="All 2 branches covered.">		if (player.getKeyedSlot(&quot;!tutorial&quot;, key) == null) {</span>
+<span class="fc" id="L39">			player.setKeyedSlot(&quot;!tutorial&quot;, key, &quot;1&quot;);</span>
+
+			// we must delay this for 1 turn for technical reasons (like zone
+			// change)
+			// but we delay it for 2 seconds so that the player has some time to
+			// recognize the event
+<span class="fc" id="L45">			new DelayedPlayerTextSender(player, &quot;Tutorial: &quot; + type.getMessage(), NotificationType.TUTORIAL, 2);</span>
+			
+		}
+<span class="fc" id="L48">	}</span>
+
+	/**
+	 * Login.
+	 * 
+	 * @param player
+	 *            Player
+	 */
+	public static void login(final Player player) {
+<span class="nc" id="L57">		process(player, TutorialEventType.FIRST_LOGIN);</span>
+<span class="nc" id="L58">	}</span>
+
+	/**
+	 * moving.
+	 * 
+	 * @param player
+	 *            Player
+	 */
+	public static void move(final Player player) {
+<span class="nc" id="L67">		final StendhalRPZone zone = player.getZone();</span>
+<span class="nc bnc" id="L68" title="All 2 branches missed.">		if (zone != null) {</span>
+<span class="nc bnc" id="L69" title="All 2 branches missed.">			if (zone.getName().equals(&quot;int_semos_guard_house&quot;)) {</span>
+<span class="nc" id="L70">				process(player, TutorialEventType.FIRST_MOVE);</span>
+			}
+		}
+<span class="nc" id="L73">	}</span>
+
+	/**
+	 * Zone changes.
+	 * 
+	 * @param player
+	 *            Player
+	 * @param sourceZone
+	 *            source zone
+	 * @param destinationZone
+	 *            destination zone
+	 */
+	public static void zoneChange(final Player player, final String sourceZone,
+			final String destinationZone) {
+<span class="pc bpc" id="L87" title="3 of 4 branches missed.">		if (sourceZone.equals(&quot;0_semos_village_w&quot;) &amp;&amp; destinationZone.equals(&quot;int_semos_guard_house&quot;)) {</span>
+<span class="nc" id="L88">			process(player, TutorialEventType.RETURN_GUARDHOUSE);</span>
+<span class="pc bpc" id="L89" title="1 of 2 branches missed.">		} else if (destinationZone.equals(&quot;0_semos_city&quot;)) {</span>
+<span class="nc" id="L90">			process(player, TutorialEventType.VISIT_SEMOS_CITY);</span>
+<span class="pc bpc" id="L91" title="1 of 2 branches missed.">		} else if (destinationZone.equals(&quot;int_semos_tavern_0&quot;)) {</span>
+<span class="nc" id="L92">			process(player, TutorialEventType.VISIT_SEMOS_TAVERN);</span>
+<span class="pc bpc" id="L93" title="1 of 2 branches missed.">		} else if (destinationZone.equals(&quot;-1_semos_dungeon&quot;)) {</span>
+<span class="nc" id="L94">			process(player, TutorialEventType.VISIT_SEMOS_DUNGEON);</span>
+<span class="pc bpc" id="L95" title="1 of 2 branches missed.">		} else if (destinationZone.equals(&quot;-2_semos_dungeon&quot;)) {</span>
+<span class="nc" id="L96">			process(player, TutorialEventType.VISIT_SEMOS_DUNGEON_2);</span>
+<span class="pc bpc" id="L97" title="1 of 2 branches missed.">		} else if (destinationZone.equals(&quot;int_afterlife&quot;)) {</span>
+<span class="nc" id="L98">			process(player, TutorialEventType.FIRST_DEATH);</span>
+<span class="pc bpc" id="L99" title="1 of 2 branches missed.">		} else if (destinationZone.equals(&quot;0_semos_plains_n&quot;)){</span>
+<span class="nc" id="L100">			process(player, TutorialEventType.VISIT_SEMOS_PLAINS);</span>
+		}
+<span class="fc" id="L102">	}</span>
+
+	/**
+	 * player got attacked.
+	 * 
+	 * @param player
+	 *            Player
+	 */
+	public static void attacked(final Player player) {
+<span class="fc" id="L111">		process(player, TutorialEventType.FIRST_ATTACKED);</span>
+<span class="fc" id="L112">	}</span>
+
+	/**
+	 * player killed something.
+	 * 
+	 * @param player
+	 *            Player
+	 */
+	public static void killedSomething(final Player player) {
+<span class="fc" id="L121">		process(player, TutorialEventType.FIRST_KILL);</span>
+<span class="fc" id="L122">	}</span>
+
+	/**
+	 * player killed another player.
+	 * 
+	 * @param player
+	 *            Player
+	 */
+	public static void killedPlayer(final Player player) {
+<span class="nc" id="L131">		process(player, TutorialEventType.FIRST_PLAYER_KILL);</span>
+<span class="nc" id="L132">	}</span>
+
+
+	/**
+	 * player got poisoned.
+	 * 
+	 * @param player
+	 *            Player
+	 */
+	public static void poisoned(final Player player) {
+<span class="fc" id="L142">		process(player, TutorialEventType.FIRST_POISONED);</span>
+<span class="fc" id="L143">	}</span>
+
+	/**
+	 * a player who stayed another minute in game.
+	 * 
+	 * @param player
+	 *            Player
+	 * @param age
+	 *            playing time
+	 */
+	public static void aged(final Player player, final int age) {
+<span class="fc bfc" id="L154" title="All 2 branches covered.">		if (age &gt;= 60) {</span>
+<span class="fc" id="L155">			process(player, TutorialEventType.TIMED_RULES);</span>
+<span class="fc bfc" id="L156" title="All 2 branches covered.">		} else if (age &gt;= 45) {</span>
+<span class="fc" id="L157">			process(player, TutorialEventType.TIMED_PASSWORD);</span>
+<span class="fc bfc" id="L158" title="All 2 branches covered.">		} else if (age &gt;= 30) {</span>
+			// this is a new tutorial event, so we check isNew, 
+			// as our older players don't need to know how to change outfit
+<span class="pc bpc" id="L161" title="1 of 2 branches missed.">			if (player.isNew()) {</span>
+<span class="fc" id="L162">				process(player, TutorialEventType.TIMED_OUTFIT);</span>
+			}
+<span class="fc bfc" id="L164" title="All 2 branches covered.">		} else if (age &gt;= 15) {</span>
+			// players less likely to get this event now that they do not start naked
+			// but keep it anyway as it's a cute feature to notice that players are naked
+<span class="pc bpc" id="L167" title="1 of 2 branches missed.">			if (player.getOutfit().isNaked()) {</span>
+<span class="fc" id="L168">				process(player, TutorialEventType.TIMED_NAKED);</span>
+			} 
+<span class="fc bfc" id="L170" title="All 2 branches covered.">		} else if (age &gt;= 5) {</span>
+<span class="fc" id="L171">			process(player, TutorialEventType.TIMED_HELP);</span>
+		}
+<span class="fc" id="L173">	}</span>
+	/**
+	 * player &gt; level 2 logged in for new release.
+	 * 
+	 * @param player
+	 *            Player
+	 */
+	public static void newrelease(final Player player) {
+		// process(player, TutorialEventType.NEW_RELEASE77);
+<span class="nc" id="L182">	}</span>
+	
+	/**
+	 * player got private messaged
+	 * 
+	 * @param player
+	 *            Player
+	 */
+	public static void messaged(final Player player) {
+<span class="nc" id="L191">		process(player, TutorialEventType.FIRST_PRIVATE_MESSAGE);</span>
+<span class="nc" id="L192">	}</span>
+	
+	/**
+	 * player got something given from an equip item action of an npc
+	 * 
+	 * @param player
+	 *            Player
+	 */
+	public static void equippedByNPC(final Player player, final Item item) {
+		// do not trigger on Stackable items, as it may be confusing to players
+		// that already own an item of that type. It is far less discoverable
+		// that the number have increased compared to a new item showing up
+<span class="fc bfc" id="L204" title="All 2 branches covered.">		if (!(item instanceof StackableItem)) {</span>
+<span class="fc" id="L205">			process(player, TutorialEventType.FIRST_EQUIPPED);</span>
+		}
+<span class="fc" id="L207">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

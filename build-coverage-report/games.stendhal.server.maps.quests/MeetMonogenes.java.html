@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>MeetMonogenes.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests</a> &gt; <span class="el_source">MeetMonogenes.java</span></div><h1>MeetMonogenes.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2011 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.action.ExamineChatAction;
+import games.stendhal.server.entity.npc.action.SayTextAction;
+import games.stendhal.server.entity.npc.action.SetQuestAction;
+import games.stendhal.server.entity.npc.condition.AndCondition;
+import games.stendhal.server.entity.npc.condition.GreetingMatchesNameCondition;
+import games.stendhal.server.entity.npc.condition.NotCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotCompletedCondition;
+import games.stendhal.server.entity.npc.condition.TriggerInListCondition;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.maps.Region;
+
+/**
+ * QUEST: Speak with Monogenes PARTICIPANTS: - Monogenes
+ * 
+ * STEPS: - Talk to Monogenes to activate the quest and keep speaking with
+ * Monogenes. - Be polite and say &quot;bye&quot; at the end of the conversation to get a
+ * small reward.
+ * 
+ * REWARD: broken (- 10 XP (check that user's level is lesser than 2) - No money)
+ * 
+ * REPETITIONS: - None
+ * 
+ */
+<span class="fc" id="L45">public class MeetMonogenes extends AbstractQuest {</span>
+	@Override
+	public String getSlotName() {
+<span class="nc" id="L48">		return &quot;Monogenes&quot;;</span>
+	}
+	@Override
+	public void addToWorld() {
+<span class="fc" id="L52">		fillQuestInfo(</span>
+				&quot;Meet Monogenes&quot;,
+				&quot;A wise old man in Semos has a map to guide newcomers through the town.&quot;,
+				false);
+<span class="fc" id="L56">		final SpeakerNPC npc = npcs.get(&quot;Monogenes&quot;);</span>
+		
+<span class="fc" id="L58">		npc.addGreeting(null, new SayTextAction(&quot;Hi again, [name]. How can I #help you this time?&quot;));</span>
+		
+		// A little trick to make NPC remember if it has met
+        // player before and react accordingly
+        // NPC_name quest doesn't exist anywhere else neither is
+        // used for any other purpose
+<span class="fc" id="L64">		npc.add(ConversationStates.IDLE, </span>
+				ConversationPhrases.GREETING_MESSAGES,
+				new AndCondition(
+						new GreetingMatchesNameCondition(npc.getName()),
+						new QuestNotCompletedCondition(&quot;Monogenes&quot;)), 
+				ConversationStates.INFORMATION_1, 
+				&quot;Hello there, stranger! Don't be too intimidated if people are quiet and reserved... &quot; +
+				&quot;the fear of Blordrough and his forces has spread all over the country, and we're all &quot; +
+				&quot;a bit concerned. I can offer a few tips on socializing though, would you like to hear them?&quot;,
+				new SetQuestAction(&quot;Monogenes&quot;, &quot;done&quot;));
+				
+<span class="fc" id="L75">		npc.add(</span>
+			ConversationStates.ATTENDING,
+			ConversationPhrases.HELP_MESSAGES,
+			null,
+			ConversationStates.INFORMATION_1,
+			&quot;I can offer you a few tips on socializing with the residents of Semos, if you like?&quot;,
+			null);
+
+<span class="fc" id="L83">		npc.add(</span>
+			ConversationStates.INFORMATION_1,
+			ConversationPhrases.YES_MESSAGES,
+			null,
+			ConversationStates.ATTENDING,
+			&quot;You should introduce yourself by saying \&quot;hi\&quot;. After this, try to keep the conversation &quot; +
+			&quot;to the topics they bring up; suitable subjects will be highlighted #'like this'. A few &quot; +
+			&quot;generally safe topics of conversation are the person's #job, asking for #help, asking if &quot; +
+			&quot;they have an #offer to make, and asking for a #quest to go on. Now, if you want a quick &quot; +
+			&quot;run-down of the #buildings in Semos, just say.&quot;,
+			null);
+
+<span class="fc" id="L95">		npc.add(</span>
+			ConversationStates.INFORMATION_1,
+			ConversationPhrases.NO_MESSAGES,
+			null,
+			ConversationStates.IDLE,
+			&quot;And how are you supposed to know what's happening? By reading the Semos Tribune? Hah! Bye, then.&quot;,
+			null);
+		
+<span class="fc" id="L103">		final List&lt;String&gt; yesnotriggers = new ArrayList&lt;String&gt;();</span>
+<span class="fc" id="L104">		yesnotriggers.addAll(ConversationPhrases.YES_MESSAGES);</span>
+<span class="fc" id="L105">		yesnotriggers.addAll(ConversationPhrases.NO_MESSAGES);</span>
+		
+<span class="fc" id="L107">		npc.add(</span>
+				ConversationStates.INFORMATION_1,
+				&quot;&quot;,
+				new NotCondition(new TriggerInListCondition(yesnotriggers)),
+				ConversationStates.INFORMATION_1,
+				&quot;I asked you a 'yes or no' question: I can offer a few tips on socializing, would you like to hear them?&quot;,
+				null);
+
+		// he puts 'like this' into blue and so many people try that first
+<span class="fc" id="L116">		npc.addReply(</span>
+				&quot;like this&quot;,
+				&quot;That's right, like that! Now, I can show you a #map or direct you to the #bank, the #library, the #tavern, the #temple, the #blacksmith, the #bakery, or the old #village.&quot;);
+		
+<span class="fc" id="L120">		npc.addReply(</span>
+			&quot;buildings&quot;,
+			&quot;I can show you a #map or direct you to the #bank, the #library, the #tavern, the #temple, the #blacksmith, the #bakery, the #public #chest or the old #village.&quot;);
+
+<span class="fc" id="L124">		npc.add(</span>
+			ConversationStates.ATTENDING,
+			&quot;map&quot;, null, ConversationStates.ATTENDING, 
+			&quot;I have marked the following locations on my map:\n&quot;
+			+ &quot;1 Townhall, Mayor lives here,   2 Library,   3 Bank,   4 Bakery,\n&quot;
+			+ &quot;5 Storage,   6 Blacksmith, Carmen,   7 Inn, Margaret \n&quot;
+        	+ &quot;8 Temple, Ilisa,   9 Dangerous Dungeon,\n&quot;
+        	+ &quot;10 Public Chest, \n&quot;
+        	+ &quot;A Semos Village,   B Northern Plains and Mine, \n&quot;
+        	+ &quot;C Very long path to Ados, \n&quot;
+        	+ &quot;D Southern Plains and Nalwor Forest, \n&quot; 
+        	+ &quot;E Semos Village Open Field&quot;,
+        	new ExamineChatAction(&quot;map-semos-city.png&quot;, &quot;Semos City&quot;, &quot;Map of Semos City&quot;));
+
+<span class="fc" id="L138">		npc.addReply(</span>
+			&quot;bank&quot;,
+			&quot;See this big building in front of me, with the giant fake treasure chest? That's it right there. Kinda obvious once you think about it.&quot;);
+
+<span class="fc" id="L142">		npc.addReply(</span>
+			&quot;library&quot;,
+			&quot;Follow the path from here to the west; you'll see a building with two doors, and the emblem of a book and quill pen on display.&quot;);
+
+<span class="fc" id="L146">		npc.addReply(</span>
+			&quot;tavern&quot;,
+			&quot;Just head southeast along the path, and you can't miss it. It has a large sign that reads INN.&quot;);
+
+<span class="fc" id="L150">		npc.addReply(</span>
+			&quot;temple&quot;,
+			&quot;The temple is southeast from here, beside the #tavern. It has a cross on the roof, very distinctive.&quot;);
+
+<span class="fc" id="L154">		npc.addReply(</span>
+			&quot;bakery&quot;,
+			&quot;Our local bakery is just east of this square; they have a sign up with a picture of a loaf of bread on it.&quot;);
+
+<span class="fc" id="L158">		npc.addReply(</span>
+			&quot;blacksmith&quot;,
+			&quot;Head southwest to reach the smithy. There's a picture of an anvil hanging above the door, you should be able to spot it.&quot;);
+
+<span class="fc" id="L162">		npc.addReply(Arrays.asList(&quot;public&quot;, &quot;public chest&quot;, &quot;community chest&quot;, &quot;chest&quot;),</span>
+			&quot;Follow the orange path on the map to arrive at the public chest. Inhabitants of Faiumoni and brave warriors throw some useful stuff in there which you can take for free. Remember: It is always good to share and give what you don't need anymore.&quot;);
+		
+<span class="fc" id="L165">		npc.addReply(</span>
+			&quot;village&quot;,
+			&quot;Just keep heading southwest, past the #blacksmith, and you will shortly come to the old Semos village. Nishiya still sells sheep there.&quot;);
+
+
+		/** Give the reward to the polite newcomer user */
+		// npc.add(ConversationStates.ATTENDING,
+		// SpeakerNPC.GOODBYE_MESSAGES,
+		// null,
+		// ConversationStates.IDLE,
+		// null,
+		// new SpeakerNPC.ChatAction() {
+		// @Override
+		// public void fire(Player player, Sentence sentence, SpeakerNPC engine) {
+		// if (player.getLevel() &lt; 2) {
+		// engine.say(&quot;Goodbye! I hope I was of some use to you.&quot;);
+		// player.addXP(10);
+		// player.notifyWorldAboutChanges();
+		// } else {
+		// engine.say(&quot;I hope to see you again sometime.&quot;);
+		// }
+		// }
+		// });
+<span class="fc" id="L188">		npc.addGoodbye();</span>
+<span class="fc" id="L189">	}</span>
+
+	@Override
+	public String getName() {
+<span class="nc" id="L193">		return &quot;MeetMonogenes&quot;;</span>
+	}
+	
+	@Override
+	public List&lt;String&gt; getHistory(final Player player) {
+<span class="nc" id="L198">			final List&lt;String&gt; res = new ArrayList&lt;String&gt;();</span>
+<span class="nc bnc" id="L199" title="All 2 branches missed.">			if (!player.hasQuest(&quot;Monogenes&quot;)) {</span>
+<span class="nc" id="L200">				return res;</span>
+			}
+<span class="nc bnc" id="L202" title="All 2 branches missed.">			if (isCompleted(player)) {</span>
+<span class="nc" id="L203">				res.add(&quot;I spoke with Monogenes and he offered to give me a map. I can always get that map from him at any time, just by asking.&quot;);</span>
+			} 
+<span class="nc" id="L205">			return res;</span>
+	}
+	
+	@Override
+	public String getRegion() {
+<span class="nc" id="L210">		return Region.SEMOS_CITY;</span>
+	}
+	@Override
+	public String getNPCName() {
+<span class="nc" id="L214">		return &quot;Monogenes&quot;;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

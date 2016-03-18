@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ConversationContext.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.common.parser</a> &gt; <span class="el_source">ConversationContext.java</span></div><h1>ConversationContext.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.common.parser;
+
+/**
+ * NPC conversation context holder.
+ * TODO mf - manage conversation state in the NPC conversation engine
+ *
+ * @author Martin Fuchs
+ */
+<span class="fc" id="L21">public class ConversationContext {</span>
+
+	// conversation context states
+	
+	/** no current conversation context. */
+    static final int CCS_NONE = 0; 
+    
+    /** Conversation Context wait for a yes/no answer. */
+    static final int CCS_WAIT_FOR_YES_NO = 1; 
+    
+    /** Conversation Context wait for a named object. */
+    static final int CCS_WAIT_FOR_OBJECT = 2; 
+  
+
+    /** Flag for sentences to be used for matching. */
+<span class="fc" id="L36">    protected boolean forMatching = false;</span>
+    
+    /** Flag to enable Expression merging. */
+<span class="fc" id="L39">    protected boolean mergeExpressions = true;</span>
+    
+    /** Flag to enable ignoring of words marked with the type IGN. */
+<span class="fc" id="L42">    protected boolean ignoreIgnorable = true; </span>
+    
+    /** stores current Conversation state. */
+<span class="fc" id="L45">    private int state = CCS_NONE; </span>
+
+
+    public void setState(final int state) {
+<span class="nc" id="L49">        this.state = state;</span>
+<span class="nc" id="L50">    }</span>
+
+    public int getState() {
+<span class="nc" id="L53">        return state;</span>
+    }
+
+    public void setForMatching(final boolean forMatching) {
+<span class="nc" id="L57">        this.forMatching = forMatching;</span>
+<span class="nc" id="L58">    }</span>
+
+    public boolean isForMatching() {
+<span class="fc" id="L61">        return forMatching;</span>
+    }
+
+    public void setMergeExpressions(final boolean mergeExpressions) {
+<span class="fc" id="L65">        this.mergeExpressions = mergeExpressions;</span>
+<span class="fc" id="L66">    }</span>
+
+    public boolean getMergeExpressions() {
+<span class="fc" id="L69">        return mergeExpressions;</span>
+    }
+
+    public void setIgnoreIgnorable(final boolean ignoreIgnorable) {
+<span class="fc" id="L73">        this.ignoreIgnorable = ignoreIgnorable;</span>
+<span class="fc" id="L74">    }</span>
+
+    public boolean getIgnoreIgnorable() {
+<span class="fc" id="L77">        return ignoreIgnorable;</span>
+    }
+
+    /** Default implementation of hashCode() */
+    @Override
+	public int hashCode() {
+		final int prime = 31;
+<span class="nc" id="L84">		int result = 1;</span>
+<span class="nc bnc" id="L85" title="All 4 branches missed.">		result = prime * result + (forMatching ? 1231 : 1237);</span>
+<span class="nc bnc" id="L86" title="All 4 branches missed.">		result = prime * result + (ignoreIgnorable ? 1231 : 1237);</span>
+<span class="nc bnc" id="L87" title="All 4 branches missed.">		result = prime * result + (mergeExpressions ? 1231 : 1237);</span>
+<span class="nc" id="L88">		result = prime * result + state;</span>
+<span class="nc" id="L89">		return result;</span>
+	}
+
+    /** Default implementation of equals() */
+	@Override
+	public boolean equals(Object obj) {
+<span class="pc bpc" id="L95" title="2 of 4 branches missed.">		if (this == obj)</span>
+<span class="nc" id="L96">			return true;</span>
+<span class="pc bpc" id="L97" title="2 of 4 branches missed.">		if (obj == null)</span>
+<span class="nc" id="L98">			return false;</span>
+<span class="pc bpc" id="L99" title="2 of 4 branches missed.">		if (!(obj instanceof ConversationContext))</span>
+<span class="nc" id="L100">			return false;</span>
+<span class="fc" id="L101">		ConversationContext other = (ConversationContext) obj;</span>
+<span class="fc bfc" id="L102" title="All 4 branches covered.">		if (forMatching != other.forMatching)</span>
+<span class="fc" id="L103">			return false;</span>
+<span class="fc bfc" id="L104" title="All 4 branches covered.">		if (ignoreIgnorable != other.ignoreIgnorable)</span>
+<span class="fc" id="L105">			return false;</span>
+<span class="pc bpc" id="L106" title="2 of 4 branches missed.">		if (mergeExpressions != other.mergeExpressions)</span>
+<span class="nc" id="L107">			return false;</span>
+<span class="pc bpc" id="L108" title="2 of 4 branches missed.">		if (state != other.state)</span>
+<span class="nc" id="L109">			return false;</span>
+<span class="fc" id="L110">		return true;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

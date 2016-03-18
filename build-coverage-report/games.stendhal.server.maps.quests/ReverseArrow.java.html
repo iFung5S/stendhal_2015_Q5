@@ -1,0 +1,562 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ReverseArrow.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests</a> &gt; <span class="el_source">ReverseArrow.java</span></div><h1>ReverseArrow.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2016 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedList;
+import java.util.List;
+
+import org.apache.log4j.Logger;
+
+import games.stendhal.common.Direction;
+import games.stendhal.common.grammar.Grammar;
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.core.events.LoginListener;
+import games.stendhal.server.core.events.TurnListener;
+import games.stendhal.server.entity.RPEntity;
+import games.stendhal.server.entity.item.StackableItem;
+import games.stendhal.server.entity.item.token.Token;
+import games.stendhal.server.entity.mapstuff.portal.OnePlayerRoomDoor;
+import games.stendhal.server.entity.mapstuff.portal.Portal;
+import games.stendhal.server.entity.mapstuff.sign.Sign;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.action.SayTextAction;
+import games.stendhal.server.entity.npc.condition.AndCondition;
+import games.stendhal.server.entity.npc.condition.GreetingMatchesNameCondition;
+import games.stendhal.server.entity.npc.condition.QuestCompletedCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotCompletedCondition;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.maps.Region;
+import marauroa.common.game.IRPZone;
+
+/**
+ * A quest where the player has to invert an arrow build out of stones by moving
+ * only up to 3 tokens.
+ *
+ * @author hendrik
+ */
+
+<span class="fc" id="L56">public class ReverseArrow extends AbstractQuest implements</span>
+		Token.TokenMoveListener&lt;Token&gt;, LoginListener {
+
+<span class="fc" id="L59">	private static final Logger LOGGER = Logger.getLogger(ReverseArrow.class);</span>
+
+	// constants
+	private static final String QUEST_SLOT = &quot;reverse_arrow&quot;;
+
+	private static final String ZONE_NAME = &quot;int_ados_reverse_arrow&quot;;
+
+	/** Time (in Seconds) to solve the puzzle. */
+	private static final int TIME = 60;
+
+	/** Possible number of moves to solve the puzzle. */
+	private static final int MAX_MOVES = 3;
+
+	/** Horizontal position of the upper left token at the beginning. */
+	private static final int OFFSET_X = 8;
+
+	/** Vertical position of the upper left token at the beginning. */
+	private static final int OFFSET_Y = 9;
+
+	// &quot;static&quot; data
+	protected StendhalRPZone zone;
+
+	protected SpeakerNPC npc;
+
+	protected List&lt;Token&gt; tokens;
+
+	private OnePlayerRoomDoor door;
+
+	private StendhalRPZone entranceZone;
+
+	// quest instance data
+	private int moveCount;
+
+	protected Player player;
+
+	private Timer timer;
+
+	/**
+	 * Checks the result.
+	 */
+<span class="nc" id="L99">	protected class ReverseArrowCheck implements TurnListener {</span>
+
+		/**
+		 * Is the task solved?
+		 *
+		 * @return true on success, false on failure
+		 */
+		private boolean checkBoard() {
+<span class="nc bnc" id="L107" title="All 2 branches missed.">			if (tokens == null) {</span>
+<span class="nc" id="L108">				return false;</span>
+			}
+
+			// We check the complete arrow (and not just the three moved
+			// tokens) here for two reasons:
+
+			// 1. there are 6 permutions so the code would quite messy
+			// 2. there may be a solution i did not recognize
+
+			// This aproach has the side effect that the code does not
+			// tell the solution :-)
+
+			// sort the tokens according to their position
+<span class="nc" id="L121">			Collections.sort(tokens, new Comparator&lt;Token&gt;() {</span>
+				@Override
+				public int compare(final Token t1, final Token t2) {
+<span class="nc" id="L124">					int d = t1.getY() - t2.getY();</span>
+<span class="nc bnc" id="L125" title="All 2 branches missed.">					if (d == 0) {</span>
+<span class="nc" id="L126">						d = t1.getX() - t2.getX();</span>
+					}
+<span class="nc" id="L128">					return d;</span>
+				}
+			});
+			// * * 0 * *
+			// * 1 2 3 *
+			// 4 5 6 7 8
+
+			// get the position of the topmost token
+<span class="nc" id="L136">			final int topX = tokens.get(0).getX();</span>
+<span class="nc" id="L137">			final int topY = tokens.get(0).getY();</span>
+
+			// check first row
+<span class="nc bnc" id="L140" title="All 2 branches missed.">			for (int i = 1; i &lt;= 3; i++) {</span>
+<span class="nc" id="L141">				final Token token = tokens.get(i);</span>
+<span class="nc bnc" id="L142" title="All 4 branches missed.">				if (token.getX() != topX - 1 + i - 1</span>
+						|| token.getY() != topY + 1) {
+<span class="nc" id="L144">					return false;</span>
+				}
+			}
+
+			// check second row
+<span class="nc bnc" id="L149" title="All 2 branches missed.">			for (int i = 4; i &lt;= 8; i++) {</span>
+<span class="nc" id="L150">				final Token token = tokens.get(i);</span>
+<span class="nc bnc" id="L151" title="All 4 branches missed.">				if (token.getX() != topX - 2 + i - 4</span>
+						|| token.getY() != topY + 2) {
+<span class="nc" id="L153">					return false;</span>
+				}
+			}
+
+<span class="nc" id="L157">			return true;</span>
+		}
+
+		/**
+		 * invoked shortly after the player did his/her third move.
+		 * @param currentTurn on which it is invoked
+		 */
+		@Override
+		public void onTurnReached(final int currentTurn) {
+<span class="nc bnc" id="L166" title="All 4 branches missed.">			if (checkBoard() &amp;&amp; moveCount &lt;= MAX_MOVES) {</span>
+<span class="nc bnc" id="L167" title="All 2 branches missed.">				if (player.isQuestCompleted(QUEST_SLOT)) {</span>
+<span class="nc" id="L168">					npc.say(&quot;Congratulations, you solved the quiz again. But unfortunately I don't have any further rewards for you.&quot;);</span>
+				} else {
+<span class="nc" id="L170">					npc.say(&quot;Congratulations, you solved the quiz.&quot;);</span>
+<span class="nc" id="L171">					final StackableItem money = (StackableItem) SingletonRepository.getEntityManager().getItem(</span>
+									&quot;money&quot;);
+<span class="nc" id="L173">					money.setQuantity(50);</span>
+<span class="nc" id="L174">					player.equipToInventoryOnly(money);</span>
+<span class="nc" id="L175">					player.addXP(100);</span>
+				}
+<span class="nc" id="L177">				player.setQuest(QUEST_SLOT, &quot;done&quot;);</span>
+			} else {
+<span class="nc bnc" id="L179" title="All 2 branches missed.">				if (!player.isQuestCompleted(QUEST_SLOT)) {</span>
+<span class="nc" id="L180">					player.setQuest(QUEST_SLOT, &quot;failed&quot;);</span>
+				}
+<span class="nc" id="L182">				npc.say(&quot;I am sorry. This does not look like an arrow pointing upwards to me.&quot;);</span>
+			}
+
+			// teleport the player out after 2 seconds of delay
+<span class="nc" id="L186">			SingletonRepository.getTurnNotifier().notifyInTurns(6,</span>
+					new FinishNotifier(true, player)); 
+<span class="nc" id="L188">		}</span>
+	}
+
+	/**
+	 * Teleports the player out.
+	 */
+	protected class FinishNotifier implements TurnListener {
+		private final boolean reset;
+
+		private final Player finishPlayer;
+
+<span class="nc" id="L199">		public FinishNotifier(final boolean reset, final Player player) {</span>
+<span class="nc" id="L200">			this.finishPlayer = player;</span>
+<span class="nc" id="L201">			this.reset = reset;</span>
+<span class="nc" id="L202">		}</span>
+
+		/**
+		 * invoked shortly after the player did his job.
+		 * @param currentTurn on which it is invoked
+		 */
+		@Override
+		public void onTurnReached(final int currentTurn) {
+<span class="nc" id="L210">			finish(reset, finishPlayer);</span>
+<span class="nc" id="L211">		}</span>
+	}
+
+	/**
+	 * Tells the player the remaining time and teleports him out if the task is
+	 * not completed in time.
+	 */
+	class Timer implements TurnListener {
+		private final Player timerPlayer;
+
+		/**
+		 * Starts a teleport-out-timer.
+		 *
+		 * @param player
+		 *            the player who started the timer
+		 */
+<span class="nc" id="L227">		protected Timer(final Player player) {</span>
+<span class="nc" id="L228">			timerPlayer = player;</span>
+<span class="nc" id="L229">		}</span>
+
+<span class="nc" id="L231">		private int counter = TIME;</span>
+
+		@Override
+		public void onTurnReached(final int currentTurn) {
+			// check that the player is still in game and stop the timer
+			// in case the player is not playing anymore.
+			// Note that &quot;player&quot; always refers to the current player
+			// in order not to teleport the next player out too early,
+			// we have to compare it to the player who started this timer
+<span class="nc bnc" id="L240" title="All 4 branches missed.">			if (player == timerPlayer &amp;&amp; player != null) {</span>
+<span class="nc" id="L241">				final IRPZone playerZone = player.getZone();</span>
+
+<span class="nc bnc" id="L243" title="All 2 branches missed.">				if (playerZone.equals(zone)) {</span>
+<span class="nc bnc" id="L244" title="All 2 branches missed.">					if (counter &gt; 0) {</span>
+<span class="nc" id="L245">						npc.say(&quot;You have &quot; + counter + &quot; seconds left.&quot;);</span>
+<span class="nc" id="L246">						counter = counter - 10;</span>
+<span class="nc" id="L247">						SingletonRepository.getTurnNotifier().notifyInTurns(10 * 3, this);</span>
+					} else {
+						// teleport the player out
+<span class="nc" id="L250">						npc.say(&quot;Sorry, your time is up.&quot;);</span>
+<span class="nc" id="L251">						SingletonRepository.getTurnNotifier().notifyInTurns(1,</span>
+								new FinishNotifier(true, player));
+						// need to do this on the next turn
+					}
+				}
+			}
+<span class="nc" id="L257">		}</span>
+	}
+
+	/**
+	 * A special door that only lets one player in at a time, and that notifies
+	 * this script on successful usage.
+	 */
+	class NotifyingDoor extends OnePlayerRoomDoor {
+<span class="fc" id="L265">		NotifyingDoor(final String clazz) {</span>
+<span class="fc" id="L266">			super(clazz);</span>
+<span class="fc" id="L267">		}</span>
+
+		@Override
+		public boolean onUsed(final RPEntity user) {
+<span class="nc" id="L271">			boolean success = super.onUsed(user);</span>
+			
+<span class="nc bnc" id="L273" title="All 2 branches missed.">			if (user instanceof Player) {</span>
+<span class="nc" id="L274">				start((Player) user);</span>
+			} else {
+<span class="nc" id="L276">				LOGGER.error(&quot;user is no instance of Player but: &quot; + user, new Throwable());</span>
+			}
+
+<span class="nc" id="L279">			return success;</span>
+		}
+
+		@Override
+		public void onUsedBackwards(final RPEntity user) {
+<span class="nc" id="L284">			super.onUsedBackwards(user);</span>
+
+<span class="nc bnc" id="L286" title="All 2 branches missed.">			if (user instanceof Player) {</span>
+<span class="nc" id="L287">				finish(true, (Player) user);</span>
+			} else {
+<span class="nc" id="L289">				LOGGER.error(&quot;user is no instance of Player but: &quot; + user, new Throwable());</span>
+			}
+<span class="nc" id="L291">		}</span>
+	}
+
+	@Override
+	public String getSlotName() {
+<span class="fc" id="L296">		return QUEST_SLOT;</span>
+	}
+
+	@Override
+	public String getName() {
+<span class="nc" id="L301">		return &quot;ReverseArrow&quot;;</span>
+	}
+
+	/**
+	 * Creates a token and adds it to the world.
+	 *
+	 * @param x
+	 *            x-position
+	 * @param y
+	 *            y-position
+	 */
+	private void addTokenToWorld(final int x, final int y) {
+<span class="nc" id="L313">		final Token token = (Token) SingletonRepository.getEntityManager().getItem(&quot;arrow game token&quot;);</span>
+<span class="nc" id="L314">		token.setPosition(x, y);</span>
+<span class="nc" id="L315">		token.setTokenMoveListener(this);</span>
+<span class="nc" id="L316">		zone.add(token, false);</span>
+<span class="nc" id="L317">		tokens.add(token);</span>
+<span class="nc" id="L318">	}</span>
+
+	/**
+	 * Adds the tokens to the game field.
+	 */
+	private void addAllTokens() {
+		// 0 1 2 3 4
+		// * 5 6 7 *
+		// * * 8 * *
+<span class="nc" id="L327">		tokens = new LinkedList&lt;Token&gt;();</span>
+<span class="nc bnc" id="L328" title="All 2 branches missed.">		for (int i = 0; i &lt; 5; i++) {</span>
+<span class="nc" id="L329">			addTokenToWorld(OFFSET_X + i, OFFSET_Y);</span>
+		}
+<span class="nc bnc" id="L331" title="All 2 branches missed.">		for (int i = 1; i &lt; 4; i++) {</span>
+<span class="nc" id="L332">			addTokenToWorld(OFFSET_X + i, OFFSET_Y + 1);</span>
+		}
+<span class="nc" id="L334">		addTokenToWorld(OFFSET_X + 2, OFFSET_Y + 2);</span>
+<span class="nc" id="L335">	}</span>
+
+	/**
+	 * Removes all tokens (called after the player messed them up).
+	 */
+	private void removeAllTokens() {
+<span class="pc bpc" id="L341" title="1 of 2 branches missed.">		if (tokens != null) {</span>
+<span class="nc bnc" id="L342" title="All 2 branches missed.">			for (final Token token : tokens) {</span>
+<span class="nc bnc" id="L343" title="All 2 branches missed.">				if (token != null) {</span>
+<span class="nc" id="L344">					zone.remove(token.getID());</span>
+				}
+<span class="nc" id="L346">			}</span>
+		}
+<span class="fc" id="L348">		tokens = null;</span>
+<span class="fc" id="L349">	}</span>
+
+	private void step_1() {
+<span class="fc" id="L352">		zone = SingletonRepository.getRPWorld().getZone(ZONE_NAME);</span>
+<span class="fc" id="L353">		step1CreateNPC();</span>
+<span class="fc" id="L354">		step1CreateDoors();</span>
+<span class="fc" id="L355">	}</span>
+
+	private void step1CreateNPC() {
+<span class="fc" id="L358">		npc = new GamblosSpeakerNPC(&quot;Gamblos&quot;);</span>
+
+<span class="fc" id="L360">		npc.setEntityClass(&quot;oldwizardnpc&quot;); </span>
+<span class="fc" id="L361">		npc.setPosition(13, 7);</span>
+<span class="fc" id="L362">		npc.setDirection(Direction.DOWN);</span>
+<span class="fc" id="L363">		npc.initHP(100);</span>
+<span class="fc" id="L364">		zone.add(npc);</span>
+<span class="fc" id="L365">	}</span>
+
+<span class="fc" id="L367">	private final class GamblosSpeakerNPC extends SpeakerNPC {</span>
+<span class="fc" id="L368">		private GamblosSpeakerNPC(String name) {</span>
+<span class="fc" id="L369">			super(name);</span>
+<span class="fc" id="L370">			setPlayerChatTimeout(TIME);</span>
+<span class="fc" id="L371">			setPerceptionRange(12);</span>
+
+<span class="fc" id="L373">			addInitChatMessage(null, new ChatAction() {</span>
+				@Override
+				public void fire(final Player player, final Sentence sentence, final EventRaiser raiser) {
+<span class="nc" id="L376">					listenTo(player, ConversationPhrases.GREETING_MESSAGES.get(0));</span>
+<span class="nc" id="L377">				}</span>
+			});
+<span class="fc" id="L379">		}</span>
+
+		@Override
+		protected void createPath() {
+			// NPC doesn't move
+<span class="fc" id="L384">			setPath(null);</span>
+<span class="fc" id="L385">		}</span>
+
+		@Override
+		protected void createDialog() {
+<span class="fc" id="L389">			add(ConversationStates.IDLE, </span>
+					ConversationPhrases.GREETING_MESSAGES,
+					new AndCondition(new GreetingMatchesNameCondition(getName()),
+							new QuestCompletedCondition(QUEST_SLOT)), 
+					ConversationStates.ATTENDING, 
+					null,
+					new SayTextAction(&quot;Hi again, [name]. I remember that you solved this problem already. You can do it again, of course.&quot;));
+			
+<span class="fc" id="L397">			add(ConversationStates.IDLE, </span>
+					ConversationPhrases.GREETING_MESSAGES,
+					new AndCondition(new GreetingMatchesNameCondition(getName()),
+							new QuestNotCompletedCondition(QUEST_SLOT)), 
+					ConversationStates.ATTENDING, 
+					&quot;Hi, welcome to our small game. Your task is to let this arrow point upwards, by moving up to three tokens.&quot;,
+					null);
+			
+<span class="fc" id="L405">			addHelp(&quot;You have to stand next to a token in order to move it.&quot;);</span>
+<span class="fc" id="L406">			addJob(&quot;I am the supervisor for this task.&quot;);</span>
+<span class="fc" id="L407">			addGoodbye(&quot;It was nice to meet you.&quot;);</span>
+<span class="fc" id="L408">			addQuest(&quot;Your task in this game is to reverse the direction of this arrow moving only 3 tokens within &quot;</span>
+					+ TIME + &quot; seconds.&quot;);
+<span class="fc" id="L410">		}</span>
+
+		@Override
+		protected void onGoodbye(RPEntity player) {
+<span class="nc" id="L414">			super.onGoodbye(player);</span>
+<span class="nc" id="L415">			SingletonRepository.getTurnNotifier().notifyInTurns(1,</span>
+					new FinishNotifier(true, (Player) player));
+<span class="nc" id="L417">		}</span>
+	}
+
+	private void step1CreateDoors() {
+		// 0_semos_mountain_n2 at (95,101)
+		final String entranceZoneName = &quot;0_semos_mountain_n2&quot;;
+<span class="fc" id="L423">		entranceZone = SingletonRepository.getRPWorld().getZone(entranceZoneName);</span>
+<span class="fc" id="L424">		door = new NotifyingDoor(&quot;housedoor&quot;);</span>
+<span class="fc" id="L425">		door.setPosition(95, 101);</span>
+<span class="fc" id="L426">		door.setIdentifier(Integer.valueOf(0));</span>
+<span class="fc" id="L427">		door.setDestination(ZONE_NAME, Integer.valueOf(0));</span>
+<span class="fc" id="L428">		entranceZone.add(door);</span>
+
+<span class="fc" id="L430">		door.open();</span>
+
+<span class="fc" id="L432">		final Portal exit = new Portal();</span>
+<span class="fc" id="L433">		exit.setPosition(10, 17);</span>
+<span class="fc" id="L434">		exit.setIdentifier(Integer.valueOf(0));</span>
+<span class="fc" id="L435">		exit.setDestination(entranceZoneName, Integer.valueOf(0));</span>
+<span class="fc" id="L436">		zone.add(exit);</span>
+
+<span class="fc" id="L438">		final Sign sign = new Sign();</span>
+<span class="fc" id="L439">		sign.setPosition(97, 102);</span>
+<span class="fc" id="L440">		sign.setText(&quot;If the door is closed, you will have to wait a short time until the last player finishes his task.&quot;);</span>
+<span class="fc" id="L441">		entranceZone.add(sign);</span>
+<span class="fc" id="L442">	}</span>
+
+	@Override
+	public void onLoggedIn(final Player player) {
+		// need to do this on the next turn
+<span class="nc" id="L447">		SingletonRepository.getTurnNotifier().notifyInTurns(1, new FinishNotifier(false, player));</span>
+<span class="nc" id="L448">	}</span>
+
+	/**
+	 * The player moved a token.
+	 *
+	 * @param player Player
+	 * @param token Token
+	 */
+	@Override
+	public void onTokenMoved(final Player player, Token token) {
+		//TODO only count if the token really changed its position
+<span class="nc" id="L459">		moveCount++;</span>
+
+<span class="nc bnc" id="L461" title="All 2 branches missed.">		if (moveCount &lt; MAX_MOVES) {</span>
+<span class="nc" id="L462">			npc.say(&quot;This was your &quot; + Grammar.ordered(moveCount) + &quot; move.&quot;);</span>
+<span class="nc bnc" id="L463" title="All 2 branches missed.">		} else if (moveCount == MAX_MOVES) {</span>
+<span class="nc" id="L464">			npc.say(&quot;This was your &quot; + Grammar.ordered(moveCount)</span>
+					+ &quot; and final move. Let me check your work.&quot;);
+			// notify in 2 seconds
+<span class="nc" id="L467">			SingletonRepository.getTurnNotifier().notifyInTurns(6, new ReverseArrowCheck()); </span>
+<span class="nc bnc" id="L468" title="All 2 branches missed.">			if (timer != null) {</span>
+<span class="nc" id="L469">				SingletonRepository.getTurnNotifier().dontNotify(timer);</span>
+			}
+		} else {
+<span class="nc" id="L472">			npc.say(&quot;Sorry, you may only do &quot; + MAX_MOVES + &quot; moves&quot;);</span>
+		}
+<span class="nc" id="L474">	}</span>
+
+	/**
+	 * A player entered the zone.
+	 *
+	 * @param player
+	 *            Player
+	 */
+	public void start(final Player player) {
+<span class="nc" id="L483">		final IRPZone playerZone = player.getZone();</span>
+
+<span class="nc bnc" id="L485" title="All 2 branches missed.">		if (playerZone.equals(zone)) {</span>
+<span class="nc" id="L486">			this.player = player;</span>
+<span class="nc" id="L487">			removeAllTokens();</span>
+<span class="nc" id="L488">			addAllTokens();</span>
+<span class="nc" id="L489">			timer = new Timer(player);</span>
+<span class="nc" id="L490">			SingletonRepository.getTurnNotifier().notifyInTurns(0, timer);</span>
+<span class="nc" id="L491">			moveCount = 0;</span>
+		}
+<span class="nc" id="L493">	}</span>
+
+	/**
+	 * Finishes the quest and teleports the player out.
+	 *
+	 * @param reset
+	 *            reset it for the next player (set to false on login)
+	 * @param player
+	 *            the player to teleport out
+	 */
+	protected void finish(final boolean reset, final Player player) {
+<span class="pc bpc" id="L504" title="1 of 2 branches missed.">		if (player != null) {</span>
+<span class="nc" id="L505">			final IRPZone playerZone = player.getZone();</span>
+
+<span class="nc bnc" id="L507" title="All 2 branches missed.">			if (playerZone.equals(zone)) {</span>
+<span class="nc" id="L508">				player.teleport(entranceZone, door.getX(), door.getY() + 1,</span>
+						Direction.DOWN, player);
+			}
+		}
+<span class="fc bfc" id="L512" title="All 2 branches covered.">		if (reset) {</span>
+<span class="fc" id="L513">			removeAllTokens();</span>
+<span class="fc" id="L514">			this.player = null;</span>
+<span class="fc" id="L515">			moveCount = 0;</span>
+<span class="pc bpc" id="L516" title="1 of 2 branches missed.">			if (timer != null) {</span>
+<span class="nc" id="L517">				SingletonRepository.getTurnNotifier().dontNotify(timer);</span>
+			}
+<span class="fc" id="L519">			door.open();</span>
+		}
+<span class="fc" id="L521">	}</span>
+
+	@Override
+	public void addToWorld() {
+<span class="fc" id="L525">		fillQuestInfo(</span>
+				&quot;Reverse Arrow&quot;,
+				&quot;Gamblos has a fun puzzle to solve.&quot;,
+				false);
+
+<span class="fc" id="L530">		SingletonRepository.getLoginNotifier().addListener(this);</span>
+
+<span class="fc" id="L532">		step_1();</span>
+<span class="fc" id="L533">	}</span>
+	
+	@Override
+	public List&lt;String&gt; getHistory(final Player player) {
+<span class="nc" id="L537">			final List&lt;String&gt; res = new ArrayList&lt;String&gt;();</span>
+<span class="nc bnc" id="L538" title="All 2 branches missed.">			if (!player.hasQuest(QUEST_SLOT)) {</span>
+<span class="nc" id="L539">				return res;</span>
+			}
+<span class="nc" id="L541">			final String questState = player.getQuest(QUEST_SLOT);</span>
+<span class="nc" id="L542">			res.add(&quot;Gamblos challenged me with a puzzle.&quot;);</span>
+<span class="nc bnc" id="L543" title="All 2 branches missed.">			if (&quot;failed&quot;.equals(questState)) {</span>
+<span class="nc" id="L544">				res.add(&quot;I couldn't solve the puzzle.&quot;);</span>
+			} 
+<span class="nc bnc" id="L546" title="All 2 branches missed.">			if (isCompleted(player)) {</span>
+<span class="nc" id="L547">				res.add(&quot;I solved the puzzle!&quot;);</span>
+			}
+<span class="nc" id="L549">			return res;</span>
+	}
+
+	@Override
+	public String getNPCName() {
+<span class="nc" id="L554">		return &quot;Gamblos&quot;;</span>
+	}
+	
+	@Override
+	public String getRegion() {
+<span class="nc" id="L559">		return Region.SEMOS_SURROUNDS;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

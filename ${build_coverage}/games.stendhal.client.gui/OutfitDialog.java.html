@@ -1,0 +1,902 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>OutfitDialog.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui</a> &gt; <span class="el_source">OutfitDialog.java</span></div><h1>OutfitDialog.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                      (C) Copyright 2003 - 2015 Stendhal                 *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+
+package games.stendhal.client.gui;
+
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Frame;
+import java.awt.Graphics;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.WindowEvent;
+import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.swing.BorderFactory;
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JComponent;
+import javax.swing.JDialog;
+import javax.swing.JLabel;
+import javax.swing.JSlider;
+import javax.swing.WindowConstants;
+import javax.swing.colorchooser.ColorSelectionModel;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
+
+import org.apache.log4j.Logger;
+
+import games.stendhal.client.OutfitStore;
+import games.stendhal.client.StendhalClient;
+import games.stendhal.client.gui.layout.SBoxLayout;
+import games.stendhal.client.gui.layout.SLayout;
+import games.stendhal.client.gui.styled.Style;
+import games.stendhal.client.gui.styled.StyleUtil;
+import games.stendhal.client.sprite.Sprite;
+import games.stendhal.client.sprite.SpriteStore;
+import games.stendhal.common.Outfits;
+import games.stendhal.common.constants.Actions;
+import games.stendhal.common.constants.Testing;
+import marauroa.common.game.RPAction;
+
+/**
+ * Outfit selection dialog.
+ */
+class OutfitDialog extends JDialog {
+	/** the logger instance. */
+<span class="nc" id="L60">	private static final Logger LOGGER = Logger.getLogger(OutfitDialog.class);</span>
+	
+	private static final int PLAYER_WIDTH = 48;
+	private static final int PLAYER_HEIGHT = 64;
+	private static final int SLIDER_WIDTH = 80;
+
+<span class="nc" id="L66">	private final SelectorModel hair = new SelectorModel(Outfits.HAIR_OUTFITS);</span>
+<span class="nc" id="L67">	private final SelectorModel eyes = new SelectorModel(Outfits.EYES_OUTFITS);</span>
+<span class="nc" id="L68">	private final SelectorModel mouth = new SelectorModel(Outfits.MOUTH_OUTFITS);</span>
+<span class="nc" id="L69">	private final SelectorModel head = new SelectorModel(Outfits.HEAD_OUTFITS);</span>
+<span class="nc" id="L70">	private final SelectorModel body = new SelectorModel(Outfits.BODY_OUTFITS);</span>
+<span class="nc" id="L71">	private final SelectorModel dress = new SelectorModel(Outfits.CLOTHES_OUTFITS);</span>
+	
+	/**
+	 * Coloring data used to get the initial colors, and to adjust colors should
+	 * the player want those.
+	 */
+	private final OutfitColor outfitColor;
+
+	/** Sprite direction: 0 for direction UP, 1 RIGHT, 2 DOWN and 3 LEFT. */
+<span class="nc" id="L80">	private int direction = 2;</span>
+
+<span class="nc" id="L82">	private final SpriteStore store = SpriteStore.get();</span>
+<span class="nc" id="L83">	private final OutfitStore ostore = OutfitStore.get();</span>
+	
+<span class="nc" id="L85">	private final List&lt;ResetListener&gt; resetListeners = new ArrayList&lt;ResetListener&gt;();</span>
+
+	/** Label containing the hair image. */
+	private OutfitLabel hairLabel;
+	/** Label containing the eyes image. */
+	private OutfitLabel eyesLabel;
+	/** Label containing the mouth image. */
+	private OutfitLabel mouthLabel;
+	/** Label containing the head image. */
+	private OutfitLabel headLabel;
+	/** Label containing the body image. */
+	private OutfitLabel bodyLabel;
+	/** Label containing the dress image. */
+	private OutfitLabel dressLabel;
+	/** Label containing the full outfit image. */
+	private OutfitLabel outfitLabel;
+
+	/** Selector for the sprite direction. */
+	private JSlider directionSlider;
+
+	/**
+	 * Create a new OutfitDialog.
+	 * 
+	 * @param parent parent window
+	 * @param title title of the dialog
+	 * @param outfit number of the outfit
+	 * @param outfitColor coloring information. &lt;b&gt;Note that outfitColor
+	 *	can be modified by the dialog.&lt;/b&gt; 
+	 */
+	OutfitDialog(final Frame parent, final String title, int outfit,
+			final OutfitColor outfitColor) {
+<span class="nc" id="L116">		super(parent, false);</span>
+		
+<span class="nc" id="L118">		this.outfitColor = outfitColor;</span>
+		
+		// Needs to be after initializing the models
+<span class="nc" id="L121">		initComponents();</span>
+<span class="nc" id="L122">		applyStyle();</span>
+<span class="nc" id="L123">		setTitle(title);</span>
+		
+		// Follow the model changes; the whole outfit follows them all
+<span class="nc" id="L126">		hair.addListener(hairLabel);</span>
+<span class="nc" id="L127">		hair.addListener(outfitLabel);</span>
+<span class="nc" id="L128">		head.addListener(headLabel);</span>
+<span class="nc" id="L129">		head.addListener(outfitLabel);</span>
+<span class="nc" id="L130">		body.addListener(bodyLabel);</span>
+<span class="nc" id="L131">		body.addListener(outfitLabel);</span>
+<span class="nc" id="L132">		dress.addListener(dressLabel);</span>
+<span class="nc" id="L133">		dress.addListener(outfitLabel);</span>
+
+		// analyse current outfit
+<span class="nc" id="L136">		int bodiesIndex = outfit % 100;</span>
+<span class="nc" id="L137">		outfit = outfit / 100;</span>
+<span class="nc" id="L138">		int clothesIndex = outfit % 100;</span>
+<span class="nc" id="L139">		outfit = outfit / 100;</span>
+<span class="nc" id="L140">		int headsIndex = outfit % 100;</span>
+<span class="nc" id="L141">		outfit = outfit / 100;</span>
+<span class="nc" id="L142">		int hairsIndex = outfit % 100;</span>
+
+		// reset special outfits
+<span class="nc" id="L145">		hairsIndex = checkIndex(hairsIndex, hair);</span>
+<span class="nc" id="L146">		headsIndex = checkIndex(headsIndex, head);</span>
+<span class="nc" id="L147">		bodiesIndex = checkIndex(bodiesIndex, body);</span>
+<span class="nc" id="L148">		clothesIndex = checkIndex(clothesIndex, dress);</span>
+		
+		// Set the current outfit indices; this will update the labels as well
+<span class="nc" id="L151">		hair.setIndex(hairsIndex);</span>
+<span class="nc" id="L152">		head.setIndex(headsIndex);</span>
+<span class="nc" id="L153">		body.setIndex(bodiesIndex);</span>
+<span class="nc" id="L154">		dress.setIndex(clothesIndex);</span>
+
+<span class="nc" id="L156">		pack();</span>
+<span class="nc" id="L157">		WindowUtils.closeOnEscape(this);</span>
+<span class="nc" id="L158">		WindowUtils.trackLocation(this, &quot;outfit&quot;, false);</span>
+<span class="nc" id="L159">	}</span>
+	
+	/**
+	 * Create a new outfit dialog with extended outfit features: Currently
+	 * mouth and eyes.
+	 * 
+	 * @param parent
+	 * 		The parent object of this dialog
+	 * @param title
+	 * 		Text to be displayed in title bar
+	 * @param outfit
+	 * 		10-digit code representing original outfit features (old outfit
+	 * 		system)
+	 * @param outfitColor
+	 * 		Coloring information for outfit parts (&lt;b&gt;Note that outfitColor can
+	 * 		be modified by the dialog&lt;/b&gt;)
+	 */
+	OutfitDialog(final Frame parent, final String title, long outfit,
+			final OutfitColor outfitColor) {
+<span class="nc" id="L178">		this(parent, title, (int)(outfit / 10000), outfitColor);</span>
+		
+		// Follow the model changes
+<span class="nc" id="L181">		eyes.addListener(eyesLabel);</span>
+<span class="nc" id="L182">		eyes.addListener(outfitLabel);</span>
+<span class="nc" id="L183">		mouth.addListener(mouthLabel);</span>
+<span class="nc" id="L184">		mouth.addListener(outfitLabel);</span>
+		
+		// Analyze current outfit
+<span class="nc" id="L187">		int mouthsIndex = (int) (outfit % 100);</span>
+<span class="nc" id="L188">		outfit = outfit / 100;</span>
+<span class="nc" id="L189">		int eyesIndex = (int) (outfit % 100);</span>
+		
+		// Reset special outfits
+<span class="nc" id="L192">		mouthsIndex = checkIndex(mouthsIndex, mouth);</span>
+<span class="nc" id="L193">		eyesIndex = checkIndex(eyesIndex, eyes);</span>
+		
+		// Set the current outfit indices; this will update the labels as well
+<span class="nc" id="L196">		eyes.setIndex(eyesIndex);</span>
+<span class="nc" id="L197">		mouth.setIndex(mouthsIndex);</span>
+		
+<span class="nc" id="L199">		pack();</span>
+<span class="nc" id="L200">	}</span>
+	
+	/**
+	 * Check an index is within player accessible limits.
+	 * 
+	 * @param index current index
+	 * @param model to determine the limits
+	 * @return index, if the supplied index is within limits, otherwise 0
+	 */
+	private int checkIndex(int index, SelectorModel model) {
+<span class="nc bnc" id="L210" title="All 2 branches missed.">		if (!model.isAllowed(index)) {</span>
+<span class="nc" id="L211">			return 0;</span>
+		}
+<span class="nc" id="L213">		return index;</span>
+	}
+
+	/**
+	 * Create the component layout.
+	 */
+	private void initComponents() {
+<span class="nc" id="L220">		setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);</span>
+<span class="nc" id="L221">		setResizable(false);</span>
+
+<span class="nc" id="L223">		int pad = SBoxLayout.COMMON_PADDING;</span>
+
+<span class="nc" id="L225">		JComponent content = SBoxLayout.createContainer(SBoxLayout.HORIZONTAL, pad);</span>
+<span class="nc" id="L226">		JComponent cPane = (JComponent) getContentPane();</span>
+<span class="nc" id="L227">		cPane.setBorder(BorderFactory.createCompoundBorder(cPane.getBorder(),</span>
+				BorderFactory.createEmptyBorder(pad, pad, pad, pad)));
+<span class="nc" id="L229">		cPane.setLayout(new SBoxLayout(SBoxLayout.VERTICAL, pad));</span>
+<span class="nc" id="L230">		add(content);</span>
+<span class="nc" id="L231">		final JComponent partialsColumn = SBoxLayout.createContainer(SBoxLayout.VERTICAL, pad);</span>
+<span class="nc" id="L232">		content.add(partialsColumn);</span>
+
+		// --------- outfit parts column ----------
+		
+		// Hair
+<span class="nc" id="L237">		SpriteRetriever hairRetriever = new SpriteRetriever() {</span>
+			@Override
+			public Sprite getSprite() {
+<span class="nc" id="L240">				return getHairSprite();</span>
+			}
+		};
+<span class="nc" id="L243">		hairLabel = new OutfitLabel(hairRetriever);</span>
+<span class="nc" id="L244">		partialsColumn.add(createSelector(hair, hairLabel));</span>
+		
+		/* TODO: Remove condition after outfit testing is finished. */
+<span class="nc" id="L247">		SpriteRetriever eyesRetriever = null, mouthRetriever = null;</span>
+<span class="nc bnc" id="L248" title="All 2 branches missed.">		if (Testing.OUTFITS) {</span>
+			// Eyes
+<span class="nc" id="L250">			eyesRetriever = new SpriteRetriever() {</span>
+				@Override
+				public Sprite getSprite() {
+<span class="nc" id="L253">					return getEyesSprite();</span>
+				}
+			};
+<span class="nc" id="L256">			eyesLabel = new OutfitLabel(eyesRetriever);</span>
+<span class="nc" id="L257">			partialsColumn.add(createSelector(eyes, eyesLabel));</span>
+			
+			// Mouth
+<span class="nc" id="L260">			mouthRetriever = new SpriteRetriever() {</span>
+				@Override
+				public Sprite getSprite() {
+<span class="nc" id="L263">					return getMouthSprite();</span>
+				}
+			};
+<span class="nc" id="L266">			mouthLabel = new OutfitLabel(mouthRetriever);</span>
+<span class="nc" id="L267">			partialsColumn.add(createSelector(mouth, mouthLabel));</span>
+		}
+		
+		// Head
+<span class="nc" id="L271">		SpriteRetriever headRetriever = new SpriteRetriever() {</span>
+			@Override
+			public Sprite getSprite() {
+<span class="nc" id="L274">				return getHeadSprite();</span>
+			}
+		};
+<span class="nc" id="L277">		headLabel = new OutfitLabel(headRetriever);</span>
+<span class="nc" id="L278">		partialsColumn.add(createSelector(head, headLabel));</span>
+		
+		// Body
+<span class="nc" id="L281">		SpriteRetriever bodyRetriever = new SpriteRetriever() {</span>
+			@Override
+			public Sprite getSprite() {
+<span class="nc" id="L284">				return getBodySprite();</span>
+			}
+		};
+<span class="nc" id="L287">		bodyLabel = new OutfitLabel(bodyRetriever);</span>
+<span class="nc" id="L288">		partialsColumn.add(createSelector(body, bodyLabel));</span>
+		
+		// Dress
+<span class="nc" id="L291">		SpriteRetriever dressRetriever = new SpriteRetriever() {</span>
+			@Override
+			public Sprite getSprite() {
+<span class="nc" id="L294">				return getDressSprite();</span>
+			}
+		};
+<span class="nc" id="L297">		dressLabel = new OutfitLabel(dressRetriever);</span>
+<span class="nc" id="L298">		partialsColumn.add(createSelector(dress, dressLabel));</span>
+		
+		// --------- Color selection column ---------
+<span class="nc" id="L301">		JComponent column = SBoxLayout.createContainer(SBoxLayout.VERTICAL);</span>
+<span class="nc" id="L302">		content.add(column, SLayout.EXPAND_Y);</span>
+		/* hair color */
+<span class="nc" id="L304">		JComponent selector = createColorSelector(&quot;Hair&quot;, OutfitColor.HAIR,</span>
+				hairLabel);
+<span class="nc" id="L306">		selector.setAlignmentX(CENTER_ALIGNMENT);</span>
+<span class="nc" id="L307">		column.add(selector);</span>
+		
+		// TODO: Remove condition after outfit testing is finished
+<span class="nc bnc" id="L310" title="All 2 branches missed.">		if (Testing.OUTFITS) {</span>
+			/* eyes color */
+<span class="nc" id="L312">			selector = createColorSelector(&quot;Eyes&quot;, OutfitColor.EYES, eyesLabel);</span>
+<span class="nc" id="L313">			selector.setAlignmentX(CENTER_ALIGNMENT);</span>
+<span class="nc" id="L314">			column.add(selector);</span>
+			
+			/* skin color */
+<span class="nc" id="L317">			selector = createColorSelector(&quot;Skin&quot;, OutfitColor.SKIN, true,</span>
+					bodyLabel, headLabel);
+<span class="nc" id="L319">			selector.setAlignmentX(CENTER_ALIGNMENT);</span>
+<span class="nc" id="L320">			column.add(selector);</span>
+		}
+		/* dress color */
+<span class="nc" id="L323">		selector = createColorSelector(&quot;Dress&quot;, OutfitColor.DRESS, dressLabel);</span>
+<span class="nc" id="L324">		selector.setAlignmentX(CENTER_ALIGNMENT);</span>
+<span class="nc" id="L325">		column.add(selector);</span>
+<span class="nc" id="L326">		SBoxLayout.addSpring(column);</span>
+		
+		// --------- whole outfit side ----------
+<span class="nc" id="L329">		column = SBoxLayout.createContainer(SBoxLayout.VERTICAL, pad);</span>
+<span class="nc" id="L330">		column.setAlignmentY(CENTER_ALIGNMENT);</span>
+<span class="nc" id="L331">		content.add(column);</span>
+		
+		/* TODO: Remove condition after outfit testing is finished. */
+<span class="nc bnc" id="L334" title="All 2 branches missed.">		if (Testing.OUTFITS) {</span>
+<span class="nc" id="L335">			outfitLabel = new OutfitLabel(bodyRetriever, dressRetriever,</span>
+					headRetriever, mouthRetriever, eyesRetriever,
+					hairRetriever);
+		} else {
+<span class="nc" id="L339">			outfitLabel = new OutfitLabel(bodyRetriever, dressRetriever,</span>
+					headRetriever, hairRetriever);
+		}
+<span class="nc" id="L342">		outfitLabel.setAlignmentX(CENTER_ALIGNMENT);</span>
+<span class="nc" id="L343">		column.add(outfitLabel);</span>
+
+<span class="nc" id="L345">		directionSlider = new JSlider();</span>
+<span class="nc" id="L346">		directionSlider.setMaximum(3);</span>
+<span class="nc" id="L347">		directionSlider.setSnapToTicks(true);</span>
+<span class="nc" id="L348">		directionSlider.setValue(2);</span>
+<span class="nc" id="L349">		directionSlider.setInverted(true);</span>
+<span class="nc" id="L350">		Dimension d = directionSlider.getPreferredSize();</span>
+<span class="nc" id="L351">		d.width = SLIDER_WIDTH;</span>
+<span class="nc" id="L352">		directionSlider.setPreferredSize(d);</span>
+<span class="nc" id="L353">		directionSlider.addChangeListener(new ChangeListener() {</span>
+			@Override
+			public void stateChanged(final ChangeEvent evt) {
+<span class="nc" id="L356">				sliderDirectionStateChanged();</span>
+<span class="nc" id="L357">			}</span>
+		});
+<span class="nc" id="L359">		column.add(directionSlider);</span>
+
+<span class="nc" id="L361">		JComponent buttonBox = SBoxLayout.createContainer(SBoxLayout.HORIZONTAL, pad);</span>
+<span class="nc" id="L362">		buttonBox.setAlignmentX(RIGHT_ALIGNMENT);</span>
+<span class="nc" id="L363">		JButton cancelButton = new JButton(&quot;Cancel&quot;);</span>
+<span class="nc" id="L364">		cancelButton.addActionListener(new ActionListener() {</span>
+			@Override
+			public void actionPerformed(ActionEvent e) {
+<span class="nc" id="L367">				OutfitDialog.this.dispatchEvent(new WindowEvent(OutfitDialog.this, WindowEvent.WINDOW_CLOSING));</span>
+<span class="nc" id="L368">			}</span>
+		});
+<span class="nc" id="L370">		cancelButton.setMnemonic(KeyEvent.VK_C);</span>
+<span class="nc" id="L371">		buttonBox.add(cancelButton);</span>
+<span class="nc" id="L372">		JButton okButton = new JButton(&quot;Change Outfit&quot;);</span>
+<span class="nc" id="L373">		okButton.setMnemonic(KeyEvent.VK_A);</span>
+<span class="nc" id="L374">		okButton.addActionListener(new ActionListener() {</span>
+			@Override
+			public void actionPerformed(final ActionEvent evt) {
+<span class="nc" id="L377">				okActionPerformed();</span>
+<span class="nc" id="L378">			}</span>
+		});
+<span class="nc" id="L380">		buttonBox.add(okButton);</span>
+<span class="nc" id="L381">		add(buttonBox);</span>
+<span class="nc" id="L382">	}</span>
+
+	/**
+	 * Create a selector for outfit part.
+	 * 
+	 * @param model model that the buttons should modify
+	 * @param label central image label
+	 * @return selector component
+	 */
+	private JComponent createSelector(final SelectorModel model, OutfitLabel label) {
+<span class="nc" id="L392">		JComponent row = SBoxLayout.createContainer(SBoxLayout.HORIZONTAL, SBoxLayout.COMMON_PADDING);</span>
+	
+<span class="nc" id="L394">		JButton button = new JButton(&quot;&lt;&quot;);</span>
+<span class="nc" id="L395">		button.addActionListener(new ActionListener() {</span>
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+<span class="nc" id="L398">				model.scrollDown();</span>
+<span class="nc" id="L399">			}</span>
+		});
+<span class="nc" id="L401">		row.add(button);</span>
+<span class="nc" id="L402">		row.add(label);</span>
+<span class="nc" id="L403">		button = new JButton(&quot;&gt;&quot;);</span>
+<span class="nc" id="L404">		button.addActionListener(new ActionListener() {</span>
+			@Override
+			public void actionPerformed(ActionEvent e) {
+<span class="nc" id="L407">				model.scrollUp();</span>
+<span class="nc" id="L408">			}</span>
+		});
+<span class="nc" id="L410">		row.add(button);</span>
+		
+<span class="nc" id="L412">		return row;</span>
+	}
+
+	/**
+	 * This is called every time the user moves the slider.
+	 */
+	private void sliderDirectionStateChanged() {
+<span class="nc" id="L419">		direction = directionSlider.getValue();</span>
+
+<span class="nc" id="L421">		outfitLabel.changed();</span>
+<span class="nc" id="L422">		hairLabel.changed();</span>
+		/* TODO: Remove condition after outfit testing is finished. */
+<span class="nc bnc" id="L424" title="All 2 branches missed.">		if (Testing.OUTFITS) {</span>
+<span class="nc" id="L425">			eyesLabel.changed();</span>
+		}
+<span class="nc" id="L427">		headLabel.changed();</span>
+<span class="nc" id="L428">		bodyLabel.changed();</span>
+<span class="nc" id="L429">		dressLabel.changed();</span>
+<span class="nc" id="L430">	}</span>
+	
+	/**
+	 * Get the hair sprite.
+	 * 
+	 * @return hair sprite
+	 */
+	private Sprite getHairSprite() {
+<span class="nc" id="L438">		return store.getTile(ostore.getHairSprite(hair.getIndex(), outfitColor),</span>
+				PLAYER_WIDTH, direction * PLAYER_HEIGHT, PLAYER_WIDTH,
+				PLAYER_HEIGHT);
+	}
+	
+	/**
+	 * Get the eyes sprite.
+	 * 
+	 * @return eyes sprite
+	 */
+	private Sprite getEyesSprite() {
+<span class="nc" id="L449">		return store.getTile(ostore.getEyesSprite(eyes.getIndex(), outfitColor),</span>
+				PLAYER_WIDTH, direction * PLAYER_HEIGHT, PLAYER_WIDTH,
+				PLAYER_HEIGHT);
+	}
+	
+	/**
+	 * Get the mouth sprite.
+	 * 
+	 * @return mouth sprite
+	 */
+	private Sprite getMouthSprite() {
+<span class="nc" id="L460">		return store.getTile(ostore.getMouthSprite(mouth.getIndex()),</span>
+				PLAYER_WIDTH, direction * PLAYER_HEIGHT, PLAYER_WIDTH,
+				PLAYER_HEIGHT);
+	}
+	
+	/**
+	 * Get the head sprite.
+	 * 
+	 * @return head sprite
+	 */
+	private Sprite getHeadSprite() {
+<span class="nc" id="L471">		return store.getTile(ostore.getHeadSprite(head.getIndex(), outfitColor),</span>
+				PLAYER_WIDTH, direction * PLAYER_HEIGHT, PLAYER_WIDTH,
+				PLAYER_HEIGHT);
+	}
+	
+	/**
+	 * Get the body sprite.
+	 * 
+	 * @return body sprite
+	 */
+	private Sprite getBodySprite() {
+<span class="nc" id="L482">		return store.getTile(ostore.getBodySprite(body.getIndex(), outfitColor),</span>
+				PLAYER_WIDTH, direction * PLAYER_HEIGHT, PLAYER_WIDTH,
+				PLAYER_HEIGHT);
+	}
+	
+	/**
+	 * Get the dress sprite.
+	 * 
+	 * @return dress sprite
+	 */
+	private Sprite getDressSprite() {
+<span class="nc" id="L493">		return store.getTile(ostore.getDressSprite(dress.getIndex(), outfitColor), PLAYER_WIDTH,</span>
+				direction * PLAYER_HEIGHT, PLAYER_WIDTH, PLAYER_HEIGHT);
+	}
+	
+	/**
+	 * Create a color selection component for an outfit part.
+	 * 
+	 * @param niceName outfit part name that is capitalizes for user to see
+	 * @param key outfit part identifier
+	 * @param labels outfit part displays that should be kept up to date with
+	 *	the color changes (in addition of the whole outfit display)
+	 * @return color selection component
+	 */
+	private JComponent createColorSelector(String niceName, String key,
+			OutfitLabel... labels) {
+<span class="nc" id="L508">		return this.createColorSelector(niceName, key, false, labels);</span>
+	}
+	
+	/**
+	 * Create a color selection component for an outfit part optionally with
+	 * defined skin colors only.
+	 * 
+	 * @param niceName
+	 * 		Outfit part name that is capitalizes for user to see
+	 * @param key
+	 * 		Outfit part identifier
+	 * @param labels
+	 * 		List of outfit part display that should be kept up to date with
+	 * 		the color changes (in addition of the whole outfit display)
+	 * @param skinPalette
+	 * 		Use skin colors only
+	 * @return
+	 * 		color selection component
+	 */
+	private JComponent createColorSelector(final String niceName, final String key,
+			boolean skinPalette, final OutfitLabel... labels) {
+		
+<span class="nc" id="L530">		final JComponent container = SBoxLayout.createContainer(SBoxLayout.VERTICAL);</span>
+<span class="nc" id="L531">		final JCheckBox enableToggle = new JCheckBox(niceName + &quot; color&quot;);</span>
+		
+<span class="nc" id="L533">		container.add(enableToggle);</span>
+		// get the current state
+<span class="nc bnc" id="L535" title="All 2 branches missed.">		boolean colored = outfitColor.getColor(key) != null;</span>
+<span class="nc" id="L536">		enableToggle.setSelected(colored);</span>
+		
+		final AbstractColorSelector&lt;?&gt; selector;
+<span class="nc bnc" id="L539" title="All 2 branches missed.">		if (skinPalette) {</span>
+<span class="nc" id="L540">			selector = new SkinColorSelector();</span>
+		} else {
+<span class="nc" id="L542">			selector = new ColorSelector();</span>
+		}
+<span class="nc" id="L544">		selector.setEnabled(colored);</span>
+<span class="nc" id="L545">		selector.setAlignmentX(CENTER_ALIGNMENT);</span>
+<span class="nc" id="L546">		container.add(selector);</span>
+<span class="nc" id="L547">		final ColorSelectionModel model = selector.getSelectionModel();</span>
+<span class="nc" id="L548">		model.setSelectedColor(outfitColor.getColor(key));</span>
+<span class="nc" id="L549">		model.addChangeListener(new ChangeListener() {</span>
+			@Override
+			public void stateChanged(ChangeEvent ev) {
+<span class="nc" id="L552">				outfitColor.setColor(key, model.getSelectedColor());</span>
+<span class="nc bnc" id="L553" title="All 2 branches missed.">				for (OutfitLabel label : labels) {</span>
+<span class="nc" id="L554">					label.changed();</span>
+				}
+<span class="nc" id="L556">				outfitLabel.changed();</span>
+<span class="nc" id="L557">			}</span>
+		});
+		
+<span class="nc" id="L560">		enableToggle.addActionListener(new ActionListener() {</span>
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+<span class="nc bnc" id="L563" title="All 2 branches missed.">				if (enableToggle.isSelected()) {</span>
+					// restore previously selected color, if any
+<span class="nc" id="L565">					outfitColor.setColor(key, model.getSelectedColor());</span>
+				} else {
+					// use default coloring
+<span class="nc" id="L568">					outfitColor.setColor(key, null);</span>
+				}
+<span class="nc" id="L570">				selector.setEnabled(enableToggle.isSelected());</span>
+<span class="nc bnc" id="L571" title="All 2 branches missed.">				for (OutfitLabel label : labels) {</span>
+<span class="nc" id="L572">					label.changed();</span>
+				}
+<span class="nc" id="L574">				outfitLabel.changed();</span>
+<span class="nc" id="L575">			}</span>
+		});
+		
+		// For restoring the state
+<span class="nc" id="L579">		resetListeners.add(new ResetListener() {</span>
+			@Override
+			public void reset() {
+<span class="nc" id="L582">				Color color = outfitColor.getColor(key);</span>
+<span class="nc bnc" id="L583" title="All 2 branches missed.">				boolean colored = color != null;</span>
+<span class="nc bnc" id="L584" title="All 2 branches missed.">				if (colored) {</span>
+					/*
+					 * Changing the model triggers setting the color in
+					 * outfitColor, and null color is interpreted as grey in the
+					 * selector model, so avoid setting that.
+					 * 
+					 * As a side effect, the color selector remembers the
+					 * previously selected color for non colored outfit parts.
+					 * That is likely a better default than mid grey anyway.  
+					 */
+<span class="nc" id="L594">					model.setSelectedColor(color);</span>
+				}
+<span class="nc" id="L596">				selector.setEnabled(colored);</span>
+<span class="nc" id="L597">				enableToggle.setSelected(colored);</span>
+<span class="nc" id="L598">			}</span>
+		});
+		
+<span class="nc" id="L601">		return container;</span>
+	}
+	
+	/**
+	 * OK Button action.
+	 */
+	private void okActionPerformed() {
+<span class="nc" id="L608">		sendAction();</span>
+<span class="nc" id="L609">		this.dispose();</span>
+<span class="nc" id="L610">	} </span>
+
+	/**
+	 * Sent the outfit change action to the server.
+	 */
+	private void sendAction() {
+<span class="nc" id="L616">		StendhalClient client = StendhalClient.get();</span>
+		Color color;
+
+<span class="nc" id="L619">		final RPAction rpOutfitAction = new RPAction();</span>
+		/* TODO: Remove condition when outfit testing is finished */
+<span class="nc bnc" id="L621" title="All 2 branches missed.">		if (Testing.OUTFITS) {</span>
+<span class="nc" id="L622">			rpOutfitAction.put(Actions.TYPE, &quot;outfit_extended&quot;);</span>
+<span class="nc" id="L623">			long value = (body.getIndex() + (dress.getIndex() * 100)</span>
+					+ (head.getIndex() * (int)Math.pow(100, 2))
+					+ (hair.getIndex() * (int)Math.pow(100, 3))
+					+ (mouth.getIndex() * (int)Math.pow(100, 5))
+					+ (eyes.getIndex() * (int)Math.pow(100, 6)));
+<span class="nc" id="L628">			rpOutfitAction.put(Actions.VALUE, value);</span>
+<span class="nc" id="L629">		} else {</span>
+<span class="nc" id="L630">			rpOutfitAction.put(Actions.TYPE, &quot;outfit&quot;);</span>
+<span class="nc" id="L631">			rpOutfitAction.put(Actions.VALUE, body.getIndex()</span>
+					+ (dress.getIndex() * 100)
+					+ (head.getIndex() * 100 * 100)
+					+ (hair.getIndex() * 100 * 100 * 100));
+		}
+		
+		/* hair color */
+<span class="nc" id="L638">		color = outfitColor.getColor(OutfitColor.HAIR);</span>
+<span class="nc bnc" id="L639" title="All 2 branches missed.">		if (color != null) {</span>
+<span class="nc" id="L640">			rpOutfitAction.put(OutfitColor.HAIR, color.getRGB());</span>
+		}
+		
+		/* body and head color */
+<span class="nc" id="L644">		color = outfitColor.getColor(OutfitColor.SKIN);</span>
+<span class="nc bnc" id="L645" title="All 2 branches missed.">		if (color != null) {</span>
+<span class="nc" id="L646">			rpOutfitAction.put(OutfitColor.SKIN, color.getRGB());</span>
+		}
+		
+		/* dress color */
+<span class="nc" id="L650">		color = outfitColor.getColor(OutfitColor.DRESS);</span>
+<span class="nc bnc" id="L651" title="All 2 branches missed.">		if (color != null) {</span>
+<span class="nc" id="L652">			rpOutfitAction.put(OutfitColor.DRESS, color.getRGB());</span>
+		}
+		
+		/* TODO: Remove condition after outfit testing is finished. */
+<span class="nc bnc" id="L656" title="All 2 branches missed.">		if (Testing.OUTFITS) {</span>
+			/* eyes color */
+<span class="nc" id="L658">			color = outfitColor.getColor(OutfitColor.EYES);</span>
+<span class="nc bnc" id="L659" title="All 2 branches missed.">			if (color != null) {</span>
+<span class="nc" id="L660">				rpOutfitAction.put(OutfitColor.EYES, color.getRGB());</span>
+			}
+		}
+		
+<span class="nc" id="L664">		client.send(rpOutfitAction);</span>
+<span class="nc" id="L665">	}</span>
+		
+	/**
+	 * Apply Stendhal style to all components.
+	 */
+	private void applyStyle() {
+<span class="nc" id="L671">		Style style = StyleUtil.getStyle();</span>
+<span class="nc bnc" id="L672" title="All 2 branches missed.">		if (style != null) {</span>
+			// Labels (Images). Making all JLabels bordered would be undesired
+<span class="nc" id="L674">			bodyLabel.setBorder(style.getBorderDown());</span>
+<span class="nc" id="L675">			dressLabel.setBorder(style.getBorderDown());</span>
+<span class="nc" id="L676">			outfitLabel.setBorder(style.getBorderDown());</span>
+<span class="nc" id="L677">			hairLabel.setBorder(style.getBorderDown());</span>
+			/* TODO: Remove condition after outfit testing is finished */
+<span class="nc bnc" id="L679" title="All 2 branches missed.">			if (Testing.OUTFITS) {</span>
+<span class="nc" id="L680">				eyesLabel.setBorder(style.getBorderDown());</span>
+<span class="nc" id="L681">				mouthLabel.setBorder(style.getBorderDown());</span>
+			}
+<span class="nc" id="L683">			headLabel.setBorder(style.getBorderDown());</span>
+		}
+<span class="nc" id="L685">	}</span>
+	
+	/**
+	 * Set the state of the selector.
+	 * 
+	 * @param outfit outfit code
+	 * @param colors color state. Unlike the one passed to the constructor, this
+	 * 	will not be modified
+	 */
+	void setState(int outfit, OutfitColor colors) {
+		// Copy the original colors
+<span class="nc" id="L696">		outfitColor.setColor(OutfitColor.DRESS, colors.getColor(OutfitColor.DRESS));</span>
+<span class="nc" id="L697">		outfitColor.setColor(OutfitColor.HAIR, colors.getColor(OutfitColor.HAIR));</span>
+		/* TODO: Remove condition after outfit testing is finished. */
+<span class="nc bnc" id="L699" title="All 2 branches missed.">		if (Testing.OUTFITS) {</span>
+<span class="nc" id="L700">			outfitColor.setColor(OutfitColor.SKIN, colors.getColor(OutfitColor.SKIN));</span>
+		}
+		
+		// analyze the outfit code
+<span class="nc" id="L704">		int bodiesIndex = outfit % 100;</span>
+<span class="nc" id="L705">		outfit = outfit / 100;</span>
+<span class="nc" id="L706">		int clothesIndex = outfit % 100;</span>
+<span class="nc" id="L707">		outfit = outfit / 100;</span>
+<span class="nc" id="L708">		int headsIndex = outfit % 100;</span>
+<span class="nc" id="L709">		outfit = outfit / 100;</span>
+<span class="nc" id="L710">		int hairsIndex = outfit % 100;</span>
+		
+<span class="nc" id="L712">		body.setIndex(bodiesIndex);</span>
+<span class="nc" id="L713">		dress.setIndex(clothesIndex);</span>
+<span class="nc" id="L714">		head.setIndex(headsIndex);</span>
+<span class="nc" id="L715">		hair.setIndex(hairsIndex);</span>
+
+		// Color selectors, and their toggles
+<span class="nc bnc" id="L718" title="All 2 branches missed.">		for (ResetListener l : resetListeners) {</span>
+<span class="nc" id="L719">			l.reset();</span>
+<span class="nc" id="L720">		}</span>
+<span class="nc" id="L721">	}</span>
+	
+	/**
+	 * Set the state of the selector for extened outfit features: Currently
+	 * mouth and eyes.
+	 * 
+	 * @param outfit
+	 * 		14-digit integer representing extended features
+	 * @param colors
+	 * 		Color state of outfit parts (will not be modiefied like the one
+	 * 		passed to constructor)
+	 */
+	void setState(long outfit, final OutfitColor colors) {
+		// Analyze the outfit code
+<span class="nc" id="L735">		int mouthsIndex = (int) (outfit % 100);</span>
+<span class="nc" id="L736">		outfit = outfit / 100;</span>
+<span class="nc" id="L737">		int eyesIndex = (int) (outfit % 100);</span>
+<span class="nc" id="L738">		outfit = outfit / 100;</span>
+		
+<span class="nc" id="L740">		mouth.setIndex(mouthsIndex);</span>
+<span class="nc" id="L741">		eyes.setIndex(eyesIndex);</span>
+		
+		// Run code for original (old) outfit system to update listeners
+<span class="nc" id="L744">		this.setState((int)outfit, colors);</span>
+<span class="nc" id="L745">	}</span>
+	
+	/**
+	 * Interface for components that can be reseted to a default state. 
+	 */
+	private interface ResetListener {
+		void reset();
+	}
+	
+	/**
+	 * An image label for outfit and outfit parts.
+	 */
+	private static class OutfitLabel extends JLabel implements IndexChangeListener {
+		final SpriteRetriever[] retrievers;
+		
+		/**
+		 * Create a new OutfitLabel.
+		 * 
+		 * @param retrievers sprite sources used to update the image, when
+		 *	changed() is called
+		 */
+<span class="nc" id="L766">		OutfitLabel(SpriteRetriever ... retrievers) {</span>
+<span class="nc" id="L767">			setOpaque(true);</span>
+<span class="nc" id="L768">			this.retrievers = retrievers;</span>
+<span class="nc" id="L769">		}</span>
+		
+		@Override
+		public void changed() {
+			// Update image
+<span class="nc" id="L774">			BufferedImage img = getGraphicsConfiguration().createCompatibleImage(PLAYER_WIDTH, PLAYER_HEIGHT);</span>
+<span class="nc" id="L775">			Graphics g = img.getGraphics();</span>
+<span class="nc" id="L776">			g.setColor(Color.WHITE);</span>
+<span class="nc" id="L777">			g.fillRect(0, 0, PLAYER_WIDTH, PLAYER_HEIGHT);</span>
+<span class="nc bnc" id="L778" title="All 2 branches missed.">			for (SpriteRetriever retriever : retrievers) {</span>
+<span class="nc" id="L779">				retriever.getSprite().draw(g, 0, 0);</span>
+			}
+<span class="nc" id="L781">			g.dispose();</span>
+<span class="nc" id="L782">			ImageIcon icon = new ImageIcon(img);</span>
+<span class="nc" id="L783">			setIcon(icon);</span>
+<span class="nc" id="L784">		}</span>
+	}
+	
+	/**
+	 * A ranged, circular, index model.
+	 */
+	private static class SelectorModel {
+		final int n;
+		int index;
+<span class="nc" id="L793">		final List&lt;IndexChangeListener&gt; listeners = new ArrayList&lt;IndexChangeListener&gt;();</span>
+		
+		/**
+		 * Create a new SelectorModel. Valid indices are 0 to n - 1.
+		 * 
+		 * @param n maximum value
+		 */
+<span class="nc" id="L800">		SelectorModel(int n) {</span>
+<span class="nc bnc" id="L801" title="All 2 branches missed.">			if (n &lt;= 0) {</span>
+<span class="nc" id="L802">				throw new IllegalArgumentException(&quot;Can not create a model with &quot; + n + &quot; elements&quot;);</span>
+			}
+<span class="nc" id="L804">			this.n = n;</span>
+<span class="nc" id="L805">		}</span>
+		
+		/**
+		 * Add a new listener for value changes.
+		 * 
+		 * @param listener added listener
+		 */
+		void addListener(IndexChangeListener listener) {
+<span class="nc" id="L813">			listeners.add(listener);</span>
+<span class="nc" id="L814">		}</span>
+		
+		/**
+		 * Set index.
+		 *  
+		 * @param index new index
+		 */
+		void setIndex(int index) {
+<span class="nc bnc" id="L822" title="All 2 branches missed.">			if (!isAllowed(index)) {</span>
+<span class="nc" id="L823">				LOGGER.warn(&quot;Index out of allowed range [0-&quot; + n + &quot;]: &quot; + index, </span>
+						new Throwable());
+<span class="nc" id="L825">				index = 0;</span>
+			}
+<span class="nc" id="L827">			this.index = index;</span>
+<span class="nc" id="L828">			fire();</span>
+<span class="nc" id="L829">		}</span>
+		
+		/**
+		 * Scroll index value downwards.
+		 */
+		void scrollDown() {
+			// avoid negatives
+<span class="nc" id="L836">			index += n - 1;</span>
+<span class="nc" id="L837">			index %= n;</span>
+<span class="nc" id="L838">			fire();</span>
+<span class="nc" id="L839">		}</span>
+		
+		/**
+		 * Scroll the index value upwards.
+		 */
+		void scrollUp() {
+<span class="nc" id="L845">			index++;</span>
+<span class="nc" id="L846">			index %= n;</span>
+<span class="nc" id="L847">			fire();</span>
+<span class="nc" id="L848">		}</span>
+		
+		/**
+		 * Get the current index value.
+		 * 
+		 * @return index
+		 */
+		int getIndex() {
+<span class="nc" id="L856">			return index;</span>
+		}
+		
+		/**
+		 * Check if an index is within allowed limits.
+		 * 
+		 * @param index checked index
+		 * @return &lt;code&gt;true&lt;/code&gt; if the index is valid, otherwise
+		 * 	&lt;code&gt;false&lt;/code&gt;
+		 */
+		boolean isAllowed(int index) {
+<span class="nc bnc" id="L867" title="All 4 branches missed.">			return (index &gt;= 0) &amp;&amp; (index &lt; n);</span>
+		}
+		
+		/**
+		 * Notify listeners that the value has changed.
+		 */
+		private void fire() {
+<span class="nc bnc" id="L874" title="All 2 branches missed.">			for (IndexChangeListener listener : listeners) {</span>
+<span class="nc" id="L875">				listener.changed();</span>
+<span class="nc" id="L876">			}</span>
+<span class="nc" id="L877">		}</span>
+	}
+
+	/**
+	 * An interface for objects that can fetch outfit part sprites.
+	 */
+	private interface SpriteRetriever {
+		/**
+		 * Get the sprite.
+		 * 
+		 * @return sprite
+		 */
+		Sprite getSprite();
+	}
+	
+	/**
+	 * Interface for listening SelectorModel changes.
+	 */
+	private interface IndexChangeListener {
+		/**
+		 * Called when the model changes.
+		 */
+		void changed();
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

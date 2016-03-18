@@ -1,0 +1,323 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ColorSelector.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui</a> &gt; <span class="el_source">ColorSelector.java</span></div><h1>ColorSelector.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2011 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui;
+
+import games.stendhal.client.gui.layout.SLayout;
+import games.stendhal.client.sprite.ImageSprite;
+import games.stendhal.client.sprite.Sprite;
+import games.stendhal.common.MathHelper;
+import games.stendhal.common.color.ARGB;
+import games.stendhal.common.color.HSL;
+
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.GradientPaint;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Insets;
+import java.awt.LinearGradientPaint;
+import java.awt.Paint;
+import java.awt.Point;
+import java.awt.image.BufferedImage;
+
+import javax.swing.JComponent;
+import javax.swing.colorchooser.DefaultColorSelectionModel;
+
+/**
+ * A HSL space color selector that should be small enough to fit in the outfit
+ * selection dialog.
+ */
+class ColorSelector extends AbstractColorSelector&lt;ColorSelector.HSLSelectionModel&gt; {
+	/** The H-S selection area. */
+	private final JComponent hueSaturationSelector;
+	/** Lightness slider. */
+	private final JComponent lightnessSelector;
+
+	/**
+	 * Create a new ColorSelector.
+	 */
+	ColorSelector() {
+<span class="nc" id="L49">		super(new HSLSelectionModel());</span>
+<span class="nc" id="L50">		HSLSelectionModel model = getSelectionModel();</span>
+<span class="nc" id="L51">		hueSaturationSelector = new HueSaturationSelector(model);</span>
+<span class="nc" id="L52">		add(hueSaturationSelector);</span>
+<span class="nc" id="L53">		lightnessSelector = new LightnessSelector(model);</span>
+<span class="nc" id="L54">		add(lightnessSelector, SLayout.EXPAND_X);</span>
+<span class="nc" id="L55">	}</span>
+
+	@Override
+	public void setEnabled(boolean enabled) {
+<span class="nc" id="L59">		super.setEnabled(enabled);</span>
+<span class="nc" id="L60">		hueSaturationSelector.setEnabled(enabled);</span>
+<span class="nc" id="L61">		lightnessSelector.setEnabled(enabled);</span>
+<span class="nc" id="L62">	}</span>
+	
+	/**
+	 * Hue-Saturation part of the selector component.
+	 */
+	private static class HueSaturationSelector extends AbstractSpriteColorSelector&lt;HSLSelectionModel&gt; {
+		/**
+		 * Create a new HueSaturationSelector.
+		 * 
+		 * @param model selection model. Should be the same as for the whole
+		 * 	selector
+		 */
+		HueSaturationSelector(HSLSelectionModel model) {
+<span class="nc" id="L75">			super(model);</span>
+<span class="nc" id="L76">		}</span>
+		
+		@Override
+		Sprite createNormalSprite() {
+<span class="nc" id="L80">			BufferedImage img = getGraphicsConfiguration().createCompatibleImage(SPRITE_WIDTH, SPRITE_HEIGHT);</span>
+
+<span class="nc" id="L82">			float[] hsl = new float[3];</span>
+<span class="nc" id="L83">			hsl[2] = 0.5f;</span>
+<span class="nc" id="L84">			int[] rgb = new int[4];</span>
+<span class="nc" id="L85">			rgb[0] = 0xff;</span>
+			
+<span class="nc bnc" id="L87" title="All 2 branches missed.">			for (int x = 0; x &lt; SPRITE_WIDTH; x++) {</span>
+<span class="nc bnc" id="L88" title="All 2 branches missed.">				for (int y = 0; y &lt; SPRITE_HEIGHT; y++) {</span>
+<span class="nc" id="L89">					hsl[0] = x / (float) SPRITE_WIDTH;</span>
+<span class="nc" id="L90">					hsl[1] = 1f - y / (float) SPRITE_HEIGHT;</span>
+<span class="nc" id="L91">					HSL.hsl2rgb(hsl, rgb);</span>
+<span class="nc" id="L92">					int color = ARGB.mergeRgb(rgb);</span>
+<span class="nc" id="L93">					img.setRGB(x, y, color);</span>
+				}
+			}
+<span class="nc" id="L96">			return new ImageSprite(img, &quot;hsl_color_selection_id&quot;);</span>
+		}
+
+		@Override
+		public void paintComponent(Graphics g) {
+<span class="nc" id="L101">			super.paintComponent(g);</span>
+			
+<span class="nc" id="L103">			Insets ins = getInsets();</span>
+<span class="nc" id="L104">			Sprite sprite = getBackgroundSprite();</span>
+
+			// draw a cross
+<span class="nc" id="L107">			g.setColor(Color.BLACK);</span>
+<span class="nc" id="L108">			int x = (int) (model.getHue() * sprite.getWidth()) + ins.left;</span>
+<span class="nc" id="L109">			int y = (int) ((1f - model.getSaturation()) * sprite.getHeight()) + ins.left;</span>
+<span class="nc" id="L110">			g.drawLine(x, 0, x, getHeight());</span>
+<span class="nc" id="L111">			g.drawLine(0, y, getWidth(), y);</span>
+<span class="nc" id="L112">		}</span>
+
+		@Override
+		void select(Point point) {
+<span class="nc" id="L116">			Insets ins = getInsets();</span>
+<span class="nc" id="L117">			Sprite sprite = getBackgroundSprite();</span>
+<span class="nc" id="L118">			int width = sprite.getWidth();</span>
+<span class="nc" id="L119">			int height = sprite.getHeight();</span>
+<span class="nc" id="L120">			int xDiff = point.x - ins.left;</span>
+<span class="nc" id="L121">			xDiff = MathHelper.clamp(xDiff, 0, width);</span>
+<span class="nc" id="L122">			float hue = xDiff / (float) width;</span>
+<span class="nc" id="L123">			int yDiff = point.y - ins.top;</span>
+<span class="nc" id="L124">			yDiff = MathHelper.clamp(yDiff, 0, height);</span>
+<span class="nc" id="L125">			float saturation = 1f - yDiff / (float) height;</span>
+<span class="nc" id="L126">			model.setHS(hue, saturation);</span>
+<span class="nc" id="L127">		}</span>
+	}
+
+	/**
+	 * Lightness part of the selector.
+	 */
+	private static class LightnessSelector extends AbstractSelector&lt;HSLSelectionModel&gt; {
+		/** Height of the gradient bar. */
+		private static final int BAR_HEIGHT = 10;
+
+		/**
+		 * Create a new LightnessSelector.
+		 * 
+		 * @param model selection model. Should be the same as for the entire
+		 * 	selector component.
+		 */
+		LightnessSelector(HSLSelectionModel model) {
+<span class="nc" id="L144">			super(model);</span>
+<span class="nc" id="L145">		}</span>
+
+		@Override
+		public Dimension getPreferredSize() {
+<span class="nc" id="L149">			Insets ins = getInsets();</span>
+			// insane value, but we do not actually use it
+<span class="nc" id="L151">			int width = BAR_HEIGHT + ins.left + ins.right;</span>
+<span class="nc" id="L152">			int height = BAR_HEIGHT + ins.top + ins.bottom;</span>
+<span class="nc" id="L153">			return new Dimension(width, height);</span>
+		}
+
+		@Override
+		protected void paintComponent(Graphics g) {
+<span class="nc" id="L158">			Insets ins = getInsets();</span>
+<span class="nc" id="L159">			int width = getWidth() - ins.left - ins.right;</span>
+<span class="nc" id="L160">			int height = getWidth() - ins.left - ins.right;</span>
+
+<span class="nc bnc" id="L162" title="All 2 branches missed.">			if (isEnabled()) {</span>
+				/*
+				 * A gradient paint is a bit fake, as it won't use the same
+				 * color model for the shift as we actually do. However, that
+				 * should not be a problem because we never show the user the
+				 * actual selected color, so she won't be able to see the slight
+				 * difference.
+				 * 
+				 * Do the paint in 2 parts, to get the correct saturation for
+				 * the mid lightness.
+				 */
+				// calculate start, end and middle colors
+<span class="nc" id="L174">				float[] hsl = new float[3];</span>
+<span class="nc" id="L175">				int[] rgb = new int[4];</span>
+<span class="nc" id="L176">				rgb[0] = 0xff; // alpha</span>
+
+<span class="nc" id="L178">				hsl[0] = model.getHue();</span>
+<span class="nc" id="L179">				hsl[1] = model.getSaturation();</span>
+<span class="nc" id="L180">				Color[] colors = new Color[3];</span>
+				// 0 would be black, and have no color
+<span class="nc" id="L182">				hsl[2] = 0.08f;</span>
+<span class="nc" id="L183">				HSL.hsl2rgb(hsl, rgb);</span>
+<span class="nc" id="L184">				colors[0] = new Color(ARGB.mergeRgb(rgb));</span>
+<span class="nc" id="L185">				hsl[2] = 0.5f;</span>
+<span class="nc" id="L186">				HSL.hsl2rgb(hsl, rgb);</span>
+<span class="nc" id="L187">				colors[1] = new Color(ARGB.mergeRgb(rgb));</span>
+				// 1 would be white, and have no color
+<span class="nc" id="L189">				hsl[2] = 0.92f;</span>
+<span class="nc" id="L190">				HSL.hsl2rgb(hsl, rgb);</span>
+<span class="nc" id="L191">				colors[2] = new Color(ARGB.mergeRgb(rgb));</span>
+<span class="nc" id="L192">				Paint paint = new LinearGradientPaint(ins.left, 0f, width, 0f,</span>
+						new float[]{0f,  0.5f, 1f}, colors);
+<span class="nc" id="L194">				Graphics2D g2d = (Graphics2D) g;</span>
+<span class="nc" id="L195">				g2d.setPaint(paint);</span>
+<span class="nc" id="L196">				g2d.fillRect(ins.left, ins.top, width, height);</span>
+<span class="nc" id="L197">			} else {</span>
+				// Fake a desaturated gradient.
+<span class="nc" id="L199">				Color startColor = Color.BLACK;</span>
+<span class="nc" id="L200">				Color endColor = Color.WHITE;</span>
+		
+<span class="nc" id="L202">				Graphics2D g2d = (Graphics2D) g;</span>
+<span class="nc" id="L203">				GradientPaint p = new GradientPaint(ins.left, ins.top, startColor, width, ins.top, endColor);</span>
+<span class="nc" id="L204">				g2d.setPaint(p);</span>
+<span class="nc" id="L205">				g2d.fillRect(ins.left, ins.top, width, height);</span>
+			}
+			
+			// Draw a line. white is not visible on black, and the vice versa,
+			// so draw them both
+<span class="nc" id="L210">			g.setColor(Color.BLACK);</span>
+<span class="nc" id="L211">			int x = (int) (model.getLightness() * width) + ins.left;</span>
+<span class="nc" id="L212">			g.drawLine(x, 0, x, getHeight());</span>
+<span class="nc" id="L213">			g.setColor(Color.WHITE);</span>
+<span class="nc" id="L214">			x++;</span>
+<span class="nc" id="L215">			g.drawLine(x, 0, x, getHeight());</span>
+<span class="nc" id="L216">		}</span>
+
+		@Override
+		void select(Point point) {
+<span class="nc" id="L220">			Insets ins = getInsets();</span>
+<span class="nc" id="L221">			int width = getWidth() - ins.left - ins.right;</span>
+<span class="nc" id="L222">			int xDiff = point.x - ins.left;</span>
+<span class="nc" id="L223">			xDiff = MathHelper.clamp(xDiff, 0, width);</span>
+<span class="nc" id="L224">			float lightness = xDiff / (float) width;</span>
+			/*
+			 * Limit lightness a bit, so that the gradient does not become
+			 * confusingly desaturated at the ends.
+			 */
+<span class="nc" id="L229">			lightness = MathHelper.clamp(lightness, 0.01f, 0.99f);</span>
+<span class="nc" id="L230">			model.setL(lightness);</span>
+<span class="nc" id="L231">		}</span>
+		
+		@Override
+		public void setEnabled(boolean enabled) {
+<span class="nc" id="L235">			boolean old = isEnabled();</span>
+<span class="nc" id="L236">			super.setEnabled(enabled);</span>
+<span class="nc bnc" id="L237" title="All 2 branches missed.">			if (old != enabled) {</span>
+<span class="nc" id="L238">				repaint();</span>
+			}
+<span class="nc" id="L240">		}</span>
+	}
+
+	/**
+	 * Color selection model that is capable of returning, and accepting HSL
+	 * space color data in addition of the usual RGB.
+	 */
+<span class="nc" id="L247">	static class HSLSelectionModel extends DefaultColorSelectionModel {</span>
+		/** Current color in HSL space. */
+<span class="nc" id="L249">		private float[] hsl = new float[3];</span>
+
+		@Override
+		public void setSelectedColor(Color color) {
+<span class="nc bnc" id="L253" title="All 2 branches missed.">			if (color == null) {</span>
+				// Something with a sane lightness value
+<span class="nc" id="L255">				color = Color.GRAY;</span>
+			}
+<span class="nc" id="L257">			int[] rgb = new int[4];</span>
+<span class="nc" id="L258">			ARGB.splitRgb(color.getRGB(), rgb);</span>
+<span class="nc" id="L259">			HSL.rgb2hsl(rgb, hsl);</span>
+<span class="nc" id="L260">			super.setSelectedColor(color);</span>
+<span class="nc" id="L261">		}</span>
+
+		/**
+		 * Set hue and saturation.
+		 * 
+		 * @param hue new hue value
+		 * @param saturation new saturation value
+		 */
+		void setHS(float hue, float saturation) {
+<span class="nc" id="L270">			hsl[0] = hue;</span>
+<span class="nc" id="L271">			hsl[1] = saturation;</span>
+<span class="nc" id="L272">			updateColor();</span>
+<span class="nc" id="L273">		}</span>
+
+		/**
+		 * Set lightness.
+		 * 
+		 * @param lightness new L value
+		 */
+		void setL(float lightness) {
+<span class="nc" id="L281">			hsl[2] = lightness;</span>
+<span class="nc" id="L282">			updateColor();</span>
+<span class="nc" id="L283">		}</span>
+
+		/**
+		 * Get hue.
+		 * 
+		 * @return hue
+		 */
+		float getHue() {
+<span class="nc" id="L291">			return hsl[0];</span>
+		}
+
+		/**
+		 * Get saturation.
+		 * 
+		 * @return saturation
+		 */
+		float getSaturation() {
+<span class="nc" id="L300">			return hsl[1];</span>
+		}
+
+		/**
+		 * Get lightness.
+		 * 
+		 * @return lightness
+		 */
+		float getLightness() {
+<span class="nc" id="L309">			return hsl[2];</span>
+		}
+
+		/**
+		 * Recalculate color based on the HSL data.
+		 */
+		private void updateColor() {
+<span class="nc" id="L316">			int[] rgb = new int[4];</span>
+<span class="nc" id="L317">			HSL.hsl2rgb(hsl, rgb);</span>
+<span class="nc" id="L318">			rgb[0] = 0xff;</span>
+<span class="nc" id="L319">			super.setSelectedColor(new Color(ARGB.mergeRgb(rgb)));</span>
+<span class="nc" id="L320">		}</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

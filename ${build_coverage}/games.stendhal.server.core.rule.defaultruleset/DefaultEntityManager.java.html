@@ -1,0 +1,407 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>DefaultEntityManager.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.core.rule.defaultruleset</a> &gt; <span class="el_source">DefaultEntityManager.java</span></div><h1>DefaultEntityManager.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                      (C) Copyright 2003 - Marauroa                      *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.core.rule.defaultruleset;
+
+import games.stendhal.common.parser.ExpressionType;
+import games.stendhal.common.parser.WordList;
+import games.stendhal.server.core.config.CreatureGroupsXMLLoader;
+import games.stendhal.server.core.config.ItemGroupsXMLLoader;
+import games.stendhal.server.core.config.SpellGroupsXMLLoader;
+import games.stendhal.server.core.rule.EntityManager;
+import games.stendhal.server.entity.Entity;
+import games.stendhal.server.entity.creature.Creature;
+import games.stendhal.server.entity.item.Item;
+import games.stendhal.server.entity.spell.Spell;
+
+import java.net.URI;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.log4j.Logger;
+
+/**
+ * entity manager for the default ruleset.
+ * 
+ * @author Matthias Totz
+ */
+public class DefaultEntityManager implements EntityManager {
+
+	/** the logger instance. */
+<span class="fc" id="L42">	private static final Logger LOGGER = Logger.getLogger(DefaultEntityManager.class);</span>
+
+	/** maps the tile ids to the classes. */
+	private final Map&lt;String, String&gt; idToClass;
+
+	/** maps the item names to the actual item enums. */
+	private final Map&lt;String, DefaultItem&gt; classToItem;
+
+	/** lists all creatures that are being used at least once. */
+	private final Map&lt;String, Creature&gt; createdCreature;
+
+	/** lists all items that are being used at least once . */
+	private final Map&lt;String, Item&gt; createdItem;
+	
+	/** lists all spell that are being used at least once . */
+	private final Map&lt;String, Spell&gt; createdSpell;
+	
+	/**
+	 * lists all loaded default spells that are usable
+	 */
+	private final Map&lt;String, DefaultSpell&gt; nameToSpell;
+
+	private LowerCaseMap&lt;DefaultCreature&gt; classToCreature;
+
+	/** no public constructor. */
+<span class="fc" id="L67">	public DefaultEntityManager() {</span>
+<span class="fc" id="L68">		idToClass = new HashMap&lt;String, String&gt;();</span>
+<span class="fc" id="L69">		createdCreature = new HashMap&lt;String, Creature&gt;();</span>
+<span class="fc" id="L70">		createdItem = new HashMap&lt;String, Item&gt;();</span>
+<span class="fc" id="L71">		createdSpell = new HashMap&lt;String, Spell&gt;();</span>
+<span class="fc" id="L72">		classToItem = new HashMap&lt;String, DefaultItem&gt;();</span>
+<span class="fc" id="L73">		nameToSpell = new HashMap&lt;String, DefaultSpell&gt;();</span>
+<span class="fc" id="L74">		buildItemTables();</span>
+<span class="fc" id="L75">		buildCreatureTables();</span>
+<span class="fc" id="L76">		buildSpellTables();</span>
+<span class="fc" id="L77">	}</span>
+	
+	/**
+	 * builds the spell tables
+	 */
+	private void buildSpellTables() {
+		try {
+<span class="fc" id="L84">			final SpellGroupsXMLLoader loader = new SpellGroupsXMLLoader(new URI(&quot;/data/conf/spells.xml&quot;));</span>
+<span class="fc" id="L85">			List&lt;DefaultSpell&gt; loadedDefaultSpells = loader.load();</span>
+<span class="fc bfc" id="L86" title="All 2 branches covered.">			for (DefaultSpell defaultSpell : loadedDefaultSpells) {</span>
+<span class="fc" id="L87">				addSpell(defaultSpell);</span>
+<span class="fc" id="L88">			}</span>
+<span class="nc" id="L89">		} catch (Exception e) {</span>
+<span class="nc" id="L90">			LOGGER.error(&quot;spells.xml could not be loaded&quot;, e);</span>
+<span class="fc" id="L91">		}</span>
+<span class="fc" id="L92">	}</span>
+
+	/**
+	 * Build the items tables
+	 */
+	private void buildItemTables() {
+		try {
+<span class="fc" id="L99">			final ItemGroupsXMLLoader loader = new ItemGroupsXMLLoader(new URI(&quot;/data/conf/items.xml&quot;));</span>
+<span class="fc" id="L100">			final List&lt;DefaultItem&gt; items = loader.load();</span>
+
+<span class="fc bfc" id="L102" title="All 2 branches covered.">			for (final DefaultItem item : items) {</span>
+<span class="fc" id="L103">				final String clazz = item.getItemName();</span>
+
+<span class="pc bpc" id="L105" title="1 of 2 branches missed.">				if (classToItem.containsKey(clazz)) {</span>
+<span class="nc" id="L106">					LOGGER.warn(&quot;Repeated item name: &quot; + clazz);</span>
+				}
+
+<span class="fc" id="L109">				classToItem.put(clazz, item);</span>
+
+<span class="fc" id="L111">				String typeString = ExpressionType.OBJECT;</span>
+
+<span class="fc bfc" id="L113" title="All 2 branches covered.">				if (item.getItemClass().equals(&quot;food&quot;)) {</span>
+<span class="fc" id="L114">					typeString += ExpressionType.SUFFIX_FOOD;</span>
+<span class="fc bfc" id="L115" title="All 2 branches covered.">				} else if (item.getItemClass().equals(&quot;drink&quot;)) {</span>
+<span class="fc" id="L116">					typeString += ExpressionType.SUFFIX_FOOD;</span>
+<span class="fc" id="L117">					typeString += ExpressionType.SUFFIX_FLUID;</span>
+				}
+
+<span class="fc" id="L120">				WordList.getInstance().registerName(item.getItemName(), typeString);</span>
+<span class="fc" id="L121">			}</span>
+<span class="nc" id="L122">		} catch (final Exception e) {</span>
+<span class="nc" id="L123">			LOGGER.error(&quot;items.xml could not be loaded&quot;, e);</span>
+<span class="fc" id="L124">		}</span>
+<span class="fc" id="L125">	}</span>
+
+	/**
+	 * Build the creatures tables
+	 */
+	private void buildCreatureTables() {
+<span class="fc" id="L131">		classToCreature = new LowerCaseMap&lt;DefaultCreature&gt;();</span>
+
+<span class="fc" id="L133">		final CreatureGroupsXMLLoader loader = new CreatureGroupsXMLLoader(&quot;/data/conf/creatures.xml&quot;);</span>
+<span class="fc" id="L134">		final List&lt;DefaultCreature&gt; creatures = loader.load();</span>
+
+<span class="fc bfc" id="L136" title="All 2 branches covered.">		for (final DefaultCreature creature : creatures) {</span>
+<span class="fc" id="L137">			final String id = creature.getTileId();</span>
+<span class="fc" id="L138">			final String clazz = creature.getCreatureName();</span>
+
+<span class="pc bpc" id="L140" title="1 of 2 branches missed.">			if (classToCreature.containsKey(clazz)) {</span>
+<span class="nc" id="L141">				LOGGER.warn(&quot;Repeated creature name: &quot; + clazz);</span>
+			}
+
+<span class="pc bpc" id="L144" title="1 of 2 branches missed.">			if (!creature.verifyItems(this)) {</span>
+<span class="nc" id="L145">				LOGGER.warn(&quot;Items dropped by creature name: &quot; + clazz + &quot; doesn't exists&quot;);</span>
+			}
+
+<span class="fc" id="L148">			classToCreature.put(clazz, creature);</span>
+<span class="fc" id="L149">			idToClass.put(id, clazz);</span>
+
+<span class="fc" id="L151">			WordList.getInstance().registerName(creature.getCreatureName(), ExpressionType.SUBJECT);</span>
+<span class="fc" id="L152">		}</span>
+<span class="fc" id="L153">	}</span>
+
+	@Override
+	public boolean addItem(final DefaultItem item) {
+<span class="nc" id="L157">		final String clazz = item.getItemName();</span>
+
+<span class="nc bnc" id="L159" title="All 2 branches missed.">		if (classToItem.containsKey(clazz)) {</span>
+<span class="nc" id="L160">			LOGGER.warn(&quot;Repeated item name: &quot; + clazz);</span>
+<span class="nc" id="L161">			return false;</span>
+		}
+
+<span class="nc" id="L164">		classToItem.put(clazz, item);</span>
+
+<span class="nc" id="L166">		return true;</span>
+	}
+	
+	@Override
+	public boolean addCreature(final DefaultCreature creature) {
+<span class="nc" id="L171">		final String id = creature.getTileId();</span>
+<span class="nc" id="L172">		final String clazz = creature.getCreatureName();</span>
+
+<span class="nc bnc" id="L174" title="All 2 branches missed.">		if (classToCreature.containsKey(clazz)) {</span>
+<span class="nc" id="L175">			LOGGER.warn(&quot;Repeated creature name: &quot; + clazz);</span>
+		}
+
+<span class="nc bnc" id="L178" title="All 2 branches missed.">		if (!creature.verifyItems(this)) {</span>
+<span class="nc" id="L179">			LOGGER.warn(&quot;Items dropped by creature name: &quot; + clazz + &quot; doesn't exists&quot;);</span>
+		}
+<span class="nc" id="L181">		classToCreature.put(clazz, creature);</span>
+<span class="nc" id="L182">		idToClass.put(id, clazz);</span>
+
+<span class="nc" id="L184">		return true;</span>
+	}
+
+	@Override
+	public boolean addSpell(DefaultSpell spell) {
+<span class="pc bpc" id="L189" title="1 of 2 branches missed.">		if(nameToSpell.containsKey(spell.getName())) {</span>
+<span class="nc" id="L190">			LOGGER.warn(&quot;Repeated spell name: &quot;+ spell.getName());</span>
+		}
+<span class="fc" id="L192">		nameToSpell.put(spell.getName(), spell);</span>
+<span class="fc" id="L193">		return true;</span>
+	}
+	
+	/**
+	 * @return a list of all Creatures that are instantiated.
+	 */
+	@Override
+	public Collection&lt;Creature&gt; getCreatures() {
+<span class="fc" id="L201">		return createdCreature.values();</span>
+	}
+
+	/**
+	 * @return a list of all Items that are instantiated.
+	 */
+	@Override
+	public Collection&lt;Item&gt; getItems() {
+<span class="nc" id="L209">		return createdItem.values();</span>
+	}
+
+	/**
+	 * returns the entity or &lt;code&gt;null&lt;/code&gt; if the id is unknown.
+	 * 
+	 * @param clazz
+	 *            RPClass
+	 * @return the new created entity or null if class not found
+	 * 
+	 * @throws NullPointerException
+	 *             if clazz is &lt;code&gt;null&lt;/code&gt;
+	 */
+	@Override
+	public Entity getEntity(final String clazz) {
+<span class="pc bpc" id="L224" title="1 of 2 branches missed.">		if (clazz == null) {</span>
+<span class="nc" id="L225">			throw new IllegalArgumentException(&quot;entity class is null&quot;);</span>
+		}
+
+		Entity entity;
+		// Lookup the id in the creature table
+<span class="fc" id="L230">		entity = getCreature(clazz);</span>
+<span class="fc bfc" id="L231" title="All 2 branches covered.">		if (entity != null) {</span>
+<span class="fc" id="L232">			return entity;</span>
+		}
+
+		// Lookup the id in the item table
+<span class="fc" id="L236">		entity = getItem(clazz);</span>
+<span class="fc bfc" id="L237" title="All 2 branches covered.">		if (entity != null) {</span>
+<span class="fc" id="L238">			return entity;</span>
+		}
+
+<span class="fc" id="L241">		return null;</span>
+	}
+
+	/**
+	 * @param tileset 
+	 * @param id 
+	 * @return the creature or &lt;code&gt;null&lt;/code&gt; if the id is unknown.
+	 */
+	@Override
+	public Creature getCreature(final String tileset, final int id) {
+<span class="fc" id="L251">		final String clazz = idToClass.get(tileset + &quot;:&quot; + id);</span>
+<span class="pc bpc" id="L252" title="1 of 2 branches missed.">		if (clazz == null) {</span>
+<span class="nc" id="L253">			return null;</span>
+		}
+
+<span class="fc" id="L256">		return getCreature(clazz);</span>
+	}
+
+	/**
+	 * @param clazz 
+	 * @return the creature or &lt;code&gt;null&lt;/code&gt; if the clazz is unknown.
+	 * 
+	 * @throws NullPointerException
+	 *             if clazz is &lt;code&gt;null&lt;/code&gt;
+	 */
+	@Override
+	public Creature getCreature(final String clazz) {
+<span class="pc bpc" id="L268" title="1 of 2 branches missed.">		if (clazz == null) {</span>
+<span class="nc" id="L269">			throw new IllegalArgumentException(&quot;entity class is null&quot;);</span>
+		}
+
+		// Lookup the clazz in the creature table
+<span class="fc" id="L273">		final DefaultCreature creature = classToCreature.get(clazz);</span>
+<span class="fc bfc" id="L274" title="All 2 branches covered.">		if (creature != null) {</span>
+<span class="fc bfc" id="L275" title="All 2 branches covered.">			if (createdCreature.get(clazz) == null) {</span>
+<span class="fc" id="L276">				createdCreature.put(clazz, creature.getCreature());</span>
+			}
+<span class="fc" id="L278">			return creature.getCreature();</span>
+		}
+
+<span class="fc" id="L281">		return null;</span>
+	}
+
+	/**
+	 * @param clazz 
+	 * @return the DefaultCreature or &lt;code&gt;null&lt;/code&gt; if the clazz is
+	 *         unknown.
+	 * 
+	 * @throws NullPointerException
+	 *             if clazz is &lt;code&gt;null&lt;/code&gt;
+	 */
+	@Override
+	public DefaultCreature getDefaultCreature(final String clazz) {
+<span class="pc bpc" id="L294" title="1 of 2 branches missed.">		if (clazz == null) {</span>
+<span class="nc" id="L295">			throw new IllegalArgumentException(&quot;entity class is null&quot;);</span>
+		}
+
+		// Lookup the clazz in the creature table
+<span class="fc" id="L299">		return classToCreature.get(clazz);</span>
+	}
+
+	/** @param tileset 
+	 * @param id 
+	 * @return true if the Entity is a creature. */
+	@Override
+	public boolean isCreature(final String tileset, final int id) {
+<span class="fc" id="L307">		final String clazz = idToClass.get(tileset + &quot;:&quot; + id);</span>
+<span class="pc bpc" id="L308" title="1 of 2 branches missed.">		if (clazz == null) {</span>
+<span class="nc" id="L309">			return false;</span>
+		}
+
+<span class="fc" id="L312">		return isCreature(clazz);</span>
+	}
+
+	/** @param clazz 
+	 * @return true if the Entity is a creature . */
+	@Override
+	public boolean isCreature(final String clazz) {
+<span class="pc bpc" id="L319" title="1 of 2 branches missed.">		if (clazz == null) {</span>
+<span class="nc" id="L320">			throw new IllegalArgumentException(&quot;entity class is null&quot;);</span>
+		}
+
+<span class="fc" id="L323">		return classToCreature.containsKey(clazz);</span>
+	}
+
+	/** @param clazz 
+	 * @return true if the Entity is a creature. */
+	@Override
+	public boolean isItem(final String clazz) {
+<span class="pc bpc" id="L330" title="1 of 2 branches missed.">		if (clazz == null) {</span>
+<span class="nc" id="L331">			throw new IllegalArgumentException(&quot;entity class is null&quot;);</span>
+		}
+
+<span class="fc" id="L334">		return classToItem.containsKey(clazz);</span>
+	}
+
+	/**
+	 * @param clazz 
+	 * @return the item or &lt;code&gt;null&lt;/code&gt; if the clazz is unknown.
+	 * 
+	 * @throws NullPointerException
+	 *             if clazz is &lt;code&gt;null&lt;/code&gt;
+	 */
+	@Override
+	public Item getItem(final String clazz) {
+<span class="pc bpc" id="L346" title="1 of 2 branches missed.">		if (clazz == null) {</span>
+<span class="nc" id="L347">			throw new IllegalArgumentException(&quot;entity class is null&quot;);</span>
+		}
+
+		// Lookup the clazz in the item table
+<span class="fc" id="L351">		final DefaultItem item = classToItem.get(clazz);</span>
+<span class="fc bfc" id="L352" title="All 2 branches covered.">		if (item != null) {</span>
+<span class="fc bfc" id="L353" title="All 2 branches covered.">			if (createdItem.get(clazz) == null) {</span>
+<span class="fc" id="L354">				createdItem.put(clazz, item.getItem());</span>
+			}
+<span class="fc" id="L356">			return item.getItem();</span>
+		}
+
+<span class="fc" id="L359">		return null;</span>
+	}
+
+	@Override
+	public Spell getSpell(String spell) {
+<span class="pc bpc" id="L364" title="1 of 2 branches missed.">		if(spell == null) {</span>
+<span class="nc" id="L365">			throw new IllegalArgumentException(&quot;spell name is null&quot;);</span>
+		}
+<span class="fc" id="L367">		DefaultSpell defaultSpell = nameToSpell.get(spell);</span>
+<span class="pc bpc" id="L368" title="1 of 2 branches missed.">		if (defaultSpell != null) {</span>
+<span class="fc" id="L369">			Spell spellEntity = defaultSpell.getSpell();</span>
+<span class="fc bfc" id="L370" title="All 2 branches covered.">			if(!createdSpell.containsKey(spell)) {</span>
+<span class="fc" id="L371">				createdSpell.put(spell, spellEntity);</span>
+			}
+<span class="fc" id="L373">			return spellEntity;</span>
+		}
+<span class="nc" id="L375">		return null;</span>
+	}
+
+	@Override
+	public boolean isSpell(String spellName) {
+<span class="nc" id="L380">		return nameToSpell.containsKey(spellName);</span>
+	}
+
+	@Override
+	public Collection&lt;Spell&gt; getSpells() {
+<span class="nc" id="L385">		return createdSpell.values();</span>
+	}
+
+	@Override
+	public Collection&lt;DefaultCreature&gt; getDefaultCreatures() {
+<span class="nc" id="L390">		return classToCreature.values();</span>
+	}
+
+	@Override
+	public Collection&lt;DefaultItem&gt; getDefaultItems() {
+<span class="nc" id="L395">		return classToItem.values();</span>
+	}
+
+	public Collection&lt;String&gt; getConfiguredItems() {
+<span class="fc" id="L399">		return classToItem.keySet();</span>
+	}
+
+	@Override
+	public Collection&lt;String&gt; getConfiguredSpells() {
+<span class="nc" id="L404">		return nameToSpell.keySet();</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

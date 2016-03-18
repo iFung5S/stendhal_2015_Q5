@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>LogKillEventCommand.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.core.engine.dbcommand</a> &gt; <span class="el_source">LogKillEventCommand.java</span></div><h1>LogKillEventCommand.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                    (C) Copyright 2007-2010 - Stendhal                   *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.core.engine.dbcommand;
+
+import games.stendhal.server.core.engine.db.StendhalKillLogDAO;
+import games.stendhal.server.entity.Entity;
+import games.stendhal.server.entity.Killer;
+
+import java.sql.SQLException;
+
+import marauroa.server.db.DBTransaction;
+import marauroa.server.db.command.AbstractDBCommand;
+import marauroa.server.game.db.DAORegister;
+
+/**
+ * logs kill events
+ *
+ * @author hendrik
+ */
+public class LogKillEventCommand extends AbstractDBCommand {
+	
+	private Entity frozenKilled;
+	private Killer frozenKiller;
+
+	/**
+	 * creates a new LogKillEventCommand
+	 *
+	 * @param killed killed entity
+	 * @param killer killer entity
+	 */
+<span class="fc" id="L40">	public LogKillEventCommand(Entity killed, Killer killer) {</span>
+<span class="fc" id="L41">		this.frozenKilled = (Entity) killed.clone();</span>
+<span class="fc" id="L42">		this.frozenKiller = (Killer) killer.clone();</span>
+<span class="fc" id="L43">	}</span>
+
+	@Override
+	public void execute(DBTransaction transaction) throws SQLException {
+<span class="fc" id="L47">		StendhalKillLogDAO killLog = DAORegister.get().get(StendhalKillLogDAO.class);</span>
+<span class="fc" id="L48">		killLog.logKill(transaction, frozenKilled, frozenKiller);</span>
+<span class="fc" id="L49">	}</span>
+
+	/**
+	 * returns a string suitable for debug output of this DBCommand.
+	 *
+	 * @return debug string
+	 */
+	@Override
+	public String toString() {
+<span class="fc" id="L58">		return &quot;LogKillEventCommand [frozenKilled=&quot; + frozenKilled</span>
+				+ &quot;, frozenKiller=&quot; + frozenKiller + &quot;]&quot;;
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

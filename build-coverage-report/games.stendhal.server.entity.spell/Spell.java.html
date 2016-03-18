@@ -1,0 +1,439 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Spell.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.spell</a> &gt; <span class="el_source">Spell.java</span></div><h1>Spell.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                      (C) Copyright 2003 - Marauroa                      *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.spell;
+
+import games.stendhal.common.NotificationType;
+import games.stendhal.common.constants.Nature;
+import games.stendhal.common.grammar.Grammar;
+import games.stendhal.server.core.engine.GameEvent;
+import games.stendhal.server.core.events.EquipListener;
+import games.stendhal.server.entity.Entity;
+import games.stendhal.server.entity.PassiveEntity;
+import games.stendhal.server.entity.npc.condition.LevelLessThanCondition;
+import games.stendhal.server.entity.npc.condition.OrCondition;
+import games.stendhal.server.entity.npc.condition.PlayerHasItemEquippedInSlot;
+import games.stendhal.server.entity.npc.condition.PlayerManaGreaterThanCondition;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.entity.spell.exception.InsufficientManaException;
+import games.stendhal.server.entity.spell.exception.InvalidSpellTargetException;
+import games.stendhal.server.entity.spell.exception.LevelRequirementNotFulfilledException;
+import games.stendhal.server.entity.spell.exception.SpellException;
+import games.stendhal.server.entity.spell.exception.SpellNotCooledDownException;
+import games.stendhal.server.entity.trade.Dateable;
+
+import java.util.Arrays;
+import java.util.List;
+
+import marauroa.common.game.Definition.Type;
+import marauroa.common.game.RPClass;
+import marauroa.common.game.RPObject;
+
+import org.apache.log4j.Logger;
+
+/**
+ * The base spell class
+ * 
+ * @author timothyb89, madmetzger
+ */
+public abstract class Spell extends PassiveEntity implements EquipListener, Dateable {
+	
+<span class="fc" id="L49">	private static final Logger LOGGER = Logger.getLogger(Spell.class);</span>
+
+	public static final String RPCLASS_SPELL = &quot;spell&quot;;
+
+	/**The spell name attribute name.*/
+	private static final String ATTR_NAME = &quot;name&quot;;
+
+	private static final String ATTR_ATK = &quot;atk&quot;;
+
+	private static final String ATTR_COOLDOWN = &quot;cooldown&quot;;
+
+	private static final String ATTR_DEF = &quot;def&quot;;
+
+	private static final String ATTR_LIFESTEAL = &quot;lifesteal&quot;;
+
+	private static final String ATTR_MANA = &quot;mana&quot;;
+
+	private static final String ATTR_MINIMUMLEVEL = &quot;minimumlevel&quot;;
+
+	private static final String ATTR_RANGE = &quot;range&quot;;
+
+	private static final String ATTR_RATE = &quot;rate&quot;;
+
+	private static final String ATTR_REGEN = &quot;regen&quot;;
+
+	private static final String ATTR_AMOUNT = &quot;amount&quot;;
+
+	private static final String ATTR_TIMESTAMP = &quot;timestamp&quot;;
+
+	private static final String ATTR_NATURE = &quot;nature&quot;;
+
+<span class="fc" id="L80">	private static final List&lt;String&gt; ITEMS_IN_HANDS = Arrays.asList(&quot;magic wand&quot;,&quot;spellbook&quot;);</span>
+
+	private static final String ATTR_MODIFIER = &quot;modifier&quot;;
+
+	/** list of possible slots for this item. */
+<span class="fc" id="L85">	private final List&lt;String&gt; possibleSlots = Arrays.asList(&quot;spells&quot;);</span>
+
+	/**
+	 * Casts this spell if all preconditions are fulfilled:
+	 *  - caster has enough mana
+	 *  - cooldown time expired
+	 *  - caster has the minimum level
+	 *  - target is valid for the spell
+	 *  
+	 * @param caster the player who tries to cast this spell
+	 * @param target the entity the spell is aimed at
+	 * @throws SpellException 
+	 */
+	public void cast(final Player caster, final Entity target) throws SpellException {
+<span class="pc bpc" id="L99" title="1 of 2 branches missed.">		if(checkPreConditions(caster, target)) {</span>
+			//deduct mana
+<span class="fc" id="L101">			caster.setMana(caster.getMana() - getMana());</span>
+<span class="fc" id="L102">			doEffects(caster, target);</span>
+			//set last casting time for calculation of cooldown
+<span class="fc" id="L104">			setTimestamp(System.currentTimeMillis());</span>
+			//increase skill for nature
+<span class="fc" id="L106">			caster.increaseMagicSkillXp(getNature(), 1);</span>
+			//log gameEvent
+<span class="fc" id="L108">			new GameEvent(caster.getName(), &quot;cast-spell&quot;, getName(), target.getTitle()).raise();</span>
+		}
+<span class="fc" id="L110">	}</span>
+
+	private boolean checkPreConditions(final Player caster, final Entity target) throws SpellException {
+
+		//check for sufficient mana
+<span class="fc bfc" id="L115" title="All 2 branches covered.">		if (!new PlayerManaGreaterThanCondition(getMana()-1).fire(caster, null, null)) {</span>
+<span class="fc" id="L116">			throw new InsufficientManaException(&quot;You have not sufficent mana to cast your spell \&quot;&quot;+getName()+&quot;\&quot;.&quot;);</span>
+		}
+
+		//check minimum level
+<span class="fc bfc" id="L120" title="All 2 branches covered.">		if (new LevelLessThanCondition(getMinimumLevel()).fire(caster, null, null)) {</span>
+<span class="fc" id="L121">			throw new LevelRequirementNotFulfilledException(&quot;You did not reach the minimum level for your spell \&quot;&quot;+getName()+&quot;\&quot; yet.&quot;);</span>
+		}
+
+<span class="fc bfc" id="L124" title="All 2 branches covered.">		if(!isCooledDown()) {</span>
+<span class="fc" id="L125">			throw new SpellNotCooledDownException(&quot;Your spell \&quot;&quot;+getName()+&quot;\&quot; did not yet cool down.&quot;);</span>
+		}
+
+		//check if target is valid for spell?
+<span class="fc bfc" id="L129" title="All 2 branches covered.">		if (!isTargetValid(caster, target)) {</span>
+<span class="fc" id="L130">			throw new InvalidSpellTargetException(&quot;The target is not valid for your spell \&quot;&quot;+getName()+&quot;\&quot;.&quot;);</span>
+		}
+		//check other preconditions like having learned that school?
+		//check for right equipment
+		//remove comment, when equipment
+//		if (!checkEquipment(caster)) {
+//			return false; equipment exception
+//		}
+
+		//no check failed so preconditions are fulfilled
+<span class="fc" id="L140">		return true;</span>
+	}
+
+	protected boolean isCooledDown() {
+<span class="fc" id="L144">		long currentTime = System.currentTimeMillis();</span>
+<span class="fc" id="L145">		long lastCastTime = getTimestamp();</span>
+<span class="fc" id="L146">		long coolDownTime = getCooldown() * 1000L;</span>
+<span class="fc" id="L147">		long timeWhenBeingCooledDown = lastCastTime + coolDownTime;</span>
+<span class="fc bfc" id="L148" title="All 2 branches covered.">		boolean isCooledDown = currentTime &gt; timeWhenBeingCooledDown;</span>
+<span class="fc" id="L149">		return isCooledDown;</span>
+	}
+
+	// warning suppressed as not yet used
+	@SuppressWarnings(&quot;unused&quot;)
+	private boolean checkEquipment(final Player caster) {
+<span class="nc bnc" id="L155" title="All 2 branches missed.">		for (final String item : ITEMS_IN_HANDS) {</span>
+<span class="nc" id="L156">			final OrCondition staffCondition = new OrCondition(</span>
+					new PlayerHasItemEquippedInSlot(item, &quot;rhand&quot;),
+					new PlayerHasItemEquippedInSlot(item, &quot;lhand&quot;));
+<span class="nc bnc" id="L159" title="All 2 branches missed.">			if(!staffCondition.fire(caster, null, null)) {</span>
+<span class="nc" id="L160">				caster.sendPrivateText(NotificationType.INFORMATION, &quot;You must have &quot;+Grammar.a_noun(item)+&quot; in your hands to cast a spell.&quot;);</span>
+<span class="nc" id="L161">				return false;</span>
+			}
+<span class="nc" id="L163">		}</span>
+<span class="nc" id="L164">		return true;</span>
+	}
+
+	/**
+	 * Provides the concrete behaviour of each concrete spell, i.e. a healing effect should done here
+	 * 
+	 * @param caster
+	 * @param target
+	 */
+	protected abstract void doEffects(Player caster, Entity target);
+
+	/**
+	 * Checks if the target Entity is applicable for this spell. Basically each Entity can target of a spell.
+	 * Subclasses have to override this method if they want to be more strict in the choice of the target.
+	 * 
+	 * @param caster the user of the spell
+	 * @param target the target Entity to check the applicability for 
+	 * @return true iff target is applicable to this spell
+	 */
+	protected boolean isTargetValid(final Entity caster, final Entity target) {
+<span class="nc" id="L184">		return true;</span>
+	}
+
+	/**
+	 * Generate the RPClass for spells
+	 */
+	public static void generateRPClass() {
+<span class="fc" id="L191">		final RPClass entity = new RPClass(RPCLASS_SPELL);</span>
+<span class="fc" id="L192">		entity.isA(&quot;entity&quot;);</span>
+<span class="fc" id="L193">		entity.addAttribute(ATTR_NAME, Type.STRING);</span>
+<span class="fc" id="L194">		entity.addAttribute(ATTR_AMOUNT, Type.INT);</span>
+<span class="fc" id="L195">		entity.addAttribute(ATTR_ATK, Type.INT);</span>
+<span class="fc" id="L196">		entity.addAttribute(ATTR_COOLDOWN, Type.INT);</span>
+<span class="fc" id="L197">		entity.addAttribute(ATTR_DEF, Type.INT);</span>
+<span class="fc" id="L198">		entity.addAttribute(ATTR_LIFESTEAL, Type.FLOAT);</span>
+<span class="fc" id="L199">		entity.addAttribute(ATTR_MANA, Type.INT);</span>
+<span class="fc" id="L200">		entity.addAttribute(ATTR_MINIMUMLEVEL, Type.INT);</span>
+<span class="fc" id="L201">		entity.addAttribute(ATTR_NATURE, Type.STRING);</span>
+<span class="fc" id="L202">		entity.addAttribute(ATTR_RANGE, Type.INT);</span>
+<span class="fc" id="L203">		entity.addAttribute(ATTR_RATE, Type.INT);</span>
+<span class="fc" id="L204">		entity.addAttribute(ATTR_REGEN, Type.INT);</span>
+<span class="fc" id="L205">		entity.addAttribute(ATTR_MODIFIER, Type.FLOAT);</span>
+<span class="fc" id="L206">		entity.addAttribute(ATTR_TIMESTAMP, Type.STRING);</span>
+		// class = nature
+<span class="fc" id="L208">		entity.addAttribute(&quot;class&quot;, Type.STRING);</span>
+<span class="fc" id="L209">		entity.addAttribute(&quot;subclass&quot;, Type.STRING);</span>
+<span class="fc" id="L210">	}</span>
+
+	/**
+	 * Creates a spell from an RPObject
+	 * 
+	 * @param object the RPObject to create the spell from
+	 */
+	public Spell(final RPObject object) {
+<span class="fc" id="L218">		super(object);</span>
+<span class="pc bpc" id="L219" title="1 of 2 branches missed.">		if(!object.has(ATTR_TIMESTAMP)) {</span>
+<span class="nc" id="L220">			setTimestamp(0);</span>
+		}
+<span class="fc" id="L222">		setNature(Nature.parse(object.get(ATTR_NATURE)));</span>
+<span class="fc" id="L223">		setRPClass(RPCLASS_SPELL);</span>
+<span class="fc" id="L224">	}</span>
+
+	/**
+	 * Creates a new {@link Spell}
+	 * Sub classes of {@link Spell} *have to* provide a constructor with this order of parameters!
+	 * 
+	 * @param name the name of the spell
+	 * @param nature the nature of the spell
+	 * @param amount the amount of the effect of this spell
+	 * @param atk the atk value of the spell
+	 * @param cooldown the time the spell needs to cool down before casting it again
+	 * @param def the def value of the spell
+	 * @param lifesteal the percentage of lifesteal for this spell
+	 * @param mana the amount of mana this spell uses when casting it
+	 * @param minimumlevel the required minimum level for this spell
+	 * @param range the max distance for the spell target
+	 * @param rate the frequency of the effect of this spell
+	 * @param regen the amount to regen with each effect turn
+	 * @param modifier 
+	 */
+	public Spell(	final String name, final Nature nature, final int amount, final int atk, final int cooldown,
+			final int def, final double lifesteal, final int mana, final int minimumlevel,
+<span class="fc" id="L246">			final int range, final int rate, final int regen, double modifier) {</span>
+<span class="fc" id="L247">		setRPClass(RPCLASS_SPELL);</span>
+<span class="fc" id="L248">		put(ATTR_NAME, name);</span>
+<span class="fc" id="L249">		put(&quot;subclass&quot;, name);</span>
+<span class="fc" id="L250">		put(&quot;class&quot;, nature.toString().toLowerCase());</span>
+<span class="fc" id="L251">		put(ATTR_AMOUNT, amount);</span>
+<span class="fc" id="L252">		put(ATTR_ATK, atk);</span>
+<span class="fc" id="L253">		put(ATTR_COOLDOWN, cooldown);</span>
+<span class="fc" id="L254">		put(ATTR_DEF, def);</span>
+<span class="fc" id="L255">		put(ATTR_LIFESTEAL, lifesteal);</span>
+<span class="fc" id="L256">		put(ATTR_MANA, mana);</span>
+<span class="fc" id="L257">		put(ATTR_MINIMUMLEVEL, minimumlevel);</span>
+<span class="fc" id="L258">		put(ATTR_RANGE, range);</span>
+<span class="fc" id="L259">		put(ATTR_RATE, rate);</span>
+<span class="fc" id="L260">		put(ATTR_REGEN, regen);</span>
+<span class="fc" id="L261">		put(ATTR_NATURE, nature.name());</span>
+<span class="fc" id="L262">		put(ATTR_MODIFIER, modifier);</span>
+<span class="fc" id="L263">		put(ATTR_TIMESTAMP, 0);</span>
+<span class="fc" id="L264">		put(&quot;type&quot;, &quot;spell&quot;);</span>
+<span class="fc" id="L265">	}</span>
+
+	@Override
+	public boolean canBeEquippedIn(final String slot) {
+<span class="fc" id="L269">		return this.possibleSlots.contains(slot);</span>
+	}
+
+	/**
+	 * Get the spell name.
+	 * 
+	 * @return The spell's name, or &lt;code&gt;null&lt;/code&gt; if undefined.
+	 */
+	@Override
+	public String getName() {
+<span class="pc bpc" id="L279" title="1 of 2 branches missed.">		if (has(ATTR_NAME)) {</span>
+<span class="fc" id="L280">			return get(ATTR_NAME);</span>
+		}
+<span class="nc" id="L282">		return null;</span>
+	}
+
+	/**
+	 * Get the spell amount.
+	 * 
+	 * @return The spell's amount, or &lt;code&gt;0&lt;/code&gt; if undefined.
+	 */
+	public int getAmount() {
+<span class="pc bpc" id="L291" title="1 of 2 branches missed.">		if (has(ATTR_AMOUNT)) {</span>
+<span class="fc" id="L292">			return getInt(ATTR_AMOUNT);</span>
+		}
+<span class="nc" id="L294">		return 0;</span>
+	}
+
+	/**
+	 * Get the spell atk.
+	 * 
+	 * @return The spell's atk, or &lt;code&gt;0&lt;/code&gt; if undefined.
+	 */
+	public int getAtk() {
+<span class="pc bpc" id="L303" title="1 of 2 branches missed.">		if (has(ATTR_ATK)) {</span>
+<span class="fc" id="L304">			return getInt(ATTR_ATK);</span>
+		}
+<span class="nc" id="L306">		return 0;</span>
+	}
+
+	/**
+	 * Get the spell cooldown.
+	 * 
+	 * @return The spell's cooldown, or &lt;code&gt;0&lt;/code&gt; if undefined.
+	 */
+	public int getCooldown() {
+<span class="pc bpc" id="L315" title="1 of 2 branches missed.">		if (has(ATTR_COOLDOWN)) {</span>
+<span class="fc" id="L316">			return getInt(ATTR_COOLDOWN);</span>
+		}
+<span class="nc" id="L318">		return 0;</span>
+	}
+
+	/**
+	 * Get the spell def.
+	 * 
+	 * @return The spell's def, or &lt;code&gt;0&lt;/code&gt; if undefined.
+	 */
+	public int getDef() {
+<span class="pc bpc" id="L327" title="1 of 2 branches missed.">		if (has(ATTR_DEF)) {</span>
+<span class="fc" id="L328">			return getInt(ATTR_DEF);</span>
+		}
+<span class="nc" id="L330">		return 0;</span>
+	}
+
+	/**
+	 * Get the spell lifesteal.
+	 * 
+	 * @return The spell's lifesteal, or &lt;code&gt;0&lt;/code&gt; if undefined.
+	 */
+	public double getLifesteal() {
+<span class="pc bpc" id="L339" title="1 of 2 branches missed.">		if (has(ATTR_LIFESTEAL)) {</span>
+<span class="fc" id="L340">			return getDouble(ATTR_LIFESTEAL);</span>
+		}
+<span class="nc" id="L342">		return 0;</span>
+	}
+
+	/**
+	 * Get the spell mana.
+	 * 
+	 * @return The spell's mana, or &lt;code&gt;0&lt;/code&gt; if undefined.
+	 */
+	public int getMana() {
+<span class="pc bpc" id="L351" title="1 of 2 branches missed.">		if (has(ATTR_MANA)) {</span>
+<span class="fc" id="L352">			return getInt(ATTR_MANA);</span>
+		}
+<span class="nc" id="L354">		return 0;</span>
+	}
+
+	/**
+	 * Get the spell minimum level.
+	 * 
+	 * @return The spell's minimum level, or &lt;code&gt;0&lt;/code&gt; if undefined.
+	 */
+	public int getMinimumLevel() {
+<span class="pc bpc" id="L363" title="1 of 2 branches missed.">		if (has(ATTR_MINIMUMLEVEL)) {</span>
+<span class="fc" id="L364">			return getInt(ATTR_MINIMUMLEVEL);</span>
+		}
+<span class="nc" id="L366">		return 0;</span>
+	}
+
+	/**
+	 * Get the spell range.
+	 * 
+	 * @return The spell's range, or &lt;code&gt;0&lt;/code&gt; if undefined.
+	 */
+	public int getRange() {
+<span class="pc bpc" id="L375" title="1 of 2 branches missed.">		if (has(ATTR_RANGE)) {</span>
+<span class="fc" id="L376">			return getInt(ATTR_RANGE);</span>
+		}
+<span class="nc" id="L378">		return 0;</span>
+	}
+
+	/**
+	 * Get the spell rate.
+	 * 
+	 * @return The spell's rate, or &lt;code&gt;0&lt;/code&gt; if undefined.
+	 */
+	public int getRate() {
+<span class="pc bpc" id="L387" title="1 of 2 branches missed.">		if (has(ATTR_RATE)) {</span>
+<span class="fc" id="L388">			return getInt(ATTR_RATE);</span>
+		}
+<span class="nc" id="L390">		return 0;</span>
+	}
+
+	/**
+	 * Get the spell regen.
+	 * 
+	 * @return The spell's regen, or &lt;code&gt;0&lt;/code&gt; if undefined.
+	 */
+	public int getRegen() {
+<span class="pc bpc" id="L399" title="1 of 2 branches missed.">		if (has(ATTR_REGEN)) {</span>
+<span class="fc" id="L400">			return getInt(ATTR_REGEN);</span>
+		}
+<span class="nc" id="L402">		return 0;</span>
+	}
+
+	@Override
+	public long getTimestamp() {
+<span class="fc" id="L407">		long timeStamp = 0;</span>
+		try {
+<span class="fc" id="L409">			timeStamp = Long.parseLong(get(ATTR_TIMESTAMP));</span>
+<span class="nc" id="L410">		} catch (final NumberFormatException e) {</span>
+<span class="nc" id="L411">			LOGGER.debug(&quot;Invalid timestamp: &quot; + get(ATTR_TIMESTAMP)+&quot; Will return default value 0&quot;, e);</span>
+<span class="fc" id="L412">		}</span>
+<span class="fc" id="L413">		return timeStamp;</span>
+	}
+
+	public void setTimestamp(final long time) {
+<span class="fc" id="L417">		put(ATTR_TIMESTAMP, Long.toString(time));</span>
+<span class="fc" id="L418">	}</span>
+
+	public void setNature(final Nature nature) {
+<span class="fc" id="L421">		put(ATTR_NATURE, nature.name());</span>
+<span class="fc" id="L422">	}</span>
+
+	public Nature getNature() {
+<span class="fc" id="L425">		return Nature.parse(get(ATTR_NATURE));</span>
+	}
+
+	public double getModifier() {
+<span class="pc bpc" id="L429" title="1 of 2 branches missed.">		if(has(ATTR_MODIFIER)) {</span>
+<span class="fc" id="L430">			return getDouble(ATTR_MODIFIER);</span>
+		}
+<span class="nc" id="L432">		return 0d;</span>
+	}
+	
+	public void setModifier(double modifier) {
+<span class="nc" id="L436">		put(ATTR_MODIFIER, modifier);</span>
+<span class="nc" id="L437">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

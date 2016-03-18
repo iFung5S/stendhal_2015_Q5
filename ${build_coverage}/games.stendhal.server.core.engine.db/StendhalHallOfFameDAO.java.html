@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>StendhalHallOfFameDAO.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.core.engine.db</a> &gt; <span class="el_source">StendhalHallOfFameDAO.java</span></div><h1>StendhalHallOfFameDAO.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                    (C) Copyright 2003-2009 - Stendhal                   *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.core.engine.db;
+
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+
+import marauroa.server.db.DBTransaction;
+import marauroa.server.db.TransactionPool;
+
+import org.apache.log4j.Logger;
+
+/**
+ * database access for the hall of fame used in deathmatch
+ *
+ * @author hendrik
+ */
+<span class="fc" id="L31">public class StendhalHallOfFameDAO {</span>
+<span class="fc" id="L32">	private static Logger logger = Logger.getLogger(StendhalHallOfFameDAO.class);</span>
+
+
+	/**
+	 * Returns the points in the specified hall of fame.
+	 * 
+	 * @param transaction
+	 *            Transaction
+	 * @param charname
+	 *            name of the player
+	 * @param fametype
+	 *            type of the hall of fame
+	 * @return points or 0 in case there is no entry
+	 */
+	public int getHallOfFamePoints(final DBTransaction transaction, final String charname, final String fametype) {
+<span class="fc" id="L47">		int res = 0;</span>
+		try {
+			final String query = &quot;SELECT points FROM halloffame WHERE charname=&quot;
+					+ &quot;'[charname]' AND fametype='[fametype]'&quot;;
+<span class="fc" id="L51">			Map&lt;String, Object&gt; params = new HashMap&lt;String, Object&gt;();</span>
+<span class="fc" id="L52">			params.put(&quot;charname&quot;, charname);</span>
+<span class="fc" id="L53">			params.put(&quot;fametype&quot;, fametype);</span>
+
+<span class="fc" id="L55">			final ResultSet result = transaction.query(query, params);</span>
+<span class="pc bpc" id="L56" title="1 of 2 branches missed.">			if (result.next()) {</span>
+<span class="fc" id="L57">				res = result.getInt(&quot;points&quot;);</span>
+			}
+<span class="fc" id="L59">			result.close();</span>
+<span class="nc" id="L60">		} catch (final Exception sqle) {</span>
+<span class="nc" id="L61">			logger.warn(&quot;Error reading hall of fame&quot;, sqle);</span>
+<span class="fc" id="L62">		}</span>
+
+<span class="fc" id="L64">		return res;</span>
+	}
+
+	/**
+	 * Stores an entry in the hall of fame.
+	 * 
+	 * @param transaction
+	 *            Transaction
+	 * @param charname
+	 *            name of the player
+	 * @param fametype
+	 *            type of the hall of fame
+	 * @param points
+	 *            points to store
+	 * @throws SQLException
+	 *             in case of an database error
+	 */
+	public void setHallOfFamePoints(final DBTransaction transaction, final String charname, final String fametype, final int points) throws SQLException {
+		try {
+
+			// first try an update
+<span class="fc" id="L85">			String query = &quot;UPDATE halloffame SET points='[points]'&quot;</span>
+					+ &quot; WHERE charname='[charname]' AND fametype='[fametype]';&quot;;
+
+<span class="fc" id="L88">			Map&lt;String, Object&gt; params = new HashMap&lt;String, Object&gt;();</span>
+<span class="fc" id="L89">			params.put(&quot;points&quot;, Integer.toString(points));</span>
+<span class="fc" id="L90">			params.put(&quot;charname&quot;, charname);</span>
+<span class="fc" id="L91">			params.put(&quot;fametype&quot;, fametype);</span>
+
+			
+<span class="fc" id="L94">			final int count = transaction.execute(query, params);</span>
+
+<span class="pc bpc" id="L96" title="1 of 2 branches missed.">			if (count == 0) {</span>
+				// no row was modified, so we need to do an insert
+<span class="nc" id="L98">				query = &quot;INSERT INTO halloffame (charname, fametype, points)&quot;</span>
+					+ &quot; VALUES ('[charname]', '[fametype]', '[points]')&quot;;
+<span class="nc" id="L100">				transaction.execute(query, params);</span>
+			}
+<span class="nc" id="L102">		} catch (final SQLException sqle) {</span>
+<span class="nc" id="L103">			logger.warn(&quot;error adding game event&quot;, sqle);</span>
+<span class="nc" id="L104">			throw sqle;</span>
+<span class="fc" id="L105">		}</span>
+<span class="fc" id="L106">	}</span>
+
+	/**
+	 * gets the characters who have taken part in the specified fametype
+	 *
+	 * @param transaction a DBTransaction
+	 * @param fametype type of fame
+	 * @param max maximum number of returned characters
+	 * @param ascending sort ascending or descending
+	 * @return list of character names
+	 * @throws SQLException in case of an database error
+	 */
+	public List&lt;String&gt; getCharactersByFametype(DBTransaction transaction, String fametype, int max, boolean ascending) throws SQLException {
+<span class="fc" id="L119">		List&lt;String&gt; res = new LinkedList&lt;String&gt;();</span>
+<span class="fc" id="L120">		Map&lt;String, Object&gt; params = new HashMap&lt;String, Object&gt;();</span>
+<span class="fc" id="L121">		params.put(&quot;fametype&quot;, fametype);</span>
+
+		// generate SQL statement
+<span class="fc" id="L124">		StringBuilder sql = new StringBuilder();</span>
+<span class="fc" id="L125">		sql.append(&quot;SELECT charname FROM halloffame&quot;);</span>
+<span class="fc" id="L126">		sql.append(&quot; WHERE fametype = '[fametype]'&quot;);</span>
+<span class="fc" id="L127">		sql.append(&quot; ORDER BY points&quot;);</span>
+<span class="pc bpc" id="L128" title="1 of 2 branches missed.">		if (!ascending) {</span>
+<span class="fc" id="L129">			sql.append(&quot; DESC&quot;);</span>
+		}
+<span class="pc bpc" id="L131" title="1 of 2 branches missed.">		if (max &gt; 0) {</span>
+<span class="fc" id="L132">			sql.append(&quot; LIMIT &quot; + max);</span>
+		}
+
+		// read result
+<span class="fc" id="L136">		ResultSet resultSet = transaction.query(sql.toString(), params);</span>
+<span class="fc bfc" id="L137" title="All 2 branches covered.">		while (resultSet.next()) {</span>
+<span class="fc" id="L138">			res.add(resultSet.getString(1));</span>
+		}
+<span class="fc" id="L140">		return res;</span>
+	}
+
+	/**
+	 * Returns the points in the specified hall of fame.
+	 * 
+	 * @param charname name of the player
+	 * @param fametype type of the hall of fame
+	 * @return points or 0 in case there is no entry
+	 */
+	public int getHallOfFamePoints(final String charname, final String fametype) {
+<span class="nc" id="L151">		DBTransaction transaction = TransactionPool.get().beginWork();</span>
+<span class="nc" id="L152">		int res = -1;</span>
+		try {
+<span class="nc" id="L154">			res = getHallOfFamePoints(transaction, charname, fametype);</span>
+<span class="nc" id="L155">			TransactionPool.get().commit(transaction);</span>
+<span class="nc" id="L156">		} catch (SQLException e) {</span>
+<span class="nc" id="L157">			TransactionPool.get().rollback(transaction);</span>
+<span class="nc" id="L158">		}</span>
+<span class="nc" id="L159">		return res;</span>
+	}
+
+	/**
+	 * Stores an entry in the hall of fame.
+	 * 
+	 * @param charname name of the player
+	 * @param fametype type of the hall of fame
+	 * @param points points to store
+	 * @throws SQLException in case of an database error
+	 */
+	public void setHallOfFamePoints(final String charname, final String fametype, final int points) throws SQLException {
+<span class="nc" id="L171">		DBTransaction transaction = TransactionPool.get().beginWork();</span>
+		try {
+<span class="nc" id="L173">			setHallOfFamePoints(transaction, charname, fametype, points);</span>
+		} finally {
+<span class="nc" id="L175">			TransactionPool.get().commit(transaction);</span>
+<span class="nc" id="L176">		}</span>
+<span class="nc" id="L177">	}</span>
+
+	/**
+	 * gets the characters who have taken part in the specified fametype
+	 *
+	 * @param fametype type of fame
+	 * @param max maximum number of returned characters
+	 * @param ascending sort ascending or descending
+	 * @return list of character names
+	 */
+	public List&lt;String&gt; getCharactersByFametype(String fametype, int max, boolean ascending) {
+<span class="nc" id="L188">		DBTransaction transaction = TransactionPool.get().beginWork();</span>
+		try {
+<span class="nc" id="L190">			List&lt;String&gt; res = getCharactersByFametype(transaction, fametype, max, ascending);</span>
+<span class="nc" id="L191">			TransactionPool.get().commit(transaction);</span>
+<span class="nc" id="L192">			return res;</span>
+<span class="nc" id="L193">		} catch (SQLException e) {</span>
+<span class="nc" id="L194">			logger.error(e, e);</span>
+<span class="nc" id="L195">			TransactionPool.get().rollback(transaction);</span>
+<span class="nc" id="L196">			return new LinkedList&lt;String&gt;();</span>
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

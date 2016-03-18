@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>TileRenderer.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client</a> &gt; <span class="el_source">TileRenderer.java</span></div><h1>TileRenderer.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                      (C) Copyright 2003 - Marauroa                      *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client;
+
+import games.stendhal.client.sprite.Sprite;
+import games.stendhal.client.sprite.Tileset;
+import games.stendhal.common.tiled.LayerDefinition;
+
+import java.awt.Graphics;
+import java.io.IOException;
+import java.io.InputStream;
+
+import org.apache.log4j.Logger;
+
+/**
+ * This is a helper class to render coherent tiles based on the tileset. This
+ * should be replaced by independent tiles as soon as possible .
+ */
+class TileRenderer extends LayerRenderer {
+	/** the logger instance. */
+<span class="nc" id="L31">	private static final Logger logger = Logger.getLogger(TileRenderer.class);</span>
+	/** Tileset used for the map data */
+	protected Tileset tileset;
+	/** Raw map data. Indices of tiles in the tileset. */
+	protected int[] map;
+	/** The map data converted to tile references */ 
+	protected Sprite[] spriteMap;
+
+<span class="nc" id="L39">	public TileRenderer() {</span>
+<span class="nc" id="L40">		map = null;</span>
+<span class="nc" id="L41">		spriteMap = null;</span>
+<span class="nc" id="L42">	}</span>
+
+	/**
+	 * Sets the data that will be rendered.
+	 * @param in the stream to read from
+	 * @throws IOException 
+	 * 
+	 * @throws ClassNotFoundException
+	 */
+	public void setMapData(final InputStream in) throws IOException,
+			ClassNotFoundException {
+<span class="nc" id="L53">		final LayerDefinition layer = LayerDefinition.decode(in);</span>
+<span class="nc" id="L54">		width = layer.getWidth();</span>
+<span class="nc" id="L55">		height = layer.getHeight();</span>
+
+<span class="nc" id="L57">		logger.debug(&quot;Layer(&quot; + layer.getName() + &quot;): &quot; + width + &quot;x&quot; + height);</span>
+
+<span class="nc" id="L59">		map = layer.expose();</span>
+<span class="nc" id="L60">	}</span>
+
+	/**
+	 * Set the tileset.
+	 * 
+	 * @param tileset
+	 *            The tileset.
+	 */
+	@Override
+	public void setTileset(final Tileset tileset) {
+<span class="nc" id="L70">		this.tileset = tileset;</span>
+<span class="nc" id="L71">	}</span>
+	
+	/**
+	 * Initialize the sprite map from the tileset and the map data.
+	 * 
+	 * @return true if the map is ready to be used, false otherwise.
+	 */
+	private boolean initSpriteMap() {
+<span class="nc bnc" id="L79" title="All 2 branches missed.">		if (spriteMap == null) {</span>
+<span class="nc bnc" id="L80" title="All 2 branches missed.">			if (tileset != null) {</span>
+				/*
+				 * Cache sprites
+				 */
+<span class="nc" id="L84">				spriteMap = new Sprite[map.length];</span>
+
+<span class="nc" id="L86">				int i = spriteMap.length;</span>
+
+<span class="nc bnc" id="L88" title="All 2 branches missed.">				while (i-- != 0) {</span>
+<span class="nc" id="L89">					spriteMap[i] = tileset.getSprite(map[i]);</span>
+				}
+<span class="nc" id="L91">			} else {</span>
+<span class="nc" id="L92">				return false;</span>
+			}
+		}
+<span class="nc" id="L95">		return true;</span>
+	}
+	
+	@Override
+	public void draw(Graphics g, int x, int y, final int w, final int h) {
+<span class="nc bnc" id="L100" title="All 2 branches missed.">		if (!initSpriteMap()) {</span>
+<span class="nc" id="L101">			return;</span>
+		}
+
+<span class="nc" id="L104">		final int endX = Math.min(x + w, getWidth());</span>
+<span class="nc" id="L105">		final int endY= Math.min(y + h, getHeight());</span>
+
+<span class="nc" id="L107">		int sy = y * IGameScreen.SIZE_UNIT_PIXELS;</span>
+<span class="nc bnc" id="L108" title="All 2 branches missed.">		for (int j = y; j &lt; endY; j++) {</span>
+<span class="nc" id="L109">			int mapidx = (j * width) + x;</span>
+<span class="nc" id="L110">			int sx = x * IGameScreen.SIZE_UNIT_PIXELS;</span>
+			
+<span class="nc bnc" id="L112" title="All 2 branches missed.">			for (int i = x; i &lt; endX; i++) {</span>
+<span class="nc" id="L113">				spriteMap[mapidx].draw(g, sx, sy);</span>
+<span class="nc" id="L114">				mapidx++;</span>
+<span class="nc" id="L115">				sx += IGameScreen.SIZE_UNIT_PIXELS;</span>
+			}
+<span class="nc" id="L117">			sy += IGameScreen.SIZE_UNIT_PIXELS;</span>
+		}
+<span class="nc" id="L119">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

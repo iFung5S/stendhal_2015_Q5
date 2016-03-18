@@ -1,0 +1,354 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>AdosDeathmatch.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests</a> &gt; <span class="el_source">AdosDeathmatch.java</span></div><h1>AdosDeathmatch.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2011 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests;
+
+import games.stendhal.common.Direction;
+import games.stendhal.common.grammar.Grammar;
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.engine.Spot;
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.entity.Entity;
+import games.stendhal.server.entity.item.Item;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ChatCondition;
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.action.TeleportAction;
+import games.stendhal.server.entity.npc.condition.AndCondition;
+import games.stendhal.server.entity.npc.condition.GreetingMatchesNameCondition;
+import games.stendhal.server.entity.npc.condition.LevelGreaterThanCondition;
+import games.stendhal.server.entity.npc.condition.LevelLessThanCondition;
+import games.stendhal.server.entity.npc.condition.NotCondition;
+import games.stendhal.server.entity.npc.condition.PlayerHasPetOrSheepCondition;
+import games.stendhal.server.entity.npc.condition.PlayerInAreaCondition;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.maps.Region;
+import games.stendhal.server.maps.deathmatch.BailAction;
+import games.stendhal.server.maps.deathmatch.DeathmatchInfo;
+import games.stendhal.server.maps.deathmatch.DoneAction;
+import games.stendhal.server.maps.deathmatch.LeaveAction;
+import games.stendhal.server.maps.deathmatch.StartAction;
+import games.stendhal.server.util.Area;
+
+import java.awt.Rectangle;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
+
+import org.apache.log4j.Logger;
+
+/**
+ * Creates the Ados Deathmatch Game.
+ */
+public class AdosDeathmatch extends AbstractQuest {
+
+		/** the logger instance. */
+<span class="fc" id="L60">	private static final Logger logger = Logger.getLogger(AdosDeathmatch.class);</span>
+
+	private StendhalRPZone zone;
+
+	private static Area arena;
+
+	private DeathmatchInfo deathmatchInfo;
+
+<span class="nc" id="L68">	public AdosDeathmatch() {</span>
+	    // constructor for quest system
+<span class="nc" id="L70">	    logger.debug(&quot;little constructor for quest system&quot;, new Throwable());</span>
+<span class="nc" id="L71">	}</span>
+
+	@Override
+	public String getSlotName() {
+<span class="nc" id="L75">		return &quot;adosdeathmatch&quot;;</span>
+	}
+
+<span class="fc" id="L78">	public AdosDeathmatch(final StendhalRPZone zone, final Area area) {</span>
+<span class="fc" id="L79">		this.zone = zone;</span>
+<span class="fc" id="L80">		arena = area;</span>
+<span class="fc" id="L81">		logger.debug(&quot;big constructor for zone&quot;, new Throwable());</span>
+<span class="fc" id="L82">		final Spot entrance = new Spot(zone, 96, 75);</span>
+<span class="fc" id="L83">		deathmatchInfo = new DeathmatchInfo(arena, zone, entrance);</span>
+		// do not let players scroll out of deathmatch
+<span class="fc" id="L85">		Rectangle r = area.getShape().getBounds();</span>
+<span class="fc" id="L86">		zone.disallowOut(r.x, r.y, r.width, r.height);</span>
+<span class="fc" id="L87">	}</span>
+
+	/**
+	 * Shows the player the potential trophy.
+	 *
+	 * @param x
+	 *            x-position of helmet
+	 * @param y
+	 *            y-position of helmet
+	 */
+	public void createHelmet(final int x, final int y) {
+<span class="nc" id="L98">		final Item helmet = SingletonRepository.getEntityManager()</span>
+				.getItem(&quot;trophy helmet&quot;);
+<span class="nc" id="L100">		helmet.setDescription(&quot;This is the grand prize for Deathmatch winners. The defense will increase by 1 for every deathmatch completed.&quot;);</span>
+<span class="nc" id="L101">		helmet.setPosition(x, y);</span>
+<span class="nc" id="L102">		zone.add(helmet, false);</span>
+<span class="nc" id="L103">	}</span>
+
+	/**
+	 * Create the Deathmatch assistant.
+	 * 
+	 * @param name name of the assistant
+	 * @param x x coordinate of the assistant
+	 * @param y y coordinate of the assistant
+	 */
+	public void createNPC(final String name, final int x, final int y) {
+
+		// We create an NPC
+<span class="fc" id="L115">		final SpeakerNPC npc = new SpeakerNPC(name) {</span>
+
+			@Override
+			protected void createPath() {
+<span class="fc" id="L119">				setPath(null);</span>
+<span class="fc" id="L120">			}</span>
+
+			@Override
+			protected void createDialog() {
+
+				// player is outside the fence. after 'hi' use ConversationStates.INFORMATION_1 only.
+<span class="fc" id="L126">				add(</span>
+						ConversationStates.IDLE,
+						ConversationPhrases.GREETING_MESSAGES,
+						new AndCondition(new GreetingMatchesNameCondition(name),
+								new NotCondition(new PlayerInAreaCondition(arena))),
+						ConversationStates.INFORMATION_1,
+						&quot;Welcome to Ados Deathmatch! Please talk to #Thonatus if you want to join.&quot;,
+						null);
+<span class="fc" id="L134">				add(</span>
+						ConversationStates.INFORMATION_1,
+						&quot;Thonatus&quot;,
+						null,
+						ConversationStates.INFORMATION_1,
+						&quot;Thonatus is the official #Deathmatch Recruitor. He is in the #swamp south west of Ados.&quot;,
+						null);
+
+<span class="fc" id="L142">                add(</span>
+					ConversationStates.INFORMATION_1,
+					&quot;swamp&quot;,
+					null,
+					ConversationStates.INFORMATION_1,
+					&quot;Yes, south west from here, as I said. Beware, as the swamp is populated with some evil creatures.&quot;,
+					null);
+
+
+<span class="fc" id="L151">				add(</span>
+					ConversationStates.INFORMATION_1,
+					&quot;deathmatch&quot;,
+					null,
+					ConversationStates.INFORMATION_1,
+					&quot;If you accept the #challenge from #Thonatus, you will arrive here. Strong enemies will surround you and you must kill them all to claim #victory.&quot;,
+					null);
+
+<span class="fc" id="L159">                add(</span>
+                    ConversationStates.INFORMATION_1,
+                    &quot;challenge&quot;,
+                    null,
+                    ConversationStates.INFORMATION_1,
+                    &quot;Remember the name death in #Deathmatch. Do not accept the challenge unless you think you can defend well. And be sure to check that there is not any elite warrior already inside, battling strong beasts!&quot;,
+                    null);
+
+<span class="fc" id="L167">				add(</span>
+                    ConversationStates.INFORMATION_1,
+                    &quot;victory&quot;,
+                    null,
+                    ConversationStates.INFORMATION_1,
+                    &quot;The prize is a helmet like the one you see displayed here. The defence it gives increases for every deathmatch round you successfully complete, up to a maximum dependent on your level.&quot;,
+                    null);
+
+				// player is inside
+<span class="fc" id="L176">				add(ConversationStates.IDLE,</span>
+						ConversationPhrases.GREETING_MESSAGES,
+						new AndCondition(new GreetingMatchesNameCondition(name),
+								new PlayerInAreaCondition(arena)),
+						ConversationStates.ATTENDING,
+						&quot;Welcome to Ados Deathmatch! Do you need #help?&quot;, null);
+<span class="fc" id="L182">				addJob(&quot;I'm the deathmatch assistant. Tell me, if you need #help on that.&quot;);</span>
+<span class="fc" id="L183">				addHelp(&quot;Say '#start' when you're ready! Keep killing #everything that #appears. Say 'victory' when you survived.&quot;);</span>
+<span class="fc" id="L184">				addGoodbye(&quot;I hope you enjoy the Deathmatch!&quot;);</span>
+
+<span class="fc" id="L186">				add(</span>
+						ConversationStates.ATTENDING,
+						Arrays.asList(&quot;everything&quot;, &quot;appears&quot;, &quot;deathmatch&quot;),
+						ConversationStates.ATTENDING,
+						&quot;Each round you will face stronger enemies. Defend well, kill them or tell me if you want to #bail!&quot;,
+						null);
+<span class="fc" id="L192">				add(</span>
+						ConversationStates.ATTENDING,
+						Arrays.asList(&quot;trophy&quot;, &quot;helm&quot;, &quot;helmet&quot;),
+						ConversationStates.ATTENDING,
+						&quot;If you win the deathmatch, we reward you with a trophy helmet. Each #victory will strengthen it.&quot;,
+						null);
+
+				// 'start' command will start spawning creatures
+<span class="fc" id="L200">				add(ConversationStates.ATTENDING, Arrays.asList(&quot;start&quot;, &quot;go&quot;,</span>
+						&quot;fight&quot;), null, ConversationStates.IDLE, null,
+						new StartAction(deathmatchInfo));
+
+				// 'victory' command will scan, if all creatures are killed and
+				// reward the player
+<span class="fc" id="L206">				add(ConversationStates.ATTENDING, Arrays.asList(&quot;victory&quot;,</span>
+						&quot;done&quot;, &quot;yay&quot;), null, ConversationStates.ATTENDING,
+						null, new DoneAction());
+
+				// 'leave' command will send the victorious player home
+<span class="fc" id="L211">				add(ConversationStates.ATTENDING, Arrays</span>
+						.asList(&quot;leave&quot;, &quot;home&quot;), null,
+						ConversationStates.ATTENDING, null, new LeaveAction());
+
+				// 'bail' command will teleport the player out of it
+<span class="fc" id="L216">				add(ConversationStates.ANY, Arrays.asList(&quot;bail&quot;, &quot;flee&quot;,</span>
+						&quot;run&quot;, &quot;exit&quot;), null, ConversationStates.ATTENDING,
+						null, new BailAction());
+<span class="fc" id="L219">			}</span>
+		};
+
+<span class="fc" id="L222">		npc.setEntityClass(&quot;darkwizardnpc&quot;);</span>
+<span class="fc" id="L223">		npc.setPosition(x, y);</span>
+<span class="fc" id="L224">		npc.setDescription(&quot;You see Thanatos. He watches strong warriors in their Deathmatch.&quot;);</span>
+<span class="fc" id="L225">		npc.setDirection(Direction.DOWN);</span>
+<span class="fc" id="L226">		npc.initHP(100);</span>
+		// The assistant is near the spikes, so give him better ears for the
+		// safety of the players
+<span class="fc" id="L229">		npc.setPerceptionRange(7);</span>
+<span class="fc" id="L230">		zone.add(npc);</span>
+<span class="fc" id="L231">	}</span>
+
+
+<span class="fc" id="L234">	static class DeathMatchEmptyCondition implements ChatCondition {</span>
+		@Override
+		public boolean fire(final Player player, final Sentence sentence, final Entity npc) {
+<span class="fc" id="L237">			final List&lt;Player&gt; dmplayers = arena.getPlayers();</span>
+<span class="fc bfc" id="L238" title="All 2 branches covered.">			return dmplayers.size() == 0;</span>
+		}
+	}
+
+	private void recruiterInformation() {
+<span class="fc" id="L243">		final SpeakerNPC npc2 = npcs.get(&quot;Thonatus&quot;);</span>
+
+<span class="fc" id="L245">		npc2.add(ConversationStates.ATTENDING, Arrays.asList(&quot;heroes&quot;, &quot;who&quot;, &quot;hero&quot;, &quot;status&quot;), </span>
+				 new NotCondition(new DeathMatchEmptyCondition()), ConversationStates.ATTENDING,
+				 null,
+<span class="fc" id="L248">				 new ChatAction() {</span>
+					 @Override
+					public void fire(final Player player, final Sentence sentence, final EventRaiser npc) {
+<span class="nc" id="L251">						 final List&lt;Player&gt; dmplayers = arena.getPlayers();</span>
+<span class="nc" id="L252">						 final List&lt;String&gt; dmplayernames = new LinkedList&lt;String&gt;();</span>
+<span class="nc bnc" id="L253" title="All 2 branches missed.">						 for (Player dmplayer : dmplayers) {</span>
+<span class="nc" id="L254">							 dmplayernames.add(dmplayer.getName());</span>
+<span class="nc" id="L255">						 }</span>
+						 // List the players inside deathmatch
+<span class="nc" id="L257">						 npc.say(&quot;There are heroes battling right now in the deathmatch. If you want to go and join &quot;</span>
+								 + Grammar.enumerateCollection(dmplayernames) + &quot;, then make the #challenge.&quot;);
+<span class="nc" id="L259">					 }</span>
+				 });
+
+<span class="fc" id="L262">		npc2.add(ConversationStates.ATTENDING, Arrays.asList(&quot;heroes&quot;, &quot;who&quot;, &quot;hero&quot;, &quot;status&quot;) , new DeathMatchEmptyCondition(), </span>
+				 ConversationStates.ATTENDING,
+				 &quot;Are you a hero? Make the #challenge if you are sure you want to join the deathmatch.&quot;, null);
+
+<span class="fc" id="L266">		npc2.add(ConversationStates.ATTENDING, &quot;challenge&quot;, </span>
+				 new AndCondition(new LevelGreaterThanCondition(19), 
+						  new DeathMatchEmptyCondition(),
+						  new NotCondition(new PlayerHasPetOrSheepCondition())), 
+				 ConversationStates.IDLE, null,				 
+				 new TeleportAction(&quot;0_ados_wall_n&quot;, 100, 86, Direction.DOWN));
+
+
+<span class="fc" id="L274">		npc2.add(ConversationStates.ATTENDING, &quot;challenge&quot;, </span>
+			 new AndCondition(new LevelGreaterThanCondition(19), 
+					  new NotCondition(new DeathMatchEmptyCondition()),
+					  new NotCondition(new PlayerHasPetOrSheepCondition())), 
+				 ConversationStates.QUESTION_1, null,				 
+<span class="fc" id="L279">				 new ChatAction() {</span>
+					 @Override
+					public void fire(final Player player, final Sentence sentence, final EventRaiser npc) {
+<span class="fc" id="L282">						 final List&lt;Player&gt; dmplayers = arena.getPlayers();</span>
+<span class="fc" id="L283">						 final List&lt;String&gt; dmplayernames = new LinkedList&lt;String&gt;();</span>
+<span class="fc bfc" id="L284" title="All 2 branches covered.">						 for (Player dmplayer : dmplayers) {</span>
+<span class="fc" id="L285">							 dmplayernames.add(dmplayer.getName());</span>
+<span class="fc" id="L286">						 }</span>
+						 // List the players inside deathmatch
+<span class="fc" id="L288">						 npc.say(&quot;There are heroes battling right now in the deathmatch, so it may be dangerous there. Do you want to join &quot;</span>
+								 + Grammar.enumerateCollection(dmplayernames) + &quot;?&quot;);
+<span class="fc" id="L290">					 }</span>
+				 });
+
+<span class="fc" id="L293">		npc2.add(ConversationStates.ATTENDING, &quot;challenge&quot;, </span>
+			 new AndCondition(new LevelGreaterThanCondition(19), 
+					  new PlayerHasPetOrSheepCondition()),
+			 ConversationStates.ATTENDING, &quot;Sorry, but it would be too scary for your pet in there.&quot;,
+				 null);
+
+
+<span class="fc" id="L300">		npc2.add(ConversationStates.QUESTION_1, ConversationPhrases.YES_MESSAGES, null,</span>
+				 ConversationStates.IDLE, null,				 
+				 new TeleportAction(&quot;0_ados_wall_n&quot;, 100, 86, Direction.DOWN));
+
+
+<span class="fc" id="L305">		npc2.add(ConversationStates.QUESTION_1, ConversationPhrases.NO_MESSAGES, null,</span>
+				 ConversationStates.ATTENDING, &quot;That's a bit cowardly, but never mind. If there's anything else you want, just say.&quot;,				 
+				 null);
+
+<span class="fc" id="L309">		npc2.add(ConversationStates.ATTENDING, &quot;challenge&quot;,</span>
+				 new LevelLessThanCondition(20), 
+				 ConversationStates.ATTENDING, &quot;Sorry, you are too weak for the #deathmatch now, come back when you have at least level 20.&quot;,
+				 null);
+<span class="fc" id="L313">	}</span>
+
+
+
+	@Override
+	public void addToWorld() {
+<span class="fc" id="L319">		fillQuestInfo(</span>
+				&quot;Ados Deathmatch&quot;,
+				&quot;Thanatos searches for heroes to fight in the Deathmatch arena.&quot;,
+				true);
+<span class="fc" id="L323">		recruiterInformation();</span>
+<span class="fc" id="L324">	}</span>
+	@Override
+	public String getName() {
+<span class="nc" id="L327">		return &quot;AdosDeathmatch&quot;;</span>
+	}
+	@Override
+	public int getMinLevel() {
+<span class="fc" id="L331">		return 20;</span>
+	}
+	
+	@Override
+	public boolean isVisibleOnQuestStatus() {
+<span class="nc" id="L336">		return false;</span>
+	}
+	
+	@Override
+	public List&lt;String&gt; getHistory(final Player player) {
+<span class="nc" id="L341">		return new ArrayList&lt;String&gt;();</span>
+	}
+	
+	@Override
+	public String getRegion() {
+<span class="nc" id="L346">		return Region.ADOS_CITY;</span>
+	}
+	
+	@Override
+	public String getNPCName() {
+<span class="nc" id="L351">		return &quot;Thonatus&quot;;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

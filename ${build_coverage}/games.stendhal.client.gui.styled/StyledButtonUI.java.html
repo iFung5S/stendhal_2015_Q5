@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>StyledButtonUI.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui.styled</a> &gt; <span class="el_source">StyledButtonUI.java</span></div><h1>StyledButtonUI.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                 (C) Copyright 2003-2015 - Faiumoni e.V.                 *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui.styled;
+
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.Insets;
+import java.awt.Rectangle;
+import java.awt.event.FocusEvent;
+import java.awt.event.FocusListener;
+
+import javax.swing.AbstractButton;
+import javax.swing.ButtonModel;
+import javax.swing.JButton;
+import javax.swing.JComponent;
+import javax.swing.JRootPane;
+import javax.swing.plaf.ComponentUI;
+import javax.swing.plaf.basic.BasicButtonUI;
+
+/**
+ * ButtonUI implementation for drawing PixmapStyle buttons. 
+ */
+public class StyledButtonUI extends BasicButtonUI {
+	/** Shared UI instance for all buttons. */
+<span class="nc" id="L35">	private static final StyledButtonUI UI = new StyledButtonUI(StyleUtil.getStyle());</span>
+	/**
+	 * Listener for button focus changes. Contains no state so it can be
+	 * shared for all buttons.
+	 */
+<span class="nc" id="L40">	private static final DefaultButtonFocusListener FOCUS_LISTENER = new DefaultButtonFocusListener();</span>
+	/** Used style. */
+	private final Style style;
+
+	/**
+	 * Create a new StyledButtonUI.
+	 * 
+	 * @param style used pixmap style
+	 */
+<span class="nc" id="L49">	public StyledButtonUI(Style style) {</span>
+<span class="nc" id="L50">		this.style = style;</span>
+<span class="nc" id="L51">	}</span>
+	
+	/**
+	 * Required by UIManager.
+	 * 
+	 * @param button component to create UI for
+	 * @return UI delegate
+	 */
+	public static ComponentUI createUI(JComponent button) {
+<span class="nc" id="L60">		return UI;</span>
+	}
+
+	@Override
+	public void paint(Graphics graphics, JComponent button) {
+<span class="nc" id="L65">		paintBackground(graphics, button);</span>
+		
+		// Restore normal look after pressing ends, if needed
+<span class="nc bnc" id="L68" title="All 2 branches missed.">		if (button instanceof AbstractButton) {</span>
+<span class="nc" id="L69">			ButtonModel model = ((AbstractButton) button).getModel();</span>
+<span class="nc bnc" id="L70" title="All 2 branches missed.">			if (!model.isPressed()) {</span>
+				// Try to avoid switching borders if the button has none or custom 
+				// borders
+<span class="nc bnc" id="L73" title="All 2 branches missed.">				if (button.getBorder().equals(style.getBorderDown())) {</span>
+<span class="nc" id="L74">					button.setBorder(style.getBorder());</span>
+				}
+			}
+<span class="nc bnc" id="L77" title="All 2 branches missed.">			if (model.isRollover()) {</span>
+<span class="nc" id="L78">				hilite(graphics, button);</span>
+			}
+			
+<span class="nc bnc" id="L81" title="All 2 branches missed.">			if (button instanceof JButton) {</span>
+<span class="nc bnc" id="L82" title="All 2 branches missed.">				if (((JButton) button).isDefaultButton()) {</span>
+<span class="nc" id="L83">					Insets insets = button.getInsets();</span>
+<span class="nc" id="L84">					graphics.setColor(style.getShadowColor());</span>
+<span class="nc" id="L85">					int width = button.getWidth() - insets.right - insets.left - 3;</span>
+<span class="nc" id="L86">					int height = button.getHeight() - insets.top - insets.bottom - 3;</span>
+<span class="nc" id="L87">					graphics.drawRect(insets.left + 1, insets.right + 1, width, height);</span>
+				}
+			}
+		}
+		
+<span class="nc" id="L92">		super.paint(graphics, button);</span>
+<span class="nc" id="L93">	}</span>
+
+	@Override
+	protected void paintButtonPressed(Graphics graphics, AbstractButton button) {
+		// Try to avoid switching borders if the button has none, or custom
+		// borders
+<span class="nc bnc" id="L99" title="All 2 branches missed.">		if (style.getBorder().equals(button.getBorder())) {</span>
+<span class="nc" id="L100">			button.setBorder(style.getBorderDown());</span>
+		}
+<span class="nc" id="L102">	}</span>
+	
+	@Override
+	protected void paintText(Graphics graphics, AbstractButton button, 
+			Rectangle textRect, String text) {
+<span class="nc bnc" id="L107" title="All 2 branches missed.">		if (button.isEnabled()) {</span>
+<span class="nc" id="L108">			super.paintText(graphics, button, textRect, text);</span>
+		} else {
+<span class="nc" id="L110">			int shift = graphics.getFontMetrics().getAscent();</span>
+			
+<span class="nc" id="L112">			StyleUtil.paintDisabledText(style, graphics, text, textRect.x, textRect.y + shift);</span>
+		}
+<span class="nc" id="L114">	}</span>
+	
+	@Override
+	protected void paintFocus(Graphics graphics, AbstractButton button, 
+			Rectangle viewRect, Rectangle textRect, Rectangle iconRect) {
+<span class="nc" id="L119">		graphics.setColor(style.getShadowColor());</span>
+<span class="nc" id="L120">		graphics.drawRect(textRect.x, textRect.y, textRect.width, textRect.height);</span>
+<span class="nc" id="L121">	}</span>
+	
+	@Override
+	public Dimension getPreferredSize(JComponent button) {
+		/*
+		 * The default styles do some weird trick with their borders that
+		 * affects only the preferred size, but not the minimum size. Making
+		 * a special border type that takes the size of the margin does not 
+		 * work, because that increases the minimum size as well. Anyway, the
+		 * effect can be simulated like this.
+		 */
+<span class="nc" id="L132">		Dimension dim = super.getPreferredSize(button);</span>
+
+<span class="nc bnc" id="L134" title="All 2 branches missed.">		if (button instanceof AbstractButton) {</span>
+<span class="nc" id="L135">			Insets margin = ((AbstractButton) button).getMargin();</span>
+<span class="nc" id="L136">			dim.width += margin.left + margin.right;</span>
+<span class="nc" id="L137">			dim.height += margin.top + margin.bottom;</span>
+		}
+
+<span class="nc" id="L140">		return dim;</span>
+	}
+	
+	/**
+	 * Draw the background image.
+	 * 
+	 * @param graphics graphics
+	 * @param button component whose background gets drawn
+	 */
+	private void paintBackground(Graphics graphics, JComponent button) {
+<span class="nc" id="L150">		StyleUtil.fillBackground(style, graphics, 0, 0, button.getWidth(), button.getHeight());</span>
+<span class="nc" id="L151">	}</span>
+	
+	/**
+	 * Draws the mouse focus highlighting.
+	 * 
+	 * @param graphics graphics
+	 * @param button button to be highlighted
+	 */
+	private void hilite(Graphics graphics, JComponent button) {
+<span class="nc" id="L160">		graphics.setColor(style.getHighLightColor());</span>
+<span class="nc" id="L161">		Insets insets = button.getInsets();</span>
+		// -1 to avoid right and bottom lines ending under the border
+<span class="nc" id="L163">		int width = button.getWidth() - insets.right - insets.left - 1;</span>
+<span class="nc" id="L164">		int height = button.getHeight() - insets.top - insets.bottom - 1;</span>
+<span class="nc" id="L165">		graphics.drawRect(insets.left, insets.top, width, height);</span>
+<span class="nc" id="L166">	}</span>
+	
+	@Override
+	public void installUI(JComponent button) {
+<span class="nc" id="L170">		super.installUI(button);</span>
+<span class="nc" id="L171">		button.addFocusListener(FOCUS_LISTENER);</span>
+<span class="nc" id="L172">		button.setForeground(style.getForeground());</span>
+<span class="nc" id="L173">		button.setBorder(style.getBorder());</span>
+<span class="nc" id="L174">	}</span>
+	
+	/**
+	 * Listener that follows when a button gets the focus, and makes it the
+	 * default when it does. This makes enter push the selected button, instead
+	 * of just space.
+	 */
+<span class="nc" id="L181">	private static class DefaultButtonFocusListener implements FocusListener {</span>
+		@Override
+		public void focusGained(FocusEvent e) {
+<span class="nc" id="L184">			changeDefault(e.getComponent(), true);</span>
+<span class="nc" id="L185">		}</span>
+		
+		@Override
+		public void focusLost(FocusEvent e) {
+<span class="nc" id="L189">			changeDefault(e.getComponent(), false);</span>
+<span class="nc" id="L190">		}</span>
+		
+		/**
+		 * Change the default button of the root pane of the specified
+		 * component.
+		 * 
+		 * @param component the component whose root pane's default button
+		 *	should be changed. It must be a JButton.
+		 * @param setDefault if &lt;code&gt;true&lt;/code&gt;, set the JButton specified by
+		 * 	&lt;code&gt;component&lt;/code&gt; as the default. Otherwise the default button
+		 * 	is set to none
+		 */
+		private void changeDefault(Component component, boolean setDefault) {
+<span class="nc bnc" id="L203" title="All 2 branches missed.">			if (component instanceof JButton) {</span>
+<span class="nc" id="L204">				JButton button = (JButton) component;</span>
+<span class="nc" id="L205">				JRootPane parent = button.getRootPane();</span>
+				/*
+				 * In some conditions, when pushing the button results
+				 * in it being removed from the root container, a focus
+				 * event can be processed after the button (or its parents)
+				 * has been removed, so we need to check for a non-null
+				 * root for a focused button, even though that seems
+				 * nonsensical.
+				 */
+<span class="nc bnc" id="L214" title="All 2 branches missed.">				if (parent != null) {</span>
+<span class="nc bnc" id="L215" title="All 2 branches missed.">					if (setDefault) {</span>
+<span class="nc" id="L216">						parent.setDefaultButton(button);</span>
+					} else {
+<span class="nc" id="L218">						parent.setDefaultButton(null);</span>
+					}
+				}
+			}
+<span class="nc" id="L222">		}</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

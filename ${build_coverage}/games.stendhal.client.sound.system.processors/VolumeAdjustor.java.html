@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>VolumeAdjustor.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.sound.system.processors</a> &gt; <span class="el_source">VolumeAdjustor.java</span></div><h1>VolumeAdjustor.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.sound.system.processors;
+
+import games.stendhal.common.math.Algebra;
+import games.stendhal.common.math.Numeric;
+import games.stendhal.client.sound.facade.Time;
+import games.stendhal.client.sound.system.SignalProcessor;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+
+/**
+ * Adjust the volume of a PCM audio signal.
+ * @author silvio
+ */
+<span class="nc bnc" id="L26" title="All 2 branches missed.">public class VolumeAdjustor extends SignalProcessor</span>
+{
+<span class="nc" id="L28">    private final AtomicInteger mCurrentVolume      = new AtomicInteger();</span>
+<span class="nc" id="L29">    private final AtomicInteger mTargetVolume       = new AtomicInteger();</span>
+<span class="nc" id="L30">	private final AtomicInteger mVolumeBeforeFading = new AtomicInteger();</span>
+<span class="nc" id="L31">    private final AtomicLong    mFadingDuration     = new AtomicLong();</span>
+
+    public VolumeAdjustor()
+<span class="nc" id="L34">    {</span>
+<span class="nc" id="L35">        mCurrentVolume.set(floatToInt(1.0f));</span>
+<span class="nc" id="L36">        mTargetVolume.set(floatToInt(1.0f));</span>
+<span class="nc" id="L37">		mVolumeBeforeFading.set(floatToInt(1.0f));</span>
+<span class="nc" id="L38">        mFadingDuration.set(0);</span>
+<span class="nc" id="L39">    }</span>
+    
+    public VolumeAdjustor(float volume)
+<span class="nc" id="L42">    {</span>
+<span class="nc" id="L43">        mCurrentVolume.set(floatToInt(volume));</span>
+<span class="nc" id="L44">        mTargetVolume.set(floatToInt(volume));</span>
+<span class="nc" id="L45">		mVolumeBeforeFading.set(floatToInt(volume));</span>
+<span class="nc" id="L46">        mFadingDuration.set(0);</span>
+<span class="nc" id="L47">    }</span>
+
+    public void setVolume(float volume)
+    {
+<span class="nc" id="L51">        mCurrentVolume.set(floatToInt(volume));</span>
+<span class="nc" id="L52">		mVolumeBeforeFading.set(floatToInt(volume));</span>
+<span class="nc" id="L53">        mFadingDuration.set(0);</span>
+<span class="nc" id="L54">    }</span>
+
+	public float getVolume()
+	{
+<span class="nc" id="L58">		return intToFloat(mCurrentVolume.get());</span>
+	}
+
+    public void startFading(float volume, Time duration)
+    {
+<span class="nc" id="L63">		mVolumeBeforeFading.set(mCurrentVolume.get());</span>
+		
+<span class="nc bnc" id="L65" title="All 2 branches missed.">        if(duration.getInNanoSeconds() &lt;= 0)</span>
+        {
+<span class="nc" id="L67">            mCurrentVolume.set(floatToInt(volume));</span>
+<span class="nc" id="L68">            mFadingDuration.set(0);</span>
+        }
+        else
+        {
+<span class="nc" id="L72">            mTargetVolume.set(floatToInt(volume));</span>
+<span class="nc" id="L73">            mFadingDuration.set(duration.getInNanoSeconds());</span>
+        }
+<span class="nc" id="L75">    }</span>
+
+	public void startFading(Time duration)
+    {
+<span class="nc bnc" id="L79" title="All 2 branches missed.">        if(duration.getInNanoSeconds() &lt;= 0)</span>
+        {
+<span class="nc" id="L81">            mCurrentVolume.set(mVolumeBeforeFading.get());</span>
+<span class="nc" id="L82">            mFadingDuration.set(0);</span>
+        }
+        else
+        {
+<span class="nc" id="L86">            mTargetVolume.set(mVolumeBeforeFading.get());</span>
+<span class="nc" id="L87">            mFadingDuration.set(duration.getInNanoSeconds());</span>
+        }
+<span class="nc" id="L89">    }</span>
+    
+    @Override
+    protected void modify(float[] data, int frames, int channels, int rate)
+    {
+<span class="nc bnc" id="L94" title="All 4 branches missed.">        assert data.length &gt;= (frames * channels);</span>
+
+<span class="nc bnc" id="L96" title="All 2 branches missed.">        if(mFadingDuration.get() &lt;= 0)</span>
+        {
+<span class="nc" id="L98">            float volume = intToFloat(mCurrentVolume.get());</span>
+
+            // if volume is zero we return without processing the audio data
+<span class="nc bnc" id="L101" title="All 2 branches missed.">            if(Algebra.isEqual_Scalf(volume, 0.0f))</span>
+<span class="nc" id="L102">                return;</span>
+
+<span class="nc bnc" id="L104" title="All 2 branches missed.">            if(!Algebra.isEqual_Scalf(volume, 1.0f))</span>
+            {
+<span class="nc bnc" id="L106" title="All 2 branches missed.">                for(int i=0; i&lt;(frames*channels); ++i)</span>
+<span class="nc" id="L107">                    data[i] *= volume;</span>
+            }
+
+			// else if volume is 1 we propagate the unmodified audio data
+<span class="nc" id="L111">        }</span>
+        else
+        {
+<span class="nc" id="L114">            Time fadingDuration  = new Time(mFadingDuration.get(), Time.Unit.NANO);</span>
+<span class="nc" id="L115">            Time segmentDuration = new Time(frames, rate);</span>
+
+<span class="nc" id="L117">            int   numSamples    = frames;</span>
+<span class="nc" id="L118">            float volume        = intToFloat(mCurrentVolume.get());</span>
+<span class="nc" id="L119">            float volumeSegment = intToFloat(mTargetVolume.get()) - intToFloat(mCurrentVolume.get());</span>
+
+<span class="nc bnc" id="L121" title="All 2 branches missed.">            if(segmentDuration.getInNanoSeconds() &gt; fadingDuration.getInNanoSeconds())</span>
+<span class="nc" id="L122">                numSamples = (int)fadingDuration.getInSamples(rate);</span>
+            else
+<span class="nc" id="L124">                volumeSegment *= (float)((double)segmentDuration.getInNanoSeconds() / (double)fadingDuration.getInNanoSeconds());</span>
+
+<span class="nc bnc" id="L126" title="All 2 branches missed.">            for(int i=0; i&lt;numSamples; ++i)</span>
+            {
+<span class="nc" id="L128">                int    index = i * channels;</span>
+<span class="nc" id="L129">                double vol   = volume + (volumeSegment * i / numSamples);</span>
+
+<span class="nc bnc" id="L131" title="All 2 branches missed.">                for(int c=0; c&lt;channels; ++c)</span>
+<span class="nc" id="L132">                    data[index + c] *= vol;</span>
+            }
+
+<span class="nc bnc" id="L135" title="All 2 branches missed.">            for(int i=(numSamples * channels); i&lt;(frames * channels); ++i)</span>
+<span class="nc" id="L136">                data[i] *= volume + volumeSegment;</span>
+
+<span class="nc" id="L138">            mCurrentVolume.addAndGet(floatToInt(volumeSegment));</span>
+<span class="nc" id="L139">            mFadingDuration.addAndGet(-segmentDuration.getInNanoSeconds());</span>
+        }
+
+<span class="nc" id="L142">        super.propagate(data, frames, channels, rate);</span>
+<span class="nc" id="L143">    }</span>
+
+<span class="nc" id="L145">    private static int   floatToInt(float v) { return Numeric.floatToInt(v, 10000000.0f); }</span>
+<span class="nc" id="L146">    private static float intToFloat(int   v) { return Numeric.intToFloat(v, 10000000.0f); }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

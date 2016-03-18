@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>WrapAction.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.actions.admin</a> &gt; <span class="el_source">WrapAction.java</span></div><h1>WrapAction.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2016 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.actions.admin;
+
+import games.stendhal.common.grammar.Grammar;
+import games.stendhal.server.actions.ActionListener;
+import games.stendhal.server.actions.CommandCenter;
+import games.stendhal.server.core.engine.GameEvent;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.entity.item.Item;
+import games.stendhal.server.entity.item.Present;
+import games.stendhal.server.entity.player.Player;
+import marauroa.common.game.RPAction;
+
+import org.apache.log4j.Logger;
+
+/**
+ * @author Martin Fuchs
+ */
+<span class="fc" id="L29">public class WrapAction implements ActionListener {</span>
+
+<span class="fc" id="L31">	static final Logger logger = Logger.getLogger(WrapAction.class);</span>
+
+	/**
+	 * Registers the &quot;wrap&quot; action handler.
+	 */
+	public static void register() {
+<span class="fc" id="L37">		final WrapAction wrap = new WrapAction();</span>
+<span class="fc" id="L38">		CommandCenter.register(&quot;wrap&quot;, wrap, 800);</span>
+<span class="fc" id="L39">	}</span>
+
+	@Override
+	public void onAction(final Player player, final RPAction action) {
+<span class="pc bpc" id="L43" title="1 of 2 branches missed.">		if (action.get(&quot;type&quot;).equals(&quot;wrap&quot;)) {</span>
+<span class="fc" id="L44">			onWrap(player, action);</span>
+		}
+<span class="fc" id="L46">	}</span>
+
+	private void onWrap(final Player player, final RPAction action) {
+<span class="fc" id="L49">		String itemName = action.get(&quot;target&quot;);</span>
+<span class="fc" id="L50">		final String args = action.get(&quot;args&quot;);</span>
+
+<span class="fc bfc" id="L52" title="All 4 branches covered.">		if ((args != null) &amp;&amp; (args.length() &gt; 0)) {</span>
+<span class="fc" id="L53">			itemName += ' ';</span>
+<span class="fc" id="L54">			itemName += args;</span>
+		}
+
+<span class="fc" id="L57">		itemName = Grammar.singular(itemName);</span>
+
+<span class="fc" id="L59">		final Item item = player.getFirstEquipped(itemName);</span>
+
+<span class="fc bfc" id="L61" title="All 2 branches covered.">		if (item != null) {</span>
+
+<span class="fc" id="L63">			final Present present = (Present) SingletonRepository.getEntityManager().getItem(&quot;present&quot;);</span>
+<span class="fc" id="L64">			present.setContent(itemName);</span>
+<span class="fc" id="L65">			player.drop(itemName);</span>
+<span class="fc" id="L66">			player.equipToInventoryOnly(present);</span>
+
+<span class="fc" id="L68">			new GameEvent(player.getName(), &quot;wrap&quot;, itemName).raise();</span>
+
+<span class="fc" id="L70">			player.updateItemAtkDef();</span>
+<span class="fc" id="L71">		} else {</span>
+<span class="fc" id="L72">			player.sendPrivateText(&quot;You don't have any &quot; + itemName);</span>
+		}
+<span class="fc" id="L74">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

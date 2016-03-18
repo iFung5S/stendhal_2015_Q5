@@ -1,0 +1,259 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>StatusList.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.status</a> &gt; <span class="el_source">StatusList.java</span></div><h1>StatusList.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2013 - Faiumoni e. V.                   *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.status;
+
+import games.stendhal.server.entity.Entity;
+import games.stendhal.server.entity.RPEntity;
+
+import java.lang.ref.WeakReference;
+import java.util.EnumSet;
+import java.util.LinkedList;
+import java.util.List;
+
+/**
+ * handles a list of status for an entity
+ * 
+ * @author hendrik
+ */
+public class StatusList {
+	private WeakReference&lt;RPEntity&gt; entityRef;
+
+	/** Container for statuses inflicted on entity */
+	private List&lt;Status&gt; statuses;
+
+	/** Immunites to statuses */
+	private EnumSet&lt;StatusType&gt; immunities;
+
+	/**
+	 * StatusList for an entity
+	 *
+	 * @param entity RPEntity which has the statuses managed by this list.
+	 */
+<span class="fc" id="L41">	public StatusList(RPEntity entity) {</span>
+<span class="fc" id="L42">		this.entityRef = new WeakReference&lt;RPEntity&gt;(entity);</span>
+<span class="fc" id="L43">		immunities = EnumSet.noneOf(StatusType.class);</span>
+<span class="fc" id="L44">		statuses = new LinkedList&lt;Status&gt;();</span>
+<span class="fc" id="L45">	}</span>
+
+	/**
+	 * Get statuses that are currently inflicted on the entity
+	 * 
+	 * @return List of statuses
+	 */
+	public List&lt;Status&gt; getStatuses() {
+<span class="nc" id="L53">		return statuses;</span>
+	}
+
+	/**
+	 * Count how many occurances of a status are inflicted on the entity
+	 * 
+	 * @param statusType type of status being checked
+	 * @return number of times status is found
+	 */
+	public int countStatusByType(StatusType statusType) {
+<span class="fc" id="L63">		int count = 0;</span>
+<span class="fc bfc" id="L64" title="All 2 branches covered.">		for (Status status : statuses) {</span>
+<span class="pc bpc" id="L65" title="1 of 2 branches missed.">			if (status.getStatusType() == statusType) {</span>
+<span class="fc" id="L66">				count += 1;</span>
+			}
+<span class="fc" id="L68">		}</span>
+<span class="fc" id="L69">		return count;</span>
+	}
+
+	/**
+	 * gets the first status of the specified status subclass
+	 *
+	 * @param statusClass status subclass
+	 * @return Status or &lt;code&gt;null&lt;/code&gt;
+	 */
+	&lt;T extends Status&gt; T getFirstStatusByClass(Class&lt;T&gt; statusClass) {
+<span class="nc bnc" id="L79" title="All 2 branches missed.">		for (Status status : statuses) {</span>
+<span class="nc bnc" id="L80" title="All 2 branches missed.">			if (status.getClass().equals(statusClass)) {</span>
+<span class="nc" id="L81">				return statusClass.cast(status);</span>
+			}
+<span class="nc" id="L83">		}</span>
+<span class="nc" id="L84">		return null;</span>
+	}
+
+	/**
+	 * gets all statuses of the specified status subclass
+	 *
+	 * @param statusClass status subclass
+	 * @return Status or &lt;code&gt;null&lt;/code&gt;
+	 */
+	&lt;T extends Status&gt; List&lt;T&gt; getAllStatusByClass(Class&lt;T&gt; statusClass) {
+<span class="fc" id="L94">		List&lt;T&gt; res = new LinkedList&lt;T&gt;();</span>
+<span class="fc bfc" id="L95" title="All 2 branches covered.">		for (Status status : statuses) {</span>
+<span class="pc bpc" id="L96" title="1 of 2 branches missed.">			if (status.getClass().equals(statusClass)) {</span>
+<span class="fc" id="L97">				res.add(statusClass.cast(status));</span>
+			}
+<span class="fc" id="L99">		}</span>
+<span class="fc" id="L100">		return res;</span>
+	}
+
+	/**
+	 * removes all statuses of this class
+	 *
+	 * @param statusClass status class
+	 */
+	public &lt;T extends Status&gt; void removeAll(Class&lt;T&gt; statusClass) {
+<span class="fc" id="L109">		List&lt;T&gt; interestingStatuses = getAllStatusByClass(statusClass);</span>
+<span class="fc bfc" id="L110" title="All 2 branches covered.">		for (Status status : interestingStatuses) {</span>
+<span class="fc" id="L111">			remove(status);</span>
+<span class="fc" id="L112">		}</span>
+<span class="fc" id="L113">	}</span>
+
+
+	/**
+	 * removes all statuses of this type
+	 *
+	 * @param statusType status type
+	 */
+	public void removeAll(StatusType statusType) {
+<span class="pc bpc" id="L122" title="1 of 2 branches missed.">		for (Status status : new LinkedList&lt;Status&gt;(statuses)) {</span>
+<span class="nc bnc" id="L123" title="All 2 branches missed.">			if (status.getStatusType() == statusType) {</span>
+<span class="nc" id="L124">				remove(status);</span>
+			}
+<span class="nc" id="L126">		}</span>
+<span class="fc" id="L127">	}</span>
+
+	/**
+	 * removes all statuses (e. g. on death)
+	 */
+	public void removeAll() {
+<span class="pc bpc" id="L133" title="1 of 2 branches missed.">		for (Status status : new LinkedList&lt;Status&gt;(statuses)) {</span>
+<span class="nc" id="L134">			remove(status);</span>
+<span class="nc" id="L135">		}</span>
+<span class="fc" id="L136">	}</span>
+
+	/**
+	 * Find if the entity has a specified status
+	 * 
+	 * @param statusType the status type to check for
+	 * @return true, if the entity has status; false otherwise
+	 */
+	public boolean hasStatus(StatusType statusType) {
+<span class="pc bpc" id="L145" title="1 of 2 branches missed.">		for (Status status : statuses) {</span>
+<span class="pc bpc" id="L146" title="1 of 2 branches missed.">			if (status.getStatusType() == statusType) {</span>
+<span class="fc" id="L147">				return true;</span>
+			}
+<span class="nc" id="L149">		}</span>
+<span class="nc" id="L150">		return false;</span>
+	}
+
+	/**
+	 * Add status effect to entity
+	 * 
+	 * @param status
+	 *            Status to be added
+	 * @param attacker
+	 *            Entity that is inflicting status
+	 * @return true, if the was inflected; false if the RPEntity is immune.
+	 */
+	public boolean inflictStatus(final Status status, final Entity attacker) {
+<span class="pc bpc" id="L163" title="1 of 2 branches missed.">		if (isImmune(status.getStatusType())) {</span>
+<span class="nc" id="L164">			return false;</span>
+		}
+<span class="fc" id="L166">		status.getStatusType().getStatusHandler().inflict(status, this, attacker);</span>
+<span class="fc" id="L167">		return true;</span>
+	}
+
+	/**
+	 * Check if entity is immune to specified status attack.
+	 * 
+	 * @param statusType type of status
+	 * @return Entity is immune
+	 */
+	public boolean isImmune(final StatusType statusType) {
+<span class="fc" id="L177">		return immunities.contains(statusType);</span>
+	}
+
+	/**
+	 * Remove any immunity of specified status effect from entity.
+	 * 
+	 * @param statusType type of status
+	 */
+	public void removeImmunity(StatusType statusType) {
+<span class="fc" id="L186">		RPEntity entity = entityRef.get();</span>
+<span class="pc bpc" id="L187" title="1 of 2 branches missed.">		if (entity == null) {</span>
+<span class="nc" id="L188">			return;</span>
+		}
+<span class="fc" id="L190">		immunities.remove(statusType);</span>
+<span class="fc" id="L191">		entity.sendPrivateText(&quot;You are not immune to being &quot; + statusType.getName() + &quot; anymore.&quot;);</span>
+<span class="fc" id="L192">	}</span>
+
+	/**
+	 * Make entity immune to a specified status attack.
+	 * 
+	 * @param statusType Status type
+	 */
+	public void setImmune(final StatusType statusType) {
+<span class="fc" id="L200">		immunities.add(statusType);</span>
+<span class="fc" id="L201">		removeAll(statusType);</span>
+<span class="fc" id="L202">	}</span>
+
+	/**
+	 * activates a status attribute for the client without overriding a potential existing value
+	 *
+	 * @param attributeName name of attribute
+	 */
+	void activateStatusAttribute(String attributeName) {
+<span class="fc" id="L210">		RPEntity entity = entityRef.get();</span>
+<span class="pc bpc" id="L211" title="1 of 2 branches missed.">		if (entity == null) {</span>
+<span class="nc" id="L212">			return;</span>
+		}
+
+		// do not override an existing value (e. g. the amount of hp lost by another poison instance)
+<span class="fc bfc" id="L216" title="All 2 branches covered.">		if (!entity.has(attributeName)) {</span>
+<span class="fc" id="L217">			entity.put(attributeName, 0);</span>
+<span class="fc" id="L218">			entity.notifyWorldAboutChanges();</span>
+		}
+<span class="fc" id="L220">	}</span>
+
+	/**
+	 * removes a status
+	 *
+	 * @param status Status to remove
+	 */
+	public void remove(Status status) {
+<span class="fc" id="L228">		status.getStatusType().getStatusHandler().remove(status, this);</span>
+<span class="fc" id="L229">	}</span>
+
+	/**
+	 * interally adds a status to the list of statuses
+	 *
+	 * @param status status to add
+	 */
+	void addInternal(Status status) {
+<span class="fc" id="L237">		statuses.add(status);</span>
+<span class="fc" id="L238">	}</span>
+
+	/**
+	 * internally removes a status from the list of statuses
+	 *
+	 * @param status status to remove
+	 */
+	void removeInternal(Status status) {
+<span class="fc" id="L246">		statuses.remove(status);</span>
+<span class="fc" id="L247">	}</span>
+
+	/**
+	 * gets the entity for this StatusList
+	 *
+	 * @return RPEntity or &lt;code&gt;null&lt;/code&gt;
+	 */
+	RPEntity getEntity() {
+<span class="fc" id="L255">		return entityRef.get();</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>AbstractScalingModel.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui</a> &gt; <span class="el_source">AbstractScalingModel.java</span></div><h1>AbstractScalingModel.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2012 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui;
+
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
+
+/**
+ * A {@link ScalingModel} that implements ChangeListener handling, but nothing
+ * else.
+ */
+<span class="nc" id="L24">public abstract class AbstractScalingModel implements ScalingModel {</span>
+<span class="nc" id="L25">	private final List&lt;ChangeListener&gt; listeners = new CopyOnWriteArrayList&lt;ChangeListener&gt;();</span>
+	private int representation;
+
+	@Override
+	public void addChangeListener(ChangeListener listener) {
+<span class="nc" id="L30">		listeners.add(listener);</span>
+<span class="nc" id="L31">	}</span>
+	
+	/**
+	 * Set the representation, and notify listeners if it changed.
+	 * 
+	 * @param representation new representation
+	 * @return &lt;code&gt;true&lt;/code&gt; if the representation changed, otherwise
+	 * 	&lt;code&gt;false&lt;/code&gt;
+	 */
+	protected boolean setRepresentation(int representation) {
+<span class="nc" id="L41">		int oldRepresentation = this.representation;</span>
+<span class="nc" id="L42">		this.representation = representation;</span>
+<span class="nc bnc" id="L43" title="All 2 branches missed.">		if (oldRepresentation != representation) {</span>
+<span class="nc" id="L44">			fireChanged();</span>
+<span class="nc" id="L45">			return true;</span>
+		}
+<span class="nc" id="L47">		return false;</span>
+	}
+
+	@Override
+	public int getRepresentation() {
+<span class="nc" id="L52">		return representation;</span>
+	}
+	
+	/**
+	 * Notify change listeners.
+	 */
+	protected void fireChanged() {
+<span class="nc" id="L59">		ChangeEvent e = new ChangeEvent(this);</span>
+<span class="nc bnc" id="L60" title="All 2 branches missed.">		for (ChangeListener listener : listeners) {</span>
+<span class="nc" id="L61">			listener.stateChanged(e);</span>
+<span class="nc" id="L62">		}</span>
+<span class="nc" id="L63">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

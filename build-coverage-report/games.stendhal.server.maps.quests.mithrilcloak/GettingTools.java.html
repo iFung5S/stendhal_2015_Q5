@@ -1,0 +1,499 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>GettingTools.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests.mithrilcloak</a> &gt; <span class="el_source">GettingTools.java</span></div><h1>GettingTools.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests.mithrilcloak;
+
+import games.stendhal.common.MathHelper;
+import games.stendhal.common.Rand;
+import games.stendhal.common.parser.ConversationParser;
+import games.stendhal.common.parser.ExpressionType;
+import games.stendhal.common.parser.JokerExprMatcher;
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.common.parser.SimilarExprMatcher;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.entity.item.Item;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.npc.NPCList;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.action.DropItemAction;
+import games.stendhal.server.entity.npc.action.EquipItemAction;
+import games.stendhal.server.entity.npc.action.IncreaseXPAction;
+import games.stendhal.server.entity.npc.action.MultipleActions;
+import games.stendhal.server.entity.npc.action.SetQuestAndModifyKarmaAction;
+import games.stendhal.server.entity.npc.condition.AndCondition;
+import games.stendhal.server.entity.npc.condition.NotCondition;
+import games.stendhal.server.entity.npc.condition.OrCondition;
+import games.stendhal.server.entity.npc.condition.PlayerHasItemWithHimCondition;
+import games.stendhal.server.entity.npc.condition.QuestInStateCondition;
+import games.stendhal.server.entity.npc.condition.QuestStateStartsWithCondition;
+import games.stendhal.server.entity.npc.condition.TextHasNumberCondition;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.util.TimeUtil;
+
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * @author kymara
+*/
+
+class GettingTools {
+
+	private MithrilCloakQuestInfo mithrilcloak;
+	
+<span class="fc" id="L57">	private final NPCList npcs = SingletonRepository.getNPCList();</span>
+
+<span class="fc" id="L59">	public GettingTools(final MithrilCloakQuestInfo mithrilcloak) {</span>
+<span class="fc" id="L60">		this.mithrilcloak = mithrilcloak;</span>
+<span class="fc" id="L61">	}</span>
+
+
+	private static final int REQUIRED_MINUTES_SCISSORS = 10;
+
+	private static final int REQUIRED_HOURS_SEWING = 24;
+
+	private void getScissorsStep() {
+
+		// Careful not to overlap with any states from VampireSword quest
+
+<span class="fc" id="L72">		final SpeakerNPC npc = npcs.get(&quot;Hogart&quot;);</span>
+
+		// player asks about scissors. they will need a random number of eggshells plus the metal
+<span class="fc" id="L75">		npc.add(ConversationStates.ATTENDING,</span>
+			Arrays.asList(&quot;scissors&quot;, &quot;magical&quot;, &quot;magical scissors&quot;, &quot;ida&quot;, &quot;mithril&quot;, &quot;cloak&quot;, &quot;mithril cloak&quot;),
+			new QuestInStateCondition(mithrilcloak.getQuestSlot(), &quot;need_scissors&quot;),
+			ConversationStates.ATTENDING,
+			null,
+<span class="fc" id="L80">			new ChatAction() {</span>
+				@Override
+				public void fire(final Player player, final Sentence sentence, final EventRaiser raiser) {
+<span class="fc" id="L83">					final int neededEggshells = Rand.randUniform(2, 4);</span>
+<span class="fc" id="L84">					raiser.say(&quot;Ah yes, Ida sent me a message about some magical scissors. I need one each of an iron bar and a mithril bar, and also &quot; + Integer.toString(neededEggshells) + &quot; magical #eggshells. Ask me about #scissors again when you return with those items.&quot;);</span>
+					// store the number of needed eggshells in the quest slot so he remembers how many he asked for
+<span class="fc" id="L86">					player.setQuest(mithrilcloak.getQuestSlot(), &quot;need_eggshells;&quot; + Integer.toString(neededEggshells));</span>
+<span class="fc" id="L87">				}</span>
+			});
+
+		// player needs eggshells
+<span class="fc" id="L91">		npc.add(ConversationStates.ATTENDING,</span>
+			Arrays.asList(&quot;scissors&quot;, &quot;magical&quot;, &quot;magical scissors&quot;, &quot;ida&quot;, &quot;mithril&quot;, &quot;cloak&quot;, &quot;mithril cloak&quot;),
+			new QuestStateStartsWithCondition(mithrilcloak.getQuestSlot(), &quot;need_eggshells&quot;),
+			ConversationStates.SERVICE_OFFERED,
+			&quot;So, did you bring the items I need for the magical scissors?&quot;, null);
+									
+		// player asks about eggshells, hint to find terry
+<span class="fc" id="L98">		npc.add(</span>
+			ConversationStates.ATTENDING,
+			&quot;eggshells&quot;, 
+			null,
+			ConversationStates.ATTENDING,
+			&quot;They must be from dragon eggs. I guess you better find someone who dares to hatch dragons!&quot;,
+			null);
+
+		// player says yes they brought the items needed
+		// we can't use the nice ChatActions here because the needed number is stored in the quest slot i.e. we need a fire
+<span class="fc" id="L108">		npc.add(</span>
+			ConversationStates.SERVICE_OFFERED,
+			ConversationPhrases.YES_MESSAGES, 
+			new QuestStateStartsWithCondition(mithrilcloak.getQuestSlot(), &quot;need_eggshells&quot;),
+			ConversationStates.ATTENDING,
+			null,
+<span class="fc" id="L114">			new ChatAction() {</span>
+				@Override
+				public void fire(final Player player, final Sentence sentence, final EventRaiser npc) {
+<span class="fc" id="L117">					final String[] questslot = player.getQuest(mithrilcloak.getQuestSlot()).split(&quot;;&quot;);</span>
+<span class="fc" id="L118">					final int neededEggshells = Integer.valueOf(questslot[1]);</span>
+<span class="pc bpc" id="L119" title="3 of 6 branches missed.">					if (player.isEquipped(&quot;iron&quot;)</span>
+						&amp;&amp; player.isEquipped(&quot;mithril bar&quot;)
+						&amp;&amp; player.isEquipped(&quot;magical eggshells&quot;, neededEggshells)) {
+<span class="fc" id="L122">							player.drop(&quot;iron&quot;);</span>
+<span class="fc" id="L123">							player.drop(&quot;mithril bar&quot;);</span>
+<span class="fc" id="L124">							player.drop(&quot;magical eggshells&quot;, neededEggshells);</span>
+<span class="fc" id="L125">							npc.say(&quot;Good. It will take me some time to make these, come back in &quot; </span>
+									   + REQUIRED_MINUTES_SCISSORS + &quot; minutes to get your scissors.&quot;);
+<span class="fc" id="L127">							player.addXP(100);</span>
+<span class="fc" id="L128">							player.setQuest(mithrilcloak.getQuestSlot(), &quot;makingscissors;&quot; + System.currentTimeMillis());</span>
+<span class="fc" id="L129">							player.notifyWorldAboutChanges();</span>
+						} else {
+<span class="nc" id="L131">							npc.say(&quot;Liar, you don't have everything I need. Ask me about #scissors again when you have an iron bar, a mithril bar, and &quot; </span>
+									+ questslot[1] + &quot; magical eggshells. And don't be wasting my time!&quot;);
+						}
+<span class="fc" id="L134">				}</span>
+			});
+
+		// player says they didn't bring the stuff yet
+<span class="fc" id="L138">		npc.add(</span>
+			ConversationStates.SERVICE_OFFERED,
+			ConversationPhrases.NO_MESSAGES, 
+			null,
+			ConversationStates.ATTENDING,
+			&quot;What are you still here for then? Go get them!&quot;,
+			null);
+
+		// player returns while hogart is making scissors or has made them
+<span class="fc" id="L147">		npc.add(ConversationStates.ATTENDING, </span>
+			Arrays.asList(&quot;scissors&quot;, &quot;magical&quot;, &quot;magical scissors&quot;, &quot;ida&quot;, &quot;mithril&quot;, &quot;cloak&quot;, &quot;mithril cloak&quot;),
+			new QuestStateStartsWithCondition(mithrilcloak.getQuestSlot(), &quot;makingscissors;&quot;),
+<span class="fc" id="L150">			ConversationStates.ATTENDING, null, new ChatAction() {</span>
+				@Override
+				public void fire(final Player player, final Sentence sentence, final EventRaiser npc) {
+<span class="fc" id="L153">					final String[] tokens = player.getQuest(mithrilcloak.getQuestSlot()).split(&quot;;&quot;);</span>
+					// minutes -&gt; milliseconds
+					final long delay = REQUIRED_MINUTES_SCISSORS * MathHelper.MILLISECONDS_IN_ONE_MINUTE;
+<span class="fc" id="L156">					final long timeRemaining = (Long.parseLong(tokens[1]) + delay)</span>
+							- System.currentTimeMillis();
+<span class="pc bpc" id="L158" title="1 of 2 branches missed.">					if (timeRemaining &gt; 0L) {</span>
+<span class="nc" id="L159">						npc.say(&quot;Pff you're impatient aren't you? I haven't finished making the scissors yet, come back in &quot;</span>
+							+ TimeUtil.approxTimeUntil((int) (timeRemaining / 1000L)) + &quot;.&quot;);
+<span class="nc" id="L161">						return;</span>
+					}
+<span class="fc" id="L163">					npc.say(&quot;Ah, thanks for reminding me. Here, Ida's scissors are ready. You better take them to her next as I don't know what she wanted them for.&quot;);</span>
+<span class="fc" id="L164">					player.addXP(100);</span>
+<span class="fc" id="L165">					player.addKarma(15);</span>
+<span class="fc" id="L166">					final Item scissors = SingletonRepository.getEntityManager().getItem(</span>
+									&quot;magical scissors&quot;);
+<span class="fc" id="L168">					scissors.setBoundTo(player.getName());</span>
+<span class="fc" id="L169">					player.equipOrPutOnGround(scissors);</span>
+<span class="fc" id="L170">					player.setQuest(mithrilcloak.getQuestSlot(), &quot;got_scissors&quot;);</span>
+<span class="fc" id="L171">					player.notifyWorldAboutChanges();</span>
+<span class="fc" id="L172">				}</span>
+			});
+
+<span class="fc" id="L175">	}</span>
+
+	private void getEggshellsStep() {
+
+		final int REQUIRED_POISONS = 6;
+
+<span class="fc" id="L181">		final SpeakerNPC npc = npcs.get(&quot;Terry&quot;);</span>
+
+		// offer eggshells when prompted
+<span class="fc" id="L184">		npc.add(ConversationStates.ATTENDING,</span>
+				Arrays.asList(&quot;eggshells&quot;, &quot;magical&quot;, &quot;magical eggshells&quot;, &quot;scissors&quot;, &quot;hogart&quot;, &quot;ida&quot;, &quot;cloak&quot;, &quot;mithril cloak&quot;, &quot;specials&quot;),
+				new QuestStateStartsWithCondition(mithrilcloak.getQuestSlot(), &quot;need_eggshells&quot;),
+				ConversationStates.QUEST_ITEM_QUESTION,
+				&quot;Sure, I sell eggshells. They're not worth much to me. I'll swap you one eggshell for every &quot; + Integer.toString(REQUIRED_POISONS) + &quot; disease poisons you bring me. I need it to kill the rats you see. Anyway, how many eggshells was you wanting?&quot;,
+				null);
+
+		// respond to question of how many eggshells are desired. terry expects a number or some kind
+<span class="fc" id="L192">		npc.addMatching(ConversationStates.QUEST_ITEM_QUESTION,</span>
+				// match for all numbers as trigger expression
+				ExpressionType.NUMERAL, new JokerExprMatcher(),
+				new TextHasNumberCondition(1, 5000),
+				ConversationStates.ATTENDING, null,
+<span class="fc" id="L197">				new ChatAction() {</span>
+					@Override
+					public void fire(final Player player, final Sentence sentence, final EventRaiser npc) {
+
+<span class="fc" id="L201">                        final int required = (sentence.getNumeral().getAmount());</span>
+<span class="fc bfc" id="L202" title="All 2 branches covered.">						if (player.drop(&quot;disease poison&quot;, required * REQUIRED_POISONS)) {</span>
+<span class="fc" id="L203">							npc.say(&quot;Ok, here's your &quot; + Integer.toString(required) + &quot; eggshells. Enjoy!&quot;);</span>
+<span class="fc" id="L204">							new EquipItemAction(&quot;magical eggshells&quot;, required, true).fire(player, sentence, npc);</span>
+						} else {
+<span class="fc" id="L206">							npc.say(&quot;Ok, ask me again when you have &quot; + Integer.toString(required * REQUIRED_POISONS) + &quot; disease poisons with you.&quot;);</span>
+						}						
+<span class="fc" id="L208">					}</span>
+				});
+
+		// didn't want eggshells yet
+<span class="fc" id="L212">		npc.add(ConversationStates.QUEST_ITEM_QUESTION,</span>
+				Arrays.asList(&quot;no&quot;, &quot;none&quot;, &quot;nothing&quot;),
+				null,
+				ConversationStates.ATTENDING,
+				&quot;No problem. Anything else I can help with, just say.&quot;,
+				null);
+
+<span class="fc" id="L219"> 	}</span>
+
+	private void giveScissorsStep() {
+
+<span class="fc" id="L223">		final SpeakerNPC npc = npcs.get(&quot;Ida&quot;);</span>
+
+		// take scissors and ask for needle now
+<span class="fc" id="L226">		npc.add(ConversationStates.ATTENDING,</span>
+				Arrays.asList(&quot;scissors&quot;, &quot;magical&quot;, &quot;magical scissors&quot;, &quot;mithril&quot;, &quot;cloak&quot;, &quot;mithril cloak&quot;, &quot;task&quot;, &quot;quest&quot;),
+				new AndCondition(new QuestInStateCondition(mithrilcloak.getQuestSlot(), &quot;got_scissors&quot;), new PlayerHasItemWithHimCondition(&quot;magical scissors&quot;)),
+				ConversationStates.ATTENDING,
+				&quot;You brought those magical scissors! Excellent! Now that I can cut the fabric I need a magical needle. You can buy one from a trader in the abandoned keep of Ados mountains, #Ritati Dragon something or other. Just go to him and ask for his 'specials'.&quot;,
+				new MultipleActions(
+									 new DropItemAction(&quot;magical scissors&quot;), 
+									 new SetQuestAndModifyKarmaAction(mithrilcloak.getQuestSlot(), &quot;need_needle;&quot;, 10.0), 
+									 new IncreaseXPAction(100)
+									 )
+				);
+
+		// remind about scissors
+<span class="fc" id="L239">		npc.add(ConversationStates.ATTENDING,</span>
+				Arrays.asList(&quot;scissors&quot;, &quot;magical&quot;, &quot;magical scissors&quot;, &quot;mithril&quot;, &quot;cloak&quot;, &quot;mithril cloak&quot;, &quot;task&quot;, &quot;quest&quot;),
+				new OrCondition(
+								new QuestInStateCondition(mithrilcloak.getQuestSlot(), &quot;need_scissors&quot;),
+								new QuestStateStartsWithCondition(mithrilcloak.getQuestSlot(), &quot;need_eggshells;&quot;),
+								new QuestStateStartsWithCondition(mithrilcloak.getQuestSlot(), &quot;makingscissors;&quot;),
+								new AndCondition(new QuestInStateCondition(mithrilcloak.getQuestSlot(), &quot;got_scissors&quot;),
+												 new NotCondition(new PlayerHasItemWithHimCondition(&quot;magical scissors&quot;)))
+								),
+				ConversationStates.ATTENDING,
+				&quot;Ask #Hogart about #scissors, I'm sure he will remember the messages I've sent him!&quot;,				
+				null);
+
+<span class="fc" id="L252">		npc.addReply(&quot;Ritati&quot;, &quot;He's somewhere in the abandoned keep in the mountains north east from here.&quot;);</span>
+<span class="fc" id="L253">	}</span>
+
+
+
+	private void getNeedleStep() {
+
+		final int NEEDLE_COST = 1500;
+		
+<span class="fc" id="L261">		final Map&lt;Integer, String&gt; jokes = new HashMap&lt;Integer, String&gt;();</span>
+		
+<span class="fc" id="L263">			jokes.put(1, &quot;If a man stands in the middle of the forest speaking and there is no woman around to hear him, is he still wrong?&quot;);</span>
+<span class="fc" id="L264">			jokes.put(2, &quot;Everyone has a photographic memory, some just don't have film.&quot;);</span>
+<span class="fc" id="L265">			jokes.put(3, &quot;Eagles may soar, free and proud, but weasels never get sucked into jet engines.&quot;);</span>
+<span class="fc" id="L266">			jokes.put(4, &quot;There's no future in time travel.&quot;);</span>
+<span class="fc" id="L267">			jokes.put(5, &quot;Artificial intelligence is no match for natural stupidity.&quot;);</span>
+<span class="fc" id="L268">			jokes.put(6, &quot;Honk if you love peace and quiet.&quot;);</span>
+<span class="fc" id="L269">			jokes.put(7, &quot;Always remember you're unique, just like everyone else.&quot;);</span>
+<span class="fc" id="L270">			jokes.put(8, &quot;Half the people in the world are below average.&quot;);</span>
+
+		
+<span class="fc" id="L273">		final SpeakerNPC npc = npcs.get(&quot;Ritati Dragontracker&quot;);</span>
+
+		// ask for joke when prompted for needle
+<span class="fc" id="L276">		npc.add(ConversationStates.ATTENDING,</span>
+				Arrays.asList(&quot;needle&quot;, &quot;magical&quot;, &quot;magical needle&quot;, &quot;ida&quot;, &quot;cloak&quot;, &quot;mithril cloak&quot;, &quot;specials&quot;),
+				new QuestStateStartsWithCondition(mithrilcloak.getQuestSlot(), &quot;need_needle&quot;),
+				ConversationStates.ATTENDING,
+				&quot;Ok, but I have a little rule: never do important business with someone unless&quot; 
+				+ &quot;they can make you laugh. So, come back to tell me a #joke and I will sell you a needle.&quot;,
+				null);
+		
+		// ask for joke when player says joke
+<span class="fc" id="L285">		npc.add(ConversationStates.ATTENDING,</span>
+				&quot;joke&quot;,
+				new QuestStateStartsWithCondition(mithrilcloak.getQuestSlot(), &quot;need_needle&quot;),
+				ConversationStates.QUESTION_1,
+				&quot;Ok, lets hear your joke then. and I hope it's from the book in Nalwor Library, that's my favourite. What joke did you choose?&quot;,
+				null);
+
+<span class="fc" id="L292">		npc.add(ConversationStates.QUESTION_1, &quot;&quot;, null,</span>
+				ConversationStates.QUEST_ITEM_QUESTION, null,
+<span class="fc" id="L294">					new ChatAction() {</span>
+						@Override
+						public void fire(final Player player, final Sentence sentence, final EventRaiser npc) {
+<span class="nc bnc" id="L297" title="All 2 branches missed.">							for (int i = 1; i &lt; 9; i++) {</span>
+<span class="nc" id="L298">								String joke = jokes.get(i);</span>
+
+<span class="nc" id="L300">								final Sentence answer = sentence.parseAsMatchingSource();</span>
+<span class="nc" id="L301">								final Sentence expected = ConversationParser.parse(joke, new SimilarExprMatcher());</span>
+
+<span class="nc bnc" id="L303" title="All 2 branches missed.">								if (answer.matchesFull(expected)) {</span>
+<span class="nc" id="L304">									final String[] questslot = player.getQuest(mithrilcloak.getQuestSlot()).split(&quot;;&quot;);</span>
+<span class="nc bnc" id="L305" title="All 2 branches missed.">									if (questslot.length &gt; 2) {</span>
+										// if the split worked, we had stored a needle number before and we need to store it again
+<span class="nc" id="L307">										int needles = Integer.parseInt(questslot[1]);</span>
+<span class="nc" id="L308">										int saidjoke = Integer.parseInt(questslot[2]);</span>
+<span class="nc bnc" id="L309" title="All 2 branches missed.">										if (i == saidjoke) {</span>
+<span class="nc" id="L310">											npc.say(&quot;You told me that joke last time, come back with a new one! Bye.&quot;);</span>
+<span class="nc" id="L311">											npc.setCurrentState(ConversationStates.IDLE);</span>
+//											// stop looking through the joke list
+<span class="nc" id="L313">											return;</span>
+										} else {
+<span class="nc" id="L315">											player.setQuest(mithrilcloak.getQuestSlot(), &quot;told_joke;&quot; + Integer.toString(needles) + &quot;;&quot; + Integer.toString(i));</span>
+										}
+<span class="nc" id="L317">									} else {</span>
+<span class="nc" id="L318">										player.setQuest(mithrilcloak.getQuestSlot(), &quot;told_joke;&quot; + Integer.toString(i));</span>
+									}
+									// this might have been his favourite joke, which is determined randomly
+<span class="nc bnc" id="L321" title="All 2 branches missed.">									if (Rand.randUniform(1, 8) == i) {</span>
+<span class="nc" id="L322">										npc.say(&quot;That's the funniest joke I ever heard! I think it's my favourite of the moment. Here, have your needle for free... and then get out of here, You've been here far too long already.&quot;);</span>
+<span class="nc" id="L323">										new EquipItemAction(&quot;magical needle&quot;, 1, true).fire(player, sentence, npc);</span>
+<span class="nc" id="L324">										npc.setCurrentState(ConversationStates.IDLE);</span>
+//										// stop looking through the joke list
+<span class="nc" id="L326">										return;</span>
+									} else {
+<span class="nc" id="L328">										npc.say(&quot;*guffaws* Alright, lets get on with business. A magical needle costs &quot;</span>
+											+ Integer.toString(NEEDLE_COST) + &quot; pieces of money. Do you want to buy one now?&quot;);
+										// stop looking through the joke list
+<span class="nc" id="L331">										npc.setCurrentState(ConversationStates.QUEST_ITEM_QUESTION);</span>
+<span class="nc" id="L332">										return;</span>
+									 }
+								}
+							}
+<span class="nc bnc" id="L336" title="All 2 branches missed.">							if (ConversationPhrases.GOODBYE_MESSAGES.contains(sentence.getTriggerExpression().getNormalized())) {</span>
+<span class="nc" id="L337">									npc.say(&quot;Ok, bye then.&quot;);</span>
+<span class="nc" id="L338">									npc.setCurrentState(ConversationStates.IDLE);</span>
+<span class="nc bnc" id="L339" title="All 2 branches missed.">							} else if (sentence.getTriggerExpression().getNormalized().equals(&quot;none&quot;)) {</span>
+<span class="nc" id="L340">								npc.say(&quot;Ok, bye.&quot;);</span>
+<span class="nc" id="L341">								npc.setCurrentState(ConversationStates.IDLE);</span>
+							} else {
+<span class="nc" id="L343">								npc.say(&quot;Sorry, that joke just isn't funny. go back to Nalwor library and get another.&quot;);</span>
+<span class="nc" id="L344">								npc.setCurrentState(ConversationStates.IDLE);</span>
+							}
+<span class="nc" id="L346">			}</span>
+		});
+		
+		
+		// offer needle when prompted if they already told a joke
+<span class="fc" id="L351">		npc.add(ConversationStates.ATTENDING,</span>
+				Arrays.asList(&quot;needle&quot;, &quot;magical&quot;, &quot;magical needle&quot;, &quot;ida&quot;, &quot;cloak&quot;, &quot;mithril cloak&quot;, &quot;specials&quot;),
+				new QuestStateStartsWithCondition(mithrilcloak.getQuestSlot(), &quot;told_joke&quot;),
+				ConversationStates.QUEST_ITEM_QUESTION,
+				&quot;I have some magical needles but they cost a pretty penny, &quot;
+				+ Integer.toString(NEEDLE_COST) + &quot; pieces of money to be precise. Do you want to buy one?&quot;,
+				null);
+
+		// agrees to buy 1 needle
+<span class="fc" id="L360">		npc.add(ConversationStates.QUEST_ITEM_QUESTION,</span>
+				ConversationPhrases.YES_MESSAGES, 
+				new PlayerHasItemWithHimCondition(&quot;money&quot;, NEEDLE_COST),
+				ConversationStates.IDLE,
+				&quot;Ok, here you are. Be careful with them, they break easy. &quot;+
+				&quot;And if you break it, all other needles you have already bought from me, will lose their magic. &quot;+
+				&quot;Now, get lost, you have hung around here far too long already.&quot;,				
+				new MultipleActions(
+					new DropItemAction(&quot;money&quot;, NEEDLE_COST), 
+					new EquipItemAction(&quot;magical needle&quot;, 1, true)
+					));
+
+		// said he had money but he didn't
+<span class="fc" id="L373">		npc.add(ConversationStates.QUEST_ITEM_QUESTION,</span>
+				ConversationPhrases.YES_MESSAGES, 
+				new NotCondition(new PlayerHasItemWithHimCondition(&quot;money&quot;, NEEDLE_COST)),
+				ConversationStates.ATTENDING,
+				&quot;What the ... you don't have enough money! Get outta here!&quot;,
+				null);
+
+		// doesn't want to buy needle
+<span class="fc" id="L381">		npc.add(ConversationStates.QUEST_ITEM_QUESTION,</span>
+				ConversationPhrases.NO_MESSAGES, 
+				null,
+				ConversationStates.ATTENDING,
+				&quot;Ok, no pressure, no pressure. Maybe you'll like some of my other #offers.&quot;,
+				null);
+		
+		// specials response for if the queststate condition is not met
+<span class="fc" id="L389">		npc.add(ConversationStates.ATTENDING,</span>
+				Arrays.asList(&quot;needle&quot;, &quot;magical&quot;, &quot;magical needle&quot;, &quot;ida&quot;, &quot;cloak&quot;, &quot;mithril cloak&quot;, &quot;specials&quot;),
+				null, 
+				ConversationStates.ATTENDING,
+				&quot;The time will come when you will need my specials, but that time is not now.&quot;,
+				null);
+
+<span class="fc" id="L396">	}</span>
+
+	private void giveNeedleStep() {
+
+<span class="fc" id="L400">		final SpeakerNPC npc = npcs.get(&quot;Ida&quot;);</span>
+
+		// player brings needle for first or subsequent time
+<span class="fc" id="L403">		npc.add(ConversationStates.ATTENDING,</span>
+				Arrays.asList(&quot;needle&quot;, &quot;magical needle&quot;, &quot;magical&quot;, &quot;mithril&quot;, &quot;cloak&quot;, &quot;mithril cloak&quot;, &quot;task&quot;, &quot;quest&quot;),
+				new AndCondition(new QuestStateStartsWithCondition(mithrilcloak.getQuestSlot(), &quot;told_joke&quot;), new PlayerHasItemWithHimCondition(&quot;magical needle&quot;)),
+				ConversationStates.ATTENDING,
+				null,
+				new MultipleActions(
+<span class="fc" id="L409">					new ChatAction() {</span>
+						@Override
+						public void fire(final Player player, final Sentence sentence, final EventRaiser npc) {
+<span class="fc" id="L412">							final String[] questslot = player.getQuest(mithrilcloak.getQuestSlot()).split(&quot;;&quot;);		</span>
+<span class="fc" id="L413">							int needles = 1;</span>
+<span class="fc" id="L414">							int saidjoke = 1;</span>
+<span class="fc bfc" id="L415" title="All 2 branches covered.">							if (questslot.length &gt; 2) {</span>
+								// if the split works, we had stored a needle number before
+<span class="fc" id="L417">								needles = Integer.parseInt(questslot[1]);</span>
+<span class="fc" id="L418">								saidjoke = Integer.parseInt(questslot[2]);</span>
+<span class="fc" id="L419">								npc.say(&quot;I'm really sorry about the previous needle breaking. I'll start work again on your cloak,&quot; </span>
+										+ &quot; please return in another &quot; + REQUIRED_HOURS_SEWING + &quot; hours.&quot;);
+<span class="pc bpc" id="L421" title="1 of 2 branches missed.">							 } else if (questslot.length &gt; 1) {</span>
+								// it wasn't split with a needle number, only joke
+								// so this is the first time we brought a needle
+<span class="fc" id="L424">								saidjoke = Integer.parseInt(questslot[1]);</span>
+<span class="fc" id="L425">								npc.say(&quot;Looks like you found Ritatty then, good. I'll start on the cloak now!&quot; </span>
+										+ &quot; A seamstress needs to take her time, so return in &quot; + REQUIRED_HOURS_SEWING + &quot; hours.&quot;);
+								// ida breaks needles - she will need 1 - 3
+<span class="fc" id="L428">								needles = Rand.randUniform(1, 3);</span>
+							}
+<span class="fc" id="L430">							player.setQuest(mithrilcloak.getQuestSlot(), &quot;sewing;&quot; + System.currentTimeMillis() + &quot;;&quot; + needles + &quot;;&quot; + saidjoke);</span>
+<span class="fc" id="L431">						}</span>
+					},
+					new DropItemAction(&quot;magical needle&quot;)
+					)
+				);
+
+		// remind about needle
+<span class="fc" id="L438">		npc.add(ConversationStates.ATTENDING,</span>
+				Arrays.asList(&quot;needle&quot;, &quot;magical needle&quot;, &quot;magical&quot;, &quot;mithril&quot;, &quot;cloak&quot;, &quot;mithril cloak&quot;, &quot;task&quot;, &quot;quest&quot;),
+				new OrCondition(new QuestStateStartsWithCondition(mithrilcloak.getQuestSlot(), &quot;need_needle&quot;),
+								new AndCondition(
+									new QuestStateStartsWithCondition(mithrilcloak.getQuestSlot(), &quot;told_joke&quot;),
+									new NotCondition(new PlayerHasItemWithHimCondition(&quot;magical needle&quot;))
+								)
+						),
+				ConversationStates.ATTENDING,
+				&quot;Please ask Ritati thingummy for his 'specials', or just ask about a #needle.&quot;,				
+				null);
+<span class="fc" id="L449">	}</span>
+
+	private void sewingStep() {
+
+<span class="fc" id="L453">		final SpeakerNPC npc = npcs.get(&quot;Ida&quot;);</span>
+
+		// the quest slot that starts with sewing is the form &quot;sewing;number;number&quot; where the first number is the time she started sewing
+		// the second number is the number of needles that she's still going to use - player doesn't know number
+
+<span class="fc" id="L458">		npc.add(ConversationStates.ATTENDING, </span>
+				Arrays.asList(&quot;magical&quot;, &quot;mithril&quot;, &quot;cloak&quot;, &quot;mithril cloak&quot;, &quot;task&quot;, &quot;quest&quot;),
+				new QuestStateStartsWithCondition(mithrilcloak.getQuestSlot(), &quot;sewing;&quot;),
+<span class="fc" id="L461">				ConversationStates.ATTENDING, null, new ChatAction() {</span>
+						@Override
+						public void fire(final Player player, final Sentence sentence, final EventRaiser npc) {
+<span class="fc" id="L464">							final String[] tokens = player.getQuest(mithrilcloak.getQuestSlot()).split(&quot;;&quot;);</span>
+							// hours -&gt; milliseconds
+							final long delay = REQUIRED_HOURS_SEWING * MathHelper.MILLISECONDS_IN_ONE_HOUR;
+<span class="fc" id="L467">							final long timeRemaining = (Long.parseLong(tokens[1]) + delay)</span>
+								- System.currentTimeMillis();
+<span class="fc bfc" id="L469" title="All 2 branches covered.">							if (timeRemaining &gt; 0L) {</span>
+<span class="fc" id="L470">								npc.say(&quot;I'm still sewing your cloak, come back in &quot;</span>
+										+ TimeUtil.approxTimeUntil((int) (timeRemaining / 1000L)) + &quot; - and don't rush me, or I'm more likely to break the needle.&quot;);
+<span class="fc" id="L472">								return;</span>
+							}
+							// ida breaks needles, but if it is the last one,
+							// she pricks her finger on that needle
+<span class="fc bfc" id="L476" title="All 2 branches covered.">							if (Integer.valueOf(tokens[2]) == 1) {</span>
+<span class="fc" id="L477">								npc.say(&quot;Ouch! I pricked my finger on that needle! I feel woozy ...&quot;);</span>
+<span class="fc" id="L478">								player.setQuest(mithrilcloak.getQuestSlot(), &quot;twilight_zone&quot;);</span>
+							} else {
+<span class="fc" id="L480">								npc.say(&quot;These magical needles are so fragile, I'm sorry but you're going to have to get me another, the last one broke. Hopefully Ritati still has plenty.&quot;);</span>
+<span class="fc" id="L481">								final int needles = Integer.parseInt(tokens[2]) - 1;</span>
+<span class="fc" id="L482">								int saidjoke = Integer.parseInt(tokens[3]);</span>
+<span class="fc" id="L483">								player.setQuest(mithrilcloak.getQuestSlot(), &quot;need_needle;&quot; + needles + &quot;;&quot; + saidjoke);</span>
+							}							
+<span class="fc" id="L485">				}</span>
+			});
+<span class="fc" id="L487">	}</span>
+
+	public void addToWorld() {
+<span class="fc" id="L490">		getScissorsStep();</span>
+<span class="fc" id="L491">		getEggshellsStep();</span>
+<span class="fc" id="L492">		giveScissorsStep();</span>
+<span class="fc" id="L493">		getNeedleStep();</span>
+<span class="fc" id="L494">		giveNeedleStep();</span>
+<span class="fc" id="L495">		sewingStep();</span>
+<span class="fc" id="L496">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

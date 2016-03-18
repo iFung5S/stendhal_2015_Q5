@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SoundEvent.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.events</a> &gt; <span class="el_source">SoundEvent.java</span></div><h1>SoundEvent.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2014 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.events;
+
+import games.stendhal.common.constants.Events;
+import games.stendhal.common.constants.SoundLayer;
+import marauroa.common.game.RPClass;
+import marauroa.common.game.RPEvent;
+import marauroa.common.game.Definition.DefinitionClass;
+import marauroa.common.game.Definition.Type;
+
+/**
+ * A sound.
+ *
+ * @author hendrik
+ */
+public class SoundEvent extends RPEvent {
+
+	/**
+	 * Creates the rpclass.
+	 */
+	public static void generateRPClass() {
+<span class="fc" id="L33">		final RPClass rpclass = new RPClass(Events.SOUND);</span>
+<span class="fc" id="L34">		rpclass.add(DefinitionClass.ATTRIBUTE, &quot;sound&quot;, Type.STRING);</span>
+<span class="fc" id="L35">		rpclass.add(DefinitionClass.ATTRIBUTE, &quot;radius&quot;, Type.INT);</span>
+<span class="fc" id="L36">		rpclass.add(DefinitionClass.ATTRIBUTE, &quot;volume&quot;, Type.INT);</span>
+<span class="fc" id="L37">		rpclass.add(DefinitionClass.ATTRIBUTE, &quot;layer&quot;, Type.BYTE);</span>
+<span class="fc" id="L38">	}</span>
+
+	/**
+	 * Creates a new sound event with an infinite range.
+	 *
+	 * @param sound name of sound to play
+	 * @param layer 
+	 */
+	public SoundEvent(final String sound, SoundLayer layer) {
+<span class="fc" id="L47">		super(Events.SOUND);</span>
+<span class="fc" id="L48">		put(&quot;sound&quot;, sound);</span>
+<span class="fc" id="L49">		put(&quot;layer&quot;, layer.ordinal());</span>
+<span class="fc" id="L50">	}</span>
+
+	/**
+	 * Creates a new sound event with a volume and infinite range.
+	 *
+	 * @param sound name of sound to play
+	 * @param volume 
+	 * @param layer 
+	 */
+	public SoundEvent(final String sound, int volume, SoundLayer layer) {
+<span class="fc" id="L60">		this(sound, layer);</span>
+<span class="fc" id="L61">		put(&quot;volume&quot;, volume);</span>
+<span class="fc" id="L62">	}</span>
+
+	/**
+	 * Creates a new sound event with specified range and volume.
+	 *
+	 * @param sound name of sound to play
+	 * @param radius radius
+	 * @param volume volume
+	 * @param layer layer (e. g. ambient sound)
+	 */
+	public SoundEvent(String sound, int radius, int volume, SoundLayer layer) {
+<span class="fc" id="L73">		this(sound, volume, layer);</span>
+<span class="fc" id="L74">		put(&quot;radius&quot;, radius);</span>
+<span class="fc" id="L75">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

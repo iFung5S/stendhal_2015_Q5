@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SimplePathfinder.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.core.pathfinder</a> &gt; <span class="el_source">SimplePathfinder.java</span></div><h1>SimplePathfinder.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.core.pathfinder;
+
+import java.awt.geom.Rectangle2D;
+
+import games.stendhal.common.CollisionDetection;
+import games.stendhal.server.core.engine.StendhalRPZone;
+
+/**
+ * A simple and stupid path finder that checks just the collision map,
+ * but does not require adding an entity to the map before using.
+ */
+public class SimplePathfinder extends Pathfinder {
+	final CollisionDetection collision;
+	
+	/**
+	 * Create a new &lt;code&gt;SimplePathfinder&lt;/code&gt;.
+	 * 
+	 * @param zone The zone used for path finding
+	 * @param startX Starting point x coordinate
+	 * @param startY Starting point y coordinate
+	 * @param destination destination area
+	 * @param maxDist maximum search distance
+	 */
+	public SimplePathfinder(final StendhalRPZone zone, final int startX, final int startY,
+			final Rectangle2D destination, final double maxDist) {
+<span class="fc" id="L38">		super(startX, startY, destination, maxDist);</span>
+<span class="fc" id="L39">		collision = zone.collisionMap;</span>
+<span class="fc" id="L40">	}</span>
+
+	@Override
+	public TreeNode createNode(int x, int y) {
+<span class="fc" id="L44">		return new SimpleTreeNode(x, y);</span>
+	}
+
+	private class SimpleTreeNode extends TreeNode {
+<span class="fc" id="L48">		protected SimpleTreeNode(int x, int y) {</span>
+<span class="fc" id="L49">			super(x, y);</span>
+<span class="fc" id="L50">		}</span>
+
+		@Override
+		public TreeNode createNode(int x, int y) {
+<span class="fc" id="L54">			return new SimpleTreeNode(x, y);</span>
+		}
+
+		@Override
+		protected int createNodeID(int x, int y) {
+<span class="fc" id="L59">			return x + y * collision.getWidth();</span>
+		}
+
+		@Override
+		public boolean isValid(int x, int y) {
+<span class="fc bfc" id="L64" title="All 2 branches covered.">			return !collision.collides(x, y);</span>
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

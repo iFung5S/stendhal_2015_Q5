@@ -1,0 +1,437 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>PlayerTrade.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.player</a> &gt; <span class="el_source">PlayerTrade.java</span></div><h1>PlayerTrade.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+
+package games.stendhal.server.entity.player;
+
+import games.stendhal.common.TradeState;
+import games.stendhal.server.core.engine.ItemLogger;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.entity.item.Item;
+import games.stendhal.server.events.TradeStateChangeEvent;
+
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
+
+import marauroa.common.game.RPObject;
+import marauroa.common.game.RPSlot;
+
+import org.apache.log4j.Logger;
+
+/**
+ * handles player to player trade
+ *
+ * @author hendrik
+ */
+class PlayerTrade {
+
+
+<span class="fc" id="L40">	private static Logger logger = Logger.getLogger(PlayerTrade.class);</span>
+
+<span class="fc" id="L42">	private static final List&lt;TradeState&gt; LOCKED_STATES = Arrays.asList(TradeState.LOCKED, TradeState.DEAL_WAITING_FOR_OTHER_DEAL);</span>
+
+	private String partnerName;
+
+	private final Player player;
+
+	private TradeState tradeState;
+
+	/**
+	 * creates a new PlayerTrade object
+	 *
+	 * @param player the player for which this objects manages trades
+	 */
+<span class="fc" id="L55">	public PlayerTrade(Player player) {</span>
+<span class="fc" id="L56">		this.player = player;</span>
+<span class="fc" id="L57">		this.tradeState = TradeState.NO_ACTIVE_TRADE;</span>
+<span class="fc" id="L58">	}</span>
+
+	/**
+	 * checks if this player may offer trade to another player
+	 *
+	 * @param partner Player to offer a trade to
+	 * @return &lt;code&gt;true&lt;/code&gt;, if the trade may be offered; &lt;code&gt;false&lt;/code&gt; otherwise.
+	 */
+	private boolean checkIfTradeMayBeOffered(Player partner) {
+<span class="nc" id="L67">		String noItemMessage = player.getZone().getNoItemMoveMessage();</span>
+<span class="nc bnc" id="L68" title="All 2 branches missed.">		if (noItemMessage != null) {</span>
+<span class="nc" id="L69">			player.sendPrivateText(noItemMessage);</span>
+<span class="nc" id="L70">			return false;</span>
+		}
+
+<span class="nc bnc" id="L73" title="All 2 branches missed.">		if (!player.nextTo(partner)) {</span>
+<span class="nc" id="L74">			player.sendPrivateText(&quot;You are too far away to start trading with &quot; + partner.getName());</span>
+<span class="nc" id="L75">			return false;</span>
+		}
+
+<span class="nc bnc" id="L78" title="All 2 branches missed.">		if (partner.getIgnore(player.getName()) != null) {</span>
+<span class="nc" id="L79">			return false;</span>
+		}
+
+<span class="nc bnc" id="L82" title="All 4 branches missed.">		if ((partner.getAwayMessage() != null)</span>
+			|| (partner.getTradeState() != TradeState.NO_ACTIVE_TRADE)) {
+<span class="nc" id="L84">			player.sendPrivateText(&quot;Sorry, &quot; + partner.getName() + &quot; is busy.&quot;);</span>
+<span class="nc" id="L85">			return false;</span>
+		}
+
+<span class="nc bnc" id="L88" title="All 2 branches missed.">		if (!player.getChatBucket().checkAndAdd(0)) {</span>
+<span class="nc" id="L89">			return false;</span>
+		}
+
+<span class="nc bnc" id="L92" title="All 2 branches missed.">		if (GagManager.checkIsGaggedAndInformPlayer(player)) {</span>
+<span class="nc" id="L93">			return false;</span>
+		}
+
+
+		// TODO: check grumpy
+<span class="nc" id="L98">		return true;</span>
+	}
+
+	/**
+	 * checks if there is already a pending offer to start a trading session
+	 *
+	 * @param partner partner
+	 * @return true, if there is a pending trade session
+	 */
+	private boolean checkPendingTradeOffer(Player partner) {
+<span class="nc bnc" id="L108" title="All 2 branches missed.">		if (partner.getTradeState() == TradeState.OFFERING_TRADE) {</span>
+<span class="nc" id="L109">			return player.getName().equals(partner.getTradePartner());</span>
+		}
+<span class="nc" id="L111">		return false;</span>
+	}
+
+	/**
+	 * actually starts a trading session
+	 *
+	 * @param partner partner for the trade
+	 */
+	protected void startTrade(Player partner) {
+<span class="nc" id="L120">		this.partnerName = partner.getName();</span>
+<span class="nc" id="L121">		this.tradeState = TradeState.MAKING_OFFERS;</span>
+<span class="nc" id="L122">	}</span>
+
+
+	/**
+	 * offers the other player to start a trading session
+	 *
+	 * @param partner to offer the trade to
+	 */
+	public void offerTrade(Player partner) {
+<span class="nc bnc" id="L131" title="All 2 branches missed.">		if (player.getName().equals(partner.getName())) {</span>
+<span class="nc" id="L132">			player.sendPrivateText(&quot;Sorry, you cannot trade with yourself.&quot;);</span>
+<span class="nc" id="L133">			return;</span>
+		}
+
+<span class="nc bnc" id="L136" title="All 2 branches missed.">		if (checkPendingTradeOffer(partner)) {</span>
+<span class="nc" id="L137">			startTrade(partner);</span>
+<span class="nc" id="L138">			partner.startTrade(player);</span>
+<span class="nc" id="L139">			tellClients();</span>
+<span class="nc" id="L140">			return;</span>
+		}
+
+<span class="nc bnc" id="L143" title="All 2 branches missed.">		if (!checkIfTradeMayBeOffered(partner)) {</span>
+<span class="nc" id="L144">			return;</span>
+		}
+
+<span class="nc bnc" id="L147" title="All 4 branches missed.">		if ((this.tradeState != TradeState.NO_ACTIVE_TRADE) &amp;&amp; (this.tradeState != TradeState.OFFERING_TRADE)) {</span>
+<span class="nc" id="L148">			cancelTrade();</span>
+		}
+<span class="nc" id="L150">		player.sendPrivateText(&quot;You offered to trade with &quot; + partner.getName() + &quot;.&quot;);</span>
+<span class="nc" id="L151">		partner.sendPrivateText(player.getName() + &quot; wants to trade with you. Right click on &quot; + player.getName() + &quot; and select \&quot;Trade\&quot; to start a trading session.&quot;);</span>
+<span class="nc" id="L152">		this.partnerName = partner.getName();</span>
+<span class="nc" id="L153">		this.tradeState = TradeState.OFFERING_TRADE;</span>
+<span class="nc" id="L154">	}</span>
+
+
+	/**
+	 * cancels a trade because
+	 */
+	protected void cancelTradeBecauseOfLogout() {
+<span class="nc bnc" id="L161" title="All 2 branches missed.">		if (tradeState == TradeState.NO_ACTIVE_TRADE) {</span>
+<span class="nc" id="L162">			return;</span>
+		}
+<span class="nc" id="L164">		Player partner = SingletonRepository.getRuleProcessor().getPlayer(partnerName);</span>
+<span class="nc bnc" id="L165" title="All 2 branches missed.">		if (partner != null) {</span>
+<span class="nc" id="L166">			partner.sendPrivateText(player.getName() + &quot; disappeared, cancelling the trade with you.&quot;);</span>
+<span class="nc" id="L167">			partner.cancelTradeInternally(player.getName());</span>
+		}
+<span class="nc" id="L169">		partnerName = null;</span>
+		// Do not move own items back. This is done on login because the
+		// bag might be full and items might end up on the ground.
+<span class="nc" id="L172">	}</span>
+
+	/**
+	 * cancels a trade and tells the player and partner about it.
+	 */
+	public void cancelTrade() {
+<span class="pc bpc" id="L178" title="1 of 2 branches missed.">		if (tradeState == TradeState.NO_ACTIVE_TRADE) {</span>
+<span class="fc" id="L179">			return;</span>
+		}
+
+<span class="nc" id="L182">		player.sendPrivateText(&quot;You canceled the trade&quot;);</span>
+<span class="nc" id="L183">		Player partner = SingletonRepository.getRuleProcessor().getPlayer(partnerName);</span>
+<span class="nc bnc" id="L184" title="All 2 branches missed.">		if (partner != null) {</span>
+<span class="nc" id="L185">			partner.sendPrivateText(player.getName() + &quot; canceled the trade with you.&quot;);</span>
+<span class="nc" id="L186">			partner.cancelTradeInternally(player.getName());</span>
+		}
+<span class="nc" id="L188">		cancelTradeInternally(partnerName);</span>
+<span class="nc" id="L189">	}</span>
+
+
+	/**
+	 * internally cancels a trade without telling the players
+	 *
+	 * @param partnerName name of partner to make sure the correct trade is canceled
+	 */
+	protected void cancelTradeInternally(String partnerName) {
+<span class="pc bpc" id="L198" title="3 of 4 branches missed.">		if ((this.partnerName == null) || this.partnerName.equals(partnerName)) {</span>
+<span class="fc" id="L199">			this.partnerName = null;</span>
+<span class="fc" id="L200">			this.tradeState = TradeState.NO_ACTIVE_TRADE;</span>
+<span class="fc" id="L201">			moveItemsBack();</span>
+<span class="fc" id="L202">			tellClients();</span>
+		}
+<span class="fc" id="L204">	}</span>
+
+	/**
+	 * Move items from the trade slot to normal container slots.
+	 */
+	private void moveItemsBack() {
+<span class="fc" id="L210">		RPSlot tradeSlot = player.getSlot(&quot;trade&quot;);</span>
+<span class="fc" id="L211">		List&lt;Item&gt; items = moveItemsFromSlotToList(tradeSlot);</span>
+<span class="pc bpc" id="L212" title="1 of 2 branches missed.">		boolean onGround = !moveItemsFromListToPlayerOrGround(items);</span>
+<span class="pc bpc" id="L213" title="1 of 2 branches missed.">		if (onGround) {</span>
+<span class="nc" id="L214">			player.sendPrivateText(&quot;Some items did not fit in your bag and have been put on the ground.&quot;);</span>
+		}
+<span class="fc" id="L216">	}</span>
+
+
+    /**
+	 * marks an item offer as complete. If both players have marked their item offers
+	 * as complete, the trade is executed.
+	 */
+	public void lockItemOffer() {
+<span class="nc bnc" id="L224" title="All 2 branches missed.">		if (tradeState != TradeState.MAKING_OFFERS) {</span>
+<span class="nc" id="L225">			return;</span>
+		}
+
+<span class="nc" id="L228">		tradeState = TradeState.LOCKED;</span>
+<span class="nc" id="L229">		Player partner = SingletonRepository.getRuleProcessor().getPlayer(partnerName);</span>
+<span class="nc bnc" id="L230" title="All 2 branches missed.">		if (partner == null) {</span>
+<span class="nc" id="L231">			cancelTradeInternally(partnerName);</span>
+		}
+<span class="nc" id="L233">		tellClients();</span>
+<span class="nc" id="L234">	}</span>
+
+
+	public void deal() {
+<span class="nc bnc" id="L238" title="All 2 branches missed.">		if (tradeState != TradeState.LOCKED) {</span>
+<span class="nc" id="L239">			player.sendPrivateText(&quot;You must lock your offer first.&quot;);</span>
+<span class="nc" id="L240">			return;</span>
+		}
+
+<span class="nc" id="L243">		Player partner = SingletonRepository.getRuleProcessor().getPlayer(partnerName);</span>
+<span class="nc bnc" id="L244" title="All 2 branches missed.">		if (partner == null) {</span>
+<span class="nc" id="L245">			cancelTradeInternally(partnerName);</span>
+<span class="nc" id="L246">			return;</span>
+		}
+
+<span class="nc bnc" id="L249" title="All 2 branches missed.">		if (partner.getTradeState() == TradeState.DEAL_WAITING_FOR_OTHER_DEAL) {</span>
+<span class="nc" id="L250">			tradeState = TradeState.TRADE_COMPLETED;</span>
+<span class="nc" id="L251">			partner.completeTradeInternally();</span>
+<span class="nc" id="L252">			tellClients();</span>
+<span class="nc" id="L253">			player.sendPrivateText(&quot;You traded with &quot; + partnerName + &quot;.&quot;);</span>
+<span class="nc" id="L254">			partner.sendPrivateText(&quot;You traded with &quot; + player.getName() + &quot;.&quot;);</span>
+<span class="nc" id="L255">			transferItems(partner);</span>
+<span class="nc" id="L256">			cancelTradeInternally(partnerName);</span>
+<span class="nc" id="L257">			partner.cancelTradeInternally(player.getName());</span>
+<span class="nc bnc" id="L258" title="All 2 branches missed.">		} else if (partner.getTradeState() == TradeState.LOCKED) {</span>
+<span class="nc" id="L259">			player.sendPrivateText(&quot;Okay, your trade is almost complete, just waiting for &quot; + partnerName + &quot; to press Accept.&quot;);</span>
+<span class="nc" id="L260">			tradeState = TradeState.DEAL_WAITING_FOR_OTHER_DEAL;</span>
+<span class="nc" id="L261">			tellClients();</span>
+<span class="nc bnc" id="L262" title="All 2 branches missed.">		} else if (partner.getTradeState() == TradeState.MAKING_OFFERS) {</span>
+<span class="nc" id="L263">			player.sendPrivateText(&quot;Your partner must lock his offer first.&quot;);</span>
+		} else {
+<span class="nc" id="L265">			logger.warn(&quot;Inconsitent state at \&quot;deal\&quot; in trade of &quot; + player.getName() + &quot; with partner &quot; + partnerName);</span>
+<span class="nc" id="L266">			cancelTrade();</span>
+		}
+<span class="nc" id="L268">	}</span>
+
+	/**
+	 * transfers items from one person's trade slots to the trade slot of the other person and via versa
+	 *
+	 * @param partner partner
+	 */
+	private void transferItems(Player partner) {
+<span class="nc" id="L276">        RPSlot playerTradeSlot = player.getSlot(&quot;trade&quot;);</span>
+<span class="nc" id="L277">        RPSlot partnerTradeSlot = partner.getSlot(&quot;trade&quot;);</span>
+<span class="nc" id="L278">        List&lt;Item&gt; playerItems = moveItemsFromSlotToList(playerTradeSlot);</span>
+<span class="nc" id="L279">        List&lt;Item&gt; partnerItems = moveItemsFromSlotToList(partnerTradeSlot);</span>
+
+<span class="nc" id="L281">        moveItemsFromListToSlotOrGround(null, player.getName(), partner.getName(), playerItems, partnerTradeSlot);</span>
+<span class="nc" id="L282">        moveItemsFromListToSlotOrGround(null, partner.getName(), player.getName(), partnerItems, playerTradeSlot);</span>
+<span class="nc" id="L283">    }</span>
+
+	/**
+	 * moves all items from a slot to a list, clearing the slot in the end
+	 *
+	 * @param slot RPSlot to clear
+	 * @return list of items that used to be in the slot
+	 */
+	private List&lt;Item&gt; moveItemsFromSlotToList(RPSlot slot) {
+<span class="fc" id="L292">        List&lt;Item&gt; items = new LinkedList&lt;Item&gt;();</span>
+<span class="pc bpc" id="L293" title="1 of 2 branches missed.">        for (RPObject item : slot) {</span>
+<span class="nc bnc" id="L294" title="All 2 branches missed.">            if (item instanceof Item) {</span>
+<span class="nc" id="L295">                items.add((Item) item);</span>
+            }
+<span class="nc" id="L297">        }</span>
+<span class="fc" id="L298">        slot.clear();</span>
+<span class="fc" id="L299">        return items;</span>
+	}
+
+
+	/**
+	 * moves items from a list into a slot
+	 *
+	 * @param source       the player doing the action
+	 * @param sourcePlayer the owner of the source slot
+	 * @param targetPlayer the owner of the target slot
+	 * @param items        list of items
+	 * @param targetSlot   target slot
+	 * @return true, if items fit into the slot; false if items were put on the ground
+	 */
+    private boolean moveItemsFromListToSlotOrGround(Player source, String sourcePlayer, String targetPlayer, List&lt;Item&gt; items, RPSlot targetSlot) {
+<span class="nc" id="L314">        final StendhalRPZone zone = player.getZone();</span>
+<span class="nc" id="L315">        boolean onGround = false;</span>
+<span class="nc bnc" id="L316" title="All 2 branches missed.">        for (Item item : items) {</span>
+<span class="nc bnc" id="L317" title="All 2 branches missed.">            if (!targetSlot.isFull()) {</span>
+<span class="nc" id="L318">                targetSlot.add(item);</span>
+<span class="nc" id="L319">                new ItemLogger().equipAction(source, item, new String[]{&quot;slot&quot;, sourcePlayer, &quot;trade&quot;}, new String[]{&quot;slot&quot;, targetPlayer, targetSlot.getName()});</span>
+            } else {
+<span class="nc" id="L321">                item.setPosition(player.getX(), player.getY());</span>
+<span class="nc" id="L322">                zone.add(item, player);</span>
+<span class="nc" id="L323">                onGround = true;</span>
+<span class="nc" id="L324">                new ItemLogger().equipAction(source, item, new String[]{&quot;slot&quot;, sourcePlayer, &quot;trade&quot;}, new String[]{&quot;ground&quot;, zone.getName(), player.getX() + &quot; &quot; + player.getY()});</span>
+            }
+<span class="nc" id="L326">        }</span>
+<span class="nc" id="L327">        items.clear();</span>
+<span class="nc bnc" id="L328" title="All 2 branches missed.">        return !onGround;</span>
+    }
+
+	/**
+	 * Move items from a list to any suitable carrying slot of the player,
+	 * merging with existing item stacks, when possible.
+	 *
+	 * @param items item list
+	 * @return &lt;code&gt;true&lt;/code&gt; if all the items on the list could be equipped,
+	 * 	&lt;code&gt;false&lt;/code&gt; otherwise
+	 */
+	private boolean moveItemsFromListToPlayerOrGround(List&lt;Item&gt; items) {
+<span class="fc" id="L340">		final StendhalRPZone zone = player.getZone();</span>
+<span class="fc" id="L341">		String name = player.getName();</span>
+<span class="fc" id="L342">		boolean onGround = false;</span>
+<span class="pc bpc" id="L343" title="1 of 2 branches missed.">		for (Item item : items) {</span>
+<span class="nc" id="L344">			RPSlot targetSlot = player.getSlotToEquip(item);</span>
+<span class="nc bnc" id="L345" title="All 2 branches missed.">			if (player.equipOrPutOnGround(item)) {</span>
+<span class="nc" id="L346">				new ItemLogger().equipAction(player, item, new String[]{&quot;slot&quot;, name, &quot;trade&quot;}, new String[]{&quot;slot&quot;, name, targetSlot.getName()});</span>
+			} else {
+<span class="nc" id="L348">				onGround = true;</span>
+<span class="nc" id="L349">				new ItemLogger().equipAction(player, item, new String[]{&quot;slot&quot;, name, &quot;trade&quot;}, new String[]{&quot;ground&quot;, zone.getName(), player.getX() + &quot; &quot; + player.getY()});</span>
+			}
+<span class="nc" id="L351">		}</span>
+<span class="fc" id="L352">		items.clear();</span>
+<span class="pc bpc" id="L353" title="1 of 2 branches missed.">		return !onGround;</span>
+    }
+
+    /**
+	 * removes the marking of an item offer as complete
+	 */
+	public void unlockItemOffer() {
+<span class="nc" id="L360">		boolean myRes = unlockItemOfferInternally(partnerName);</span>
+<span class="nc" id="L361">		boolean otherRes = false;</span>
+
+<span class="nc" id="L363">		Player partner = SingletonRepository.getRuleProcessor().getPlayer(partnerName);</span>
+<span class="nc bnc" id="L364" title="All 2 branches missed.">		if (partner != null) {</span>
+<span class="nc" id="L365">			otherRes = partner.unlockTradeItemOfferInternally(player.getName());</span>
+		}
+<span class="nc bnc" id="L367" title="All 4 branches missed.">		if (myRes || otherRes) {</span>
+<span class="nc" id="L368">			tellClients();</span>
+		}
+<span class="nc" id="L370">	}</span>
+
+	/**
+	 * internally unlocks a trade
+	 *
+	 * @param partnerName name of partner (to make sure the correct trade offer is canceled)
+	 * @return true, if a trade was unlocked, false if it was already unlocked
+	 */
+	boolean unlockItemOfferInternally(String partnerName) {
+<span class="nc bnc" id="L379" title="All 4 branches missed.">		if ((this.partnerName == null) || this.partnerName.equals(partnerName)) {</span>
+<span class="nc bnc" id="L380" title="All 2 branches missed.">			if (LOCKED_STATES.contains(tradeState)) {</span>
+<span class="nc" id="L381">				tradeState = TradeState.OFFERING_TRADE;</span>
+<span class="nc" id="L382">				return true;</span>
+			}
+		}
+<span class="nc" id="L385">		return false;</span>
+	}
+
+	/**
+	 * gets the current state of trading
+	 *
+	 * @return TradeState
+	 */
+	public TradeState getTradeState() {
+<span class="fc" id="L394">		return tradeState;</span>
+	}
+
+
+	/**
+	 * gets the name of the trading partner
+	 *
+	 * @return name of partner
+	 */
+	public String getPartnerName() {
+<span class="nc" id="L404">		return partnerName;</span>
+	}
+
+
+	/**
+	 * inform both clients about the current state of trading.
+	 */
+	private void tellClients() {
+<span class="fc" id="L412">		Player partner = SingletonRepository.getRuleProcessor().getPlayer(partnerName);</span>
+<span class="pc bpc" id="L413" title="1 of 2 branches missed.">		if (partner == null) {</span>
+<span class="fc" id="L414">			player.addEvent(new TradeStateChangeEvent(-1, tradeState, TradeState.NO_ACTIVE_TRADE));</span>
+		} else {
+<span class="nc" id="L416">			player.addEvent(new TradeStateChangeEvent(partner.getInt(&quot;id&quot;), tradeState, partner.getTradeState()));</span>
+<span class="nc" id="L417">			partner.addEvent(new TradeStateChangeEvent(player.getInt(&quot;id&quot;), partner.getTradeState(), tradeState));</span>
+<span class="nc" id="L418">			partner.notifyWorldAboutChanges();</span>
+		}
+<span class="fc" id="L420">		player.notifyWorldAboutChanges();</span>
+<span class="fc" id="L421">	}</span>
+
+
+	/**
+	 * flags the trade as compelted
+	 */
+	public void completeTradeInternally() {
+<span class="nc" id="L428">		tradeState = TradeState.TRADE_COMPLETED;</span>
+<span class="nc" id="L429">	}</span>
+
+
+
+	// TODO: cancelTrade on logout
+	// TODO: cancelTrade on zone change of one of the partners
+	// TODO: move items back on login (so that they don't end up unprotected on the ground on full bag during logout).
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

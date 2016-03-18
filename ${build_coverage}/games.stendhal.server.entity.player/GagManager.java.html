@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>GagManager.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.player</a> &gt; <span class="el_source">GagManager.java</span></div><h1>GagManager.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.player;
+
+import games.stendhal.common.MathHelper;
+import games.stendhal.common.NotificationType;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.events.LoginListener;
+import games.stendhal.server.core.events.TurnListener;
+import games.stendhal.server.util.TimeUtil;
+
+import org.apache.log4j.Logger;
+
+/**
+ * Manages gags.
+ */
+public class GagManager implements LoginListener {
+	
+
+<span class="fc" id="L30">	private static final Logger logger = Logger.getLogger(GagManager.class);</span>
+
+	/** The Singleton instance. */
+	private static GagManager instance;
+
+	/**
+	 * returns the GagManager object (Singleton Pattern).
+	 * 
+	 * @return GagManager
+	 */
+	public static GagManager get() {
+<span class="fc bfc" id="L41" title="All 2 branches covered.">		if (instance == null) {</span>
+<span class="fc" id="L42">			instance = new GagManager();</span>
+		}
+<span class="fc" id="L44">		return instance;</span>
+	}
+
+	// singleton
+<span class="fc" id="L48">	private GagManager() {</span>
+<span class="fc" id="L49">		SingletonRepository.getLoginNotifier().addListener(this);</span>
+<span class="fc" id="L50">	}</span>
+
+	/**
+	 * @param criminalName
+	 *            The name of the player who should be gagged
+	 * @param policeman
+	 *            The name of the admin who wants to gag the criminal
+	 * @param minutes
+	 *            The duration of the sentence
+	 * @param reason why criminal was gagged
+	 */
+	public void gag(final String criminalName, final Player policeman, final int minutes,
+			final String reason) {
+<span class="fc" id="L63">		final Player criminal = SingletonRepository.getRuleProcessor().getPlayer(</span>
+				criminalName);
+
+<span class="fc bfc" id="L66" title="All 2 branches covered.">		if (criminal == null) {</span>
+<span class="fc" id="L67">			final String text = &quot;Player &quot; + criminalName + &quot; not found&quot;;</span>
+<span class="fc" id="L68">			policeman.sendPrivateText(text);</span>
+<span class="fc" id="L69">			logger.debug(text);</span>
+<span class="fc" id="L70">			return;</span>
+		}
+
+<span class="fc" id="L73">		gag(criminal, policeman, minutes, reason, criminalName);</span>
+<span class="fc" id="L74">	}</span>
+
+	void gag(final Player criminal, final Player policeman, final int minutes,
+			final String reason, final String criminalName) {
+		// no -1
+<span class="fc bfc" id="L79" title="All 2 branches covered.">		if (minutes &lt; 0) {</span>
+<span class="fc" id="L80">			policeman.sendPrivateText(&quot;Infinity (negative numbers) is not supported.&quot;);</span>
+<span class="fc" id="L81">			return;</span>
+		}
+
+		// Set the gag
+<span class="fc" id="L85">		final long expireDate = System.currentTimeMillis() + (MathHelper.MILLISECONDS_IN_ONE_MINUTE * minutes);</span>
+<span class="fc" id="L86">		criminal.setQuest(&quot;gag&quot;, &quot;&quot; + expireDate);</span>
+
+		// Send messages
+<span class="fc" id="L89">		policeman.sendPrivateText(&quot;You have gagged &quot; + criminalName + &quot; for &quot;</span>
+				+ minutes + &quot; minutes. Reason: &quot; + reason + &quot;.&quot;);
+<span class="fc" id="L91">		criminal.sendPrivateText(NotificationType.SUPPORT, </span>
+				&quot;You have been gagged for &quot; + minutes
+				+ &quot; minutes. Reason: &quot; + reason + &quot;.&quot;);
+<span class="fc" id="L94">		SingletonRepository.getRuleProcessor().sendMessageToSupporters(&quot;GagManager&quot;, policeman.getName()</span>
+				+ &quot; gagged &quot; + criminalName + &quot; for &quot; + minutes
+				+ &quot; minutes. Reason: &quot; + reason + &quot;.&quot;);
+
+<span class="fc" id="L98">		setupNotifier(criminal);</span>
+<span class="fc" id="L99">	}</span>
+
+	/**
+	 * Removes a gag.
+	 * 
+	 * @param inmate
+	 *            player who should be released
+	 */
+	public void release(final Player inmate) {
+<span class="pc bpc" id="L108" title="1 of 2 branches missed.">		if (isGagged(inmate)) {</span>
+<span class="fc" id="L109">			inmate.removeQuest(&quot;gag&quot;);</span>
+<span class="fc" id="L110">			inmate.sendPrivateText(NotificationType.SUPPORT, &quot;Your gag sentence is over.&quot;);</span>
+<span class="fc" id="L111">			logger.debug(&quot;Player &quot; + inmate.getName() + &quot;released from gag.&quot;);</span>
+		}
+<span class="fc" id="L113">	}</span>
+
+	/**
+	 * Is player gagged?
+	 * 
+	 * @param player player to check
+	 * @return true, if it is gagged, false otherwise.
+	 */
+	public static boolean isGagged(final Player player) {
+<span class="fc bfc" id="L122" title="All 2 branches covered.">		if (player.hasQuest(&quot;gag&quot;)) {</span>
+<span class="fc" id="L123">			return true;</span>
+		}
+<span class="fc" id="L125">		return false;</span>
+	}
+
+	/**
+	 * Like isGagged(player) but informs the player in case it is gagged.
+	 * 
+	 * @param player player to check
+	 * @return true, if it is gagged, false otherwise.
+	 */
+	public static boolean checkIsGaggedAndInformPlayer(final Player player) {
+<span class="nc" id="L135">		final boolean res = GagManager.isGagged(player);</span>
+<span class="nc bnc" id="L136" title="All 2 branches missed.">		if (res) {</span>
+<span class="nc" id="L137">			final long timeRemaining = SingletonRepository.getGagManager().getTimeRemaining(player);</span>
+<span class="nc" id="L138">			player.sendPrivateText(&quot;You are gagged, it will expire in &quot;</span>
+					+ TimeUtil.approxTimeUntil((int) (timeRemaining / 1000L)));
+		}
+
+<span class="nc" id="L142">		return res;</span>
+	}
+	
+	/**
+	 * If the players' gag has expired, remove it.
+	 * 
+	 * @param player
+	 *            player to check
+	 * @return true, if the gag expired and was removed or was already removed.
+	 *         false, if the player still has time to serve.
+	 */
+	private boolean tryExpire(final Player player) {
+<span class="pc bpc" id="L154" title="1 of 2 branches missed.">		if (!isGagged(player)) {</span>
+<span class="nc" id="L155">			return true;</span>
+		}
+
+		// allow for an error of 10 seconds
+<span class="fc bfc" id="L159" title="All 2 branches covered.">		if (getTimeRemaining(player) &lt; (10L * 1000L)) {</span>
+<span class="fc" id="L160">			release(player);</span>
+<span class="fc" id="L161">			return true;</span>
+		}
+
+<span class="fc" id="L164">		return false;</span>
+	}
+
+	@Override
+	public void onLoggedIn(final Player player) {
+<span class="pc bpc" id="L169" title="1 of 2 branches missed.">		if (!isGagged(player)) {</span>
+<span class="nc" id="L170">			return;</span>
+		}
+
+<span class="fc bfc" id="L173" title="All 2 branches covered.">		if (!tryExpire(player)) {</span>
+<span class="fc" id="L174">			setupNotifier(player);</span>
+		}
+<span class="fc" id="L176">	}</span>
+
+	private void setupNotifier(final Player criminal) {
+
+<span class="fc" id="L180">		final String criminalName = criminal.getName();</span>
+
+		// Set a timer so that the inmate is automatically released after
+		// serving his sentence. We're using the TurnNotifier; we use
+<span class="fc" id="L184">		SingletonRepository.getTurnNotifier().notifyInSeconds(</span>
+<span class="fc" id="L185">				(int) (getTimeRemaining(criminal) / 1000), new TurnListener() {</span>
+					@Override
+					public void onTurnReached(final int currentTurn) {
+
+<span class="fc" id="L189">						final Player criminal2 = SingletonRepository.getRuleProcessor().getPlayer(</span>
+								criminalName);
+<span class="pc bpc" id="L191" title="1 of 2 branches missed.">						if (criminal2 == null) {</span>
+<span class="fc" id="L192">							logger.debug(&quot;Gagged player &quot; + criminalName</span>
+									+ &quot;has logged out.&quot;);
+<span class="fc" id="L194">							return;</span>
+						}
+
+<span class="nc" id="L197">						tryExpire(criminal2);</span>
+
+<span class="nc" id="L199">					}</span>
+				});
+<span class="fc" id="L201">	}</span>
+
+	/**
+	 * Gets time remaining in milliseconds.
+	 * 
+	 * @param criminal
+	 *            player to check
+	 * @return time remaining in milliseconds
+	 */
+	public long getTimeRemaining(final Player criminal) {
+<span class="fc bfc" id="L211" title="All 2 branches covered.">		if (!isGagged(criminal)) {</span>
+<span class="fc" id="L212">			return 0L;</span>
+		}
+<span class="fc" id="L214">		final long expireDate = Long.parseLong(criminal.getQuest(&quot;gag&quot;));</span>
+<span class="fc" id="L215">		final long timeRemaining = expireDate - System.currentTimeMillis();</span>
+<span class="fc" id="L216">		return timeRemaining;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

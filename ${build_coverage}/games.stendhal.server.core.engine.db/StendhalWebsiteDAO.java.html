@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>StendhalWebsiteDAO.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.core.engine.db</a> &gt; <span class="el_source">StendhalWebsiteDAO.java</span></div><h1>StendhalWebsiteDAO.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                    (C) Copyright 2003-2009 - Stendhal                   *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.core.engine.db;
+
+import games.stendhal.common.MathHelper;
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.entity.item.Item;
+import games.stendhal.server.entity.player.Player;
+
+import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+
+import marauroa.common.game.RPObject;
+import marauroa.common.game.RPSlot;
+import marauroa.server.db.DBTransaction;
+import marauroa.server.db.TransactionPool;
+
+import org.apache.log4j.Logger;
+
+
+/**
+ * database access for the redundant tables used on the website
+ */
+<span class="fc" id="L36">public class StendhalWebsiteDAO {</span>
+<span class="fc" id="L37">	private static Logger logger = Logger.getLogger(StendhalWebsiteDAO.class);</span>
+
+	/**
+	 * clears the online status of all players (used on server startup)
+	 *
+	 * @param transaction DBTransaction
+	 * @throws SQLException in case of an database error
+	 */
+	public void clearOnlineStatus(DBTransaction transaction) throws SQLException {
+<span class="nc" id="L46">		transaction.execute(&quot;UPDATE character_stats SET online=0&quot;, null);</span>
+<span class="nc" id="L47">	}</span>
+
+	/**
+	 * sets the online status of a particular player
+	 *
+	 * @param transaction DBTransaction
+	 * @param playerName name of player
+	 * @param online true, if the player is online; false otherwise
+	 * @throws SQLException in case of an database error
+	 */
+	public void setOnlineStatus(final DBTransaction transaction, final String playerName, final boolean online) throws SQLException {
+		String onlinestate;
+<span class="fc bfc" id="L59" title="All 2 branches covered.">		if (online) {</span>
+<span class="fc" id="L60">			onlinestate = &quot;1&quot;;</span>
+		} else {
+<span class="fc" id="L62">			onlinestate = &quot;0&quot;;</span>
+		}
+		// first try an update
+		final String query = &quot;UPDATE character_stats SET online='[onlinestate]'&quot;
+			+ &quot; WHERE name='[name]'&quot;;
+<span class="fc" id="L67">		Map&lt;String, Object&gt; params = new HashMap&lt;String, Object&gt;();</span>
+<span class="fc" id="L68">		params.put(&quot;onlinestate&quot;, onlinestate);</span>
+<span class="fc" id="L69">		params.put(&quot;name&quot;, playerName);</span>
+<span class="fc" id="L70">		logger.debug(&quot;setOnlineStatus is running: &quot; + query);</span>
+
+<span class="fc" id="L72">		transaction.execute(query, params);</span>
+<span class="fc" id="L73">	}</span>
+
+	/**
+	 * clears the online status of all players (used on server startup)
+	 */
+	public void clearOnlineStatus() {
+<span class="nc" id="L79">		DBTransaction transaction = TransactionPool.get().beginWork();</span>
+		try {
+<span class="nc" id="L81">			clearOnlineStatus(transaction);</span>
+<span class="nc" id="L82">			TransactionPool.get().commit(transaction);</span>
+<span class="nc" id="L83">		} catch (SQLException e) {</span>
+<span class="nc" id="L84">			TransactionPool.get().rollback(transaction);</span>
+<span class="nc" id="L85">		}</span>
+<span class="nc" id="L86">	}</span>
+
+	/**
+	 * sets the online status of a particular player
+	 *
+	 * @param playerName name of player
+	 * @param online true, if the player is online; false otherwise
+	 */
+	public void setOnlineStatus(final String playerName, final boolean online) {
+<span class="nc" id="L95">		DBTransaction transaction = TransactionPool.get().beginWork();</span>
+		try {
+<span class="nc" id="L97">			setOnlineStatus(transaction, playerName, online);</span>
+<span class="nc" id="L98">			TransactionPool.get().commit(transaction);</span>
+<span class="nc" id="L99">		} catch (SQLException e) {</span>
+<span class="nc" id="L100">			TransactionPool.get().rollback(transaction);</span>
+<span class="nc" id="L101">		}</span>
+<span class="nc" id="L102">	}</span>
+
+	/**
+	 * logs a trade event
+	 * 
+	 * @param transaction DBTransaction
+	 * @param charname name of character
+	 * @param itemname name of item
+	 * @param itemid   id of item
+	 * @param quantity quantity
+	 * @param price    price
+	 * @param stats    description of item
+	 * @throws SQLException in case of an database error
+	 */
+	public void logTradeEvent(final DBTransaction transaction, String charname, String itemname, int itemid, int quantity, int price, String stats) throws SQLException {
+<span class="fc" id="L117">		String sql = &quot;INSERT INTO trade(charname, itemname, itemid, quantity, price, stats) &quot;</span>
+				+ &quot; VALUES ('[charname]', '[itemname]', [itemid], [quantity], [price], '[stats]')&quot;;
+<span class="fc" id="L119">		Map&lt;String, Object&gt; params = new HashMap&lt;String, Object&gt;();</span>
+<span class="fc" id="L120">		params.put(&quot;charname&quot;, charname);</span>
+<span class="fc" id="L121">		params.put(&quot;itemname&quot;, itemname);</span>
+<span class="fc" id="L122">		params.put(&quot;itemid&quot;, itemid);</span>
+<span class="fc" id="L123">		params.put(&quot;quantity&quot;, quantity);</span>
+<span class="fc" id="L124">		params.put(&quot;price&quot;, price);</span>
+<span class="fc" id="L125">		params.put(&quot;stats&quot;, stats);</span>
+<span class="fc" id="L126">		transaction.execute(sql, params);</span>
+<span class="fc" id="L127">	}</span>
+
+	/**
+	 * updates the statistics information about a player
+	 *
+	 * @param transaction DBTransaction
+	 * @param player Player
+	 * @return number of updates rows
+	 * @throws SQLException in case of an database error
+	 */
+	protected int updateCharStats(final DBTransaction transaction, final Player player) throws SQLException {
+		final String query = &quot;UPDATE character_stats SET &quot;
+			+ &quot; admin=[admin], sentence='[sentence]', age=[age], level=[level],&quot;
+			+ &quot; outfit=[outfit], outfit_colors='[outfit_colors]', xp=[xp], money='[money]',&quot;
+			+ &quot; married='[married]', atk='[atk]', def='[def]', hp='[hp]', karma='[karma]',&quot;
+			+ &quot; head='[head]', armor='[armor]', lhand='[lhand]', rhand='[rhand]',&quot;
+			+ &quot; legs='[legs]', feet='[feet]', cloak='[cloak]', lastseen='[lastseen]',&quot;
+			+ &quot; finger='[finger]', zone='[zone]'&quot;
+			+ &quot; WHERE name='[name]'&quot;;
+
+<span class="nc" id="L147">		Map&lt;String, Object&gt; params = getParamsFromPlayer(player);</span>
+<span class="nc" id="L148">		logger.debug(&quot;storeCharacter is running: &quot; + query);</span>
+<span class="nc" id="L149">		final int count = transaction.execute(query, params);</span>
+<span class="nc" id="L150">		return count;</span>
+	}
+
+	/**
+	 * gets the attributes from a player object.
+	 *
+	 * @param player Player
+	 * @return Map with key value pairs
+	 */
+	private Map&lt;String, Object&gt; getParamsFromPlayer(final Player player) {
+<span class="fc" id="L160">		Map&lt;String, Object&gt; params = new HashMap&lt;String, Object&gt;();</span>
+<span class="fc" id="L161">		params.put(&quot;admin&quot;, player.getAdminLevel());</span>
+<span class="fc" id="L162">		params.put(&quot;sentence&quot;, player.getSentence());</span>
+<span class="fc" id="L163">		params.put(&quot;age&quot;, player.getAge());</span>
+<span class="fc" id="L164">		params.put(&quot;level&quot;, player.getLevel());</span>
+<span class="fc" id="L165">		params.put(&quot;outfit&quot;, player.getOutfit().getCode());</span>
+<span class="fc" id="L166">		params.put(&quot;outfit_colors&quot;, getOutfitColors(player));</span>
+<span class="fc" id="L167">		params.put(&quot;xp&quot;, player.getXP());</span>
+<span class="fc" id="L168">		params.put(&quot;money&quot;, player.getTotalNumberOf(&quot;money&quot;));</span>
+<span class="fc" id="L169">		params.put(&quot;married&quot;, extractSpouseOrNull(player));</span>
+<span class="fc" id="L170">		params.put(&quot;atk&quot;, player.getAtk());</span>
+<span class="fc" id="L171">		params.put(&quot;def&quot;, player.getDef());</span>
+<span class="fc" id="L172">		params.put(&quot;hp&quot;, player.getHP());</span>
+<span class="fc" id="L173">		params.put(&quot;karma&quot;, (int) player.getKarma());</span>
+<span class="fc" id="L174">		params.put(&quot;head&quot;, extractName(player.getHelmet()));</span>
+<span class="fc" id="L175">		params.put(&quot;armor&quot;, extractName(player.getArmor()));</span>
+<span class="fc" id="L176">		params.put(&quot;lhand&quot;, extractHandName(player, &quot;lhand&quot;));</span>
+<span class="fc" id="L177">		params.put(&quot;rhand&quot;, extractHandName(player, &quot;rhand&quot;));</span>
+<span class="fc" id="L178">		params.put(&quot;legs&quot;, extractName(player.getLegs()));</span>
+<span class="fc" id="L179">		params.put(&quot;feet&quot;, extractName(player.getBoots()));</span>
+<span class="fc" id="L180">		params.put(&quot;cloak&quot;, extractName(player.getCloak()));</span>
+<span class="fc" id="L181">		params.put(&quot;finger&quot;, extractHandName(player, &quot;finger&quot;));</span>
+<span class="fc" id="L182">		params.put(&quot;name&quot;, player.getName());</span>
+<span class="fc" id="L183">		String zoneName = &quot;&quot;;</span>
+<span class="fc" id="L184">		StendhalRPZone zone = player.getZone();</span>
+<span class="pc bpc" id="L185" title="1 of 2 branches missed.">		if (zone != null) {</span>
+<span class="nc" id="L186">			zoneName = zone.getName();</span>
+		}
+<span class="fc" id="L188">		params.put(&quot;zone&quot;, zoneName);</span>
+<span class="fc" id="L189">		params.put(&quot;lastseen&quot;, new Timestamp(new Date().getTime()));</span>
+<span class="fc" id="L190">		return params;</span>
+	}
+
+	/**
+	 * Insert statistics information about a new player
+	 * 
+	 *
+	 * @param transaction DBTransaction
+	 * @param player Player
+	 * @throws SQLException in case of an database error
+	 */
+	protected void insertIntoCharStats(final DBTransaction transaction, final Player player) throws SQLException {
+		final String query = &quot;INSERT INTO character_stats&quot;
+			+ &quot; (name, admin, sentence, age, level,&quot;
+			+ &quot; outfit, outfit_colors, xp, money, married, atk, def, hp,&quot;
+			+ &quot; karma, head, armor, lhand, rhand,&quot;
+			+ &quot; legs, feet, cloak, finger, zone, lastseen)&quot;
+			+ &quot; VALUES ('[name]', '[admin]', '[sentence]', '[age]', '[level]',&quot;
+			+ &quot; '[outfit]', '[outfit_colors]', '[xp]', '[money]', '[married]',&quot;
+			+ &quot; '[atk]', '[atk]', '[hp]', '[karma]', '[head]', '[armor]',&quot;
+			+ &quot; '[lhand]', '[rhand]', '[legs]', '[feet]', '[cloak]', '[finger]',&quot;
+			+ &quot; '[zone]', '[lastseen]')&quot;;
+<span class="fc" id="L212">		Map&lt;String, Object&gt; params = getParamsFromPlayer(player);</span>
+<span class="fc" id="L213">		logger.debug(&quot;storeCharacter is running: &quot; + query);</span>
+<span class="fc" id="L214">		transaction.execute(query, params);</span>
+<span class="fc" id="L215">	}</span>
+
+	/**
+	 * Used to get the items in the hands container, as they can be different to weapons or shields...
+	 * Could also be done using getEquippedItemClass and using all posibble classes for
+	 * the objects that can be used in hands.
+	 * 
+	 * @param instance player 
+	 * @param handSlot hand slot name
+	 * @return item name
+	 */
+	private String extractHandName(final Player instance, final String handSlot) {
+<span class="pc bpc" id="L227" title="2 of 4 branches missed.">		if (instance != null &amp;&amp; handSlot != null) {</span>
+<span class="fc bfc" id="L228" title="All 2 branches covered.">			if (instance.hasSlot(handSlot)) {</span>
+<span class="fc" id="L229">				final RPSlot rpslot = instance.getSlot(handSlot);</span>
+					// traverse all slot items
+<span class="pc bpc" id="L231" title="1 of 2 branches missed.">					for (final RPObject object : rpslot) {</span>
+						// is it the right type
+<span class="pc bpc" id="L233" title="1 of 2 branches missed.">						if (object instanceof Item) {</span>
+<span class="fc" id="L234">							final Item item = (Item) object;</span>
+<span class="fc" id="L235">							return item.getName();</span>
+						}
+<span class="nc" id="L237">					}</span>
+<span class="nc" id="L238">					return null;</span>
+			}
+<span class="fc" id="L240">			return null;</span>
+		}
+<span class="nc" id="L242">		return null;</span>
+	}
+
+	private String extractName(final Item item) {
+<span class="fc bfc" id="L246" title="All 2 branches covered.">		if (item != null) {</span>
+<span class="fc" id="L247">			return item.getName();</span>
+		}
+<span class="fc" id="L249">		return null;</span>
+	}
+
+	private String extractSpouseOrNull(final Player instance) {
+<span class="pc bpc" id="L253" title="1 of 2 branches missed.">		if (!instance.hasSlot(&quot;!quests&quot;)) {</span>
+			// first login, Player object has not been fully constructed (fixes https://sourceforge.net/tracker/index.php?func=detail&amp;aid=2854092&amp;group_id=1111&amp;atid=101111 )
+<span class="fc" id="L255">			return null;</span>
+		}
+<span class="nc bnc" id="L257" title="All 2 branches missed.">		if (instance.hasQuest(&quot;spouse&quot;)) {</span>
+<span class="nc" id="L258">			return instance.getQuest(&quot;spouse&quot;);</span>
+		} else {
+<span class="nc" id="L260">			return null;</span>
+		}
+	}
+
+	private String getOutfitColors(final Player player) {
+<span class="fc" id="L265">		Map&lt;String, String&gt; colors = player.getOutfitColors();</span>
+<span class="pc bpc" id="L266" title="1 of 2 branches missed.">		if (colors == null) {</span>
+<span class="fc" id="L267">			return &quot;&quot;;</span>
+		}
+<span class="nc" id="L269">		StringBuilder res = new StringBuilder();</span>
+<span class="nc" id="L270">		res.append(Integer.toHexString(MathHelper.parseIntDefault(colors.get(&quot;detail&quot;), 0)));</span>
+<span class="nc" id="L271">		res.append(&quot;_&quot;);</span>
+<span class="nc" id="L272">		res.append(Integer.toHexString(MathHelper.parseIntDefault(colors.get(&quot;hair&quot;), 0)));</span>
+<span class="nc" id="L273">		res.append(&quot;_&quot;);</span>
+<span class="nc" id="L274">		res.append(Integer.toHexString(MathHelper.parseIntDefault(colors.get(&quot;head&quot;), 0)));</span>
+<span class="nc" id="L275">		res.append(&quot;_&quot;);</span>
+<span class="nc" id="L276">		res.append(Integer.toHexString(MathHelper.parseIntDefault(colors.get(&quot;dress&quot;), 0)));</span>
+<span class="nc" id="L277">		res.append(&quot;_&quot;);</span>
+<span class="nc" id="L278">		res.append(Integer.toHexString(MathHelper.parseIntDefault(colors.get(&quot;base&quot;), 0)));</span>
+<span class="nc" id="L279">		return res.toString();</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

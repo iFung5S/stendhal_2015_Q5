@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>AutoWalkAction.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.actions.move</a> &gt; <span class="el_source">AutoWalkAction.java</span></div><h1>AutoWalkAction.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2015 - Arianne                     *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.actions.move;
+
+import static games.stendhal.common.constants.Actions.AUTOWALK;
+import static games.stendhal.common.constants.Actions.MODE;
+import static games.stendhal.common.constants.Actions.WALK;
+import static games.stendhal.common.constants.Common.PATHSET;
+import games.stendhal.common.Direction;
+import games.stendhal.server.actions.ActionListener;
+import games.stendhal.server.actions.CommandCenter;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.entity.status.StatusType;
+import marauroa.common.game.RPAction;
+
+/**
+ * Action that sets character speed and begins moving in faced direction. If
+ * the action is executed with the MODE attribute set to &quot;stop&quot; it will
+ * exclusively stop the entity's movement and set auto-walking off. Otherwise
+ * it will toggle auto-walk.
+ * 
+ * @author AntumDeluge
+ */
+<span class="fc" id="L33">public class AutoWalkAction implements ActionListener {</span>
+
+	/**
+	 * Registers walk action.
+	 */
+	public static void register() {
+<span class="fc" id="L39">		CommandCenter.register(WALK, new AutoWalkAction());</span>
+<span class="fc" id="L40">	}</span>
+
+	/**
+	 * Begin walking.
+	 */
+	@Override
+	public void onAction(final Player player, final RPAction action) {
+
+		/* Clear player's path if set. */
+<span class="nc bnc" id="L49" title="All 2 branches missed.">		if (player.hasPath()) {</span>
+<span class="nc" id="L50">			player.clearPath();</span>
+		}
+<span class="nc bnc" id="L52" title="All 2 branches missed.">		if (player.has(PATHSET)) {</span>
+<span class="nc" id="L53">			player.remove(PATHSET);</span>
+		}
+
+		/* The speed at which the player will walk. */
+<span class="nc" id="L57">		final double currentSpeed = player.getSpeed();</span>
+<span class="nc" id="L58">		final double newSpeed = player.getBaseSpeed();</span>
+<span class="nc" id="L59">		final Direction walkDirection = player.getDirection();</span>
+		
+<span class="nc" id="L61">		final String mode = action.get(MODE);</span>
+
+		/* Player used &quot;/stop&quot; slash command. */
+<span class="nc bnc" id="L64" title="All 4 branches missed.">		if (mode != null &amp;&amp; mode.equals(&quot;stop&quot;)) {</span>
+<span class="nc bnc" id="L65" title="All 2 branches missed.">			if (!player.stopped()) {</span>
+				/* Remove AUTOWALK before calling stop(). */
+<span class="nc bnc" id="L67" title="All 2 branches missed.">				if (player.has(AUTOWALK)) {</span>
+<span class="nc" id="L68">					player.remove(AUTOWALK);</span>
+				}
+<span class="nc" id="L70">				player.stop();</span>
+<span class="nc" id="L71">				return;</span>
+			} else {
+<span class="nc" id="L73">				return;</span>
+			}
+		}
+
+<span class="nc bnc" id="L77" title="All 2 branches missed.">		if (player.stopped()) {</span>
+			/* Check if the player's direction is defined. */
+<span class="nc bnc" id="L79" title="All 4 branches missed.">			if ((walkDirection == Direction.STOP) || (walkDirection == null)) {</span>
+				/* Set default direction to DOWN. */
+<span class="nc" id="L81">				player.setDirection(Direction.DOWN);</span>
+			}
+<span class="nc bnc" id="L83" title="All 4 branches missed.">			if (player.hasStatus(StatusType.POISONED)</span>
+					|| player.hasStatus(StatusType.CONFUSED)) {
+<span class="nc" id="L85">				player.setDirection(player.getDirection().oppositeDirection());</span>
+			}
+
+			/* Begin walking using the entity's base speed. */
+<span class="nc bnc" id="L89" title="All 2 branches missed.">			if (newSpeed != currentSpeed) {</span>
+				/* Turn on AUTOWALK before calling setSpeed(). */
+<span class="nc bnc" id="L91" title="All 2 branches missed.">				if (!player.has(AUTOWALK)) {</span>
+<span class="nc" id="L92">					player.put(AUTOWALK, &quot;&quot;);</span>
+				}
+<span class="nc" id="L94">				player.setSpeed(newSpeed);</span>
+			}
+		} else {
+			/* Use the same command to stop walking. */
+			/* Turn off auto-walk indicator. */
+<span class="nc bnc" id="L99" title="All 2 branches missed.">			if (player.has(AUTOWALK)) {</span>
+<span class="nc" id="L100">				player.remove(AUTOWALK);</span>
+			}
+<span class="nc" id="L102">			player.stop();</span>
+		}
+<span class="nc" id="L104">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

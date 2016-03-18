@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ScrollerPanel.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui</a> &gt; <span class="el_source">ScrollerPanel.java</span></div><h1>ScrollerPanel.java</h1><pre class="source lang-java linenums">/*
+ * &quot;Developed by Infosys 7, FH-Brandenburg, Germany
+ *
+ * This Software is provided as it is and is published under the GPL-License. No
+ * warranty is provided. Building systems and portals based on this system is on
+ * your own risk.
+ *
+ * @author Ken Werner modulname: Client contact: wernerk@fh-brandenburg.de&quot;
+ *
+ * I asked the author for permission to use it in our project which links against
+ * Apache Software License 2.0 code. He responded that he releases this class under
+ * the Apache Software License 2.0 aswell.
+ *
+ * Slightly modified (by Zenix) to be used with the Stendhal MMORPG
+ */
+package games.stendhal.client.gui;
+
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.GradientPaint;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
+import java.awt.image.BufferedImage;
+import java.util.List;
+
+import javax.swing.JComponent;
+import javax.swing.Timer;
+
+import org.apache.log4j.Logger;
+
+/**
+ * ScrollerPanel can be used for displaying a scrolling text (as in movie
+ * credits).
+ */
+class ScrollerPanel extends JComponent {
+
+	private static final long serialVersionUID = -9047582023793318785L;
+
+<span class="nc" id="L46">	private static final Logger logger = Logger.getLogger(ScrollerPanel.class);</span>
+
+	private final List&lt;String&gt; text;
+
+	private final Font font;
+
+	private int textPos;
+
+	private final Timer t;
+
+	private final int lineSpacing;
+
+	private final Color textColor;
+
+	private final Color backgroundColor;
+
+	private Dimension prefferedSize;
+
+	private int lineHeight;
+
+	private boolean scrollingStarted;
+	
+	private GradientPaint gp;
+
+	/**
+	 * Creates an ScrollerPane which scrolls the given text and uses the given
+	 * attributes.
+	 * 
+	 * @param text
+	 *            the text array which should be scrolled - one string per line
+	 *            is scrolled
+	 * @param font
+	 *            the font which is rendered
+	 * @param lineSpacing
+	 *            the gap between the lines
+	 * @param textColor
+	 *            color of the text
+	 * @param backgroundColor
+	 *            the background color of the panel
+	 * @param scrollSpeed
+	 *            defines the scroller speed (pixel per second);
+	 */
+	ScrollerPanel(final List&lt;String&gt; text, final Font font, final int lineSpacing,
+			final Color textColor, final Color backgroundColor, final int scrollSpeed) {
+<span class="nc" id="L90">		super();</span>
+<span class="nc" id="L91">		this.text = text;</span>
+<span class="nc" id="L92">		this.font = font;</span>
+<span class="nc" id="L93">		this.lineSpacing = lineSpacing;</span>
+<span class="nc" id="L94">		this.textColor = textColor;</span>
+<span class="nc" id="L95">		this.backgroundColor = backgroundColor;</span>
+<span class="nc" id="L96">		this.t = new Timer((int) (1.0 / scrollSpeed * 1000.0),</span>
+<span class="nc" id="L97">				new ActionListener() {</span>
+			@Override
+			public void actionPerformed(final ActionEvent e) {
+<span class="nc" id="L100">				moveText();</span>
+<span class="nc" id="L101">			}</span>
+		});
+<span class="nc" id="L103">		logger.debug(&quot;Created a new scrolling panel&quot;);</span>
+<span class="nc" id="L104">		calculateSizes();</span>
+		// setting up event handling
+<span class="nc" id="L106">		eventHandling();</span>
+<span class="nc" id="L107">	}</span>
+
+	/**
+	 * Sets up the listeners an event handling in general.
+	 */
+	private void eventHandling() {
+<span class="nc" id="L113">		this.addComponentListener(new ComponentAdapter() {</span>
+
+			@Override
+			public void componentResized(final ComponentEvent e) {
+<span class="nc" id="L117">				gp = null;</span>
+<span class="nc bnc" id="L118" title="All 2 branches missed.">				if (!t.isRunning()) {</span>
+<span class="nc" id="L119">					resetTextPos();</span>
+<span class="nc" id="L120">					scrollingStarted = true;</span>
+<span class="nc" id="L121">					t.start();</span>
+<span class="nc" id="L122">					logger.debug(&quot;start scrolling&quot;);</span>
+				}
+<span class="nc" id="L124">			}</span>
+		});
+<span class="nc" id="L126">	}</span>
+
+	@Override
+	public void paintComponent(final Graphics g) {
+<span class="nc bnc" id="L130" title="All 2 branches missed.">		if (scrollingStarted) {</span>
+<span class="nc" id="L131">			final Graphics2D g2d = (Graphics2D) g;</span>
+<span class="nc" id="L132">			g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING,</span>
+					RenderingHints.VALUE_ANTIALIAS_ON);
+<span class="nc" id="L134">			g2d.setBackground(backgroundColor);</span>
+<span class="nc" id="L135">			g2d.clearRect(0, 0, this.getWidth(), this.getHeight());</span>
+<span class="nc bnc" id="L136" title="All 2 branches missed.">			if (gp == null) {</span>
+<span class="nc" id="L137">				gp = new GradientPaint(0f, 0f, backgroundColor, 0f,</span>
+					this.getHeight() / 2.f, textColor, true);
+			}
+<span class="nc" id="L140">			g2d.setPaint(gp);</span>
+<span class="nc" id="L141">			g2d.setFont(font);</span>
+<span class="nc" id="L142">			final FontMetrics metrics = g2d.getFontMetrics();</span>
+<span class="nc" id="L143">			int i = 0;</span>
+<span class="nc bnc" id="L144" title="All 2 branches missed.">			for (String s : text) {</span>
+<span class="nc" id="L145">				int width = metrics.stringWidth(s);</span>
+<span class="nc" id="L146">				int height = metrics.getHeight();</span>
+<span class="nc" id="L147">				int startPos = textPos + ((height + lineSpacing) * i);</span>
+				// Speed optimizations. Drawing is ridiculously slow even with
+				// them.
+<span class="nc bnc" id="L150" title="All 2 branches missed.">				if (startPos - height &gt; getHeight()) {</span>
+					// This line, and lines after are not yet visible
+<span class="nc" id="L152">					break;</span>
+				}
+				// Otherwise line already scrolled above the top
+<span class="nc bnc" id="L155" title="All 2 branches missed.">				if (startPos &gt;= 0) {</span>
+<span class="nc" id="L156">					g2d.drawString(s, this.getWidth() / 2 - width / 2, startPos);</span>
+				}
+				
+<span class="nc" id="L159">				++i;</span>
+<span class="nc" id="L160">			}</span>
+		}
+<span class="nc" id="L162">	}</span>
+
+	/**
+	 * Calculates the new position of text.
+	 */
+	private void moveText() {
+<span class="nc bnc" id="L168" title="All 2 branches missed.">		if (textPos &gt;= -((lineHeight + lineSpacing) * text.size())) {</span>
+<span class="nc" id="L169">			textPos--;</span>
+		} else {
+<span class="nc" id="L171">			resetTextPos();</span>
+		}
+<span class="nc" id="L173">		this.repaint(0, 0, this.getWidth(), this.getHeight());</span>
+<span class="nc" id="L174">	}</span>
+
+	/**
+	 * Resets the text's position.
+	 */
+	private void resetTextPos() {
+<span class="nc" id="L180">		textPos = this.getHeight() - (lineSpacing + lineHeight) * 2;</span>
+<span class="nc" id="L181">	}</span>
+
+	/**
+	 * Stops scrolling.
+	 */
+	void stop() {
+<span class="nc" id="L187">		t.stop();</span>
+<span class="nc" id="L188">		logger.debug(&quot;stop scrolling&quot;);</span>
+<span class="nc" id="L189">	}</span>
+
+	/**
+	 * Calculates the line height and preferred size of this component depending
+	 * on the given font.
+	 */
+	private void calculateSizes() {
+<span class="nc" id="L196">		this.prefferedSize = new Dimension();</span>
+<span class="nc" id="L197">		final BufferedImage image = new BufferedImage(100, 100,</span>
+				BufferedImage.TYPE_INT_RGB);
+<span class="nc" id="L199">		final Graphics2D g2d = image.createGraphics();</span>
+<span class="nc" id="L200">		g2d.setFont(font);</span>
+<span class="nc" id="L201">		final FontMetrics metrics = g2d.getFontMetrics();</span>
+<span class="nc" id="L202">		this.lineHeight = metrics.getHeight();</span>
+<span class="nc" id="L203">		this.prefferedSize.height = this.lineHeight * 8;</span>
+<span class="nc bnc" id="L204" title="All 2 branches missed.">		for (String s : text) {</span>
+<span class="nc" id="L205">			prefferedSize.width = Math.max(prefferedSize.width,</span>
+					metrics.stringWidth(s));
+<span class="nc" id="L207">		}</span>
+<span class="nc" id="L208">		this.prefferedSize.width = prefferedSize.width + 6</span>
+				* metrics.stringWidth(&quot; &quot;);
+<span class="nc" id="L210">	}</span>
+
+	@Override
+	public Dimension getPreferredSize() {
+<span class="nc" id="L214">		return this.prefferedSize;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

@@ -1,0 +1,562 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>StendhalQuestSystem.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.core.rp</a> &gt; <span class="el_source">StendhalQuestSystem.java</span></div><h1>StendhalQuestSystem.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.core.rp;
+
+
+import games.stendhal.server.core.events.TurnNotifier;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.maps.quests.*;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
+
+import org.apache.log4j.Logger;
+
+/**
+ * Loads and manages all quests.
+ */
+public class StendhalQuestSystem {
+
+<span class="fc" id="L32">	private static final StendhalQuestSystem stendhalQuestSystem = new StendhalQuestSystem();</span>
+
+
+	/** the logger instance. */
+<span class="fc" id="L36">	private static final Logger logger = Logger.getLogger(StendhalQuestSystem.class);</span>
+
+<span class="fc" id="L38">	private final static List&lt;IQuest&gt; quests = new LinkedList&lt;IQuest&gt;();</span>
+
+
+<span class="fc" id="L41">	private StendhalQuestSystem() {</span>
+		// hide constructor, this is a Singleton
+<span class="fc" id="L43">	}</span>
+
+	/**
+	 * gets the singleton instance of the StendhalQuestSystem
+	 *
+	 * @return StendhalQuestSystem
+	 */
+	public static StendhalQuestSystem get() {
+<span class="fc" id="L51">		return stendhalQuestSystem;</span>
+	}
+
+	/**
+	 *
+	 * @param player
+	 */
+	public static void updatePlayerQuests(Player player) {
+<span class="pc bpc" id="L59" title="1 of 2 branches missed.">		for(int i=0; i&lt;quests.size(); i++) {</span>
+<span class="nc" id="L60">			quests.get(i).updatePlayer(player);</span>
+		}
+<span class="fc" id="L62">	}</span>
+
+	/**
+	 * Initializes the QuestSystem.
+	 */
+	public void init() {
+
+<span class="nc" id="L69">		loadQuest(new AdosDeathmatch());</span>
+<span class="nc" id="L70">		loadQuest(new AmazonPrincess());</span>
+		//loadQuest(new AntivenomRing());
+<span class="nc" id="L72">		loadQuest(new ArmorForDagobert());</span>
+<span class="nc" id="L73">		loadQuest(new BalloonForBobby());</span>
+<span class="nc" id="L74">		loadQuest(new BeerForHayunn());</span>
+<span class="nc" id="L75">		loadQuest(new Blackjack());</span>
+<span class="nc" id="L76">		loadQuest(new BowsForOuchit());</span>
+<span class="nc" id="L77">		loadQuest(new Campfire());</span>
+		// deactivated capture the flag
+		//loadQuest(new CaptureFlagQuest());
+<span class="nc" id="L80">		loadQuest(new ChocolateForElisabeth());</span>
+<span class="nc" id="L81">		loadQuest(new CleanAthorsUnderground());</span>
+<span class="nc" id="L82">		loadQuest(new CleanStorageSpace());</span>
+<span class="nc" id="L83">		loadQuest(new CloakCollector());</span>
+<span class="nc" id="L84">		loadQuest(new CloakCollector2());</span>
+<span class="nc" id="L85">		loadQuest(new CloaksForBario());</span>
+<span class="nc" id="L86">		loadQuest(new ClubOfThorns());</span>
+<span class="nc" id="L87">		loadQuest(new CoalForHaunchy());</span>
+<span class="nc" id="L88">		loadQuest(new CodedMessageFromFinnFarmer());</span>
+<span class="nc" id="L89">		loadQuest(new CrownForTheWannaBeKing());</span>
+<span class="nc" id="L90">		loadQuest(new DailyItemQuest());</span>
+<span class="nc" id="L91">		loadQuest(new DailyMonsterQuest());</span>
+<span class="nc" id="L92">		loadQuest(new DiceGambling());</span>
+<span class="nc" id="L93">		loadQuest(new DragonLair());</span>
+<span class="nc" id="L94">		loadQuest(new ElfPrincess());</span>
+<span class="nc" id="L95">		loadQuest(new ElvishArmor());</span>
+<span class="nc" id="L96">		loadQuest(new EmotionCrystals());</span>
+<span class="nc" id="L97">		loadQuest(new FindGhosts());</span>
+<span class="nc" id="L98">		loadQuest(new FindJefsMom());</span>
+<span class="nc" id="L99">		loadQuest(new FindRatChildren());</span>
+<span class="nc" id="L100">		loadQuest(new FishermansLicenseQuiz());</span>
+<span class="nc" id="L101">		loadQuest(new FishermansLicenseCollector());</span>
+<span class="nc" id="L102">		loadQuest(new FishSoup());</span>
+<span class="nc" id="L103">		loadQuest(new FishSoupForHughie());</span>
+<span class="nc" id="L104">		loadQuest(new FruitsForCoralia());</span>
+<span class="nc" id="L105">		loadQuest(new GuessKills());</span>
+<span class="nc" id="L106">		loadQuest(new HatForMonogenes());</span>
+<span class="nc" id="L107">		loadQuest(new HelpTomi());</span>
+<span class="nc" id="L108">		loadQuest(new HelpMrsYeti());</span>
+<span class="nc" id="L109">		loadQuest(new HelpWithTheHarvest());</span>
+<span class="nc" id="L110">		loadQuest(new HerbsForCarmen());</span>
+		/* Disabled, incomplete
+		loadQuest(new HerbsForJynath()); */
+<span class="nc" id="L113">		loadQuest(new HouseBuying());</span>
+<span class="nc" id="L114">		loadQuest(new HungryJoshua());</span>
+<span class="nc" id="L115">		loadQuest(new IcecreamForAnnie());</span>
+<span class="nc" id="L116">		loadQuest(new ImperialPrincess());</span>
+<span class="nc" id="L117">		loadQuest(new JailedBarbarian());</span>
+<span class="nc" id="L118">		loadQuest(new JailedDwarf());</span>
+<span class="nc" id="L119">		loadQuest(new LearnAboutKarma());</span>
+<span class="nc" id="L120">		loadQuest(new LearnAboutOrbs());</span>
+<span class="nc" id="L121">		loadQuest(new LookBookforCeryl());</span>
+<span class="nc" id="L122">		loadQuest(new LookUpQuote());</span>
+<span class="nc" id="L123">		loadQuest(new KanmararnSoldiers());</span>
+		//loadQuest(new KillBlordroughs());
+<span class="nc" id="L125">		loadQuest(new KillDarkElves());</span>
+<span class="nc" id="L126">		loadQuest(new KillDhohrNuggetcutter());</span>
+<span class="nc" id="L127">		loadQuest(new KillEnemyArmy());</span>
+<span class="nc" id="L128">		loadQuest(new KillGnomes());</span>
+<span class="nc" id="L129">		loadQuest(new KillMonks());</span>
+<span class="nc" id="L130">		loadQuest(new KillSpiders());</span>
+<span class="nc" id="L131">		loadQuest(new KoboldishTorcibud());</span>
+<span class="nc" id="L132">		loadQuest(new Marriage());</span>
+<span class="nc" id="L133">		loadQuest(new Maze());</span>
+<span class="nc" id="L134">		loadQuest(new McPeglegIOU());</span>
+<span class="nc" id="L135">		loadQuest(new MeetBunny());</span>
+<span class="nc" id="L136">		loadQuest(new MedicineForTad());</span>
+<span class="nc" id="L137">		loadQuest(new MeetHackim());</span>
+<span class="nc" id="L138">		loadQuest(new MeetHayunn());</span>
+<span class="nc" id="L139">		loadQuest(new MeetIo());</span>
+<span class="nc" id="L140">		loadQuest(new MeetKetteh());</span>
+<span class="nc" id="L141">		loadQuest(new MeetMarieHenri());</span>
+<span class="nc" id="L142">		loadQuest(new MeetMonogenes());</span>
+<span class="nc" id="L143">		loadQuest(new MeetSanta());</span>
+<span class="nc" id="L144">		loadQuest(new MeetZynn());</span>
+<span class="nc" id="L145">		loadQuest(new MithrilCloak());</span>
+<span class="nc" id="L146">		loadQuest(new MixtureForOrtiv());</span>
+<span class="nc" id="L147">		loadQuest(new NewsFromHackim());</span>
+<span class="nc" id="L148">		loadQuest(new ObsidianKnife());</span>
+<span class="nc" id="L149">		loadQuest(new PizzaDelivery());</span>
+<span class="nc" id="L150">		loadQuest(new PlinksToy());</span>
+<span class="nc" id="L151">		loadQuest(new RainbowBeans());</span>
+<span class="nc" id="L152">		loadQuest(new RestockFlowerShop());</span>
+<span class="nc" id="L153">		loadQuest(new ReverseArrow());</span>
+<span class="nc" id="L154">		loadQuest(new RingMaker());</span>
+<span class="nc" id="L155">		loadQuest(new SadScientist());</span>
+<span class="nc" id="L156">		loadQuest(new ScubaLicenseQuiz());</span>
+<span class="nc" id="L157">		loadQuest(new SheepGrowing());</span>
+<span class="nc" id="L158">		loadQuest(new SolveRiddles());</span>
+<span class="nc" id="L159">		loadQuest(new SevenCherubs());</span>
+<span class="nc" id="L160">		loadQuest(new Snowballs());</span>
+<span class="nc" id="L161">		loadQuest(new Soup());</span>
+<span class="nc" id="L162">		loadQuest(new StuffForBaldemar());</span>
+<span class="nc" id="L163">		loadQuest(new StuffForVulcanus());</span>
+<span class="nc" id="L164">		loadQuest(new SuntanCreamForZara());</span>
+<span class="nc" id="L165">		loadQuest(new SuppliesForPhalk());</span>
+<span class="nc" id="L166">		loadQuest(new TakeGoldforGrafindle());</span>
+<span class="nc" id="L167">		loadQuest(new ThePiedPiper());</span>
+<span class="nc" id="L168">		loadQuest(new ToysCollector());</span>
+<span class="nc" id="L169">		loadQuest(new TrapsForKlaas());</span>
+<span class="nc" id="L170">		loadQuest(new UltimateCollector());</span>
+<span class="nc" id="L171">		loadQuest(new VampireSword());</span>
+<span class="nc" id="L172">		loadQuest(new WaterForXhiphin());</span>
+<span class="nc" id="L173">		loadQuest(new WeaponsCollector());</span>
+<span class="nc" id="L174">		loadQuest(new WeaponsCollector2());</span>
+<span class="nc" id="L175">		loadQuest(new WeeklyItemQuest());</span>
+<span class="nc" id="L176">		loadQuest(new WizardBank());</span>
+<span class="nc" id="L177">		loadQuest(new ZekielsPracticalTestQuest());</span>
+<span class="nc" id="L178">		loadQuest(new ZooFood());</span>
+<span class="nc" id="L179">		loadQuest(new PieCollection());</span>
+
+<span class="nc bnc" id="L181" title="All 2 branches missed.">		if (System.getProperty(&quot;stendhal.christmas&quot;) != null) {</span>
+<span class="nc" id="L182">			loadQuest(new GoodiesForRudolph());</span>
+		}
+<span class="nc bnc" id="L184" title="All 2 branches missed.">		if (System.getProperty(&quot;stendhal.easter&quot;) != null) {</span>
+<span class="nc" id="L185">			loadQuest(new EasterGiftsForChildren());</span>
+		}
+<span class="nc bnc" id="L187" title="All 2 branches missed.">		if (System.getProperty(&quot;stendhal.minetown&quot;) != null) {</span>
+<span class="nc" id="L188">			loadQuest(new PaperChase()); // needs to be loaded before SemosMineTownRevivalWeeks</span>
+<span class="nc" id="L189">			loadQuest(new MineTownRevivalWeeks());</span>
+		}
+
+<span class="nc" id="L192">		TurnNotifier.get().notifyInTurns(10, new DumpGameInformationForWebsite());</span>
+<span class="nc" id="L193">	}</span>
+
+	/**
+	 * loads the quests and adds it to the world
+	 *
+	 * @param quest a Quest
+	 */
+	public void loadQuest(final IQuest quest) {
+
+		// for quicker startup, check the stendhal.quest.regex parameter
+<span class="fc" id="L203">		final String regex = System.getProperty(&quot;stendhal.quest.regex&quot;, &quot;.*&quot;);</span>
+<span class="pc bpc" id="L204" title="1 of 2 branches missed.">		if (!quest.getName().matches(regex)) {</span>
+<span class="nc" id="L205">			return;</span>
+		}
+
+		// load the quest and add it to the world
+		try {
+<span class="nc" id="L210">			initQuestAndAddToWorld(quest);</span>
+<span class="fc" id="L211">		} catch (Exception e) {</span>
+<span class="fc" id="L212">			logger.error(&quot;Quest(&quot; + quest.getName() + &quot;) loading failed.&quot;, e);</span>
+<span class="nc" id="L213">		}</span>
+<span class="fc" id="L214">	}</span>
+
+	/**
+	 * adds a quest to the world
+	 *
+	 * @param quest Quest to add
+	 */
+	private void initQuestAndAddToWorld(final IQuest quest) {
+<span class="fc" id="L222">		logger.info(&quot;Loading Quest: &quot; + quest.getName());</span>
+<span class="nc" id="L223">		quest.addToWorld();</span>
+<span class="nc" id="L224">		quests.add(quest);</span>
+<span class="nc" id="L225">	}</span>
+
+	/**
+	 *
+	 * @param sb - string builder of mother function
+	 * @param quest - show this quest to payer
+	 * @param player - player which quest history need to be shown to himself
+	 */
+	private void dumpQuest(final StringBuilder sb, final IQuest quest, final Player player) {
+<span class="nc" id="L234">		final QuestInfo questInfo = quest.getQuestInfo(player);</span>
+<span class="nc" id="L235">		sb.append(questInfo.getName() + &quot; : &quot;);</span>
+<span class="nc" id="L236">		sb.append(questInfo.getDescription() + &quot;\r\n&quot;);</span>
+<span class="nc bnc" id="L237" title="All 2 branches missed.">		if (questInfo.getSuggestedMinLevel() &gt; player.getLevel()) {</span>
+<span class="nc" id="L238">			sb.append(&quot;(This task may be too dangerous for your level of experience)\r\n&quot;);</span>
+		}
+
+<span class="nc" id="L241">		final List&lt;String&gt; history = quest.getHistory(player);</span>
+<span class="nc bnc" id="L242" title="All 2 branches missed.">		for (final String entry : history) {</span>
+<span class="nc" id="L243">			sb.append(&quot;\t * &quot; + entry + &quot;\r\n&quot;);</span>
+<span class="nc" id="L244">		}</span>
+
+<span class="nc" id="L246">		final List&lt;String&gt; hints = quest.getHint(player);</span>
+<span class="nc bnc" id="L247" title="All 2 branches missed.">		for (final String entry : hints) {</span>
+<span class="nc" id="L248">			sb.append(&quot;\t - &quot; + entry + &quot;\r\n&quot;);</span>
+<span class="nc" id="L249">		}</span>
+<span class="nc" id="L250">	}</span>
+
+	/**
+	 * lists all quest the player knows about, including open and completed quests.
+	 *
+	 * @param player Player to create the report for
+	 * @return quest report
+	 */
+	public String listQuests(final Player player) {
+<span class="nc" id="L259">		final StringBuilder sb = new StringBuilder();</span>
+
+		// Open quests
+<span class="nc" id="L262">		sb.append(&quot;\r\n#'Open Quests': &quot;);</span>
+<span class="nc" id="L263">		boolean first = true;</span>
+<span class="nc bnc" id="L264" title="All 2 branches missed.">		for (final IQuest quest : quests) {</span>
+<span class="nc bnc" id="L265" title="All 4 branches missed.">			if (quest.isStarted(player) &amp;&amp; !quest.isCompleted(player)) {</span>
+<span class="nc bnc" id="L266" title="All 2 branches missed.">				if (!first) {</span>
+<span class="nc" id="L267">					sb.append(&quot;, &quot;);</span>
+				}
+<span class="nc" id="L269">				sb.append(quest.getName());</span>
+<span class="nc" id="L270">				first = false;</span>
+			}
+<span class="nc" id="L272">		}</span>
+
+		// Completed Quests
+<span class="nc" id="L275">		sb.append(&quot;\r\n#'Completed Quests': &quot;);</span>
+<span class="nc" id="L276">		first = true;</span>
+<span class="nc bnc" id="L277" title="All 2 branches missed.">		for (final IQuest quest : quests) {</span>
+<span class="nc bnc" id="L278" title="All 2 branches missed.">			if (quest.isCompleted(player)) {</span>
+<span class="nc bnc" id="L279" title="All 2 branches missed.">				if (!first) {</span>
+<span class="nc" id="L280">					sb.append(&quot;, &quot;);</span>
+				}
+<span class="nc" id="L282">				sb.append(quest.getName());</span>
+<span class="nc" id="L283">				first = false;</span>
+			}
+<span class="nc" id="L285">		}</span>
+
+<span class="nc" id="L287">		return sb.toString();</span>
+	}
+
+	/**
+	 * creates a report on a specified quest for a specified player
+	 *
+	 * @param player Player
+	 * @param questName name of quest
+	 * @return quest report
+	 */
+	public String listQuest(final Player player, final String questName) {
+<span class="nc" id="L298">		final StringBuilder sb = new StringBuilder();</span>
+<span class="nc bnc" id="L299" title="All 2 branches missed.">		for (final IQuest quest : quests) {</span>
+<span class="nc bnc" id="L300" title="All 2 branches missed.">			if (quest.getName().equals(questName)) {</span>
+<span class="nc" id="L301">				dumpQuest(sb, quest, player);</span>
+			}
+<span class="nc" id="L303">		}</span>
+<span class="nc" id="L304">		return sb.toString();</span>
+	}
+
+	/**
+	 * dumps the internal quest states for the specified player. This is used for the InspectAction.
+	 *
+	 * @param player Player to create the report for
+	 * @return report
+	 */
+	public String listQuestsStates(final Player player) {
+<span class="nc" id="L314">		final StringBuilder sb = new StringBuilder();</span>
+
+		// Open quests
+<span class="nc" id="L317">		sb.append(&quot;\r\n#'Open Quests': &quot;);</span>
+
+<span class="nc bnc" id="L319" title="All 2 branches missed.">		for (final IQuest quest : quests) {</span>
+<span class="nc bnc" id="L320" title="All 4 branches missed.">			if (quest.isStarted(player) &amp;&amp; !quest.isCompleted(player)) {</span>
+<span class="nc" id="L321">				sb.append(&quot;\r\n&quot; + quest.getName() + &quot; (&quot; + quest.getSlotName() + &quot;): &quot; + player.getQuest(quest.getSlotName()));</span>
+			}
+<span class="nc" id="L323">		}</span>
+
+		// Completed Quests
+<span class="nc" id="L326">		sb.append(&quot;\n#'Completed Quests': &quot;);</span>
+<span class="nc bnc" id="L327" title="All 2 branches missed.">		for (final IQuest quest : quests) {</span>
+<span class="nc bnc" id="L328" title="All 2 branches missed.">			if (quest.isCompleted(player)) {</span>
+<span class="nc" id="L329">				sb.append(&quot;\r\n&quot; + quest.getName() + &quot; (&quot; + quest.getSlotName() + &quot;): &quot; + player.getQuest(quest.getSlotName()));</span>
+			}
+<span class="nc" id="L331">		}</span>
+
+<span class="nc" id="L333">		return sb.toString();</span>
+	}
+
+	/**
+	 * gets a list of open quests
+	 *
+	 * @param player Player to return the list for
+	 * @return list of open quests
+	 */
+	public List&lt;String&gt; getOpenQuests(Player player) {
+<span class="nc" id="L343">		List&lt;String&gt; res = new LinkedList&lt;String&gt;();</span>
+<span class="nc bnc" id="L344" title="All 2 branches missed.">		for (final IQuest quest : quests) {</span>
+<span class="nc bnc" id="L345" title="All 6 branches missed.">			if (quest.isStarted(player) &amp;&amp; !quest.isCompleted(player) &amp;&amp; quest.isVisibleOnQuestStatus()) {</span>
+<span class="nc" id="L346">				res.add(quest.getQuestInfo(player).getName());</span>
+			}
+<span class="nc" id="L348">		}</span>
+<span class="nc" id="L349">		return res;</span>
+	}
+
+	/**
+	 * Gets a list of completed quests.
+	 *
+	 * @param player Player to return the list for
+	 * @return list of completed quests
+	 */
+	public List&lt;String&gt; getCompletedQuests(Player player) {
+<span class="nc" id="L359">		Collection&lt;IQuest&gt; tmp = findCompletedQuests(player);</span>
+<span class="nc" id="L360">		List&lt;String&gt; res = new ArrayList&lt;String&gt;(tmp.size());</span>
+<span class="nc bnc" id="L361" title="All 2 branches missed.">		for (IQuest quest : tmp) {</span>
+<span class="nc" id="L362">			res.add(quest.getQuestInfo(player).getName());</span>
+<span class="nc" id="L363">		}</span>
+<span class="nc" id="L364">		return res;</span>
+	}
+	
+	/**
+	 * Get the list of quests a player has completed, and can now do again.
+	 * 
+	 * @param player
+	 * @return list of quest names
+	 */
+	public List&lt;String&gt; getRepeatableQuests(Player player) {
+<span class="nc" id="L374">		Collection&lt;IQuest&gt; tmp = findCompletedQuests(player);</span>
+<span class="nc" id="L375">		List&lt;String&gt; res = new ArrayList&lt;String&gt;();</span>
+<span class="nc bnc" id="L376" title="All 2 branches missed.">		for (IQuest quest : tmp) {</span>
+<span class="nc bnc" id="L377" title="All 2 branches missed.">			if (quest.isRepeatable(player)) {</span>
+<span class="nc" id="L378">				res.add(quest.getQuestInfo(player).getName());</span>
+			}
+<span class="nc" id="L380">		}</span>
+<span class="nc" id="L381">		return res;</span>
+	}
+	
+	/**
+	 * Find the quests that a player has completed.
+	 * 
+	 * @param player
+	 * @return completed quests
+	 */
+	private Collection&lt;IQuest&gt; findCompletedQuests(Player player) {
+<span class="nc" id="L391">		List&lt;IQuest&gt; res = new ArrayList&lt;IQuest&gt;();</span>
+<span class="nc bnc" id="L392" title="All 2 branches missed.">		for (IQuest quest : quests) {</span>
+<span class="nc bnc" id="L393" title="All 4 branches missed.">			if (quest.isCompleted(player) &amp;&amp; quest.isVisibleOnQuestStatus()) {</span>
+<span class="nc" id="L394">				res.add(quest);</span>
+			}
+<span class="nc" id="L396">		}</span>
+<span class="nc" id="L397">		return res;</span>
+	}
+
+	/**
+	 * gets the description of a quest
+	 *
+	 * @param player player to get the details for
+	 * @param questName name of quest
+	 * @return description
+	 */
+	public String getQuestDescription(final Player player, final String questName) {
+<span class="nc bnc" id="L408" title="All 2 branches missed.">		for (final IQuest quest : quests) {</span>
+<span class="nc" id="L409">			final QuestInfo questInfo = quest.getQuestInfo(player);</span>
+<span class="nc bnc" id="L410" title="All 2 branches missed.">			if (questInfo.getName().equals(questName)) {</span>
+<span class="nc" id="L411">				return questInfo.getDescription();</span>
+			}
+<span class="nc" id="L413">		}</span>
+<span class="nc" id="L414">		return null;</span>
+	}
+
+	/**
+	 * If the quest is too dangerous, add a warning unless the player has
+	 * already completed it.
+	 *
+	 * @param player Player to get the warning for
+	 * @param questName   quest
+	 * @return warning or empty string
+	 */
+	public String getQuestLevelWarning(Player player, String questName) {
+<span class="nc bnc" id="L426" title="All 2 branches missed.">		for (final IQuest quest : quests) {</span>
+<span class="nc" id="L427">			final QuestInfo questInfo = quest.getQuestInfo(player);</span>
+<span class="nc bnc" id="L428" title="All 6 branches missed.">			if (questInfo.getName().equals(questName)</span>
+					&amp;&amp; (questInfo.getSuggestedMinLevel() &gt; player.getLevel())
+					&amp;&amp; !quest.isCompleted(player)) {
+<span class="nc" id="L431">				return &quot;This task may be too dangerous for your level of experience.&quot;;</span>
+			}
+<span class="nc" id="L433">		}</span>
+<span class="nc" id="L434">		return &quot;&quot;;</span>
+	}
+	/**
+	 * gets details on the progress of the quest
+	 *
+	 * @param player player to get the details for
+	 * @param questName name of quest
+	 * @return details
+	 */
+	public List&lt;String&gt; getQuestProgressDetails(final Player player, final String questName) {
+<span class="nc" id="L444">		List&lt;String&gt; res = new LinkedList&lt;String&gt;();</span>
+<span class="nc bnc" id="L445" title="All 2 branches missed.">		for (final IQuest quest : quests) {</span>
+<span class="nc" id="L446">			final QuestInfo questInfo = quest.getQuestInfo(player);</span>
+<span class="nc bnc" id="L447" title="All 2 branches missed.">			if (questInfo.getName().equals(questName)) {</span>
+<span class="nc" id="L448">				final List&lt;String&gt; history = quest.getHistory(player);</span>
+<span class="nc bnc" id="L449" title="All 2 branches missed.">				for (final String entry : history) {</span>
+<span class="nc" id="L450">					res.add(entry);</span>
+<span class="nc" id="L451">				}</span>
+			}
+<span class="nc" id="L453">		}</span>
+<span class="nc" id="L454">		return res;</span>
+	}
+
+
+	/**
+	 * gets the IQuest object for a named quest.
+	 *
+	 * @param questName name of quest
+	 * @return IQuest or &lt;code&gt;null&lt;/code&gt; if it does not exist.
+	 */
+	public IQuest getQuest(String questName) {
+<span class="pc bpc" id="L465" title="1 of 2 branches missed.">		for (final IQuest quest : quests) {</span>
+<span class="nc bnc" id="L466" title="All 2 branches missed.">			if (quest.getName().equals(questName)) {</span>
+<span class="nc" id="L467">				return quest;</span>
+			}
+<span class="nc" id="L469">		}</span>
+<span class="fc" id="L470">		return null;</span>
+	}
+
+	/**
+	 * unloads a quest and removes the things related to it from the world.
+	 * &lt;p&gt;Note: The quest in question has to support this&lt;/p&gt;
+	 *
+	 * @param questName quest to unload
+	 */
+	public void unloadQuest(String questName) {
+<span class="fc" id="L480">		IQuest quest = getQuest(questName);</span>
+<span class="pc bpc" id="L481" title="1 of 2 branches missed.">		if (quest == null) {</span>
+<span class="fc" id="L482">			logger.error(&quot;Quest &quot; + questName + &quot; is not loaded&quot;, new Throwable());</span>
+<span class="fc" id="L483">			return;</span>
+		}
+
+<span class="nc" id="L486">		boolean res = quest.removeFromWorld();</span>
+<span class="nc bnc" id="L487" title="All 2 branches missed.">		if (res) {</span>
+<span class="nc" id="L488">			quests.remove(quest);</span>
+<span class="nc" id="L489">			logger.info(&quot;Unloading Quest: &quot; + quest.getName());</span>
+		} else {
+<span class="nc" id="L491">			logger.error(this.getClass() + &quot; cannot be removed from the world&quot;);</span>
+		}
+<span class="nc" id="L493">	}</span>
+
+	/**
+	 * gets a list of incomplete quests in a specified region
+	 *
+	 * @param player Player to return the list for
+	 * @param region Region to check in
+	 * @return list of incomplete quests in the region
+	 */
+	public List&lt;String&gt; getIncompleteQuests(Player player, String region) {
+<span class="nc" id="L503">		List&lt;String&gt; res = new LinkedList&lt;String&gt;();</span>
+<span class="nc bnc" id="L504" title="All 2 branches missed.">		for (final IQuest quest : quests) {</span>
+<span class="nc bnc" id="L505" title="All 6 branches missed.">			if (region.equals(quest.getRegion()) &amp;&amp; !quest.isCompleted(player) &amp;&amp; quest.isVisibleOnQuestStatus()) {</span>
+<span class="nc" id="L506">				res.add(quest.getQuestInfo(player).getName());</span>
+			}
+<span class="nc" id="L508">		}</span>
+<span class="nc" id="L509">		return res;</span>
+	}
+
+
+
+	/**
+	 * gets a list of the unique npc names for unstarted quests in a specified region
+	 *
+	 * @param player Player to return the list for
+	 * @param region Region to check in
+	 * @return list of the unique npc names for unstarted quests in a specified region
+	 */
+	public List&lt;String&gt; getNPCNamesForUnstartedQuestsInRegionForLevel(Player player, String region) {
+<span class="fc" id="L522">        final int playerlevel = player.getLevel();</span>
+<span class="fc" id="L523">		List&lt;String&gt; res = new LinkedList&lt;String&gt;();</span>
+<span class="pc bpc" id="L524" title="1 of 2 branches missed.">		for (final IQuest quest : quests) {</span>
+<span class="nc bnc" id="L525" title="All 8 branches missed.">			if (region.equals(quest.getRegion()) &amp;&amp; !quest.isStarted(player) &amp;&amp; quest.isVisibleOnQuestStatus() &amp;&amp; quest.getMinLevel()&lt;playerlevel) {</span>
+				// don't add a name twice
+<span class="nc bnc" id="L527" title="All 2 branches missed.">				if (!res.contains(quest.getNPCName())) {</span>
+<span class="nc" id="L528">					res.add(quest.getNPCName());</span>
+				}
+			}
+<span class="nc" id="L531">		}</span>
+<span class="fc" id="L532">		return res;</span>
+	}
+
+
+	/**
+	 * Gets quest descriptions for unstarted quests in a specified region
+	 * matching a specific npc name.
+	 *
+	 * @param player Player to return the list for
+	 * @param region Region to check in
+	 * @param name npc name
+	 * @return quest description (there may be more than one)
+	 */
+	public List&lt;String&gt; getQuestDescriptionForUnstartedQuestInRegionFromNPCName(Player player, String region, String name) {
+<span class="nc" id="L546">		List&lt;String&gt; res = new LinkedList&lt;String&gt;();</span>
+<span class="nc bnc" id="L547" title="All 2 branches missed.">        if (name == null) {</span>
+<span class="nc" id="L548">            return res;</span>
+        }
+<span class="nc" id="L550">        final int playerlevel = player.getLevel();</span>
+<span class="nc bnc" id="L551" title="All 2 branches missed.">		for (final IQuest quest : quests) {</span>
+<span class="nc bnc" id="L552" title="All 10 branches missed.">			if (region.equals(quest.getRegion()) &amp;&amp; !quest.isStarted(player) &amp;&amp; quest.isVisibleOnQuestStatus() &amp;&amp; quest.getMinLevel()&lt;playerlevel &amp;&amp; name.equals(quest.getNPCName())) {</span>
+<span class="nc" id="L553">				res.add(quest.getQuestInfo(player).getDescription());</span>
+			}
+<span class="nc" id="L555">		}</span>
+<span class="nc" id="L556">		return res;</span>
+	}
+
+
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

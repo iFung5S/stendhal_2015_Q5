@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>StendhalPlayerDatabase.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.core.engine</a> &gt; <span class="el_source">StendhalPlayerDatabase.java</span></div><h1>StendhalPlayerDatabase.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2011 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.core.engine;
+
+import games.stendhal.server.core.engine.db.AchievementDAO;
+import games.stendhal.server.core.engine.db.PendingAchievementDAO;
+import games.stendhal.server.core.engine.db.PostmanDAO;
+import games.stendhal.server.core.engine.db.StendhalBuddyDAO;
+import games.stendhal.server.core.engine.db.StendhalCharacterDAO;
+import games.stendhal.server.core.engine.db.StendhalHallOfFameDAO;
+import games.stendhal.server.core.engine.db.StendhalItemDAO;
+import games.stendhal.server.core.engine.db.StendhalKillLogDAO;
+import games.stendhal.server.core.engine.db.StendhalNPCDAO;
+import games.stendhal.server.core.engine.db.StendhalRPZoneDAO;
+import games.stendhal.server.core.engine.db.StendhalSearchIndexDAO;
+import games.stendhal.server.core.engine.db.StendhalWebsiteDAO;
+
+import java.sql.SQLException;
+
+import marauroa.server.db.DBTransaction;
+import marauroa.server.db.JDBCSQLHelper;
+import marauroa.server.db.TransactionPool;
+import marauroa.server.game.db.CharacterDAO;
+import marauroa.server.game.db.DAORegister;
+
+import org.apache.log4j.Logger;
+
+/**
+ * initializes the database by setting up or updating the database structure and defining
+ * the database access objects (DAOs).
+ *
+ * @author hendrik
+ */
+<span class="fc" id="L44">public class StendhalPlayerDatabase {</span>
+
+<span class="fc" id="L46">	private static final Logger logger = Logger.getLogger(StendhalPlayerDatabase.class);</span>
+
+	/**
+	 * initializes the database by setting up or updating the database structure and defining
+	 * the database access objects (DAOs).
+	 */
+	public void initialize() {
+<span class="fc" id="L53">		final DBTransaction transaction = TransactionPool.get().beginWork();</span>
+		try {
+
+<span class="fc" id="L56">			createTablesUnlessTheyAlreadyExist(transaction);</span>
+<span class="fc" id="L57">			updateExistingTables(transaction);</span>
+
+<span class="fc" id="L59">			TransactionPool.get().commit(transaction);</span>
+<span class="nc" id="L60">		} catch (SQLException e) {</span>
+<span class="nc" id="L61">			logger.error(e, e);</span>
+<span class="nc" id="L62">			TransactionPool.get().rollback(transaction);</span>
+<span class="fc" id="L63">		}</span>
+
+<span class="fc" id="L65">		registerStendhalDAOs();</span>
+<span class="fc" id="L66">	}</span>
+
+
+	/**
+	 * creates the Stendhal database tables unless they already exist
+	 *
+	 * @param transaction   DBTransaction
+	 */
+	private void createTablesUnlessTheyAlreadyExist(final DBTransaction transaction) {
+<span class="fc" id="L75">		new JDBCSQLHelper(transaction).runDBScript(&quot;games/stendhal/server/stendhal_init.sql&quot;);</span>
+<span class="fc" id="L76">	}</span>
+
+
+	/**
+	 * updates existing tables as required
+	 *
+	 * @param transaction   DBTransaction
+	 * @throws SQLException in case of an unexpected database error
+	 */
+	private void updateExistingTables(final DBTransaction transaction) throws SQLException {
+
+		// 0.81: add new day column in table kills
+<span class="pc bpc" id="L88" title="1 of 2 branches missed.">		if (!transaction.doesColumnExist(&quot;kills&quot;, &quot;day&quot;)) {</span>
+<span class="nc" id="L89">			transaction.execute(&quot;ALTER TABLE kills ADD COLUMN (day DATE);&quot;, null);</span>
+		}
+
+		// 0.84: add an alternative image for the website
+<span class="pc bpc" id="L93" title="1 of 2 branches missed.">		if (!transaction.doesColumnExist(&quot;npcs&quot;, &quot;image&quot;)) {</span>
+<span class="nc" id="L94">			transaction.execute(&quot;ALTER TABLE npcs ADD COLUMN (image VARCHAR(255));&quot;, null);</span>
+		}
+
+		// 0.85: add lastseen table to character stats
+<span class="pc bpc" id="L98" title="1 of 2 branches missed.">		if (!transaction.doesColumnExist(&quot;character_stats&quot;, &quot;lastseen&quot;)) {</span>
+<span class="nc" id="L99">			transaction.execute(&quot;ALTER TABLE character_stats ADD COLUMN (lastseen TIMESTAMP);&quot;, null);</span>
+		}
+
+		// 0.86: when marking postman messages delivered, don't delete them, just update the delivered flag
+<span class="pc bpc" id="L103" title="1 of 2 branches missed.">		if (!transaction.doesColumnExist(&quot;postman&quot;, &quot;messagetype&quot;)) {</span>
+<span class="nc" id="L104">			transaction.execute(&quot;ALTER TABLE postman ADD COLUMN (messagetype CHAR(1));&quot;, null);</span>
+		}
+
+		// 0.86: add base_score to achievement table
+<span class="pc bpc" id="L108" title="1 of 2 branches missed.">		if (!transaction.doesColumnExist(&quot;achievement&quot;, &quot;base_score&quot;)) {</span>
+<span class="nc" id="L109">			transaction.execute(&quot;ALTER TABLE achievement ADD COLUMN (base_score INTEGER);&quot;, null);</span>
+		}
+
+		// 0.87: fix length of description column (using a temp table and drop/create for better cross database support)
+<span class="pc bpc" id="L113" title="1 of 2 branches missed.">		if (transaction.doesColumnExist(&quot;achievement&quot;, &quot;description&quot;)) {</span>
+<span class="pc bpc" id="L114" title="1 of 2 branches missed.">			if (transaction.getColumnLength(&quot;achievement&quot;, &quot;description&quot;) &lt; 254) {</span>
+<span class="nc" id="L115">				transaction.execute(&quot;CREATE TABLE tmp_achievement_description (id INTEGER, description VARCHAR(254));&quot;, null);</span>
+<span class="nc" id="L116">				transaction.execute(&quot;INSERT INTO tmp_achievement_description (id, description) SELECT id, description FROM achievement;&quot;, null);</span>
+<span class="nc" id="L117">				transaction.execute(&quot;ALTER TABLE achievement DROP description&quot;, null);</span>
+<span class="nc" id="L118">				transaction.execute(&quot;ALTER TABLE achievement ADD description VARCHAR(254);&quot;, null);</span>
+<span class="nc" id="L119">				transaction.execute(&quot;UPDATE achievement SET description=(SELECT tmp_achievement_description.description FROM tmp_achievement_description WHERE achievement.id=tmp_achievement_description.id);&quot;, null);</span>
+<span class="nc" id="L120">				transaction.execute(&quot;DROP TABLE tmp_achievement_description;&quot;, null);</span>
+			}
+		}
+
+		// 0.87: added new column finger to character_stats
+<span class="pc bpc" id="L125" title="1 of 2 branches missed.">		if (!transaction.doesColumnExist(&quot;character_stats&quot;, &quot;finger&quot;)) {</span>
+<span class="nc" id="L126">			transaction.execute(&quot;ALTER TABLE character_stats ADD COLUMN (finger VARCHAR(32));&quot;, null);</span>
+		}
+
+		// 0.90: added column deleted to table postman to support one sided deletions
+<span class="pc bpc" id="L130" title="1 of 2 branches missed.">		if (!transaction.doesColumnExist(&quot;postman&quot;, &quot;deleted&quot;)) {</span>
+<span class="nc" id="L131">			transaction.execute(&quot;ALTER TABLE postman ADD COLUMN (deleted CHAR(1) DEFAULT 'N');&quot;, null);</span>
+		}
+
+		// 0.92: deleted unwanted achievements
+<span class="fc" id="L135">		transaction.execute(&quot;DELETE FROM achievement WHERE identifier in ('age.day.one', &quot;</span>
+			+ &quot;'age.week.one', 'age.month.one', 'age.month.two', 'age.month.three', &quot;
+			+ &quot;'age.month.four', 'age.month.five', 'age.month.six', 'age.month.seven', &quot;
+			+ &quot;'age.month.eight', 'age.month.nine', 'age.month.ten', 'age.month.eleven', &quot;
+			+ &quot;'age.year.one', 'quest.special.dm.025', 'quest.special.susi', 'item.produce.flour',&quot;
+			+ &quot;'quest.special.santa', 'quest.special.bunny')&quot;, null);
+<span class="fc" id="L141">		transaction.execute(&quot;UPDATE achievement SET identifier='xp.level.010' WHERE identifier='xp.level.10'&quot;, null);</span>
+<span class="fc" id="L142">		transaction.execute(&quot;UPDATE achievement SET identifier='xp.level.050' WHERE identifier='xp.level.50'&quot;, null);</span>
+
+		// 0.93: inactive achievements
+<span class="pc bpc" id="L145" title="1 of 2 branches missed.">		if (!transaction.doesColumnExist(&quot;achievement&quot;, &quot;active&quot;)) {</span>
+<span class="nc" id="L146">			transaction.execute(&quot;ALTER TABLE achievement ADD COLUMN (active INTEGER);&quot;, null);</span>
+<span class="nc" id="L147">			transaction.execute(&quot;UPDATE achievement SET active = 1 WHERE active IS NULL;&quot;, null);</span>
+		}
+
+		// 0.97: outfit_colors
+<span class="pc bpc" id="L151" title="1 of 2 branches missed.">		if (!transaction.doesColumnExist(&quot;character_stats&quot;, &quot;outfit_colors&quot;)) {</span>
+<span class="nc" id="L152">			transaction.execute(&quot;ALTER TABLE character_stats ADD COLUMN (outfit_colors VARCHAR(100));&quot;, null);</span>
+<span class="nc" id="L153">			transaction.execute(&quot;UPDATE character_stats SET outfit_colors = '' WHERE outfit_colors IS NULL;&quot;, null);</span>
+		}
+
+		// 0.97: convert itemid-table to item-table
+<span class="pc bpc" id="L157" title="1 of 2 branches missed.">		if (transaction.doesTableExist(&quot;itemid&quot;)) {</span>
+<span class="nc" id="L158">			int id = transaction.querySingleCellInt(&quot;SELECT last_id FROM itemid&quot;, null);</span>
+<span class="nc" id="L159">			logger.warn(&quot;Migrating from itemid-table to item-table. last_id: &quot; + id);</span>
+<span class="nc" id="L160">			String sql = &quot;INSERT INTO item (id, name, timedate) &quot;</span>
+					+ &quot; SELECT itemid, param1, timedate FROM itemlog WHERE event='register' AND timedate&gt;='2011-10-01' ORDER BY timedate&quot;;
+<span class="nc" id="L162">			transaction.execute(sql, null);</span>
+
+			// If there have been no recent log entries, (e. g. the server was offline for some time)
+			// fake one to get the correct id
+<span class="nc" id="L166">			int count = transaction.querySingleCellInt(&quot;SELECT count(id) FROM item&quot;, null);</span>
+<span class="nc bnc" id="L167" title="All 2 branches missed.">			if (count == 0) {</span>
+<span class="nc" id="L168">				transaction.execute(&quot;INSERT INTO item (id) VALUES (&quot; + id + &quot;)&quot;, null);</span>
+			} else {
+				// Make sure that the id from the last register row is at least as high as itemid.last_id.
+<span class="nc" id="L171">				int itemid = transaction.querySingleCellInt(&quot;SELECT id FROM item ORDER BY id DESC LIMIT 1&quot;, null);</span>
+<span class="nc bnc" id="L172" title="All 2 branches missed.">				if (itemid &lt; id) {</span>
+					// Something went wrong, make sure not to reuse ids.
+<span class="nc" id="L174">					transaction.execute(&quot;INSERT INTO item (id) VALUES (&quot; + id + &quot;)&quot;, null);</span>
+				}
+			}
+<span class="nc" id="L177">			transaction.execute(&quot;DROP TABLE itemid&quot;, null);</span>
+		}
+
+		// 1.07: add zone column to character_stats
+<span class="pc bpc" id="L181" title="1 of 2 branches missed.">		if (!transaction.doesColumnExist(&quot;character_stats&quot;, &quot;zone&quot;)) {</span>
+<span class="nc" id="L182">			transaction.execute(&quot;ALTER TABLE character_stats ADD COLUMN (zone VARCHAR(50));&quot;, null);</span>
+		}
+
+		// 1.13: added relationtype to buddy
+<span class="pc bpc" id="L186" title="1 of 2 branches missed.">		if (!transaction.doesColumnExist(&quot;buddy&quot;, &quot;relationtype&quot;)) {</span>
+<span class="nc" id="L187">			transaction.execute(&quot;ALTER TABLE buddy ADD COLUMN (relationtype VARCHAR(7));&quot;, null);</span>
+<span class="nc" id="L188">			transaction.execute(&quot;UPDATE buddy SET relationtype = 'buddy' WHERE relationtype IS NULL&quot;, null);</span>
+
+		}
+<span class="fc" id="L191">	}</span>
+
+
+	/**
+	 * registers the database access objects for Stendhal.
+	 */
+	private void registerStendhalDAOs() {
+
+		// define own version in replacement of marauroa's CharacterDAO
+<span class="fc" id="L200">		DAORegister.get().register(CharacterDAO.class, new StendhalCharacterDAO());</span>
+
+		// define additional DAOs
+<span class="fc" id="L203">		DAORegister.get().register(PostmanDAO.class, new PostmanDAO());</span>
+<span class="fc" id="L204">		DAORegister.get().register(StendhalBuddyDAO.class, new StendhalBuddyDAO());</span>
+<span class="fc" id="L205">		DAORegister.get().register(StendhalHallOfFameDAO.class, new StendhalHallOfFameDAO());</span>
+<span class="fc" id="L206">		DAORegister.get().register(StendhalKillLogDAO.class, new StendhalKillLogDAO ());</span>
+<span class="fc" id="L207">		DAORegister.get().register(StendhalNPCDAO.class, new StendhalNPCDAO());</span>
+<span class="fc" id="L208">		DAORegister.get().register(StendhalWebsiteDAO.class, new StendhalWebsiteDAO());</span>
+<span class="fc" id="L209">		DAORegister.get().register(AchievementDAO.class, new AchievementDAO());</span>
+<span class="fc" id="L210">		DAORegister.get().register(PendingAchievementDAO.class, new PendingAchievementDAO());</span>
+<span class="fc" id="L211">		DAORegister.get().register(StendhalItemDAO.class, new StendhalItemDAO());</span>
+<span class="fc" id="L212">		DAORegister.get().register(StendhalRPZoneDAO.class, new StendhalRPZoneDAO());</span>
+<span class="fc" id="L213">		DAORegister.get().register(StendhalSearchIndexDAO.class, new StendhalSearchIndexDAO());</span>
+<span class="fc" id="L214">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

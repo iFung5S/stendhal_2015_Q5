@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>TwilightZone.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests.mithrilcloak</a> &gt; <span class="el_source">TwilightZone.java</span></div><h1>TwilightZone.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests.mithrilcloak;
+
+import games.stendhal.common.Direction;
+import games.stendhal.common.parser.ExpressionType;
+import games.stendhal.common.parser.JokerExprMatcher;
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.npc.NPCList;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.action.DropItemAction;
+import games.stendhal.server.entity.npc.action.EquipItemAction;
+import games.stendhal.server.entity.npc.action.MultipleActions;
+import games.stendhal.server.entity.npc.action.SetQuestAction;
+import games.stendhal.server.entity.npc.action.TeleportAction;
+import games.stendhal.server.entity.npc.condition.AndCondition;
+import games.stendhal.server.entity.npc.condition.NotCondition;
+import games.stendhal.server.entity.npc.condition.PlayerHasItemWithHimCondition;
+import games.stendhal.server.entity.npc.condition.QuestInStateCondition;
+import games.stendhal.server.entity.npc.condition.GreetingMatchesNameCondition;
+import games.stendhal.server.entity.npc.condition.TextHasNumberCondition;
+import games.stendhal.server.entity.player.Player;
+
+import java.util.Arrays;
+
+
+/**
+ * @author kymara
+*/
+
+class TwilightZone {
+
+	private MithrilCloakQuestInfo mithrilcloak;
+	
+<span class="fc" id="L50">	private final NPCList npcs = SingletonRepository.getNPCList();</span>
+
+<span class="fc" id="L52">	public TwilightZone(final MithrilCloakQuestInfo mithrilcloak) {</span>
+<span class="fc" id="L53">		this.mithrilcloak = mithrilcloak;</span>
+<span class="fc" id="L54">	}</span>
+
+
+	private void getMossStep() {
+
+		// Careful not to overlap with quest states in RainbowBeans quest
+
+		final int MOSS_COST = 3000;
+
+<span class="fc" id="L63">		final SpeakerNPC npc = npcs.get(&quot;Pdiddi&quot;);</span>
+
+		// offer moss when prompted
+<span class="fc" id="L66">		npc.add(ConversationStates.ANY,</span>
+				Arrays.asList(&quot;moss&quot;, &quot;magical&quot;, &quot;twilight&quot;, &quot;ida&quot;, &quot;cloak&quot;, &quot;mithril cloak&quot;, &quot;specials&quot;, &quot;twilight moss&quot;),
+				new QuestInStateCondition(mithrilcloak.getQuestSlot(), &quot;twilight_zone&quot;),
+				ConversationStates.QUEST_ITEM_QUESTION,
+				&quot;Keep it quiet will you! Yeah, I got moss, it's &quot;
+				+ Integer.toString(MOSS_COST) + &quot; money each. How many do you want?&quot;,
+				null);
+
+		// responding to question of how many they want, with a number
+<span class="fc" id="L75">		npc.addMatching(ConversationStates.QUEST_ITEM_QUESTION,</span>
+				// match for all numbers as trigger expression
+				ExpressionType.NUMERAL, new JokerExprMatcher(),
+				new TextHasNumberCondition(1, 5000),
+				ConversationStates.ATTENDING, null,
+<span class="fc" id="L80">				new ChatAction() {</span>
+					@Override
+					public void fire(final Player player, final Sentence sentence, final EventRaiser npc) {
+
+<span class="fc" id="L84">                        final int required = (sentence.getNumeral().getAmount());</span>
+<span class="pc bpc" id="L85" title="1 of 2 branches missed.">						if (player.drop(&quot;money&quot; , required * MOSS_COST)) {</span>
+<span class="fc" id="L86">							npc.say(&quot;Ok, here's your &quot; + Integer.toString(required) + &quot; pieces of twilight moss. Don't take too much at once.&quot;);</span>
+<span class="fc" id="L87">							new EquipItemAction(&quot;twilight moss&quot;, required, true).fire(player, sentence, npc);</span>
+						} else {
+<span class="nc" id="L89">							npc.say(&quot;Ok, ask me again when you have enough money.&quot;);</span>
+						}						
+<span class="fc" id="L91">					}</span>
+				});
+
+		// they don't want moss yet
+<span class="fc" id="L95">		npc.add(ConversationStates.QUEST_ITEM_QUESTION,</span>
+				Arrays.asList(&quot;no&quot;, &quot;none&quot;, &quot;nothing&quot;),
+				null,
+				ConversationStates.ATTENDING,
+				&quot;Ok, whatever you like.&quot;,
+				null);
+<span class="fc" id="L101">	}</span>
+
+	private void twilightZoneStep() {
+
+<span class="fc" id="L105">		final SpeakerNPC npc = npcs.get(&quot;Ida&quot;);</span>
+		// player hasn't given elixir to lda in the twilight zone yet
+<span class="fc" id="L107">		npc.add(ConversationStates.ATTENDING, </span>
+				Arrays.asList(&quot;magical&quot;, &quot;mithril&quot;, &quot;cloak&quot;, &quot;mithril cloak&quot;, &quot;task&quot;, &quot;quest&quot;, &quot;twilight&quot;),
+				new QuestInStateCondition(mithrilcloak.getQuestSlot(), &quot;twilight_zone&quot;),
+				ConversationStates.ATTENDING,		
+				&quot;What's happening to me? I'm feverish .. I see twilight .. you can't understand unless you visit me here ... you must ask #Pdiddi how to get to the #twilight.&quot;,				
+				null);
+
+<span class="fc" id="L114">		npc.addReply(&quot;Pdiddi&quot;, &quot;Oh, I'm too confused... I can't tell you anything about him...&quot;);</span>
+
+
+		// player gave elixir and returned
+<span class="fc" id="L118">		npc.add(ConversationStates.ATTENDING, </span>
+				Arrays.asList(&quot;magical&quot;, &quot;mithril&quot;, &quot;cloak&quot;, &quot;mithril cloak&quot;, &quot;task&quot;, &quot;quest&quot;, &quot;twilight&quot;, &quot;elixir&quot;),
+				new QuestInStateCondition(mithrilcloak.getQuestSlot(), &quot;taking_striped_cloak&quot;),
+				ConversationStates.ATTENDING,		
+				&quot;When I was sick I got behind on my other jobs. I promised #Josephine I'd make her a stripey cloak but I have no time. So please, I'm relying on you to buy one and take it to her. They sell blue striped cloaks in Ados abandoned keep. Thank you!&quot;,				
+				null);
+
+
+		// Ida and lda look the same but one lives in her true home sewing room and one lives in the twilight zone 
+		// hence they need different names according to engine, but name will look the same on client
+<span class="fc" id="L128">		final SpeakerNPC npc2 = npcs.get(&quot;lda&quot;);</span>
+
+<span class="fc" id="L130">		npc2.add(ConversationStates.IDLE, </span>
+				ConversationPhrases.GREETING_MESSAGES,
+				new AndCondition(new GreetingMatchesNameCondition(npc2.getName()),
+						new QuestInStateCondition(mithrilcloak.getQuestSlot(), &quot;twilight_zone&quot;),
+						new NotCondition(new PlayerHasItemWithHimCondition(&quot;twilight elixir&quot;))),
+				ConversationStates.IDLE,		
+				&quot;I'm sick .. so sick .. only some powerful medicine will fix me.&quot;,				
+				null);
+
+<span class="fc" id="L139">		npc2.add(ConversationStates.IDLE, </span>
+				ConversationPhrases.GREETING_MESSAGES,
+				new AndCondition(new GreetingMatchesNameCondition(npc2.getName()),
+						new QuestInStateCondition(mithrilcloak.getQuestSlot(), &quot;twilight_zone&quot;),
+						new PlayerHasItemWithHimCondition(&quot;twilight elixir&quot;)),
+				ConversationStates.QUEST_ITEM_QUESTION,		
+				&quot;Is that elixir for me? If #yes I will take it immediately. You must return to see me again in my normal state.&quot;,				
+				 null);
+
+<span class="fc" id="L148">		npc2.add(ConversationStates.QUEST_ITEM_QUESTION, </span>
+				ConversationPhrases.YES_MESSAGES,
+				new AndCondition(new QuestInStateCondition(mithrilcloak.getQuestSlot(), &quot;twilight_zone&quot;),
+								 new PlayerHasItemWithHimCondition(&quot;twilight elixir&quot;)
+								 ),
+				ConversationStates.IDLE,		
+				&quot;Thank you!&quot;,				
+				new MultipleActions(
+								new DropItemAction(&quot;twilight elixir&quot;),
+								new SetQuestAction(mithrilcloak.getQuestSlot(), &quot;taking_striped_cloak&quot;),
+								new TeleportAction(&quot;int_ados_sewing_room&quot;, 12, 20, Direction.DOWN)
+								)
+				);
+
+<span class="fc" id="L162">		npc2.add(ConversationStates.QUEST_ITEM_QUESTION, </span>
+				ConversationPhrases.NO_MESSAGES,
+				new AndCondition(new QuestInStateCondition(mithrilcloak.getQuestSlot(), &quot;twilight_zone&quot;),
+								 new PlayerHasItemWithHimCondition(&quot;twilight elixir&quot;)
+								 ),
+				ConversationStates.IDLE,		
+				&quot;I'm getting sicker ...&quot;,				
+				 null);
+<span class="fc" id="L170">	}</span>
+
+	public void addToWorld() {
+<span class="fc" id="L173">		getMossStep();</span>
+<span class="fc" id="L174">		twilightZoneStep();</span>
+<span class="fc" id="L175">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

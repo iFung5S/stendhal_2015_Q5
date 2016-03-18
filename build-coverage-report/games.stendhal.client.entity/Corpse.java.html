@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Corpse.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.entity</a> &gt; <span class="el_source">Corpse.java</span></div><h1>Corpse.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                      (C) Copyright 2003 - Marauroa                      *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.entity;
+
+//
+//
+
+import marauroa.common.game.RPObject;
+import marauroa.common.game.RPSlot;
+
+/**
+ * A corpse entity.
+ */
+<span class="fc" id="L24">public class Corpse extends Entity {</span>
+	/**
+	 * The current content slot.
+	 */
+	private RPSlot content;
+
+	//
+	// Corpse
+	//
+
+	/**
+	 * Get the corpse contents.
+	 * 
+	 * @return The contents slot.
+	 */
+	public RPSlot getContent() {
+<span class="nc" id="L40">		return content;</span>
+	}
+
+	/**
+	 * gets the owner of the corpse who may loot.
+	 *
+	 * @return owner or &lt;code&gt;null&lt;/code&gt;
+	 */
+	public String getCorpseOwner() {
+<span class="nc bnc" id="L49" title="All 2 branches missed.">		if (rpObject.has(&quot;corpse_owner&quot;)) {</span>
+<span class="nc" id="L50">			return rpObject.get(&quot;corpse_owner&quot;);</span>
+		}
+<span class="nc" id="L52">		return null;</span>
+	}
+
+	//
+	// Entity
+	//
+
+	/**
+	 * Initialize this entity for an object.
+	 * 
+	 * @param object
+	 *            The object.
+	 * 
+	 * @see #release()
+	 */
+	@Override
+	public void initialize(final RPObject object) {
+<span class="fc" id="L69">		super.initialize(object);</span>
+
+<span class="pc bpc" id="L71" title="1 of 2 branches missed.">		if (object.hasSlot(&quot;content&quot;)) {</span>
+<span class="nc" id="L72">			content = object.getSlot(&quot;content&quot;);</span>
+		} else {
+<span class="fc" id="L74">			content = null;</span>
+		}
+<span class="fc" id="L76">	}</span>
+	
+	/**
+	 * Checks if the corpse is empty or not
+	 * 
+	 *  @return true if the corpse is empty
+	 */
+	public boolean isEmpty() {
+		// size() is a method from RPSlot which counts the number of objects in the slot
+<span class="nc bnc" id="L85" title="All 2 branches missed.">		return content.size() == 0;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

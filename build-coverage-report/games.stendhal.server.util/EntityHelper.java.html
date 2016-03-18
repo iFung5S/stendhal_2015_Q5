@@ -1,0 +1,309 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>EntityHelper.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.util</a> &gt; <span class="el_source">EntityHelper.java</span></div><h1>EntityHelper.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.util;
+
+import static games.stendhal.common.constants.Actions.TARGET;
+import games.stendhal.common.MathHelper;
+import games.stendhal.server.actions.equip.EquipUtil;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.entity.Entity;
+import games.stendhal.server.entity.item.Item;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.entity.slot.EntitySlot;
+import games.stendhal.server.entity.slot.GroundSlot;
+
+import java.util.Iterator;
+import java.util.List;
+
+import marauroa.common.game.RPAction;
+import marauroa.common.game.RPObject;
+import marauroa.common.game.RPSlot;
+
+/**
+ * Utilities to handle entities in the server.
+ *
+ * @author Martin Fuchs
+ */
+<span class="nc" id="L38">public class EntityHelper {</span>
+	private static final String ATTR_BASESLOT = &quot;baseslot&quot;;
+	private static final String ATTR_BASEOBJECT = &quot;baseobject&quot;;
+	private static final String ATTR_BASEITEM = &quot;baseitem&quot;;
+
+	/**
+	 * Returns an entity reference by an objectId in a zone.
+	 *
+	 * @param objectId objectId of this Entity
+	 * @param zone zone
+	 * @return Entity or &lt;code&gt;null&lt;/code&gt;
+	 */
+	public static Entity entityFromZoneByID(final int objectId, final StendhalRPZone zone) {
+<span class="fc" id="L51">		final RPObject.ID targetid = new RPObject.ID(objectId, zone.getID());</span>
+<span class="fc bfc" id="L52" title="All 2 branches covered.">		if (zone.has(targetid)) {</span>
+<span class="fc" id="L53">			final RPObject object = zone.get(targetid);</span>
+<span class="pc bpc" id="L54" title="1 of 2 branches missed.">			if (object instanceof Entity) {</span>
+<span class="fc" id="L55">				return (Entity) object;</span>
+			}
+		}
+<span class="fc" id="L58">		return null;</span>
+	}
+
+	/**
+	 * Translate the &quot;target&quot; parameter of actions like &quot;look&quot; into an entity
+	 * reference. Numeric parameters are treated as object IDs, alphanumeric
+	 * names are searched in the list of players and NPCs.
+	 *
+	 * @param target
+	 *			  representation of the target
+	 * @param player
+	 *			  to constraint for current zone and screen area
+	 * @return the entity associated either with name or id or
+	 *		   &lt;code&gt; null &lt;/code&gt; if none was found or any of
+	 *		   the input parameters was &lt;code&gt; null &lt;/code&gt;.
+	 */
+	public static Entity entityFromTargetName(final String target, final Entity player) {
+<span class="pc bpc" id="L75" title="1 of 4 branches missed.">		if ((target == null) || (player == null)) {</span>
+<span class="fc" id="L76">			return null;</span>
+		}
+
+<span class="fc" id="L79">		final StendhalRPZone zone = player.getZone();</span>
+<span class="fc" id="L80">		Entity entity = null;</span>
+
+<span class="pc bpc" id="L82" title="2 of 6 branches missed.">		if ((target.length() &gt; 1) &amp;&amp; (target.charAt(0) == '#')</span>
+				&amp;&amp; Character.isDigit(target.charAt(1))) {
+<span class="fc" id="L84">			final int objectId = Integer.parseInt(target.substring(1));</span>
+
+<span class="fc" id="L86">			entity = entityFromZoneByID(objectId, zone);</span>
+		}
+
+<span class="fc bfc" id="L89" title="All 2 branches covered.">		if (entity == null) {</span>
+<span class="fc" id="L90">			entity = SingletonRepository.getRuleProcessor().getPlayer(target);</span>
+
+<span class="fc bfc" id="L92" title="All 4 branches covered.">			if ((entity != null) &amp;&amp; !player.isInSight(entity)) {</span>
+<span class="fc" id="L93">				entity = null;</span>
+			}
+		}
+
+<span class="fc bfc" id="L97" title="All 2 branches covered.">		if (entity == null) {</span>
+<span class="fc" id="L98">			entity = SingletonRepository.getNPCList().get(target);</span>
+
+<span class="pc bpc" id="L100" title="1 of 4 branches missed.">			if ((entity != null) &amp;&amp; !player.isInSight(entity)) {</span>
+<span class="nc" id="L101">				entity = null;</span>
+			}
+		}
+
+<span class="fc" id="L105">		return entity;</span>
+	}
+
+	/**
+	 * Translate the &quot;target&quot; parameter of actions like &quot;look&quot; into an entity
+	 * reference. Numeric parameters are treated as object IDs, alphanumeric
+	 * names are searched in the list of players and NPCs.
+	 *
+	 * @param target
+	 *			  representation of the target
+	 * @param player
+	 *			  to constraint for current zone and screen area
+	 * @return the entity associated either with name or id or
+	 *		   &lt;code&gt; null &lt;/code&gt; if none was found or any of
+	 *		   the input parameters was &lt;code&gt; null &lt;/code&gt;.
+	 */
+	public static Entity entityFromTargetNameAnyZone(final String target, final Entity player) {
+<span class="pc bpc" id="L122" title="2 of 4 branches missed.">		if ((target == null) || (player == null)) {</span>
+<span class="nc" id="L123">			return null;</span>
+		}
+
+<span class="fc" id="L126">		final StendhalRPZone zone = player.getZone();</span>
+<span class="fc" id="L127">		Entity entity = null;</span>
+
+<span class="pc bpc" id="L129" title="1 of 6 branches missed.">		if ((target.length() &gt; 1) &amp;&amp; (target.charAt(0) == '#')</span>
+				&amp;&amp; Character.isDigit(target.charAt(1))) {
+<span class="fc" id="L131">			final int objectId = Integer.parseInt(target.substring(1));</span>
+
+<span class="fc" id="L133">			entity = entityFromZoneByID(objectId, zone);</span>
+		}
+
+<span class="fc bfc" id="L136" title="All 2 branches covered.">		if (entity == null) {</span>
+<span class="fc" id="L137">			entity = SingletonRepository.getRuleProcessor().getPlayer(target);</span>
+
+
+		}
+
+<span class="fc bfc" id="L142" title="All 2 branches covered.">		if (entity == null) {</span>
+<span class="fc" id="L143">			entity = SingletonRepository.getNPCList().get(target);</span>
+		}
+
+<span class="fc" id="L146">		return entity;</span>
+	}
+
+	/**
+	 * Retrieves a specified item from a slot. Necessary attributes in the RPAction:
+	 * 	- baseslot name of the slot to search in
+	 *  - baseobject the id of the object where to search for the specified slot
+	 *  - baseitem the id of the object to search for
+	 *
+	 * @param player the player where to search for the item
+	 * @param action the action specifying for what to search
+	 * @return the found Entity or null
+	 */
+	public static Entity entityFromSlot(final Player player, final RPAction action) {
+		// entity in a slot?
+<span class="pc bpc" id="L161" title="2 of 6 branches missed.">		if (!action.has(ATTR_BASEITEM)</span>
+				|| !action.has(ATTR_BASEOBJECT)
+				|| !action.has(ATTR_BASESLOT)) {
+<span class="fc" id="L164">			return null;</span>
+		}
+
+<span class="fc" id="L167">		final StendhalRPZone zone = player.getZone();</span>
+
+<span class="fc" id="L169">		final int baseObject = action.getInt(ATTR_BASEOBJECT);</span>
+
+<span class="fc" id="L171">		final RPObject.ID baseobjectid = new RPObject.ID(baseObject, zone.getID());</span>
+<span class="pc bpc" id="L172" title="1 of 2 branches missed.">		if (!zone.has(baseobjectid)) {</span>
+<span class="nc" id="L173">			return null;</span>
+		}
+
+<span class="fc" id="L176">		final RPObject base = zone.get(baseobjectid);</span>
+<span class="pc bpc" id="L177" title="1 of 2 branches missed.">		if (!(base instanceof Entity)) {</span>
+			// Shouldn't really happen because everything is an entity
+<span class="nc" id="L179">			return null;</span>
+		}
+
+<span class="fc" id="L182">		final Entity baseEntity = (Entity) base;</span>
+
+<span class="pc bpc" id="L184" title="1 of 2 branches missed.">		if (baseEntity.hasSlot(action.get(ATTR_BASESLOT))) {</span>
+<span class="fc" id="L185">			final RPSlot slot = baseEntity.getSlot(action.get(ATTR_BASESLOT));</span>
+
+<span class="pc bpc" id="L187" title="1 of 2 branches missed.">			if (slot.size() == 0) {</span>
+<span class="nc" id="L188">				return null;</span>
+			}
+
+<span class="fc" id="L191">			RPObject object = null;</span>
+<span class="fc" id="L192">			final int item = action.getInt(ATTR_BASEITEM);</span>
+			// scan through the slot to find the requested item
+<span class="pc bpc" id="L194" title="1 of 2 branches missed.">			for (final RPObject rpobject : slot) {</span>
+<span class="pc bpc" id="L195" title="1 of 2 branches missed.">				if (rpobject.getID().getObjectID() == item) {</span>
+<span class="fc" id="L196">					object = rpobject;</span>
+<span class="fc" id="L197">					break;</span>
+				}
+<span class="nc" id="L199">			}</span>
+
+			// It is always an entity
+<span class="fc" id="L202">			return (Entity) object;</span>
+		}
+
+<span class="nc" id="L205">		return null;</span>
+	}
+
+	/**
+	 * gets the item slot from an action
+	 *
+	 * @param player Player executing the action
+	 * @param action action
+	 * @return EntitySlot or &lt;code&gt;null&lt;/code&gt; if the action was invalid
+	 */
+    public static EntitySlot getSlot(Player player, RPAction action) {
+<span class="nc" id="L216">        final StendhalRPZone zone = player.getZone();</span>
+
+<span class="nc bnc" id="L218" title="All 6 branches missed.">        if (action.has(ATTR_BASEITEM) &amp;&amp; action.has(ATTR_BASEOBJECT) &amp;&amp; action.has(ATTR_BASESLOT)) {</span>
+
+<span class="nc" id="L220">            final int baseObject = action.getInt(ATTR_BASEOBJECT);</span>
+
+<span class="nc" id="L222">            final RPObject.ID baseobjectid = new RPObject.ID(baseObject, zone.getID());</span>
+<span class="nc bnc" id="L223" title="All 2 branches missed.">            if (!zone.has(baseobjectid)) {</span>
+<span class="nc" id="L224">                return null;</span>
+            }
+
+<span class="nc" id="L227">            final RPObject base = zone.get(baseobjectid);</span>
+<span class="nc bnc" id="L228" title="All 2 branches missed.">            if (!(base instanceof Entity)) {</span>
+                // Shouldn't really happen because everything is an entity
+<span class="nc" id="L230">                return null;</span>
+            }
+
+<span class="nc" id="L233">            final Entity baseEntity = (Entity) base;</span>
+
+<span class="nc bnc" id="L235" title="All 2 branches missed.">            if (baseEntity.hasSlot(action.get(ATTR_BASESLOT))) {</span>
+<span class="nc" id="L236">                final RPSlot slot = baseEntity.getSlot(action.get(ATTR_BASESLOT));</span>
+<span class="nc bnc" id="L237" title="All 2 branches missed.">                if (!(slot instanceof EntitySlot)) {</span>
+<span class="nc" id="L238">                    return null;</span>
+                }
+<span class="nc" id="L240">                return (EntitySlot) slot;</span>
+            }
+
+<span class="nc bnc" id="L243" title="All 2 branches missed.">        } else if (action.has(TARGET)) {</span>
+
+<span class="nc" id="L245">            String target = action.get(TARGET);</span>
+
+<span class="nc bnc" id="L247" title="All 6 branches missed.">            if ((target.length() &gt; 1) &amp;&amp; (target.charAt(0) == '#')</span>
+                    &amp;&amp; Character.isDigit(target.charAt(1))) {
+<span class="nc" id="L249">                final int objectId = Integer.parseInt(target.substring(1));</span>
+
+<span class="nc" id="L251">                Entity entity = entityFromZoneByID(objectId, zone);</span>
+<span class="nc bnc" id="L252" title="All 2 branches missed.">                if (entity instanceof Item) {</span>
+<span class="nc" id="L253">                    return new GroundSlot(zone, entity);</span>
+                } else {
+<span class="nc" id="L255">                    return null;</span>
+                }
+            }
+        }
+<span class="nc" id="L259">        return null;</span>
+    }
+
+	/**
+	 * Get an entity from path. Does not do any access checks.
+	 *
+	 * @param player
+	 * @param path entity path
+	 * @return entity corresponding to the path, or &lt;code&gt;null&lt;/code&gt; if none
+	 * 	was found
+	 */
+	public static Entity getEntityFromPath(final Player player, final List&lt;String&gt; path) {
+<span class="fc" id="L271">		Iterator&lt;String&gt; it = path.iterator();</span>
+		// The ultimate parent object
+<span class="fc" id="L273">		Entity parent = entityFromZoneByID(MathHelper.parseInt(it.next()), player.getZone());</span>
+<span class="pc bpc" id="L274" title="1 of 2 branches missed.">		if (parent == null) {</span>
+<span class="nc" id="L275">			return null;</span>
+		}
+
+		// Walk the slot path
+<span class="fc" id="L279">		Entity entity = parent;</span>
+<span class="fc" id="L280">		String slotName = null;</span>
+<span class="fc bfc" id="L281" title="All 2 branches covered.">		while (it.hasNext()) {</span>
+<span class="fc" id="L282">			slotName = it.next();</span>
+<span class="fc bfc" id="L283" title="All 2 branches covered.">			if (!entity.hasSlot(slotName)) {</span>
+<span class="fc" id="L284">				player.sendPrivateText(&quot;Source &quot; + slotName + &quot; does not exist&quot;);</span>
+<span class="fc" id="L285">				EquipUtil.logger.error(player.getName() + &quot; tried to use non existing slot &quot; + slotName + &quot; of &quot; + entity</span>
+						+ &quot; as source. player zone: &quot; + player.getZone() + &quot; object zone: &quot; + parent.getZone());
+<span class="fc" id="L287">				return null;</span>
+			}
+
+<span class="fc" id="L290">			final RPSlot slot = entity.getSlot(slotName);</span>
+
+<span class="pc bpc" id="L292" title="1 of 2 branches missed.">			if (!it.hasNext()) {</span>
+<span class="nc" id="L293">				EquipUtil.logger.error(&quot;Missing entity id&quot;);</span>
+<span class="nc" id="L294">				return null;</span>
+			}
+<span class="fc" id="L296">			final RPObject.ID itemId = new RPObject.ID(MathHelper.parseInt(it.next()), &quot;&quot;);</span>
+<span class="fc bfc" id="L297" title="All 2 branches covered.">			if (!slot.has(itemId)) {</span>
+<span class="fc" id="L298">				EquipUtil.logger.debug(&quot;Base entity(&quot; + entity + &quot;) doesn't contain entity(&quot; + itemId + &quot;) on given slot(&quot; + slotName</span>
+						+ &quot;)&quot;);
+<span class="fc" id="L300">				return null;</span>
+			}
+
+<span class="fc" id="L303">			entity = (Entity) slot.get(itemId);</span>
+<span class="fc" id="L304">		}</span>
+
+<span class="fc" id="L306">		return entity;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

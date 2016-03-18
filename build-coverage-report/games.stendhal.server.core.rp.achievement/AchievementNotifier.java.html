@@ -1,0 +1,394 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>AchievementNotifier.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.core.rp.achievement</a> &gt; <span class="el_source">AchievementNotifier.java</span></div><h1>AchievementNotifier.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2011 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.core.rp.achievement;
+
+import games.stendhal.common.constants.SoundLayer;
+import games.stendhal.common.grammar.Grammar;
+import games.stendhal.server.core.engine.GameEvent;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.engine.db.AchievementDAO;
+import games.stendhal.server.core.engine.dbcommand.WriteReachedAchievementCommand;
+import games.stendhal.server.core.rp.achievement.factory.AbstractAchievementFactory;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.entity.player.ReadAchievementsOnLogin;
+import games.stendhal.server.entity.player.UpdatePendingAchievementsOnLogin;
+import games.stendhal.server.events.ReachedAchievementEvent;
+import games.stendhal.server.events.SoundEvent;
+
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+
+import marauroa.server.db.command.DBCommandQueue;
+import marauroa.server.game.db.DAORegister;
+
+import org.apache.log4j.Logger;
+
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableList.Builder;
+
+/**
+ * Checks for reached achievements and marks them as reached for a player if he has fulfilled them
+ *
+ * @author madmetzger
+ */
+public final class AchievementNotifier {
+
+<span class="fc" id="L52">	private static final Logger logger = Logger.getLogger(AchievementNotifier.class);</span>
+
+	private static AchievementNotifier instance;
+
+	final private Map&lt;Category, List&lt;Achievement&gt;&gt; achievements;
+
+	final private Map&lt;String, Integer&gt; identifiersToIds;
+
+<span class="fc" id="L60">	private AchievementNotifier() {</span>
+<span class="fc" id="L61">		achievements = new EnumMap&lt;Category, List&lt;Achievement&gt;&gt;(Category.class);</span>
+<span class="fc" id="L62">		identifiersToIds = new HashMap&lt;String, Integer&gt;();</span>
+<span class="fc" id="L63">	}</span>
+
+	/**
+	 * singleton accessor method
+	 *
+	 * @return the AchievementNotifier
+	 */
+	public static AchievementNotifier get() {
+<span class="fc" id="L71">    	synchronized(AchievementNotifier.class) {</span>
+<span class="fc bfc" id="L72" title="All 2 branches covered.">			if(instance == null) {</span>
+<span class="fc" id="L73">				instance = new AchievementNotifier();</span>
+			}
+<span class="pc" id="L75">    	}</span>
+<span class="fc" id="L76">		return instance;</span>
+	}
+
+	/**
+	 * initializes the achievements that are available and registers the login listener
+	 * new added achievements are added to the achievements table
+	 */
+	public void initialize() {
+		//read all configured achievements and put them into the categorized map
+<span class="nc" id="L85">		final Map&lt;String, Achievement&gt; allAchievements = createAchievements();</span>
+<span class="nc bnc" id="L86" title="All 2 branches missed.">		for(Achievement a : allAchievements.values()) {</span>
+<span class="nc bnc" id="L87" title="All 2 branches missed.">			if(!achievements.containsKey(a.getCategory())) {</span>
+<span class="nc" id="L88">				achievements.put(a.getCategory(), new LinkedList&lt;Achievement&gt;());</span>
+			}
+<span class="nc" id="L90">			achievements.get(a.getCategory()).add(a);</span>
+<span class="nc" id="L91">		}</span>
+		//collect all identifiers from database
+<span class="nc" id="L93">		final Map&lt;String, Integer&gt; allIdentifiersInDatabase = collectAllIdentifiersFromDatabase();</span>
+		//update stored data with configured achievements
+<span class="nc" id="L95">		identifiersToIds.putAll(allIdentifiersInDatabase);</span>
+<span class="nc bnc" id="L96" title="All 2 branches missed.">		for(Map.Entry&lt;String, Integer&gt; it : allIdentifiersInDatabase.entrySet()) {</span>
+<span class="nc" id="L97">			final String identifier = it.getKey();</span>
+<span class="nc" id="L98">			final Achievement achievement = allAchievements.get(identifier);</span>
+			// this happens if an achievement is not configured anymore but already in the database
+			// in that case we should keep it as players could have reached it
+			// useful to stop checking for a certain achievement but keep results
+<span class="nc bnc" id="L102" title="All 2 branches missed.">			if (achievement != null) {</span>
+				try {
+<span class="nc" id="L104">					DAORegister.get().get(AchievementDAO.class).updateAchievement(it.getValue(), achievement);</span>
+<span class="nc" id="L105">				} catch (SQLException e) {</span>
+<span class="nc" id="L106">					logger.error(&quot;Error while updating existing achievement &quot; + achievement.getTitle(), e);</span>
+<span class="nc" id="L107">				}</span>
+			}
+<span class="nc" id="L109">		}</span>
+		// remove already stored achievements before saving them
+<span class="nc bnc" id="L111" title="All 2 branches missed.">		for(String identifier : allIdentifiersInDatabase.keySet()) {</span>
+<span class="nc" id="L112">			allAchievements.remove(identifier);</span>
+<span class="nc" id="L113">		}</span>
+		//save new achievements and add their identifier and id to the identifierToId map
+<span class="nc bnc" id="L115" title="All 2 branches missed.">		for (Achievement a : allAchievements.values()) {</span>
+			try {
+<span class="nc" id="L117">				Integer id = DAORegister.get().get(AchievementDAO.class).insertAchievement(a);</span>
+<span class="nc" id="L118">				identifiersToIds.put(a.getIdentifier(), id);</span>
+<span class="nc" id="L119">			} catch (SQLException e) {</span>
+<span class="nc" id="L120">				logger.error(&quot;Error while saving new achievement &quot;+a.getTitle(), e);</span>
+<span class="nc" id="L121">			}</span>
+<span class="nc" id="L122">		}</span>
+		// register the login notifier that checks for each player the pending achievements on login
+<span class="nc" id="L124">		SingletonRepository.getLoginNotifier().addListener(new UpdatePendingAchievementsOnLogin());</span>
+		// register the login notifier that checks for each player the reached achievements on login
+<span class="nc" id="L126">		SingletonRepository.getLoginNotifier().addListener(new ReadAchievementsOnLogin());</span>
+<span class="nc" id="L127">	}</span>
+
+	/**
+	 * collects all identifiers from the database
+	 *
+	 * @return a set of all identifier strings
+	 */
+	private Map&lt;String, Integer&gt; collectAllIdentifiersFromDatabase() {
+<span class="nc" id="L135">		Map&lt;String, Integer&gt; mapFromDB = new HashMap&lt;String, Integer&gt;();</span>
+		try {
+<span class="nc" id="L137">			mapFromDB = DAORegister.get().get(AchievementDAO.class).loadIdentifierIdPairs();</span>
+<span class="nc" id="L138">		} catch (SQLException e) {</span>
+<span class="nc" id="L139">			logger.error(&quot;Error while loading Identifier to id map for achievements.&quot;, e);</span>
+<span class="nc" id="L140">		}</span>
+<span class="nc" id="L141">		return mapFromDB;</span>
+	}
+
+	/**
+	 * checks all for level change relevant achievements for a player
+	 *
+	 * @param player
+	 */
+	public void onLevelChange(Player player) {
+<span class="fc" id="L150">		getAndCheckAchievementsInCategory(player, Category.EXPERIENCE);</span>
+<span class="fc" id="L151">	}</span>
+
+
+	/**
+	 * checks all achievements for a player that should be checked when a player kills sth
+	 *
+	 * @param player
+	 */
+	public void onKill(Player player) {
+<span class="fc" id="L160">		getAndCheckAchievementsInCategory(player, Category.FIGHTING);</span>
+<span class="fc" id="L161">	}</span>
+
+	/**
+	 * check all achievements for a player that are relevant on finishing a quest
+	 *
+	 * @param player
+	 */
+	public void onFinishQuest(Player player) {
+<span class="fc" id="L169">		getAndCheckAchievementsInCategory(player, Category.QUEST);</span>
+<span class="fc" id="L170">		getAndCheckAchievementsInCategory(player, Category.QUEST_ADOS_ITEMS);</span>
+<span class="fc" id="L171">		getAndCheckAchievementsInCategory(player, Category.QUEST_SEMOS_MONSTER);</span>
+<span class="fc" id="L172">		getAndCheckAchievementsInCategory(player, Category.QUEST_KIRDNEH_ITEM);</span>
+<span class="fc" id="L173">		getAndCheckAchievementsInCategory(player, Category.FRIEND);</span>
+<span class="fc" id="L174">		getAndCheckAchievementsInCategory(player, Category.OBTAIN);</span>
+<span class="fc" id="L175">		getAndCheckAchievementsInCategory(player, Category.PRODUCTION);</span>
+<span class="fc" id="L176">		getAndCheckAchievementsInCategory(player, Category.QUEST_MITHRILBOURGH_ENEMY_ARMY);</span>
+<span class="fc" id="L177">	}</span>
+
+	/**
+	 * check all achievements for a player that belong to the zone category
+	 *
+	 * @param player
+	 */
+	public void onZoneEnter(Player player) {
+<span class="fc" id="L185">		getAndCheckAchievementsInCategory(player, Category.OUTSIDE_ZONE);</span>
+<span class="fc" id="L186">		getAndCheckAchievementsInCategory(player, Category.UNDERGROUND_ZONE);</span>
+<span class="fc" id="L187">		getAndCheckAchievementsInCategory(player, Category.INTERIOR_ZONE);</span>
+<span class="fc" id="L188">	}</span>
+
+	/**
+	 * check all achievements for a player that belong to the age category
+	 *
+	 * @param player
+	 */
+	public void onAge(Player player) {
+<span class="fc" id="L196">		getAndCheckAchievementsInCategory(player, Category.AGE);</span>
+<span class="fc" id="L197">	}</span>
+
+	/**
+	 * check all achievements for a player that belong to the item category
+	 *
+	 * @param player
+	 */
+	public void onItemLoot(Player player) {
+<span class="nc" id="L205">		getAndCheckAchievementsInCategory(player, Category.ITEM);</span>
+<span class="nc" id="L206">	}</span>
+
+	/**
+	 * check all achievements for a player that belong to the production category
+	 *
+	 * @param player
+	 */
+	public void onProduction(Player player) {
+<span class="fc" id="L214">		getAndCheckAchievementsInCategory(player, Category.PRODUCTION);</span>
+<span class="fc" id="L215">	}</span>
+
+	/**
+	 * check all achievements for a player that belong to the obtain category
+	 *
+	 * @param player
+	 */
+	public void onObtain(Player player) {
+<span class="fc" id="L223">		getAndCheckAchievementsInCategory(player, Category.OBTAIN);</span>
+<span class="fc" id="L224">	}</span>
+
+	/**
+	 * Award a player with an achievement that wasn't yet reached by the player
+	 * (used for example in the wishing well)
+	 *
+	 * @param player the player object to award
+	 * @param achievementIdentifier the identifier of the achievement that should be awarded
+	 */
+	public void awardAchievementIfNotYetReached(Player player, String achievementIdentifier) {
+<span class="nc bnc" id="L234" title="All 2 branches missed.">		if(!player.hasReachedAchievement(achievementIdentifier)) {</span>
+<span class="nc" id="L235">			boolean found = false;</span>
+<span class="nc bnc" id="L236" title="All 2 branches missed.">			for(List&lt;Achievement&gt; achievementList : this.achievements.values()) {</span>
+<span class="nc bnc" id="L237" title="All 2 branches missed.">				if(!found) {</span>
+<span class="nc bnc" id="L238" title="All 2 branches missed.">					for(Achievement achievement : achievementList) {</span>
+<span class="nc bnc" id="L239" title="All 2 branches missed.">						if (achievement.getIdentifier().equals(achievementIdentifier)) {</span>
+<span class="nc" id="L240">							logReachingOfAnAchievement(player, achievement);</span>
+<span class="nc" id="L241">							notifyPlayerAboutReachedAchievement(player, achievement);</span>
+<span class="nc" id="L242">							found = true;</span>
+						}
+<span class="nc" id="L244">					}</span>
+				}
+<span class="nc" id="L246">			}</span>
+<span class="nc bnc" id="L247" title="All 2 branches missed.">			if(!found) {</span>
+<span class="nc" id="L248">				logger.warn(&quot;Tried to award non existing achievement identifier &quot;+achievementIdentifier+&quot; to &quot;+player.getName());</span>
+			}
+		}
+<span class="nc" id="L251">	}</span>
+
+	/**
+	 * Checks on login of a player which achievements the player has reached and gives a summarizing message
+	 *
+	 * @param player
+	 */
+	public void onLogin(Player player) {
+<span class="nc" id="L259">		List&lt;Achievement&gt; toCheck = new ArrayList&lt;Achievement&gt;();</span>
+		//Avoid checking of zone achievements on login to
+		//prevent double check when player is initially placed into a zone
+<span class="nc" id="L262">		final Map&lt;Category,List&lt;Achievement&gt;&gt; map = new HashMap&lt;Category, List&lt;Achievement&gt;&gt;(achievements);</span>
+<span class="nc" id="L263">		map.remove(Category.OUTSIDE_ZONE);</span>
+<span class="nc" id="L264">		map.remove(Category.UNDERGROUND_ZONE);</span>
+<span class="nc" id="L265">		Collection&lt;List&lt;Achievement&gt;&gt; values = map.values();</span>
+<span class="nc bnc" id="L266" title="All 2 branches missed.">		for (List&lt;Achievement&gt; list : values) {</span>
+<span class="nc" id="L267">			toCheck.addAll(list);</span>
+<span class="nc" id="L268">		}</span>
+<span class="nc" id="L269">		final List&lt;Achievement&gt; reached = checkAchievements(player, toCheck);</span>
+		// only send notice if actually a new added achievement was reached by doing nothing
+<span class="nc bnc" id="L271" title="All 2 branches missed.">		if(!reached.isEmpty()) {</span>
+<span class="nc" id="L272">			StringBuilder sb = new StringBuilder();</span>
+<span class="nc" id="L273">			sb.append(&quot;You have reached &quot;);</span>
+<span class="nc" id="L274">			sb.append(Integer.valueOf(reached.size()));</span>
+<span class="nc" id="L275">			sb.append(&quot; new &quot;+Grammar.plnoun(reached.size(), &quot;achievement&quot;)+&quot;. Please check #http://stendhalgame.org for details.&quot;);</span>
+<span class="nc" id="L276">			player.sendPrivateText(sb.toString());</span>
+		}
+<span class="nc" id="L278">	}</span>
+
+	/**
+	 * retrieve all achievements for a category and check if player has reached each of the found achievements
+	 *
+	 * @param player
+	 * @param category
+	 */
+	private void getAndCheckAchievementsInCategory(Player player, Category category) {
+<span class="pc bpc" id="L287" title="1 of 2 branches missed.">		if(achievements.containsKey(category)) {</span>
+<span class="nc" id="L288">			List&lt;Achievement&gt; toCheck = achievements.get(category);</span>
+<span class="nc" id="L289">			List&lt;Achievement&gt; reached = checkAchievements(player, toCheck);</span>
+<span class="nc" id="L290">			notifyPlayerAboutReachedAchievements(player, reached);</span>
+		}
+<span class="fc" id="L292">	}</span>
+
+	/**
+	 * Checks for each achievement if the player has reached it. in case of reaching
+	 * an achievement it starts logging and notifying about reaching.
+	 *
+	 * @param player player to be checked
+	 * @param toCheck list of checked achievements
+	 * @return list of reached achievements
+	 */
+	private List&lt;Achievement&gt; checkAchievements(Player player,
+			List&lt;Achievement&gt; toCheck) {
+<span class="nc" id="L304">		List&lt;Achievement&gt; reached = new ArrayList&lt;Achievement&gt;();</span>
+
+		// continue checking only if player's achievements are already loaded from the database
+<span class="nc bnc" id="L307" title="All 2 branches missed.">		if (!player.arePlayerAchievementsLoaded()) {</span>
+<span class="nc" id="L308">			return reached;</span>
+		}
+
+<span class="nc bnc" id="L311" title="All 2 branches missed.">		for (Achievement achievement : toCheck) {</span>
+<span class="nc bnc" id="L312" title="All 4 branches missed.">			if(achievement.isFulfilled(player) &amp;&amp; !player.hasReachedAchievement(achievement.getIdentifier())) {</span>
+<span class="nc" id="L313">				logReachingOfAnAchievement(player, achievement);</span>
+<span class="nc bnc" id="L314" title="All 2 branches missed.">				if (achievement.isActive()) {</span>
+<span class="nc" id="L315">					reached.add(achievement);</span>
+				}
+			}
+<span class="nc" id="L318">		}</span>
+<span class="nc" id="L319">		return reached;</span>
+	}
+
+	/**
+	 * Notifies a player about reached achievements via private message
+	 *
+	 * @param player
+	 * @param achievementsToNotifyAbout list of achievements the player should
+	 * 	be notified about
+	 */
+	private void notifyPlayerAboutReachedAchievements(Player player, List&lt;Achievement&gt; achievementsToNotifyAbout) {
+<span class="nc bnc" id="L330" title="All 2 branches missed.">		for (Achievement achievement : achievementsToNotifyAbout) {</span>
+<span class="nc" id="L331">			notifyPlayerAboutReachedAchievement(player, achievement);</span>
+<span class="nc" id="L332">		}</span>
+<span class="nc" id="L333">	}</span>
+
+	/**
+	 * logs reached achievement to gameEvents table and reached_achievment table
+	 *
+	 * @param player
+	 * @param achievement
+	 */
+	private void logReachingOfAnAchievement(Player player, Achievement achievement) {
+<span class="nc" id="L342">		String identifier = achievement.getIdentifier();</span>
+<span class="nc" id="L343">		String title = achievement.getTitle();</span>
+<span class="nc" id="L344">		Category category = achievement.getCategory();</span>
+<span class="nc" id="L345">		String playerName = player.getName();</span>
+<span class="nc" id="L346">		DBCommandQueue.get().enqueue(new WriteReachedAchievementCommand(identifiersToIds.get(identifier), title, category, playerName));</span>
+<span class="nc" id="L347">		player.addReachedAchievement(achievement.getIdentifier());</span>
+<span class="nc" id="L348">		new GameEvent(playerName, &quot;reach-achievement&quot;, category.toString(), title, identifier).raise();</span>
+<span class="nc" id="L349">	}</span>
+
+	/**
+	 * notifies the player about reaching an achievement
+	 *
+	 * @param player
+	 * @param achievement
+	 */
+	private void notifyPlayerAboutReachedAchievement(Player player, Achievement achievement) {
+<span class="nc bnc" id="L358" title="All 2 branches missed.">		if (achievement.isActive()) {</span>
+<span class="nc" id="L359">			player.addEvent(new ReachedAchievementEvent(achievement));</span>
+<span class="nc" id="L360">			player.addEvent(new SoundEvent(&quot;yay-1&quot;, SoundLayer.USER_INTERFACE));</span>
+<span class="nc" id="L361">			player.notifyWorldAboutChanges();</span>
+		}
+<span class="nc" id="L363">	}</span>
+
+	/**
+	 * creates all available achievements
+	 *
+	 * @return map with key identifier and value the identified achievement
+	 */
+	private Map&lt;String, Achievement&gt; createAchievements() {
+<span class="nc" id="L371">		Map&lt;String, Achievement&gt; achievementMap = new HashMap&lt;String, Achievement&gt;();</span>
+<span class="nc bnc" id="L372" title="All 2 branches missed.">		for(AbstractAchievementFactory factory : AbstractAchievementFactory.createFactories()) {</span>
+<span class="nc bnc" id="L373" title="All 2 branches missed.">			for(Achievement a : factory.createAchievements()) {</span>
+<span class="nc" id="L374">				achievementMap.put(a.getIdentifier(), a);</span>
+<span class="nc" id="L375">			}</span>
+<span class="nc" id="L376">		}</span>
+<span class="nc" id="L377">		return achievementMap;</span>
+	}
+
+	/**
+	 * gets a list of all Achievements
+	 *
+	 * @return list of achievements
+	 */
+	public ImmutableList&lt;Achievement&gt; getAchievements() {
+<span class="nc" id="L386">		Builder&lt;Achievement&gt; builder = ImmutableList.builder();</span>
+<span class="nc bnc" id="L387" title="All 2 branches missed.">		for (List&lt;Achievement&gt; temp : achievements.values()) {</span>
+<span class="nc" id="L388">			builder.addAll(temp);</span>
+<span class="nc" id="L389">		}</span>
+<span class="nc" id="L390">		return builder.build();</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>FightingAchievementFactory.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.core.rp.achievement.factory</a> &gt; <span class="el_source">FightingAchievementFactory.java</span></div><h1>FightingAchievementFactory.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.core.rp.achievement.factory;
+
+import games.stendhal.server.core.rp.achievement.Achievement;
+import games.stendhal.server.core.rp.achievement.Category;
+import games.stendhal.server.core.rp.achievement.condition.KilledRareCreatureCondition;
+import games.stendhal.server.core.rp.achievement.condition.KilledSharedAllCreaturesCondition;
+import games.stendhal.server.core.rp.achievement.condition.KilledSoloAllCreaturesCondition;
+import games.stendhal.server.entity.npc.condition.AndCondition;
+import games.stendhal.server.entity.npc.condition.PlayerHasKilledNumberOfCreaturesCondition;
+
+import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
+/**
+ * Factory for fighting achievements
+ *
+ * @author madmetzger
+ */
+<span class="nc" id="L31">public class FightingAchievementFactory extends AbstractAchievementFactory {</span>
+
+	@Override
+	public Collection&lt;Achievement&gt; createAchievements() {
+<span class="nc" id="L35">		List&lt;Achievement&gt; fightingAchievements = new LinkedList&lt;Achievement&gt;();</span>
+<span class="nc" id="L36">		fightingAchievements.add(createAchievement(&quot;fight.general.rats&quot;, &quot;Rat Hunter&quot;, &quot;Kill 15 rats&quot;, Achievement.EASY_BASE_SCORE, true,</span>
+													new PlayerHasKilledNumberOfCreaturesCondition(&quot;rat&quot;, 15)));
+<span class="nc" id="L38">		fightingAchievements.add(createAchievement(&quot;fight.general.exterminator&quot;, &quot;Exterminator&quot;, &quot;Kill 10 rats of each kind&quot;, Achievement.MEDIUM_BASE_SCORE, true,</span>
+													new PlayerHasKilledNumberOfCreaturesCondition(10, &quot;rat&quot;, &quot;caverat&quot;, &quot;razorrat&quot;, &quot;venomrat&quot;, &quot;zombie rat&quot;, &quot;giantrat&quot;, &quot;ratman&quot;, &quot;ratwoman&quot;, &quot;archrat&quot;)));
+<span class="nc" id="L40">		fightingAchievements.add(createAchievement(&quot;fight.general.deer&quot;, &quot;Deer Hunter&quot;, &quot;Kill 25 deer&quot;, Achievement.EASY_BASE_SCORE, true,</span>
+													new PlayerHasKilledNumberOfCreaturesCondition(&quot;deer&quot;, 25)));
+<span class="nc" id="L42">		fightingAchievements.add(createAchievement(&quot;fight.general.boars&quot;, &quot;Boar Hunter&quot;, &quot;Kill 20 boar&quot;, Achievement.EASY_BASE_SCORE, true,</span>
+													new PlayerHasKilledNumberOfCreaturesCondition(&quot;boar&quot;, 20)));
+<span class="nc" id="L44">		fightingAchievements.add(createAchievement(&quot;fight.general.bears&quot;, &quot;Bear Hunter&quot;, &quot;Kill 10 black bears, 10 bears and 10 babybears&quot;, Achievement.EASY_BASE_SCORE, true,</span>
+													new PlayerHasKilledNumberOfCreaturesCondition(10, &quot;bear&quot;, &quot;black bear&quot;, &quot;babybear&quot;)));
+<span class="nc" id="L46">		fightingAchievements.add(createAchievement(&quot;fight.general.foxes&quot;, &quot;Fox Hunter&quot;, &quot;Kill 20 foxes&quot;, Achievement.EASY_BASE_SCORE, true,</span>
+													new PlayerHasKilledNumberOfCreaturesCondition(&quot;fox&quot;, 20)));
+<span class="nc" id="L48">		fightingAchievements.add(createAchievement(&quot;fight.general.safari&quot;, &quot;Safari&quot;, &quot;Kill 30 tigers, 30 lions and 50 elephants&quot;, Achievement.EASY_BASE_SCORE, true,</span>
+													new AndCondition(
+															new PlayerHasKilledNumberOfCreaturesCondition(&quot;tiger&quot;, 30),
+															new PlayerHasKilledNumberOfCreaturesCondition(&quot;lion&quot;, 30),
+															new PlayerHasKilledNumberOfCreaturesCondition(&quot;elephant&quot;, 50)
+															)));
+<span class="nc" id="L54">		fightingAchievements.add(createAchievement(&quot;fight.general.ents&quot;, &quot;Wood Cutter&quot;, &quot;Kill 10 ents, 10 entwifes and 10 old ents&quot;, Achievement.MEDIUM_BASE_SCORE, true,</span>
+													new PlayerHasKilledNumberOfCreaturesCondition(10, &quot;ent&quot;, &quot;entwife&quot;, &quot;old ent&quot;)));
+<span class="nc" id="L56">		fightingAchievements.add(createAchievement(&quot;fight.special.rare&quot;, &quot;Poacher&quot;, &quot;Kill any rare creature&quot;, Achievement.HARD_BASE_SCORE, true,</span>
+				new KilledRareCreatureCondition()));
+
+<span class="nc" id="L59">		fightingAchievements.add(createAchievement(&quot;fight.special.all&quot;, &quot;Legend&quot;, &quot;Kill all creatures solo&quot;, Achievement.HARD_BASE_SCORE, true,</span>
+				new KilledSoloAllCreaturesCondition()));
+<span class="nc" id="L61">		fightingAchievements.add(createAchievement(&quot;fight.special.allshared&quot;, &quot;Team Player&quot;, &quot;Kill all creatures in a team&quot;, Achievement.HARD_BASE_SCORE, true,</span>
+				new KilledSharedAllCreaturesCondition()));
+<span class="nc" id="L63">		return fightingAchievements;</span>
+	}
+
+	@Override
+	protected Category getCategory() {
+<span class="nc" id="L68">		return Category.FIGHTING;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

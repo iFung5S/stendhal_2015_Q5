@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>DeathmatchInfo.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.deathmatch</a> &gt; <span class="el_source">DeathmatchInfo.java</span></div><h1>DeathmatchInfo.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.deathmatch;
+
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.engine.Spot;
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.util.Area;
+
+/**
+ * Stores information about the place of the deathmatch.
+ *
+ * @author hendrik
+ */
+public class DeathmatchInfo {
+
+	private final DeathmatchArea arena;
+
+	private final Spot entranceSpot;
+
+	private final StendhalRPZone zone;
+
+	/**
+	 * Creates a new DeathmatchInfo.
+	 *
+	 * @param arena
+	 *            combat area
+	 * @param zone
+	 *            zone
+	 * @param entrance the spot where the players stands before entering DM.
+	 */
+	public DeathmatchInfo(final Area arena, final StendhalRPZone zone,
+			final Spot entrance) {
+<span class="fc" id="L46">		super();</span>
+<span class="fc" id="L47">		this.arena = new DeathmatchArea(arena);</span>
+<span class="fc" id="L48">		this.zone = zone;</span>
+<span class="fc" id="L49">		this.entranceSpot = entrance;</span>
+<span class="fc" id="L50">	}</span>
+
+	
+	/**
+	 * Gets the arena.
+	 *
+	 * @return combat area
+	 */
+	public Area getArena() {
+<span class="nc" id="L59">		return arena.getArea();</span>
+	}
+
+	/**
+	 * Gets the zone.
+	 *
+	 * @return zone
+	 */
+	public StendhalRPZone getZone() {
+<span class="nc" id="L68">		return zone;</span>
+	}
+
+	public boolean isInArena(final Player player) {
+<span class="nc" id="L72">		return arena.contains(player);</span>
+	}
+
+	Spot getEntranceSpot() {
+<span class="nc" id="L76">		return entranceSpot;</span>
+	}
+
+	void startSession(final Player player,final EventRaiser raiser ) {
+<span class="nc" id="L80">		final DeathmatchState deathmatchState = DeathmatchState.createStartState(player.getLevel());</span>
+<span class="nc" id="L81">		player.setQuest(&quot;deathmatch&quot;, deathmatchState.toQuestString());</span>
+<span class="nc" id="L82">		final DeathmatchEngine dmEngine = new DeathmatchEngine(player, this, raiser);</span>
+<span class="nc" id="L83">		SingletonRepository.getTurnNotifier().notifyInTurns(0, dmEngine);</span>
+<span class="nc" id="L84">	}</span>
+	
+	
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

@@ -1,0 +1,269 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>MeetSanta.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests</a> &gt; <span class="el_source">MeetSanta.java</span></div><h1>MeetSanta.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2013 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.GregorianCalendar;
+import java.util.LinkedList;
+import java.util.List;
+
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.core.events.LoginListener;
+import games.stendhal.server.entity.Outfit;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.npc.NPCList;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.action.EquipItemAction;
+import games.stendhal.server.entity.npc.action.MultipleActions;
+import games.stendhal.server.entity.npc.action.SetQuestAction;
+import games.stendhal.server.entity.npc.behaviour.impl.TeleporterBehaviour;
+import games.stendhal.server.entity.npc.condition.AndCondition;
+import games.stendhal.server.entity.npc.condition.GreetingMatchesNameCondition;
+import games.stendhal.server.entity.npc.condition.NakedCondition;
+import games.stendhal.server.entity.npc.condition.NotCondition;
+import games.stendhal.server.entity.npc.condition.PlayerIsAGoodBoyCondition;
+import games.stendhal.server.entity.npc.condition.QuestCompletedCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotCompletedCondition;
+import games.stendhal.server.entity.player.Player;
+
+/**
+ * QUEST: Meet Santa anywhere around the World.
+ *&lt;p&gt;
+ * PARTICIPANTS: &lt;ul&gt;&lt;li&gt; Santa Claus&lt;/ul&gt;
+ *
+ * STEPS: &lt;ul&gt;&lt;li&gt; Find Santa &lt;li&gt;Say hi &lt;li&gt; Get reward &lt;li&gt; Get hat&lt;/ul&gt;
+ *
+ * REWARD: &lt;ul&gt;&lt;li&gt; a stocking which can be opened to obtain a random good reward: food,
+ * money, potions, items, etc... &lt;/ul&gt;
+ *
+ * REPETITIONS:None
+ */
+<span class="nc" id="L57">public class MeetSanta extends AbstractQuest implements LoginListener {</span>
+
+	// quest slot changed ready for 2015
+	private static final String QUEST_SLOT = &quot;meet_santa_[seasonyear]&quot;;
+
+	public static final String QUEST_NAME = &quot;MeetSanta&quot;;
+
+	/** the Santa NPC. */
+	protected SpeakerNPC santa;
+
+	private StendhalRPZone zone;
+
+	private TeleporterBehaviour teleporterBehaviour;
+
+	@Override
+	public String getSlotName() {
+<span class="nc" id="L73">		return QUEST_SLOT;</span>
+	}
+
+	private SpeakerNPC createSanta() {
+<span class="nc" id="L77">		santa = new SpeakerNPC(&quot;Santa&quot;) {</span>
+			@Override
+			protected void createPath() {
+				// npc does not move
+<span class="nc" id="L81">				setPath(null);</span>
+<span class="nc" id="L82">			}</span>
+
+			@Override
+			protected void createDialog() {
+<span class="nc" id="L86">				add(ConversationStates.IDLE,</span>
+					ConversationPhrases.GREETING_MESSAGES,
+					new AndCondition(new GreetingMatchesNameCondition(super.getName()),
+							new QuestCompletedCondition(QUEST_SLOT),
+                                                        new PlayerIsAGoodBoyCondition(),
+                                                        new NotCondition(new NakedCondition())),
+					ConversationStates.IDLE,
+					&quot;Hi again! Good bye, and remember to behave if you want a present next year!&quot;,
+<span class="nc" id="L94">				    new ChatAction() {</span>
+					    @Override
+						public void fire(final Player player, final Sentence sentence, final EventRaiser raiser) {
+<span class="nc" id="L97">					    	addHat(player);</span>
+<span class="nc" id="L98">					    }</span>
+					}
+				);
+
+<span class="nc" id="L102">				final List&lt;ChatAction&gt; reward = new LinkedList&lt;ChatAction&gt;();</span>
+<span class="nc" id="L103">				reward.add(new EquipItemAction(&quot;stocking&quot;));</span>
+<span class="nc" id="L104">				reward.add(new SetQuestAction(QUEST_SLOT, &quot;done&quot;));</span>
+<span class="nc" id="L105">				reward.add(new ChatAction() {</span>
+				        @Override
+						public void fire(final Player player, final Sentence sentence, final EventRaiser npc) {
+<span class="nc" id="L108">						    addHat(player);</span>
+<span class="nc" id="L109">						}</span>
+				    }
+				);
+<span class="nc" id="L112">				add(ConversationStates.IDLE,</span>
+					ConversationPhrases.GREETING_MESSAGES,
+					new AndCondition(new GreetingMatchesNameCondition(super.getName()),
+							new QuestNotCompletedCondition(QUEST_SLOT),
+                                                        new PlayerIsAGoodBoyCondition(),
+                                                        new NotCondition(new NakedCondition())),
+					ConversationStates.IDLE,
+					&quot;Merry Christmas! I have a present and a hat for you. Good bye, and remember to behave if you want a present next year!&quot;,
+					new MultipleActions(reward));
+
+<span class="nc" id="L122">				add(ConversationStates.IDLE,</span>
+					ConversationPhrases.GREETING_MESSAGES,
+					new AndCondition(new GreetingMatchesNameCondition(super.getName()),
+                                                        new NotCondition(new PlayerIsAGoodBoyCondition())),
+					ConversationStates.IDLE,
+					&quot;Ho ho ho! Looks like you haven't been a good this year! Only well behaved children get presents! Seasons greetings!&quot;,
+					null);
+
+<span class="nc" id="L130">				add(ConversationStates.IDLE,</span>
+					ConversationPhrases.GREETING_MESSAGES,
+					new AndCondition(new GreetingMatchesNameCondition(super.getName()),
+							new NakedCondition()),
+					ConversationStates.IDLE,
+					&quot;Goodness child, you'll get chilly without any covering! Dress up warm and I'll give you a hat to match! Ho ho ho!&quot;,
+					null);
+<span class="nc" id="L137">			}</span>
+		};
+<span class="nc" id="L139">		santa.setEntityClass(&quot;santaclausnpc&quot;);</span>
+<span class="nc" id="L140">		santa.initHP(100);</span>
+<span class="nc" id="L141">		santa.setSounds(Arrays.asList(&quot;ho-ho-ho-1&quot;, &quot;ho-ho-ho-2&quot;));</span>
+
+		// start in int_admin_playground
+<span class="nc" id="L144">		zone = SingletonRepository.getRPWorld().getZone(&quot;int_admin_playground&quot;);</span>
+<span class="nc" id="L145">		santa.setPosition(17, 13);</span>
+<span class="nc" id="L146">		zone.add(santa);</span>
+
+<span class="nc" id="L148">		return santa;</span>
+	}
+
+	private void addHat(final Player player) {
+		// fetch old outfit as we want to know the current hair
+<span class="nc" id="L153">		final Outfit oldoutfit = player.getOutfit();</span>
+		// all santa hat sprites are at 50 + current hair
+<span class="nc bnc" id="L155" title="All 2 branches missed.">		if (oldoutfit.getHair() &lt; 50) {</span>
+<span class="nc" id="L156">			final int hatnumber = oldoutfit.getHair() + 50;</span>
+			// the new outfit only changes the hair, rest is null
+			final Outfit newOutfit;
+<span class="nc" id="L159">			newOutfit = new Outfit(null, hatnumber, null, null, null);</span>
+			//put it on, and store old outfit.
+<span class="nc" id="L161">			player.setOutfit(newOutfit.putOver(oldoutfit), true);</span>
+<span class="nc" id="L162">			player.registerOutfitExpireTime(43200);</span>
+		}
+<span class="nc" id="L164">	}</span>
+
+
+	@Override
+	public void onLoggedIn(final Player player) {
+		// is it Christmas?
+<span class="nc" id="L170">		final Outfit outfit = player.getOutfit();</span>
+<span class="nc" id="L171">		final int hairnumber = outfit.getHair();</span>
+<span class="nc bnc" id="L172" title="All 4 branches missed.">		if (hairnumber &gt;= 50 &amp;&amp; hairnumber &lt; 94) {</span>
+<span class="nc bnc" id="L173" title="All 2 branches missed.">			if (!isChristmasTime(new GregorianCalendar())) {</span>
+<span class="nc" id="L174">				final int newhair = hairnumber - 50;</span>
+				final Outfit newOutfit;
+<span class="nc" id="L176">				newOutfit = new Outfit(null, newhair, null, null, null);</span>
+<span class="nc" id="L177">				player.setOutfit(newOutfit.putOver(outfit), false);</span>
+			}
+		}
+<span class="nc" id="L180">	}</span>
+
+	/**
+	 * checks whether now is christmas time
+	 *
+	 * @param cal current date
+	 * @return true, if we are in season, false otherwise
+	 */
+	static boolean isChristmasTime(Calendar cal) {
+<span class="fc" id="L189">		int month = cal.get(Calendar.MONTH);</span>
+<span class="fc" id="L190">		int day = cal.get(Calendar.DAY_OF_MONTH);</span>
+<span class="fc bfc" id="L191" title="All 4 branches covered.">		if (month &gt;= 1 &amp;&amp; month &lt; 10) {</span>
+<span class="fc" id="L192">			return false;</span>
+		}
+
+		// January
+<span class="fc bfc" id="L196" title="All 2 branches covered.">		if (month == 0) {</span>
+<span class="fc bfc" id="L197" title="All 2 branches covered.">			return day &lt;= 6;</span>
+		}
+
+		// November
+<span class="pc bpc" id="L201" title="1 of 2 branches missed.">		if (month == 10) {</span>
+<span class="fc bfc" id="L202" title="All 2 branches covered.">			return day &gt;= 23;</span>
+		}
+<span class="nc" id="L204">		return false;</span>
+	}
+
+	/**
+	 * removes an NPC from the world and NPC list
+	 *
+	 * @param name name of NPC
+	 */
+	private void removeNPC(String name) {
+<span class="nc" id="L213">		SpeakerNPC npc = NPCList.get().get(name);</span>
+<span class="nc bnc" id="L214" title="All 2 branches missed.">		if (npc == null) {</span>
+<span class="nc" id="L215">			return;</span>
+		}
+<span class="nc" id="L217">		npc.getZone().remove(npc);</span>
+<span class="nc" id="L218">	}</span>
+
+	@Override
+	public void addToWorld() {
+<span class="nc" id="L222">		fillQuestInfo(</span>
+				&quot;Meet Santa&quot;,
+				&quot;Jingle bells, jingle bells, jingle all the way... Ho Ho Ho! Santa Claus delivers presents around Christmas time.&quot;,
+				false);
+<span class="nc" id="L226">		SingletonRepository.getLoginNotifier().addListener(this);</span>
+
+<span class="nc bnc" id="L228" title="All 2 branches missed.">		if (System.getProperty(&quot;stendhal.santa&quot;) != null) {</span>
+			// activate santa here
+<span class="nc" id="L230">			createSanta();</span>
+<span class="nc" id="L231">			teleporterBehaviour = new TeleporterBehaviour(santa, &quot;Ho, ho, ho! Merry Christmas!&quot;, false);</span>
+		}
+<span class="nc" id="L233">	}</span>
+
+	/**
+	 * removes a quest from the world.
+	 *
+	 * @return true, if the quest could be removed; false otherwise.
+	 */
+	@Override
+	public boolean removeFromWorld() {
+<span class="nc" id="L242">		removeNPC(&quot;Santa&quot;);</span>
+		// remove the turn notifiers left from the TeleporterBehaviour
+<span class="nc" id="L244">		SingletonRepository.getTurnNotifier().dontNotify(teleporterBehaviour);</span>
+<span class="nc" id="L245">		return true;</span>
+	}
+
+	@Override
+	public String getName() {
+<span class="nc" id="L250">		return &quot;MeetSanta&quot;;</span>
+	}
+
+	@Override
+	public boolean isVisibleOnQuestStatus() {
+<span class="nc" id="L255">		return false;</span>
+	}
+
+	@Override
+	public List&lt;String&gt; getHistory(final Player player) {
+<span class="nc" id="L260">		return new ArrayList&lt;String&gt;();</span>
+	}
+
+	@Override
+	public String getNPCName() {
+<span class="nc" id="L265">		return &quot;Santa&quot;;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

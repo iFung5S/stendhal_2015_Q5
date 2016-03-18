@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>StendhalServerExtension.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.extension</a> &gt; <span class="el_source">StendhalServerExtension.java</span></div><h1>StendhalServerExtension.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2006-2012 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.extension;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import org.apache.log4j.Logger;
+
+/**
+ * The StendhalServerExtension is a base class for plugins that add
+ * functions to the server.
+ */
+<span class="nc" id="L23">public abstract class StendhalServerExtension implements StendhalServerExtensionIface {</span>
+
+	/** the logger instance. */
+<span class="nc" id="L26">	private static final Logger logger = Logger.getLogger(StendhalServerExtension.class);</span>
+
+	/** Lists the instances of the loaded extensions. */
+<span class="nc" id="L29">	private static Map&lt;String, StendhalServerExtensionIface&gt; loadedInstances = new HashMap&lt;String, StendhalServerExtensionIface&gt;();</span>
+
+	/**
+	 * init the extension
+	 */
+	@Override
+	public abstract void init();
+
+	/**
+	 * @param name  
+	 * @return &lt;code&gt;true&lt;/code&gt; on success, otherwise &lt;code&gt;false&gt;/code&gt; 
+	 */
+	public synchronized boolean perform(final String name) {
+<span class="nc" id="L42">		return (false);</span>
+	}
+
+	/**
+	 * @param name  
+	 * @return message
+	 */
+	public String getMessage(final String name) {
+<span class="nc" id="L50">		return (null);</span>
+	}
+
+	/**
+	 * gets an stendhal extension instance
+	 *
+	 * @param name name of the extension class
+	 * @return StendhalServerExtension
+	 */
+	public static StendhalServerExtensionIface getInstance(final String name) {
+		try {
+<span class="nc" id="L61">			final Class&lt;? extends StendhalServerExtensionIface&gt; extensionClass = Class.forName(name).asSubclass(StendhalServerExtensionIface.class);</span>
+
+<span class="nc bnc" id="L63" title="All 2 branches missed.">			if (!StendhalServerExtensionIface.class.isAssignableFrom(extensionClass)) {</span>
+<span class="nc" id="L64">				logger.debug(&quot;Class is no instance of StendhalServerExtension.&quot;);</span>
+<span class="nc" id="L65">				return null;</span>
+			}
+
+<span class="nc" id="L68">			logger.info(&quot;Loading ServerExtension: &quot; + name);</span>
+<span class="nc" id="L69">			final java.lang.reflect.Constructor&lt;? extends StendhalServerExtensionIface&gt; constr = extensionClass.getConstructor();</span>
+
+			// simply create a new instance. The constructor creates all
+			// additionally objects
+<span class="nc" id="L73">			final StendhalServerExtensionIface instance = constr.newInstance();</span>
+			// store it in the hashmap for later reference
+<span class="nc" id="L75">			loadedInstances.put(name, instance);</span>
+<span class="nc" id="L76">			return instance;</span>
+<span class="nc" id="L77">		} catch (final Exception e) {</span>
+<span class="nc" id="L78">			logger.warn(&quot;StendhalServerExtension &quot; + name + &quot; loading failed.&quot;,	e);</span>
+<span class="nc" id="L79">			return null;</span>
+		}
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

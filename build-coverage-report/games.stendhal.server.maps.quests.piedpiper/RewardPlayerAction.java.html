@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>RewardPlayerAction.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests.piedpiper</a> &gt; <span class="el_source">RewardPlayerAction.java</span></div><h1>RewardPlayerAction.java</h1><pre class="source lang-java linenums">package games.stendhal.server.maps.quests.piedpiper;
+
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.entity.item.StackableItem;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.player.Player;
+
+/**
+ *  NPC's actions when player asks for his reward.
+ *  
+ */
+<span class="fc" id="L14">public class RewardPlayerAction implements ChatAction, ITPPQuestConstants {</span>
+
+		@Override
+		public void fire(final Player player, final Sentence sentence, final EventRaiser mayor) {
+<span class="fc" id="L18">		    	final int quantity = TPPQuestHelperFunctions.calculateReward(player);</span>
+		    	// to avoid giving karma without job
+<span class="fc bfc" id="L20" title="All 2 branches covered.">		    	if(quantity==0) {</span>
+<span class="fc" id="L21">		    		mayor.say(&quot;You didn't kill any rats which invaded the city, so you don't deserve a reward.&quot;);</span>
+<span class="fc" id="L22">		    		return;</span>
+		    	}
+<span class="fc" id="L24">		    	player.addKarma(5);</span>
+<span class="fc" id="L25">		    	final StackableItem moneys = (StackableItem) SingletonRepository.getEntityManager()</span>
+		    				.getItem(&quot;money&quot;);
+<span class="fc" id="L27">		    	moneys.setQuantity(quantity);</span>
+<span class="fc" id="L28">		    	player.equipOrPutOnGround(moneys);</span>
+<span class="fc" id="L29">		    	mayor.say(&quot;Please take &quot;+quantity+&quot; money, thank you very much for your help.&quot;);</span>
+<span class="fc" id="L30">		    	player.setQuest(QUEST_SLOT, &quot;done&quot;);</span>
+<span class="fc" id="L31">			}</span>
+}
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

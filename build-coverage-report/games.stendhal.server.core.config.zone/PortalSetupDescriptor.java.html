@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>PortalSetupDescriptor.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.core.config.zone</a> &gt; <span class="el_source">PortalSetupDescriptor.java</span></div><h1>PortalSetupDescriptor.java</h1><pre class="source lang-java linenums">/*
+ * @(#) src/games/stendhal/server/config/zone/PortalSetupDescriptor.java
+ *
+ * $Id$
+ */
+
+package games.stendhal.server.core.config.zone;
+
+//
+//
+
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.entity.EntityFactoryHelper;
+import games.stendhal.server.entity.mapstuff.portal.Portal;
+
+import org.apache.log4j.Logger;
+
+/**
+ * A portal setup descriptor.
+ */
+public class PortalSetupDescriptor extends EntitySetupDescriptor {
+	/**
+	 * Logger.
+	 */
+<span class="nc" id="L25">	private static final Logger LOGGER = Logger.getLogger(PortalSetupDescriptor.class);</span>
+
+	/**
+	 * The named portal identifier.
+	 */
+	protected Object identifier;
+
+	/**
+	 * The destination zone name (if any).
+	 */
+	protected String destinationZone;
+
+	/**
+	 * The named destination portal (if any).
+	 */
+	protected Object destinationIdentifier;
+
+	/**
+	 * Whether replacing an existing portal at that location.
+	 */
+	protected boolean replacing;
+
+	/**
+	 * Create a portal setup descriptor.
+	 * 
+	 * @param x
+	 *            The X coordinate.
+	 * @param y
+	 *            The Y coordinate.
+	 * @param identifier
+	 *            The identifier,
+	 */
+	public PortalSetupDescriptor(final int x, final int y,
+			final Object identifier) {
+<span class="nc" id="L59">		super(x, y);</span>
+
+<span class="nc" id="L61">		this.identifier = identifier;</span>
+
+<span class="nc" id="L63">		destinationZone = null;</span>
+<span class="nc" id="L64">		destinationIdentifier = null;</span>
+<span class="nc" id="L65">		replacing = false;</span>
+<span class="nc" id="L66">	}</span>
+
+	//
+	// PortalSetupDescriptor
+	//
+
+	/**
+	 * Get the destination identifier.
+	 * 
+	 * @return An identifier.
+	 */
+	public Object getDestinationIdentifier() {
+<span class="nc" id="L78">		return destinationIdentifier;</span>
+	}
+
+	/**
+	 * Get the destination zone.
+	 * 
+	 * @return A zone name.
+	 */
+	public String getDestinationZone() {
+<span class="nc" id="L87">		return destinationZone;</span>
+	}
+
+	/**
+	 * Get the identifier.
+	 * 
+	 * @return An identifier.
+	 */
+	public Object getIdentifier() {
+<span class="nc" id="L96">		return identifier;</span>
+	}
+
+	/**
+	 * Determine if existing portals are replaced.
+	 * 
+	 * @return &lt;code&gt;true&lt;/code&gt; if replacing an existing portal at that
+	 *         location.
+	 */
+	public boolean isReplacing() {
+<span class="nc" id="L106">		return replacing;</span>
+	}
+
+	/**
+	 * Set the destination zone/identifier.
+	 * 
+	 * @param zone
+	 *            The destination zone name.
+	 * @param identifier
+	 *            The named destination portal.
+	 */
+	public void setDestination(final String zone, final Object identifier) {
+<span class="nc" id="L118">		this.destinationZone = zone;</span>
+<span class="nc" id="L119">		this.destinationIdentifier = identifier;</span>
+<span class="nc" id="L120">	}</span>
+
+	/**
+	 * Set whether to replace any existing portal.
+	 * 
+	 * @param replacing
+	 *            Whether replacing an existing portal at that location.
+	 */
+	public void setReplacing(final boolean replacing) {
+<span class="nc" id="L129">		this.replacing = replacing;</span>
+<span class="nc" id="L130">	}</span>
+
+	//
+	// SetupDescriptor
+	//
+
+	/**
+	 * Do appropriate zone setup.
+	 * 
+	 * @param zone
+	 *            The zone.
+	 */
+	@Override
+	public void setup(final StendhalRPZone zone) {
+<span class="nc" id="L144">		String className = getImplementation();</span>
+
+<span class="nc bnc" id="L146" title="All 2 branches missed.">		if (className == null) {</span>
+			/*
+			 * Default implementation
+			 */
+<span class="nc" id="L150">			className = Portal.class.getName();</span>
+		}
+
+		try {
+<span class="nc" id="L154">			final Portal portal = (Portal) EntityFactoryHelper.create(className,</span>
+					getParameters(), getAttributes());
+<span class="nc bnc" id="L156" title="All 2 branches missed.">			if (portal == null) {</span>
+<span class="nc" id="L157">				LOGGER.warn(&quot;Unable to create portal: &quot; + className);</span>
+
+<span class="nc" id="L159">				return;</span>
+			}
+
+<span class="nc" id="L162">			portal.setPosition(getX(), getY());</span>
+<span class="nc" id="L163">			portal.setIdentifier(getIdentifier());</span>
+
+<span class="nc" id="L165">			final Object destIdentifier = getDestinationIdentifier();</span>
+
+<span class="nc bnc" id="L167" title="All 2 branches missed.">			if (destIdentifier != null) {</span>
+<span class="nc" id="L168">				portal.setDestination(getDestinationZone(), destIdentifier);</span>
+			}
+
+			// Check for an existing portal at the location
+<span class="nc" id="L172">			final Portal oportal = zone.getPortal(getX(), getY());</span>
+<span class="nc bnc" id="L173" title="All 2 branches missed.">			if (oportal != null) {</span>
+<span class="nc bnc" id="L174" title="All 2 branches missed.">				if (isReplacing()) {</span>
+<span class="nc" id="L175">					LOGGER.debug(&quot;Replacing portal: &quot; + oportal);</span>
+<span class="nc" id="L176">					zone.remove(oportal);</span>
+				} else {
+					// reserved, and told not to replace it. just discard the portal
+<span class="nc" id="L179">					return;</span>
+				}
+			}
+
+<span class="nc" id="L183">			zone.add(portal);</span>
+<span class="nc" id="L184">		} catch (final IllegalArgumentException ex) {</span>
+<span class="nc" id="L185">			LOGGER.error(&quot;Error with portal factory&quot;, ex);</span>
+<span class="nc" id="L186">		}</span>
+<span class="nc" id="L187">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

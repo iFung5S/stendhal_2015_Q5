@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>EatStatusTurnListener.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.status</a> &gt; <span class="el_source">EatStatusTurnListener.java</span></div><h1>EatStatusTurnListener.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                (C) Copyright 2005-2013 - Faiumoni e. V.                 *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.status;
+
+import games.stendhal.server.core.events.TurnListener;
+import games.stendhal.server.core.events.TurnNotifier;
+import games.stendhal.server.entity.RPEntity;
+import games.stendhal.server.entity.player.Player;
+
+import java.util.Collections;
+import java.util.List;
+
+/**
+ * eating turn listener
+ */
+public class EatStatusTurnListener implements TurnListener {
+	private StatusList statusList;
+	private static final String ATTRIBUTE_NAME = &quot;eating&quot;;
+	private static final String ATTRIBUTE_NAME_CHOKING = &quot;choking&quot;;
+
+	/**
+	 * EatStatusTurnListener
+	 * 
+	 * @param statusList StatusList
+	 */
+<span class="fc" id="L35">	public EatStatusTurnListener(StatusList statusList) {</span>
+<span class="fc" id="L36">		this.statusList = statusList;</span>
+<span class="fc" id="L37">	}</span>
+
+	@Override
+	public void onTurnReached(int turn) {
+<span class="fc" id="L41">		RPEntity entity = statusList.getEntity();</span>
+<span class="fc" id="L42">		List&lt;EatStatus&gt; toConsume = statusList.getAllStatusByClass(EatStatus.class);</span>
+
+		// check that the entity exists
+<span class="fc bfc" id="L45" title="All 2 branches covered.">		if (entity == null) {</span>
+<span class="fc" id="L46">			return;</span>
+		}
+
+		// cleanup status
+<span class="fc bfc" id="L50" title="All 2 branches covered.">		if (toConsume.isEmpty()) {</span>
+<span class="pc bpc" id="L51" title="1 of 2 branches missed.">			if (entity.has(ATTRIBUTE_NAME)) {</span>
+<span class="fc" id="L52">				entity.remove(ATTRIBUTE_NAME);</span>
+			}
+<span class="pc bpc" id="L54" title="1 of 2 branches missed.">			if (entity.has(ATTRIBUTE_NAME_CHOKING)) {</span>
+<span class="nc" id="L55">				entity.remove(ATTRIBUTE_NAME_CHOKING);</span>
+			}
+<span class="fc" id="L57">			entity.notifyWorldAboutChanges();</span>
+<span class="fc" id="L58">			return;</span>
+		}
+
+<span class="fc" id="L61">		Collections.sort(toConsume);</span>
+<span class="fc" id="L62">		final ConsumableStatus food = toConsume.get(0);</span>
+
+<span class="pc bpc" id="L64" title="1 of 2 branches missed.">		if (turn % food.getFrecuency() == 0) {</span>
+<span class="fc" id="L65">			final int amount = food.consume();</span>
+<span class="pc bpc" id="L66" title="1 of 2 branches missed.">			if (isChoking(toConsume)) {</span>
+<span class="nc" id="L67">				entity.put(ATTRIBUTE_NAME_CHOKING, amount);</span>
+			} else {
+<span class="pc bpc" id="L69" title="1 of 2 branches missed.">				if (entity.has(ATTRIBUTE_NAME_CHOKING)) {</span>
+<span class="nc" id="L70">					entity.remove(ATTRIBUTE_NAME_CHOKING);</span>
+				}
+<span class="fc" id="L72">				entity.put(ATTRIBUTE_NAME, amount);</span>
+<span class="fc" id="L73">				entity.notifyWorldAboutChanges();</span>
+			}
+
+			// is full hp?
+<span class="pc bpc" id="L77" title="1 of 2 branches missed.">			if (entity.heal(amount, true) == 0) {</span>
+<span class="pc bpc" id="L78" title="1 of 2 branches missed.">				if (entity instanceof Player) {</span>
+<span class="fc" id="L79">					statusList.removeAll(EatStatus.class);</span>
+				}
+			}
+
+			// is item used up?
+<span class="pc bpc" id="L84" title="1 of 2 branches missed.">			if (food.consumed()) {</span>
+<span class="nc" id="L85">				statusList.remove(food);</span>
+			}
+		}
+
+<span class="fc" id="L89">		TurnNotifier.get().notifyInTurns(0, this);</span>
+<span class="fc" id="L90">	}</span>
+
+	private boolean isChoking(List&lt;EatStatus&gt; toConsume) {
+<span class="pc bpc" id="L93" title="1 of 2 branches missed.">		return toConsume.size() &gt; 5;</span>
+	}
+
+	@Override
+	public int hashCode() {
+<span class="fc" id="L98">		return statusList.hashCode() * 31;</span>
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+<span class="pc bpc" id="L103" title="1 of 2 branches missed.">		if (this == obj) {</span>
+<span class="nc" id="L104">			return true;</span>
+		}
+<span class="pc bpc" id="L106" title="2 of 4 branches missed.">		if ((obj == null) || (getClass() != obj.getClass())) {</span>
+<span class="fc" id="L107">			return false;</span>
+		}
+<span class="nc" id="L109">		EatStatusTurnListener other = (EatStatusTurnListener) obj;</span>
+<span class="nc" id="L110">		return statusList.equals(other.statusList);</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>KillDhohrNuggetcutter.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests</a> &gt; <span class="el_source">KillDhohrNuggetcutter.java</span></div><h1>KillDhohrNuggetcutter.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests;
+
+import games.stendhal.common.MathHelper;
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.entity.item.Item;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.action.IncreaseKarmaAction;
+import games.stendhal.server.entity.npc.action.MultipleActions;
+import games.stendhal.server.entity.npc.action.SetQuestAction;
+import games.stendhal.server.entity.npc.action.SetQuestAndModifyKarmaAction;
+import games.stendhal.server.entity.npc.action.StartRecordingKillsAction;
+import games.stendhal.server.entity.npc.condition.AndCondition;
+import games.stendhal.server.entity.npc.condition.GreetingMatchesNameCondition;
+import games.stendhal.server.entity.npc.condition.KilledForQuestCondition;
+import games.stendhal.server.entity.npc.condition.NotCondition;
+import games.stendhal.server.entity.npc.condition.QuestInStateCondition;
+import games.stendhal.server.entity.npc.condition.QuestStateStartsWithCondition;
+import games.stendhal.server.entity.npc.condition.TimePassedCondition;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.util.TimeUtil;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+
+import marauroa.common.Pair;
+
+/**
+ * QUEST: Kill Dhohr Nuggetcutter
+ * &lt;p&gt;
+ * PARTICIPANTS:
+ * &lt;ul&gt;
+ * &lt;li&gt; Zogfang
+ * &lt;/ul&gt;
+ * 
+ * STEPS:
+ * &lt;ul&gt;
+ * &lt;li&gt; Zogfang asks you to kill remaining dwarves from area
+ * &lt;li&gt; You go kill Dhohr Nuggetcutter and you get the reward from Zogfang
+ * &lt;/ul&gt;
+ * &lt;p&gt;
+ * REWARD:
+ * &lt;ul&gt;
+ * &lt;li&gt; mithril nugget
+ * &lt;li&gt; 4000 XP
+ * &lt;li&gt;35 karma in total
+ * &lt;/ul&gt;
+ * 
+ * REPETITIONS:
+ * &lt;ul&gt;
+ * &lt;li&gt; after 14 days.
+ * &lt;/ul&gt;
+ */
+
+<span class="fc" id="L73">public class KillDhohrNuggetcutter extends AbstractQuest {</span>
+
+	private static final String QUEST_SLOT = &quot;kill_dhohr_nuggetcutter&quot;;
+
+	@Override
+	public String getSlotName() {
+<span class="fc" id="L79">		return QUEST_SLOT;</span>
+	}
+	
+	private void step_1() {
+<span class="fc" id="L83">		final SpeakerNPC npc = npcs.get(&quot;Zogfang&quot;);</span>
+
+<span class="fc" id="L85">		npc.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.QUEST_MESSAGES, 
+				null,
+				ConversationStates.QUEST_OFFERED, 
+				null,
+<span class="fc" id="L90">				new ChatAction() {</span>
+					@Override
+					public void fire(final Player player, final Sentence sentence, final EventRaiser raiser) {
+<span class="fc bfc" id="L93" title="All 4 branches covered.">						if (!player.hasQuest(QUEST_SLOT) || player.getQuest(QUEST_SLOT).equals(&quot;rejected&quot;)) {</span>
+<span class="fc" id="L94">							raiser.say(&quot;We are unable to rid our area of dwarves. Especially one mighty one named Dhohr Nuggetcutter. Would you please kill them?&quot;);</span>
+<span class="fc bfc" id="L95" title="All 2 branches covered.">						}  else if (player.getQuest(QUEST_SLOT, 0).equals(&quot;start&quot;)) {</span>
+<span class="fc" id="L96">							raiser.say(&quot;I already asked you to kill Dhohr Nuggetcutter!&quot;);</span>
+<span class="fc" id="L97">							raiser.setCurrentState(ConversationStates.ATTENDING);</span>
+<span class="pc bpc" id="L98" title="1 of 2 branches missed.">						}  else if (player.getQuest(QUEST_SLOT).startsWith(&quot;killed;&quot;)) {</span>
+<span class="fc" id="L99">							final String[] tokens = player.getQuest(QUEST_SLOT).split(&quot;;&quot;);</span>
+							final long delay = 2 * MathHelper.MILLISECONDS_IN_ONE_WEEK;
+<span class="fc" id="L101">							final long timeRemaining = Long.parseLong(tokens[1]) + delay - System.currentTimeMillis();</span>
+<span class="pc bpc" id="L102" title="1 of 2 branches missed.">							if (timeRemaining &gt; 0) {</span>
+<span class="fc" id="L103">								raiser.say(&quot;Thank you for helping us. Maybe you could come back later. The dwarves might return. Try back in &quot; + TimeUtil.approxTimeUntil((int) (timeRemaining / 1000L)) + &quot;.&quot;);</span>
+<span class="fc" id="L104">								raiser.setCurrentState(ConversationStates.ATTENDING);</span>
+<span class="fc" id="L105">								return;</span>
+							}
+<span class="nc" id="L107">							raiser.say(&quot;Would you like to help us again?&quot;);</span>
+<span class="nc" id="L108">						} else {</span>
+<span class="nc" id="L109">							raiser.say(&quot;Thank you for your help in our time of need. Now we feel much safer.&quot;);</span>
+<span class="nc" id="L110">							raiser.setCurrentState(ConversationStates.ATTENDING);</span>
+						}
+<span class="fc" id="L112">					}</span>
+				});
+
+<span class="fc" id="L115">		final HashMap&lt;String, Pair&lt;Integer, Integer&gt;&gt; toKill = new HashMap&lt;String, Pair&lt;Integer, Integer&gt;&gt;();</span>
+<span class="fc" id="L116">		toKill.put(&quot;Dhohr Nuggetcutter&quot;, new Pair&lt;Integer, Integer&gt;(0,1));</span>
+<span class="fc" id="L117">		toKill.put(&quot;mountain dwarf&quot;, new Pair&lt;Integer, Integer&gt;(0,2));</span>
+<span class="fc" id="L118">		toKill.put(&quot;mountain elder dwarf&quot;, new Pair&lt;Integer, Integer&gt;(0,2)); </span>
+<span class="fc" id="L119">		toKill.put(&quot;mountain hero dwarf&quot;, 	new Pair&lt;Integer, Integer&gt;(0,2));</span>
+<span class="fc" id="L120">		toKill.put(&quot;mountain leader dwarf&quot;, new Pair&lt;Integer, Integer&gt;(0,2));</span>
+		
+<span class="fc" id="L122">		final List&lt;ChatAction&gt; actions = new LinkedList&lt;ChatAction&gt;();</span>
+<span class="fc" id="L123">		actions.add(new SetQuestAction(QUEST_SLOT, 0, &quot;start&quot;));</span>
+<span class="fc" id="L124">		actions.add(new IncreaseKarmaAction(10));</span>
+<span class="fc" id="L125">		actions.add(new StartRecordingKillsAction(QUEST_SLOT, 1, toKill));</span>
+		
+<span class="fc" id="L127">		npc.add(ConversationStates.QUEST_OFFERED,</span>
+				ConversationPhrases.YES_MESSAGES,
+				null,
+				ConversationStates.ATTENDING,
+				&quot;Great! Please find them somewhere in this level of the keep and make them pay for their tresspassing!&quot;,
+				new MultipleActions(actions));
+
+<span class="fc" id="L134">		npc.add(ConversationStates.QUEST_OFFERED, </span>
+				ConversationPhrases.NO_MESSAGES,
+				null,
+				ConversationStates.ATTENDING,
+				&quot;Ok, I will await someone with enough backbone to do the job.&quot;,
+				new SetQuestAndModifyKarmaAction(QUEST_SLOT, &quot;rejected&quot;, -5.0));
+<span class="fc" id="L140">	}</span>
+
+	private void step_2() {
+		/* Player has to kill the dwarves*/
+<span class="fc" id="L144">	}</span>
+
+	private void step_3() {
+<span class="fc" id="L147">		final SpeakerNPC npc = npcs.get(&quot;Zogfang&quot;);</span>
+
+<span class="fc" id="L149">		npc.add(ConversationStates.IDLE, ConversationPhrases.GREETING_MESSAGES,</span>
+				new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+						new QuestInStateCondition(QUEST_SLOT, 0, &quot;start&quot;),
+						new NotCondition(new KilledForQuestCondition(QUEST_SLOT, 1))),
+				ConversationStates.ATTENDING, 
+				null,
+<span class="fc" id="L155">				new ChatAction() {</span>
+					@Override
+					public void fire(final Player player, final Sentence sentence, final EventRaiser raiser) {
+<span class="fc" id="L158">						raiser.say(&quot;Just go kill Dhohr Nuggetcutter and his minions; the mountain leader, hero and elder dwarves. Even the simple mountain dwarves are a danger to us, kill them too.&quot;);								</span>
+<span class="fc" id="L159">				}</span>
+		});
+		
+<span class="fc" id="L162">		npc.add(ConversationStates.IDLE, ConversationPhrases.GREETING_MESSAGES,</span>
+				new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+						new QuestInStateCondition(QUEST_SLOT, 0, &quot;start&quot;),
+						new KilledForQuestCondition(QUEST_SLOT, 1)),
+				ConversationStates.ATTENDING, 
+				null,
+<span class="fc" id="L168">				new ChatAction() {</span>
+					@Override
+					public void fire(final Player player, final Sentence sentence, final EventRaiser raiser) {
+<span class="fc" id="L171">						raiser.say(&quot;Thank you so much. You are a warrior, indeed! Here, have one of these. We have found them scattered about. We have no idea what they are.&quot;);</span>
+<span class="fc" id="L172">							final Item mithrilnug = SingletonRepository.getEntityManager()</span>
+									.getItem(&quot;mithril nugget&quot;);
+<span class="fc" id="L174">							player.equipOrPutOnGround(mithrilnug);</span>
+<span class="fc" id="L175">							player.addKarma(25.0);</span>
+<span class="fc" id="L176">							player.addXP(4000);</span>
+<span class="fc" id="L177">							player.setQuest(QUEST_SLOT, &quot;killed;&quot; + System.currentTimeMillis());</span>
+<span class="fc" id="L178">		 			}</span>
+				});
+<span class="fc" id="L180">	}</span>
+
+	@Override
+	public void addToWorld() {
+<span class="fc" id="L184">		fillQuestInfo(</span>
+				&quot;Kill Dhohr Nuggetcutter&quot;,
+				&quot;Zogfang, the orc who guards the entrance of Abandoned Keep, isn't feeling safe while some dwarves still remain in the Keep.&quot;,
+				false);
+<span class="fc" id="L188">		step_1();</span>
+<span class="fc" id="L189">		step_2();</span>
+<span class="fc" id="L190">		step_3();</span>
+<span class="fc" id="L191">	}</span>
+	
+	@Override
+	public List&lt;String&gt; getHistory(final Player player) {
+<span class="nc" id="L195">			final List&lt;String&gt; res = new ArrayList&lt;String&gt;();</span>
+<span class="nc bnc" id="L196" title="All 2 branches missed.">			if (!player.hasQuest(QUEST_SLOT)) {</span>
+<span class="nc" id="L197">				return res;</span>
+			}
+<span class="nc bnc" id="L199" title="All 2 branches missed.">			if (!isCompleted(player)) {</span>
+<span class="nc" id="L200">				res.add(&quot;I must kill the Dhohr Nuggetcutter and his cronies to satisfy Zogfang.&quot;);</span>
+<span class="nc bnc" id="L201" title="All 2 branches missed.">			} else if(isRepeatable(player)){</span>
+<span class="nc" id="L202">				res.add(&quot;Zogfang is anxious again and will reward me if I help him.&quot;);</span>
+			} else {
+<span class="nc" id="L204">				res.add(&quot;My attacks on the dwarves have calmed Zogfang's nerves for the time being.&quot;);</span>
+			}
+<span class="nc" id="L206">			return res;</span>
+	}
+
+	@Override
+	public String getName() {
+<span class="nc" id="L211">		return &quot;KillDhohrNuggetcutter&quot;;</span>
+	}
+	
+	// The kill requirements and surviving in the zone requires at least this level
+	@Override
+	public int getMinLevel() {
+<span class="fc" id="L217">		return 70;</span>
+	}
+	
+	@Override
+	public boolean isRepeatable(final Player player) {
+<span class="nc" id="L222">		return new AndCondition(new QuestStateStartsWithCondition(QUEST_SLOT,&quot;killed&quot;),</span>
+				 new TimePassedCondition(QUEST_SLOT, 1, 2*MathHelper.MINUTES_IN_ONE_WEEK)).fire(player,null, null);
+	}
+	
+	@Override
+	public boolean isCompleted(final Player player) {
+<span class="nc" id="L228">		return new QuestStateStartsWithCondition(QUEST_SLOT,&quot;killed&quot;).fire(player, null, null);</span>
+	}
+
+	@Override
+	public String getNPCName() {
+<span class="nc" id="L233">		return &quot;Zogfang&quot;;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

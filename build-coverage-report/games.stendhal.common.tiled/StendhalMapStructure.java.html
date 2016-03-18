@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>StendhalMapStructure.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.common.tiled</a> &gt; <span class="el_source">StendhalMapStructure.java</span></div><h1>StendhalMapStructure.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.common.tiled;
+
+
+import java.util.LinkedList;
+import java.util.List;
+
+/**
+ * This is the map format that our client uses.
+ * 
+ * @author miguel
+ * 
+ */
+public class StendhalMapStructure {
+	/** Width of the map. */
+	int width;
+
+	/** Height of the map. */
+	int height;
+
+	/** List of tilesets that this map contains. */
+	List&lt;TileSetDefinition&gt; tilesets;
+
+	/** List of layers this map contains. */
+	List&lt;LayerDefinition&gt; layers;
+
+	/**
+	 * Constructor.
+	 * 
+	 * @param w
+	 *            the width of the map
+	 * @param h
+	 *            the height of the map.
+	 */
+<span class="fc" id="L46">	public StendhalMapStructure(final int w, final int h) {</span>
+<span class="fc" id="L47">		width = w;</span>
+<span class="fc" id="L48">		height = h;</span>
+<span class="fc" id="L49">		tilesets = new LinkedList&lt;TileSetDefinition&gt;();</span>
+<span class="fc" id="L50">		layers = new LinkedList&lt;LayerDefinition&gt;();</span>
+<span class="fc" id="L51">	}</span>
+
+	/**
+	 * Adds a new tileset to the map.
+	 * 
+	 * @param set
+	 *            new tileset
+	 */
+	public void addTileset(final TileSetDefinition set) {
+<span class="fc" id="L60">		tilesets.add(set);</span>
+<span class="fc" id="L61">	}</span>
+
+	/**
+	 * Adds a new layer to the map.
+	 * 
+	 * @param layer
+	 *            new layer
+	 */
+	public void addLayer(final LayerDefinition layer) {
+<span class="fc" id="L70">		layer.setMap(this);</span>
+<span class="fc" id="L71">		layers.add(layer);</span>
+<span class="fc" id="L72">	}</span>
+
+	/**
+	 * Returns a list of the tilesets this map contains.
+	 * 
+	 * @return a list of the tilesets this map contains.
+	 */
+	public List&lt;TileSetDefinition&gt; getTilesets() {
+<span class="fc" id="L80">		return tilesets;</span>
+	}
+
+	/**
+	 * Returns a list of the layers this map contains.
+	 * 
+	 * @return a list of the layers this map contains.
+	 */
+	public List&lt;LayerDefinition&gt; getLayers() {
+<span class="nc" id="L89">		return layers;</span>
+	}
+
+	/**
+	 * Return true if the layer with given name exists.
+	 * 
+	 * @param layername
+	 *            the layer name
+	 * @return true if it exists.
+	 */
+	public boolean hasLayer(final String layername) {
+<span class="pc bpc" id="L100" title="2 of 4 branches missed.">		return getLayer(layername) != null;</span>
+	}
+
+	/**
+	 * Returns the layer whose name is layer name or null.
+	 * 
+	 * @param layername
+	 *            the layer name
+	 * @return the layer object or null if it doesnt' exists
+	 */
+	public LayerDefinition getLayer(final String layername) {
+<span class="fc bfc" id="L111" title="All 4 branches covered.">		for (final LayerDefinition layer : layers) {</span>
+<span class="fc bfc" id="L112" title="All 4 branches covered.">			if (layername.equals(layer.getName())) {</span>
+<span class="fc" id="L113">				return layer;</span>
+			}
+<span class="fc" id="L115">		}</span>
+
+<span class="fc" id="L117">		return null;</span>
+	}
+
+	/**
+	 * Build all layers data.
+	 */
+	public void build() {
+<span class="fc bfc" id="L124" title="All 4 branches covered.">		for (final LayerDefinition layer : layers) {</span>
+<span class="fc" id="L125">			layer.build();</span>
+<span class="fc" id="L126">		}</span>
+<span class="fc" id="L127">	}</span>
+
+	/**
+	 * gets the width
+	 *
+	 * @return width
+	 */
+	public int getWidth() {
+<span class="fc" id="L135">		return width;</span>
+	}
+
+	/**
+	 * gets the height
+	 *
+	 * @return height
+	 */
+	public int getHeight() {
+<span class="fc" id="L144">		return height;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

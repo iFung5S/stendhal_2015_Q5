@@ -1,0 +1,274 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>NotificationType.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.common</a> &gt; <span class="el_source">NotificationType.java</span></div><h1>NotificationType.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.common;
+
+import java.awt.Color;
+
+//
+//
+
+/**
+ * A logical notification type, which can be mapped to UI specific contexts.
+ * This would be similar to logical styles vs. physical styles in HTML.
+ */
+<span class="pc" id="L24">public enum NotificationType {</span>
+<span class="fc" id="L25">	CLIENT(&quot;client&quot;) {</span>
+		@Override
+		public Color getColor() {
+<span class="nc" id="L28">			return COLOR_CLIENT;</span>
+		}
+	},
+<span class="fc" id="L31">	ERROR(&quot;error&quot;) {</span>
+		@Override
+		public Color getColor() {
+<span class="nc" id="L34">			return COLOR_ERROR;</span>
+		}
+	},
+<span class="fc" id="L37">	HEAL(&quot;heal&quot;) {</span>
+		@Override
+		public Color getColor() {
+<span class="nc" id="L40">			return COLOR_POSITIVE;</span>
+		}
+		@Override
+		public String getStyleDescription() {
+<span class="nc" id="L44">			return REGULAR;</span>
+		}
+	},
+<span class="fc" id="L47">	INFORMATION(&quot;information&quot;) {</span>
+		@Override
+		public Color getColor() {
+<span class="nc" id="L50">			return COLOR_INFORMATION;</span>
+		}
+	},
+<span class="fc" id="L53">	NEGATIVE(&quot;negative&quot;) {</span>
+		@Override
+		public Color getColor() {
+<span class="nc" id="L56">			return COLOR_NEGATIVE;</span>
+		}
+		@Override
+		public String getStyleDescription() {
+<span class="nc" id="L60">			return REGULAR;</span>
+		}
+	},
+<span class="fc" id="L63">	NORMAL(&quot;normal&quot;) {</span>
+		@Override
+		public Color getColor() {
+<span class="nc" id="L66">			return COLOR_NORMAL;</span>
+		}
+	},
+<span class="fc" id="L69">	POISON(&quot;poison&quot;) {</span>
+		@Override
+		public Color getColor() {
+<span class="nc" id="L72">			return COLOR_NEGATIVE;</span>
+		}
+		@Override
+		public String getStyleDescription() {
+<span class="nc" id="L76">			return REGULAR;</span>
+		}
+	},
+<span class="fc" id="L79">	POSITIVE(&quot;positive&quot;) {</span>
+		@Override
+		public Color getColor() {
+<span class="nc" id="L82">			return COLOR_POSITIVE;</span>
+		}
+		@Override
+		public String getStyleDescription() {
+<span class="nc" id="L86">			return REGULAR;</span>
+		}
+	},
+<span class="fc" id="L89">	EMOTE(&quot;emote&quot;) {</span>
+		@Override
+		public Color getColor() {
+<span class="nc" id="L92">			return COLOR_EMOTE;</span>
+		}
+	},
+<span class="fc" id="L95">	GROUP(&quot;group&quot;) {</span>
+		@Override
+		public Color getColor() {
+<span class="nc" id="L98">			return COLOR_GROUP;</span>
+		}
+	},
+<span class="fc" id="L101">	PRIVMSG(&quot;privmsg&quot;) {</span>
+		@Override
+		public Color getColor() {
+<span class="nc" id="L104">			return COLOR_PRIVMSG;</span>
+		}
+	},
+<span class="fc" id="L107">	RESPONSE(&quot;response&quot;) {</span>
+		@Override
+		public Color getColor() {
+<span class="nc" id="L110">			return COLOR_RESPONSE;</span>
+		}
+	},
+<span class="fc" id="L113">	SCENE_SETTING(&quot;scene_setting&quot;) {</span>
+		@Override
+		public Color getColor() {
+<span class="nc" id="L116">			return COLOR_SCENE_SETTING;</span>
+		}
+	},
+<span class="fc" id="L119">	SERVER(&quot;server&quot;) {</span>
+		@Override
+		public Color getColor() {
+<span class="nc" id="L122">			return COLOR_PRIVMSG;</span>
+		}
+	},
+<span class="fc" id="L125">	SIGNIFICANT_NEGATIVE(&quot;significant_negative&quot;) {</span>
+		@Override
+		public Color getColor() {
+<span class="nc" id="L128">			return COLOR_SIGNIFICANT_NEGATIVE;</span>
+		}
+	},
+<span class="fc" id="L131">	SIGNIFICANT_POSITIVE(&quot;significant_positive&quot;) {</span>
+		@Override
+		public Color getColor() {
+<span class="nc" id="L134">			return COLOR_SIGNIFICANT_POSITIVE;</span>
+		}
+	},
+<span class="fc" id="L137">	TUTORIAL(&quot;tutorial&quot;) {</span>
+		@Override
+		public Color getColor() {
+<span class="nc" id="L140">			return COLOR_TUTORIAL;</span>
+		}
+	},
+<span class="fc" id="L143">	SUPPORT(&quot;support&quot;) {</span>
+		@Override
+		public Color getColor() {
+<span class="nc" id="L146">			return COLOR_SUPPORT;</span>
+		}
+	},
+<span class="fc" id="L149">	DETAILED(&quot;detailed&quot;) {</span>
+		@Override
+		public String getStyleDescription() {
+<span class="nc" id="L152">			return REGULAR;</span>
+		}
+	},
+<span class="fc" id="L155">	WARNING(&quot;warning&quot;) {</span>
+		@Override
+		public Color getColor() {
+<span class="nc" id="L158">			return COLOR_WARNING;</span>
+		}
+	};
+<span class="fc" id="L161">	public static final Color COLOR_CLIENT = Color.gray;</span>
+
+<span class="fc" id="L163">	public static final Color COLOR_ERROR = Color.red;</span>
+
+<span class="fc" id="L165">	public static final Color COLOR_INFORMATION = Color.orange;</span>
+
+<span class="fc" id="L167">	public static final Color COLOR_NEGATIVE = Color.red;</span>
+
+<span class="fc" id="L169">	public static final Color COLOR_NORMAL = Color.black;</span>
+
+<span class="fc" id="L171">	public static final Color COLOR_POSITIVE = Color.green;</span>
+
+	/** dark blue */
+<span class="fc" id="L174">	public static final Color COLOR_GROUP = new Color(00, 00, 160);</span>
+
+	/** muted purple */
+<span class="fc" id="L177">	public static final Color COLOR_EMOTE = new Color(99, 61, 139);</span>
+
+<span class="fc" id="L179">	public static final Color COLOR_PRIVMSG = Color.darkGray;</span>
+
+	/** dark green */
+<span class="fc" id="L182">	public static final Color COLOR_RESPONSE = new Color(0x006400);</span>
+	
+	/** dark brown */
+<span class="fc" id="L185">	public static final Color COLOR_SCENE_SETTING = new Color(0x572002);</span>
+
+<span class="fc" id="L187">	public static final Color COLOR_SIGNIFICANT_NEGATIVE = Color.pink;</span>
+
+	/** bright turquoise blue */
+<span class="fc" id="L190">	public static final Color COLOR_SIGNIFICANT_POSITIVE = new Color(65,</span>
+			105, 225);
+
+	/** purple */
+<span class="fc" id="L194">	public static final Color COLOR_TUTORIAL = new Color(172, 0, 172);</span>
+	
+	/** strong bright orange */
+<span class="fc" id="L197">	public static final Color COLOR_SUPPORT = new Color(0xff7200);</span>
+	
+	/** dark red */
+<span class="fc" id="L200">	public static final Color COLOR_WARNING = new Color(0xa00000);</span>
+	
+	// TODO: review thinking here of using constants.
+	// these are tied to the ones in client.KTextEdit.gui.initStylesForTextPane
+	// so should we tie them together somehow?
+	// also the definitions are crazy.
+	
+	/** normal is bold */
+	public static final String NORMALSTYLE = &quot;normal&quot;;
+	/** regular is not bold */
+	public static final String REGULAR = &quot;regular&quot;;
+	// fwiw, &quot;bold&quot; is blue, italic, bigger than normal, bold and blue.
+	
+	/**
+	 * The mapping mnemonic.
+	 */
+	protected String mnemonic;
+
+	/**
+	 * Create a notification type.
+	 *
+	 * @param mnemonic
+	 *            The mapping mnemonic.
+	 */
+<span class="fc" id="L224">	private NotificationType(final String mnemonic) {</span>
+<span class="fc" id="L225">		this.mnemonic = mnemonic;</span>
+<span class="fc" id="L226">	}</span>
+
+	//
+	// NotificationType
+	//
+
+	/**
+	 * Get the mapping mnemonic (programmatic name).
+	 *
+	 * @return The mapping mnemonic.
+	 */
+	public String getMnemonic() {
+<span class="nc" id="L238">		return mnemonic;</span>
+	}
+
+	/**
+	 * Get the color that is tied to a notification type.
+	 *
+	 * @return The appropriate color.
+	 */
+	public Color getColor() {
+<span class="nc" id="L247">		return COLOR_NORMAL;</span>
+	}
+
+	/**
+	 * Get the style that is tied to a notification type.
+	 *
+	 * @return The appropriate style.
+	 */
+	public String getStyleDescription() {
+<span class="nc" id="L256">		return NORMALSTYLE;</span>
+	}
+	
+	/**
+	 * Get notification type for server messages that the client can show
+	 * without problems. Call this instead of using SERVER directly.
+	 * 
+	 * @param clientVersion version of the client
+	 * @return appropriate type
+	 */
+	public static NotificationType getServerNotificationType(String clientVersion) {
+<span class="pc bpc" id="L267" title="6 of 8 branches missed.">		if ((clientVersion != null) &amp;&amp; (Version.compare(clientVersion, &quot;1.00&quot;) &gt; 0)) {</span>
+<span class="nc" id="L268">			return NotificationType.SERVER;</span>
+		} else {
+<span class="fc" id="L270">			return NotificationType.PRIVMSG;</span>
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

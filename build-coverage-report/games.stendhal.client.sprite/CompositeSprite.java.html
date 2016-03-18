@@ -1,0 +1,353 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>CompositeSprite.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.sprite</a> &gt; <span class="el_source">CompositeSprite.java</span></div><h1>CompositeSprite.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.sprite;
+
+import java.awt.Composite;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.ListIterator;
+
+import org.apache.log4j.Logger;
+
+/**
+ * A sprite that merges several {@link Sprite} objects to one, and pre-renders
+ * those it can so that they do not need to be composited every time the sprite
+ * is drawn. 
+ */
+public class CompositeSprite implements Sprite {
+<span class="fc" id="L30">	private static final Logger logger = Logger.getLogger(CompositeSprite.class);</span>
+	
+	/**
+	 * Composition status flag. &lt;code&gt;true&lt;/code&gt; it the static image layers
+	 * have been merged, &lt;code&gt;false&lt;/code&gt; otherwise.
+	 */
+	private boolean composited;
+	// One Sprite to rule them all...
+	/** The layer Sprites making up the composite. */
+	private List&lt;Sprite&gt; slaves;
+	private Composite blend;
+	private Sprite adjSprite;
+	/** Reference object made up from the meaningful slave references */ 
+	private final CompositeRef reference;
+	
+	/**
+	 * Get a composite of at least one {@link Sprite}. Note that the result
+	 * is not necessarily a CompositeSprite, but can well be one of the slave
+	 * sprites if the said sprite is enough to represent the entire composite.
+	 * The composite can have also one sprite, which is composited above the
+	 * others using a special blend mode.
+	 * 
+	 * @param cache Cache to look up a previously stored, and storing
+	 * 	newly created composites
+	 * @param slaves Sprites making up the composite. The list should be
+	 *	non-null and not empty. Also the sprites themselves should be non-null.
+	 * @param blend Blend mode for the special adjustment sprite, or
+	 * 	&lt;code&gt;null&lt;/code&gt;, if no adjustments are wanted
+	 * @param adj adjustment sprite, or &lt;code&gt;null&lt;/code&gt;
+	 * @return A Sprite representing a composite of the slave Sprites
+	 */
+	public static Sprite getComposite(SpriteCache cache, List&lt;Sprite&gt; slaves,
+			Composite blend, Sprite adj) {
+<span class="fc" id="L63">		ListIterator&lt;Sprite&gt; iter = slaves.listIterator();</span>
+<span class="fc" id="L64">		Sprite empty = null;</span>
+<span class="fc" id="L65">		Sprite previous = null;</span>
+<span class="pc bpc" id="L66" title="5 of 6 branches missed.">		if ((blend == null) || (adj == null) || (adj instanceof EmptySprite)) {</span>
+<span class="fc" id="L67">			blend = null;</span>
+		}
+<span class="fc bfc" id="L69" title="All 2 branches covered.">		while (iter.hasNext()) {</span>
+<span class="fc" id="L70">			Sprite sprite = iter.next();</span>
+<span class="fc bfc" id="L71" title="All 2 branches covered.">			if (sprite instanceof EmptySprite) {</span>
+				// Weed out empty sprites...
+<span class="fc" id="L73">				iter.remove();</span>
+				// ...but keep one just in case we need to return an empty
+				// sprite.
+<span class="fc bfc" id="L76" title="All 2 branches covered.">				if (empty == null) {</span>
+<span class="fc" id="L77">					empty = sprite;</span>
+				}
+<span class="fc bfc" id="L79" title="All 2 branches covered.">			} else if (sprite == previous) {</span>
+				// Remove duplicates as well. This works as long as we do not
+				// have translucent images
+<span class="fc" id="L82">				iter.remove();</span>
+			} else {
+<span class="fc" id="L84">				previous = sprite;</span>
+			}
+<span class="fc" id="L86">		}</span>
+		
+<span class="fc" id="L88">		int size = slaves.size();</span>
+<span class="fc bfc" id="L89" title="All 3 branches covered.">		switch (size) {</span>
+		case 0:
+			// No contents. Return the previously saved empty sprite
+<span class="fc" id="L92">			return empty;</span>
+		case 1:
+			// Composite of one non empty sprite. Just return that one.
+<span class="fc" id="L95">			Sprite loner = slaves.get(0);</span>
+<span class="pc bpc" id="L96" title="1 of 2 branches missed.">			if (blend == null) {</span>
+<span class="fc" id="L97">				return loner;</span>
+			}
+			// Needs composition for the blending anyway. Fall through!
+		default:
+			// A proper composite. Return either a previously generated one,
+			// or create a new and cache that
+<span class="fc" id="L103">			CompositeRef ref = new CompositeRef(slaves, blend, adj);</span>
+<span class="fc" id="L104">			Sprite composite = cache.get(ref);</span>
+<span class="pc bpc" id="L105" title="1 of 2 branches missed.">			if (composite == null) {</span>
+<span class="fc" id="L106">				composite = new CompositeSprite(slaves, blend, adj, ref);</span>
+<span class="fc" id="L107">				cache.add(composite);</span>
+			}
+<span class="fc" id="L109">			return composite;</span>
+		}
+	}
+	
+	/**
+	 * Create a new CompositeSprite. Meaningless slave Sprites (ie. 
+	 * {@link EmptySprite}s must be dropped before this to have well behaving
+	 * references for all equal composites.
+	 *  
+	 * @param slaves Non empty slave Sprites. The first is the bottom of the
+	 * 	Sprite stack
+	 * @param blend blending mode for the blend layer
+	 * @param adj sprite for the blend layer
+	 * @param reference Identifier for cache lookups
+	 */
+	private CompositeSprite(List&lt;Sprite&gt; slaves, Composite blend, Sprite adj, 
+<span class="fc" id="L125">			CompositeRef reference) {</span>
+		// Get a copy. The caller can modify the list
+<span class="fc" id="L127">		this.slaves = new ArrayList&lt;Sprite&gt;(slaves);</span>
+<span class="fc" id="L128">		this.reference = reference;</span>
+<span class="pc bpc" id="L129" title="1 of 2 branches missed.">		if (blend != null) {</span>
+<span class="nc" id="L130">			this.adjSprite = adj;</span>
+<span class="nc" id="L131">			this.blend = blend;</span>
+		}
+<span class="fc" id="L133">	}</span>
+
+	@Override
+	public Sprite createRegion(int x, int y, int width, int height, Object ref) {
+<span class="nc" id="L137">		return new TileSprite(this, x, y, width, height, ref);</span>
+	}
+
+	@Override
+	public void draw(Graphics g, int x, int y) {
+<span class="nc bnc" id="L142" title="All 2 branches missed.">		if (!composited) {</span>
+<span class="nc" id="L143">			composite();</span>
+		}
+		// Saves allocating the iterator. This gets called a lot.
+<span class="nc bnc" id="L146" title="All 2 branches missed.">		for (int i = 0; i &lt; slaves.size(); i++) {</span>
+<span class="nc" id="L147">			slaves.get(i).draw(g, x, y);</span>
+		}
+<span class="nc" id="L149">	}</span>
+
+	@Override
+	public void draw(Graphics g, int destx, int desty, int x, int y, int w,
+			int h) {
+<span class="nc bnc" id="L154" title="All 2 branches missed.">		if (!composited) {</span>
+<span class="nc" id="L155">			composite();</span>
+		}
+		// Saves allocating the iterator. This gets called a lot.
+<span class="nc bnc" id="L158" title="All 2 branches missed.">		for (int i = 0; i &lt; slaves.size(); i++) {</span>
+<span class="nc" id="L159">			slaves.get(i).draw(g, destx, desty, x, y, w, h);</span>
+		}
+<span class="nc" id="L161">	}</span>
+
+	@Override
+	public int getHeight() {
+<span class="nc" id="L165">		return slaves.get(0).getHeight();</span>
+	}
+
+	@Override
+	public Object getReference() {
+<span class="fc" id="L170">		return reference;</span>
+	}
+
+	@Override
+	public int getWidth() {
+<span class="nc" id="L175">		return slaves.get(0).getWidth();</span>
+	}
+
+	/**
+	 * Merge all ImageSprite layers.
+	 */
+	private void composite() {
+<span class="nc" id="L182">		ArrayList&lt;Sprite&gt; newSlaves = new ArrayList&lt;Sprite&gt;(slaves.size());</span>
+<span class="nc" id="L183">		ImageSprite floor = null;</span>
+<span class="nc" id="L184">		ListIterator&lt;Sprite&gt; iter = slaves.listIterator();</span>
+<span class="nc" id="L185">		boolean copied = false;</span>
+		
+		// Go through the layers and merge what can be reasonably merged.
+<span class="nc bnc" id="L188" title="All 2 branches missed.">		while (iter.hasNext()) {</span>
+<span class="nc" id="L189">			Sprite current = iter.next();</span>
+<span class="nc bnc" id="L190" title="All 2 branches missed.">			if (current instanceof ImageSprite) {</span>
+<span class="nc bnc" id="L191" title="All 2 branches missed.">				if (floor != null) {</span>
+<span class="nc bnc" id="L192" title="All 2 branches missed.">					if (!copied) {</span>
+						/*
+						 * Copy the image to avoid messing with the actual 
+						 * tiles. Deferred to this stage to avoid unnecessary
+						 * copying in the case the floor does not have a static
+						 * image on top of it. 
+						 */
+<span class="nc" id="L199">						floor = new ImageSprite(floor);</span>
+<span class="nc" id="L200">						copied = true;</span>
+					}
+<span class="nc" id="L202">					Graphics g = floor.getGraphics();</span>
+<span class="nc" id="L203">					current.draw(g, 0, 0);</span>
+<span class="nc" id="L204">					g.dispose();</span>
+<span class="nc" id="L205">				} else {</span>
+<span class="nc" id="L206">					floor = (ImageSprite) current;</span>
+					// Stacks with blends will always need a copy
+<span class="nc bnc" id="L208" title="All 2 branches missed.">					if (blend != null) {</span>
+<span class="nc" id="L209">						floor = new ImageSprite(floor);</span>
+<span class="nc" id="L210">						copied = true;</span>
+					}
+				}
+			} else {
+<span class="nc bnc" id="L214" title="All 2 branches missed.">				if (floor != null) {</span>
+					// Add the previously composited sprites to the new image
+					// stack.
+<span class="nc" id="L217">					newSlaves.add(floor);</span>
+<span class="nc" id="L218">					floor = null;</span>
+				}
+<span class="nc" id="L220">				newSlaves.add(current);</span>
+			}
+<span class="nc" id="L222">		}</span>
+<span class="nc bnc" id="L223" title="All 2 branches missed.">		if (floor != null) {</span>
+<span class="nc" id="L224">			newSlaves.add(floor);</span>
+		}
+<span class="nc" id="L226">		newSlaves.trimToSize();</span>
+<span class="nc" id="L227">		slaves = newSlaves;</span>
+		
+		// Adjustment effect
+<span class="nc bnc" id="L230" title="All 2 branches missed.">		if (blend != null) {</span>
+			// Blend individual stacks
+<span class="nc" id="L232">			applyBlend(newSlaves);</span>
+<span class="nc" id="L233">			blend = null;</span>
+<span class="nc" id="L234">			adjSprite = null;</span>
+		}
+<span class="nc" id="L236">		composited = true;</span>
+<span class="nc" id="L237">	}</span>
+	
+	/**
+	 * Apply blend to individual sprites of the otherwise merged sprite stack.
+	 *  
+	 * @param stack
+	 */
+	private void applyBlend(List&lt;Sprite&gt; stack) {
+<span class="nc" id="L245">		ListIterator&lt;Sprite&gt; iter = stack.listIterator();</span>
+<span class="nc bnc" id="L246" title="All 2 branches missed.">		while (iter.hasNext()) {</span>
+<span class="nc" id="L247">			Sprite sprite = iter.next();</span>
+<span class="nc bnc" id="L248" title="All 2 branches missed.">			if (sprite instanceof ImageSprite) {</span>
+<span class="nc" id="L249">				Graphics g = ((ImageSprite) sprite).getGraphics();</span>
+<span class="nc bnc" id="L250" title="All 2 branches missed.">				if (g instanceof Graphics2D) {</span>
+<span class="nc" id="L251">					((Graphics2D) g).setComposite(blend);</span>
+<span class="nc" id="L252">					adjSprite.draw(g, 0, 0);</span>
+<span class="nc" id="L253">					g.dispose();</span>
+					/*
+					 * Some JVMs with some drawing back ends treat an image that
+					 * has been drawn to using special composites ever after as
+					 * a pariah, and trying to draw the said image is apparently
+					 * done using the slowest possible method. That the image
+					 * differs in no way from others, makes no difference (A
+					 * clean copy of all the data results in an image that is
+					 * treated normally). That is a java bug, and the
+					 * workaround is ugly waste of resources, but there seems to
+					 * be no other way. There's no way to tell java that we have
+					 * stopped modifying the image, and it's safe to tuck it in
+					 * VRAM.
+					 * 
+					 * Using ImageSprite for the copying is the simplest method.
+					 */
+<span class="nc" id="L269">					iter.set(new ImageSprite(sprite));</span>
+				}
+<span class="nc bnc" id="L271" title="All 2 branches missed.">			} else if (sprite instanceof AnimatedSprite) {</span>
+				/*
+				 * Create an animated sprite made of composite sprites. The
+				 * individual frames will use the usual mechanism to apply the
+				 * blend only once.
+				 */
+<span class="nc" id="L277">				AnimatedSprite parent = ((AnimatedSprite) sprite);</span>
+<span class="nc" id="L278">				Sprite[] frames = parent.frames;</span>
+<span class="nc" id="L279">				Sprite[] newFrames = new Sprite[frames.length];</span>
+<span class="nc" id="L280">				List&lt;Sprite&gt; tmp = new ArrayList&lt;Sprite&gt;(1);</span>
+<span class="nc bnc" id="L281" title="All 2 branches missed.">				for (int i = 0; i &lt; frames.length; i++) {</span>
+<span class="nc" id="L282">					tmp.add(frames[i]);</span>
+					/*
+					 * The frames of an animated sprite can have the same
+					 * reference as the animated sprite itself, so we can not
+					 * use getComposite() to obtain shared instances. Just make
+					 * a new instance to avoid problems, even though it would
+					 * be nice to render once the partial stacks that appear in
+					 * more than one composite.
+					 */
+<span class="nc" id="L291">					newFrames[i] = new CompositeSprite(tmp, blend, adjSprite, null);</span>
+<span class="nc" id="L292">					tmp.clear();</span>
+				}
+<span class="nc" id="L294">				iter.set(new AnimatedSprite(newFrames, parent.delays, true, null));</span>
+<span class="nc" id="L295">			} else {</span>
+<span class="nc" id="L296">				logger.error(&quot;Unhandled sprite with a blend: &quot; + sprite);</span>
+			}
+<span class="nc" id="L298">		}</span>
+<span class="nc" id="L299">	}</span>
+	
+	/**
+	 * Reference object for identifying equal composite sprite stacks.
+	 */
+	private static class CompositeRef {
+		/** References of the slave and adjustment sprites */
+		private final Object[] refs;
+		/** hash code */
+		private final int hash;
+		
+		/**
+		 * Create a new CompositeRef.
+		 * 
+		 * @param slaves Meaningful sprites making up the composite,
+		 * 	&lt;em&gt;before&lt;/em&gt; merging them.
+		 * @param blend composite mode of the adjustment sprite, or
+		 * 	&lt;code&gt;null&lt;/code&gt;
+		 * @param adj adjustment sprite, or &lt;code&gt;null&lt;/code&gt;
+		 */
+<span class="fc" id="L319">		CompositeRef(List&lt;Sprite&gt; slaves, Composite blend, Sprite adj) {</span>
+<span class="fc" id="L320">			int tmphash = 0;</span>
+<span class="pc bpc" id="L321" title="1 of 2 branches missed.">			if (blend == null) {</span>
+<span class="fc" id="L322">				refs = new Object[slaves.size()];</span>
+			} else {
+<span class="nc" id="L324">				refs = new Object[slaves.size() + 1];</span>
+<span class="nc" id="L325">				Object ref = adj.getReference();</span>
+<span class="nc" id="L326">				refs[slaves.size()] = ref + &quot;@&quot; + blend.toString();</span>
+<span class="nc bnc" id="L327" title="All 2 branches missed.">				tmphash = (ref == null) ? 42 : ref.hashCode();</span>
+			}
+<span class="fc bfc" id="L329" title="All 2 branches covered.">			for (int i = 0; i &lt; slaves.size(); i++) {</span>
+<span class="fc" id="L330">				Object ref = slaves.get(i).getReference();</span>
+<span class="fc" id="L331">				refs[i] = ref;</span>
+<span class="pc bpc" id="L332" title="1 of 2 branches missed.">				if (ref != null) {</span>
+<span class="fc" id="L333">					tmphash ^= ref.hashCode();</span>
+				}
+			}
+<span class="fc" id="L336">			hash = tmphash;</span>
+<span class="fc" id="L337">		}</span>
+		
+		@Override
+		public boolean equals(Object obj) {
+<span class="nc bnc" id="L341" title="All 2 branches missed.">			if (obj instanceof CompositeRef) {</span>
+<span class="nc" id="L342">				return Arrays.equals(refs, ((CompositeRef) obj).refs); </span>
+			}
+<span class="nc" id="L344">			return false;</span>
+		}
+		
+		@Override
+		public int hashCode() {
+<span class="fc" id="L349">			return hash;</span>
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

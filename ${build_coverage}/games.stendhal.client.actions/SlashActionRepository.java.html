@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SlashActionRepository.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.actions</a> &gt; <span class="el_source">SlashActionRepository.java</span></div><h1>SlashActionRepository.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.actions;
+
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Set;
+
+/**
+ * Manages Slash Action Objects.
+ */
+<span class="nc" id="L22">public class SlashActionRepository {</span>
+
+	/** Set of client supported Actions. */
+<span class="fc" id="L25">	private static HashMap&lt;String, SlashAction&gt; actions = new HashMap&lt;String, SlashAction&gt;();</span>
+
+	/**
+	 * Registers the available Action.
+	 */
+	public static void register() {
+<span class="fc" id="L31">		final SlashAction msg = new MessageAction();</span>
+<span class="fc" id="L32">		final SlashAction supporta = new SupportAnswerAction();</span>
+<span class="fc" id="L33">		final SlashAction who = new WhoAction();</span>
+<span class="fc" id="L34">		final SlashAction help = new HelpAction();</span>
+<span class="fc" id="L35">		final GroupMessageAction groupMessage = new GroupMessageAction();</span>
+
+<span class="fc" id="L37">		actions.put(&quot;/&quot;, new RemessageAction());</span>
+<span class="fc" id="L38">		actions.put(&quot;add&quot;, new AddBuddyAction());</span>
+<span class="fc" id="L39">		actions.put(&quot;adminlevel&quot;, new AdminLevelAction());</span>
+<span class="fc" id="L40">		actions.put(&quot;adminnote&quot;, new AdminNoteAction());</span>
+<span class="fc" id="L41">		actions.put(&quot;alter&quot;, new AlterAction());</span>
+<span class="fc" id="L42">		actions.put(&quot;altercreature&quot;, new AlterCreatureAction());</span>
+<span class="fc" id="L43">		actions.put(&quot;alterquest&quot;, new AlterQuestAction());</span>
+<span class="fc" id="L44">		actions.put(&quot;answer&quot;, new AnswerAction());</span>
+<span class="fc" id="L45">		actions.put(&quot;atlas&quot;, new AtlasBrowserLaunchCommand());</span>
+<span class="fc" id="L46">		actions.put(&quot;away&quot;, new AwayAction());</span>
+
+<span class="fc" id="L48">		actions.put(&quot;ban&quot;, new BanAction());</span>
+
+<span class="fc" id="L50">		actions.put(&quot;clear&quot;, new ClearChatLogAction());</span>
+<span class="fc" id="L51">		actions.put(&quot;clickmode&quot;, new ClickModeAction());</span>
+<span class="fc" id="L52">		actions.put(&quot;clientinfo&quot;, new ClientInfoAction());</span>
+<span class="fc" id="L53">		actions.put(&quot;commands&quot;, help);</span>
+<span class="fc" id="L54">		actions.put(&quot;config&quot;, new ConfigAction());</span>
+
+<span class="fc" id="L56">		actions.put(&quot;drop&quot;, new DropAction());</span>
+
+<span class="fc" id="L58">		actions.put(&quot;cast&quot;, new CastSpellAction());</span>
+
+<span class="fc" id="L60">		actions.put(&quot;gag&quot;, new GagAction());</span>
+<span class="fc" id="L61">		actions.put(&quot;gmhelp&quot;, new GMHelpAction());</span>
+<span class="fc" id="L62">		actions.put(&quot;group&quot;, new GroupManagementAction(groupMessage));</span>
+<span class="fc" id="L63">		actions.put(&quot;groupmessage&quot;, groupMessage);</span>
+<span class="fc" id="L64">		actions.put(&quot;grumpy&quot;, new GrumpyAction());</span>
+
+<span class="fc" id="L66">		actions.put(&quot;help&quot;, help);</span>
+
+<span class="fc" id="L68">		actions.put(&quot;ignore&quot;, new IgnoreAction());</span>
+<span class="fc" id="L69">		actions.put(&quot;inspect&quot;, new InspectAction());</span>
+<span class="fc" id="L70">		actions.put(&quot;invisible&quot;, new InvisibleAction());</span>
+
+<span class="fc" id="L72">		actions.put(&quot;jail&quot;, new JailAction());</span>
+
+<span class="fc" id="L74">		actions.put(&quot;listproducers&quot;, new ListProducersAction());</span>
+
+<span class="fc" id="L76">		actions.put(&quot;me&quot;, new EmoteAction());</span>
+<span class="fc" id="L77">		actions.put(&quot;msg&quot;, msg);</span>
+<span class="fc" id="L78">		actions.put(&quot;mute&quot;, new MuteAction());</span>
+
+<span class="fc" id="L80">		actions.put(&quot;names&quot;, who);</span>
+
+<span class="fc" id="L82">		actions.put(&quot;p&quot;, groupMessage);</span>
+<span class="fc" id="L83">		actions.put(&quot;profile&quot;, new ProfileAction());</span>
+<span class="fc" id="L84">		actions.put(&quot;travellog&quot;, new TravelLogAction());</span>
+
+<span class="fc" id="L86">		actions.put(&quot;quit&quot;, new QuitAction());</span>
+
+<span class="fc" id="L88">		actions.put(&quot;remove&quot;, new RemoveBuddyAction());</span>
+
+<span class="fc" id="L90">		actions.put(&quot;sentence&quot;, new SentenceAction());</span>
+<span class="fc" id="L91">		actions.put(&quot;status&quot;, new SentenceAction()); // Alias for /sentence</span>
+<span class="fc" id="L92">		actions.put(&quot;settings&quot;, new SettingsAction());</span>
+
+<span class="fc" id="L94">		actions.put(&quot;sound&quot;, new SoundAction());</span>
+<span class="fc" id="L95">		actions.put(&quot;volume&quot;, new VolumeAction());</span>
+<span class="fc" id="L96">		actions.put(&quot;vol&quot;, new VolumeAction());</span>
+
+<span class="fc" id="L98">		actions.put(&quot;storemessage&quot;, new StoreMessageAction());</span>
+<span class="fc" id="L99">		actions.put(&quot;postmessage&quot;, new StoreMessageAction());</span>
+
+<span class="fc" id="L101">		actions.put(&quot;summonat&quot;, new SummonAtAction());</span>
+<span class="fc" id="L102">		actions.put(&quot;summon&quot;, new SummonAction());</span>
+<span class="fc" id="L103">		actions.put(&quot;supportanswer&quot;, supporta);</span>
+<span class="fc" id="L104">		actions.put(&quot;supporta&quot;, supporta);</span>
+<span class="fc" id="L105">		actions.put(&quot;support&quot;, new SupportAction());</span>
+
+<span class="fc" id="L107">		actions.put(&quot;takescreenshot&quot;, new ScreenshotAction());</span>
+<span class="fc" id="L108">		actions.put(&quot;teleport&quot;, new TeleportAction());</span>
+<span class="fc" id="L109">		actions.put(&quot;teleportto&quot;, new TeleportToAction());</span>
+<span class="fc" id="L110">		actions.put(&quot;tellall&quot;, new TellAllAction());</span>
+<span class="fc" id="L111">		actions.put(&quot;tell&quot;, msg);</span>
+
+<span class="fc" id="L113">		actions.put(&quot;where&quot;, new WhereAction());</span>
+<span class="fc" id="L114">		actions.put(&quot;who&quot;, who);</span>
+<span class="fc" id="L115">		actions.putAll(BareBonesBrowserLaunchCommandsFactory.createBrowserCommands());</span>
+//		actions.put(&quot;wrap&quot;, new WrapAction());
+		
+<span class="fc" id="L118">		actions.put(&quot;walk&quot;, new AutoWalkAction());</span>
+<span class="fc" id="L119">		actions.put(&quot;stopwalk&quot;, new AutoWalkStopAction());</span>
+<span class="fc" id="L120">	}</span>
+
+	/**
+	 * Gets the Action object for the specified Action name.
+	 *
+	 * @param name
+	 *            name of Action
+	 * @return Action object
+	 */
+	public static SlashAction get(String name) {
+<span class="fc" id="L130">		String temp = name.toLowerCase(Locale.ENGLISH);</span>
+<span class="fc" id="L131">		return actions.get(temp);</span>
+	}
+	
+	/**
+	 * Get all known command names.
+	 * 
+	 * @return set of commands
+	 */
+	public static Set&lt;String&gt; getCommandNames() {
+<span class="nc" id="L140">		return actions.keySet();</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>KillRecording.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.player</a> &gt; <span class="el_source">KillRecording.java</span></div><h1>KillRecording.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.player;
+
+import games.stendhal.common.MathHelper;
+
+/**
+ * recording of killings.
+ *
+ * @author hendrik
+ */
+class KillRecording {
+	private static final String KILL_SLOT_NAME = &quot;!kills&quot;;
+	private static final String PREFIX_SHARED = &quot;shared.&quot;;
+	private static final String PREFIX_SOLO = &quot;solo.&quot;;
+
+	private final Player player;
+
+<span class="fc" id="L29">	public KillRecording(final Player player) {</span>
+<span class="fc" id="L30">		this.player = player;</span>
+<span class="fc" id="L31">	}</span>
+
+	/**
+	 * Checks if the player has ever killed a creature with the given name
+	 * without the help of any other player.
+	 *
+	 * @param name of the creature to check.
+	 * @return true if this player has ever killed this creature on his own.
+	 */
+	public boolean hasKilledSolo(final String name) {
+<span class="fc" id="L41">		final String count = player.getKeyedSlot(KILL_SLOT_NAME, PREFIX_SOLO + name);</span>
+<span class="fc bfc" id="L42" title="All 2 branches covered.">		return MathHelper.parseIntDefault(count, 0) &gt; 0;</span>
+	}
+
+	/**
+	 * Checks if the player has ever killed a creature with the given name
+	 * with the help of any other player.
+	 *
+	 * @param name of the creature to check.
+	 * @return true if this player has ever killed this creature in a team.
+	 */
+	public boolean hasKilledShared(final String name) {
+<span class="fc" id="L53">		final String count = player.getKeyedSlot(KILL_SLOT_NAME, PREFIX_SHARED + name);</span>
+<span class="fc bfc" id="L54" title="All 2 branches covered.">		return MathHelper.parseIntDefault(count, 0) &gt; 0;</span>
+	}
+	/**
+	 * Checks if the player has ever killed a creature, with or without the help
+	 * of any other player.
+	 *
+	 * @param  name of the creature to check.
+	 * @return true if this player has ever killed this creature on his own.
+	 */
+	public boolean hasKilled(final String name) {
+<span class="fc bfc" id="L64" title="All 4 branches covered.">		return hasKilledShared(name) || hasKilledSolo(name);</span>
+	}
+
+	/**
+	 * Stores in which way the player has killed a creature with the given name.
+	 *
+	 * @param name of the killed creature.
+	 * @param mode
+	 *            either &quot;solo&quot;, &quot;shared&quot;, or null.
+	 */
+	private void setKill(final String name, final String mode) {
+<span class="fc" id="L75">		final String key = mode + &quot;.&quot; + name;</span>
+<span class="fc" id="L76">		final String count = player.getKeyedSlot(KILL_SLOT_NAME, key);</span>
+<span class="fc" id="L77">		final int oldValue = MathHelper.parseIntDefault(count, 0);</span>
+<span class="fc" id="L78">		player.setKeyedSlot(KILL_SLOT_NAME, key, Integer.toString(oldValue + 1));</span>
+<span class="fc" id="L79">	}</span>
+
+	/**
+	 * Stores that the player has killed 'name' solo. Overwrites shared kills of
+	 * 'name'
+	 * @param name of the killed entity
+	 *
+	 */
+	public void setSoloKill(final String name) {
+<span class="fc" id="L88">		setKill(name, &quot;solo&quot;);</span>
+<span class="fc" id="L89">	}</span>
+
+	/**
+	 * Stores that the player has killed 'name' with help of others. Does not
+	 * overwrite solo kills of 'name'
+	 * @param name of the killed entity
+	 */
+	public void setSharedKill(final String name) {
+<span class="fc" id="L97">		setKill(name, &quot;shared&quot;);</span>
+<span class="fc" id="L98">	}</span>
+
+	/**
+	 * Return information about how much creatures with the given name player killed.
+	 * @param name of the killed creature.
+	 * @param mode either &quot;solo&quot;, &quot;shared&quot;, or null.
+	 * @return number of killed creatures
+	 */
+	public int getKill(final String name, final String mode) {
+<span class="fc" id="L107">		final String key = mode + &quot;.&quot; + name;</span>
+<span class="fc" id="L108">		final int kills = MathHelper.parseIntDefault(player.getKeyedSlot(KILL_SLOT_NAME, key),0);</span>
+<span class="fc" id="L109">		return(kills);</span>
+	}
+
+	/**
+	 * Return how much the player has killed 'name' solo.
+	 * @param name of the killed entity
+	 * @return number of killed creatures
+	 */
+	public int getSoloKill(final String name) {
+<span class="fc" id="L118">		return(getKill(name, &quot;solo&quot;));</span>
+	}
+
+	/**
+	 * Return how much the player has killed 'name' shared.
+	 * @param name of the killed entity
+	 * @return number of killed creatures
+	 */
+	public int getSharedKill(final String name) {
+<span class="fc" id="L127">		return(getKill(name, &quot;shared&quot;));</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

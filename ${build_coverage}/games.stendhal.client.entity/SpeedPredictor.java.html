@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SpeedPredictor.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.entity</a> &gt; <span class="el_source">SpeedPredictor.java</span></div><h1>SpeedPredictor.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                 (C) Copyright 2003-2013 - Stendhal team                 *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.entity;
+
+import games.stendhal.client.gui.wt.core.WtWindowManager;
+import games.stendhal.common.MathHelper;
+
+/**
+ * Object that keeps track of lag between user initiated movement and server
+ * responses to them, and calculates appropriate speed based on the lag for the
+ * user to be used for movement prediction. 
+ */
+class SpeedPredictor {
+	/** Server turn length. */
+	private static final double TURN_LENGTH = 300;
+	/**
+	 * Initial guess for the starting speed.
+	 */
+	private static final double INITIAL_PREDICTED_SPEED = 0.3;
+	/**
+	 * Time threshold in milliseconds, above which measured lag events are
+	 * assumed to be caused by temporary network glitches, or other
+	 * anomalous conditions (such as user being unable to move to the
+	 * predicted direction, and the next move being initiated by path
+	 * finding instead of keyboard). 
+	 */
+	private static final double DISCARD_THRESHOLD = 2000;
+	/**
+	 * Very low starting speeds can look odd, so we treat those as 0, and only
+	 * turn the player in the prediction code if that's the case.
+	 */
+	private static final double DISABLING_THRESHDOLD = 0.3;
+	/**
+	 * Length of the lag time accumulation vector. The amount of history
+	 * retained for the prediction purposes. Smaller value means faster
+	 * adaption to current situation, but higher instability of the
+	 * predicted lag.
+	 */
+	private static final int VECTOR_LENGTH = 4;
+	/** WM property name for saving the predicted speed. */
+	private static final String SPEED_PROPERTY = &quot;predictor.speed&quot;;
+	/** WM property name for saving the recent jitter. */
+	private static final String JITTER_PROPERTY = &quot;predictor.jitter&quot;;
+	
+	/**
+	 * Stored time averages.
+	 */
+	final double[] times;
+	/**
+	 * Current predicted speed.
+	 */
+	double prediction;
+	/**
+	 * Time of the previous start of prediction, or 0 if the user has moved
+	 * after that.
+	 */
+	private long timeStamp;
+	/**
+	 * A measure of instability in latency. Not really any exact value, but
+	 * corresponds to milliseconds.
+	 */
+	private double jitter;
+	
+	/**
+	 * Create a new SpeedPredictor with default initial prediction and
+	 * history corresponding to that.
+	 */
+<span class="fc" id="L77">	SpeedPredictor() {</span>
+<span class="fc" id="L78">		times = new double[VECTOR_LENGTH];</span>
+<span class="fc" id="L79">		WtWindowManager wm = WtWindowManager.getInstance();</span>
+<span class="fc" id="L80">		prediction = MathHelper.parseDoubleDefault(wm.getProperty(SPEED_PROPERTY,</span>
+				Double.toString(INITIAL_PREDICTED_SPEED)), INITIAL_PREDICTED_SPEED);
+<span class="fc" id="L82">		jitter = MathHelper.parseDouble(wm.getProperty(JITTER_PROPERTY, &quot;0.0&quot;));</span>
+		
+		// Fill the history with data corresponding to the stored, or default
+		// prediction.
+<span class="fc" id="L86">		double average = TURN_LENGTH / prediction;</span>
+<span class="fc bfc" id="L87" title="All 2 branches covered.">		for (int i = 0; i &lt; VECTOR_LENGTH; i++) {</span>
+<span class="fc" id="L88">			times[i] = average;</span>
+		}
+<span class="fc" id="L90">	}</span>
+	
+	/**
+	 * Create a new SpeedPredictor based on the data collected by another
+	 * predictor.
+	 * 
+	 * @param old predictor to be used as the template
+	 */
+<span class="fc" id="L98">	SpeedPredictor(SpeedPredictor old) {</span>
+<span class="fc" id="L99">		times = old.times;</span>
+<span class="fc" id="L100">		prediction = old.prediction;</span>
+<span class="fc" id="L101">		jitter = old.jitter;</span>
+<span class="fc" id="L102">	}</span>
+	
+	/**
+	 * Check if the predictor is expecting a move event to end a time
+	 * measurement.
+	 * 
+	 * @return &lt;code&gt;true&lt;/code&gt; if the predictor should be notified by
+	 * 	the next user move event.
+	 */
+	boolean isActive() {
+<span class="nc bnc" id="L112" title="All 2 branches missed.">		return timeStamp != 0;</span>
+	}
+	
+	/**
+	 * Notify the predictor that the user initiated movement using the
+	 * keyboard.
+	 */
+	void startPrediction() {
+<span class="nc" id="L120">		timeStamp = System.currentTimeMillis();</span>
+<span class="nc" id="L121">	}</span>
+	
+	/**
+	 * Called when the user moves. Marks the end of a timing instance.
+	 */
+	void onMoved() {
+<span class="nc" id="L127">		double diff = System.currentTimeMillis() - timeStamp;</span>
+<span class="nc" id="L128">		timeStamp = 0;</span>
+<span class="nc bnc" id="L129" title="All 2 branches missed.">		if (diff &gt; DISCARD_THRESHOLD) {</span>
+<span class="nc" id="L130">			return;</span>
+		}
+		
+<span class="nc" id="L133">		double recentJitter = 0;</span>
+<span class="nc" id="L134">		double sum = 0.0;</span>
+<span class="nc bnc" id="L135" title="All 2 branches missed.">		for (int i = 0; i &lt; VECTOR_LENGTH; i++) {</span>
+<span class="nc" id="L136">			double old = times[i];</span>
+<span class="nc" id="L137">			double avg = (diff + old) / 2;</span>
+<span class="nc" id="L138">			recentJitter += Math.abs(old - diff);</span>
+<span class="nc" id="L139">			times[i] = avg;</span>
+<span class="nc" id="L140">			diff = old;</span>
+<span class="nc" id="L141">			sum += avg;</span>
+		}
+<span class="nc" id="L143">		recentJitter /= 8;</span>
+<span class="nc" id="L144">		jitter = (jitter + 2.0 * Math.max(jitter, recentJitter) + recentJitter) / 4.0;</span>
+<span class="nc" id="L145">		prediction = TURN_LENGTH / (sum / VECTOR_LENGTH + jitter);</span>
+		
+		// Save for future
+<span class="nc" id="L148">		WtWindowManager wm = WtWindowManager.getInstance();</span>
+<span class="nc" id="L149">		wm.setProperty(SPEED_PROPERTY, Double.toString(prediction));</span>
+<span class="nc" id="L150">		wm.setProperty(JITTER_PROPERTY, Double.toString(jitter));</span>
+<span class="nc" id="L151">	}</span>
+
+	/**
+	 * Get the current predicted speed.
+	 * 
+	 * @return predicted speed
+	 */
+	double getSpeed() {
+<span class="nc bnc" id="L159" title="All 2 branches missed.">		if (prediction &gt; DISABLING_THRESHDOLD) {</span>
+<span class="nc" id="L160">			return prediction;</span>
+		}
+		
+<span class="nc" id="L163">		return 0.0;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

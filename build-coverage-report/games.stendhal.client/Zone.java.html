@@ -1,0 +1,512 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Zone.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client</a> &gt; <span class="el_source">Zone.java</span></div><h1>Zone.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2011 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client;
+
+import games.stendhal.client.gui.j2d.Blend;
+import games.stendhal.client.gui.wt.core.SettingChangeAdapter;
+import games.stendhal.client.gui.wt.core.WtWindowManager;
+import games.stendhal.client.sprite.Tileset;
+import games.stendhal.common.CollisionDetection;
+import games.stendhal.common.MathHelper;
+import games.stendhal.common.tiled.LayerDefinition;
+
+import java.awt.Composite;
+import java.awt.Graphics;
+import java.awt.geom.Rectangle2D;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import marauroa.common.game.RPObject;
+import marauroa.common.net.InputSerializer;
+
+import org.apache.log4j.Logger;
+
+/**
+ * Layer data of a zone.
+ */
+public class Zone {
+	/**
+	 * The name of the setting that controls whether the weather layer should
+	 * be drawn.
+	 */ 
+	private static final String WEATHER_PROPERTY = &quot;ui.draw_weather&quot;;
+	
+	/** Name of the zone. */
+	private final String name;
+	/** A name that's suitable for presenting to the user. */
+	private String readableName;
+	/** Renderers for normal layers. */
+<span class="nc" id="L52">	private final Map&lt;String, LayerRenderer&gt; layers = new HashMap&lt;String, LayerRenderer&gt;();</span>
+	/** Global current zone information. */
+<span class="nc" id="L54">	private final ZoneInfo zoneInfo = ZoneInfo.get();</span>
+	/** Weather renderer. */
+<span class="nc" id="L56">	private LayerRenderer weather = new EmptyLayerRenderer();</span>
+	/** Name of the weather type, or &lt;code&gt;null&lt;/code&gt;. */
+	private String weatherName;
+	/** Collision layer. */
+	private CollisionDetection collision;
+	/** Protection layer. */
+	private CollisionDetection protection;
+	/** Tilesets. */
+	private TileStore tileset;
+	/**
+	 * &lt;code&gt;true&lt;/code&gt;, if the zone has been successfully validated since the
+	 * last change, &lt;code&gt;false&lt;/code&gt; otherwise.
+	 */
+	private volatile boolean isValid;
+	/**
+	 * If &lt;code&gt;true&lt;/code&gt;, the zone needs a data layer added before it can be
+	 * validated.
+	 */
+	private boolean requireData;
+	/**
+	 * Update property of the zone. &lt;code&gt;false&lt;/code&gt; usually, but
+	 * &lt;code&gt;true&lt;/code&gt; when the zone is an update (such as
+	 * changed colors) to the current zone. 
+	 */
+	private boolean update;
+	/** Danger level of the zone. */
+	private double dangerLevel;
+	/** Flag to check whether the weather layer should be drawn. */
+	private boolean drawWeather;
+	
+	/**
+	 * Create a new zone.
+	 * 
+	 * @param name zone name
+	 */
+<span class="nc" id="L91">	Zone(String name) {</span>
+<span class="nc" id="L92">		this.name = name;</span>
+		
+		// Follow the weather drawing setting
+<span class="nc" id="L95">		WtWindowManager.getInstance().registerSettingChangeListener(WEATHER_PROPERTY, new SettingChangeAdapter(WEATHER_PROPERTY, &quot;true&quot;) {</span>
+			@Override
+			public void changed(String newValue) {
+<span class="nc" id="L98">				boolean value = Boolean.parseBoolean(newValue);</span>
+<span class="nc bnc" id="L99" title="All 2 branches missed.">				if (drawWeather != value) {</span>
+<span class="nc" id="L100">					drawWeather = value;</span>
+<span class="nc bnc" id="L101" title="All 2 branches missed.">					if (!value) {</span>
+<span class="nc" id="L102">						weather = new EmptyLayerRenderer();</span>
+<span class="nc bnc" id="L103" title="All 2 branches missed.">					} else if (weatherName != null) {</span>
+<span class="nc" id="L104">						weather = new WeatherLayerRenderer(weatherName, zoneInfo.getZoneColor(), zoneInfo.getColorMethod());</span>
+					}
+				}
+<span class="nc" id="L107">			}</span>
+		});
+<span class="nc" id="L109">	}</span>
+	
+	/**
+	 * Check if the zone is an update to another zone, rather than one where
+	 * the player has just moved to.
+	 * 
+	 * @return &lt;code&gt;true&lt;/code&gt;, if the zone is an update, &lt;code&gt;false&lt;/code&gt;
+	 *	otherwise
+	 */
+	boolean isUpdate() {
+<span class="nc" id="L119">		return update;</span>
+	}
+	
+	/**
+	 * Set the update property of the zone. Zone data that is a color update
+	 * should be prepared in a background thread, as far as possible, to avoid
+	 * pausing the client. For normal zone changes, the update status should be
+	 * &lt;code&gt;false&lt;/code&gt;.
+	 * 
+	 * @param update &lt;code&gt;false&lt;/code&gt; for normal zone changes. 
+	 * 	&lt;code&gt;true&lt;/code&gt; when the zone is an update to the current zone
+	 */
+	void setUpdate(boolean update) {
+<span class="nc" id="L132">		this.update = update;</span>
+<span class="nc" id="L133">	}</span>
+	
+	/**
+	 * Call, if the zone requires a data layer. Calling this must happen
+	 * &lt;b&gt;before&lt;/b&gt; the said data layer is added.
+	 */
+	void requireDataLayer() {
+<span class="nc" id="L140">		requireData = true;</span>
+<span class="nc" id="L141">	}</span>
+	
+	/**
+	 * Add a layer.
+	 * 
+	 * @param layer layer name
+	 * @param in Stream for reading the layer data
+	 * 
+	 * @throws IOException
+	 * @throws ClassNotFoundException
+	 */
+	void addLayer(String layer, InputStream in) throws IOException, ClassNotFoundException {
+<span class="nc bnc" id="L153" title="All 2 branches missed.">		if (layer.equals(&quot;collision&quot;)) {</span>
+			/*
+			 * Add a collision layer.
+			 */
+<span class="nc" id="L157">			collision = new CollisionDetection();</span>
+<span class="nc" id="L158">			collision.setCollisionData(LayerDefinition.decode(in));</span>
+<span class="nc bnc" id="L159" title="All 2 branches missed.">		} else if (layer.equals(&quot;protection&quot;)) {</span>
+			/*
+			 * Add protection
+			 */
+<span class="nc" id="L163">			protection = new CollisionDetection();</span>
+<span class="nc" id="L164">			protection.setCollisionData(LayerDefinition.decode(in));</span>
+<span class="nc bnc" id="L165" title="All 2 branches missed.">		} else if (layer.equals(&quot;tilesets&quot;)) {</span>
+			/*
+			 * Add tileset
+			 */
+<span class="nc" id="L169">			TileStore store = new TileStore();</span>
+<span class="nc" id="L170">			store.addTilesets(new InputSerializer(in));</span>
+<span class="nc" id="L171">			tileset = store;</span>
+<span class="nc bnc" id="L172" title="All 2 branches missed.">		} else if (layer.equals(&quot;data_map&quot;)) {</span>
+<span class="nc" id="L173">			readDataLayer(in);</span>
+		} else {
+			/*
+			 * It is a tile layer.
+			 */
+<span class="nc" id="L178">			TileRenderer content = new TileRenderer();</span>
+<span class="nc" id="L179">			content.setMapData(in);</span>
+<span class="nc" id="L180">			layers.put(layer, content);</span>
+		}
+<span class="nc" id="L182">		isValid = false;</span>
+<span class="nc" id="L183">	}</span>
+
+	/**
+	 * Read the special data layer.
+	 * 
+	 * @param in Stream for reading the layer data
+	 * @throws IOException
+	 */
+	private void readDataLayer(InputStream in) throws IOException {
+		// Zone attributes
+<span class="nc" id="L193">		RPObject obj = new RPObject();</span>
+<span class="nc" id="L194">		obj.readObject(new InputSerializer(in));</span>
+
+		// *** coloring ***
+		// Ensure there's no old color left. That can happen in the
+		// morning on a daylight colored zone.
+<span class="nc" id="L199">		zoneInfo.setColorMethod(null);</span>
+
+		// getBlend calls below may need the color, so check that one first
+<span class="nc" id="L202">		String color = obj.get(&quot;color&quot;);</span>
+<span class="nc bnc" id="L203" title="All 4 branches missed.">		if (color != null &amp;&amp; isColoringEnabled()) {</span>
+			// Keep working, but use an obviously broken color if parsing
+			// the value fails.
+<span class="nc" id="L206">			zoneInfo.setZoneColor(MathHelper.parseIntDefault(color, 0x00ff00));</span>
+<span class="nc" id="L207">			zoneInfo.setColorMethod(getBlend(obj.get(&quot;color_method&quot;)));</span>
+		}
+		
+		// * effect blend *
+<span class="nc bnc" id="L211" title="All 2 branches missed.">		if (isColoringEnabled()) {</span>
+<span class="nc" id="L212">			zoneInfo.setEffectBlend(getEffectBlend(obj.get(&quot;blend_method&quot;), zoneInfo.getColorMethod()));</span>
+		} else {
+<span class="nc" id="L214">			zoneInfo.setEffectBlend(null);</span>
+		}
+		
+		// *** Weather ***
+<span class="nc" id="L218">		String weather = obj.get(&quot;weather&quot;);</span>
+<span class="nc bnc" id="L219" title="All 2 branches missed.">		if (weather != null) {</span>
+<span class="nc" id="L220">			weatherName = weather;</span>
+<span class="nc bnc" id="L221" title="All 2 branches missed.">			if (drawWeather) {</span>
+<span class="nc" id="L222">				this.weather = new WeatherLayerRenderer(weather, zoneInfo.getZoneColor(), zoneInfo.getColorMethod());</span>
+			}
+		}
+		
+		// *** other attributes ***
+<span class="nc" id="L227">		String danger = obj.get(&quot;danger_level&quot;);</span>
+<span class="nc bnc" id="L228" title="All 2 branches missed.">		if (danger != null) {</span>
+			try {
+<span class="nc" id="L230">				dangerLevel = Double.parseDouble(danger);</span>
+<span class="nc" id="L231">			} catch (NumberFormatException e) {</span>
+<span class="nc" id="L232">				Logger.getLogger(Zone.class).warn(&quot;Invalid danger level: &quot; + danger, e);</span>
+<span class="nc" id="L233">			}</span>
+		}
+<span class="nc" id="L235">		readableName = obj.get(&quot;readable_name&quot;);</span>
+		// OK to try validating after this
+<span class="nc" id="L237">		requireData = false;</span>
+<span class="nc" id="L238">	}</span>
+	
+	/**
+	 * Check if map coloring is enabled.
+	 * 
+	 * @return &lt;code&gt;true&lt;/code&gt; if map coloring is enabled, &lt;code&gt;false&lt;/code&gt;
+	 *	otherwise
+	 */
+	private boolean isColoringEnabled() {
+<span class="nc" id="L247">		return Boolean.parseBoolean(WtWindowManager.getInstance().getProperty(&quot;ui.colormaps&quot;, &quot;true&quot;));</span>
+	}
+	
+	/**
+	 * Get blend mode for the effect layers.
+	 * 
+	 * @param colorMode mode description
+	 * @param globalMode global coloring blend mode
+	 * 
+	 * @return effect blend
+	 */
+	private Composite getEffectBlend(String colorMode, Composite globalMode) {
+<span class="nc bnc" id="L259" title="All 4 branches missed.">		if (&quot;bleach&quot;.equals(colorMode) &amp;&amp; (globalMode != Blend.Multiply)) {</span>
+			/*
+			 * Bleach is designed to work with multiply. Fall back to generic
+			 * light for zones that use something else, or have no global mode.
+			 */
+<span class="nc" id="L264">			colorMode = &quot;generic_light&quot;;</span>
+		}
+<span class="nc" id="L266">		return getBlend(colorMode);</span>
+	}
+	
+	/**
+	 * Get composite mode from a string identifier.
+	 * 
+	 * @param colorMode blend mode as a string, or &lt;code&gt;null&lt;/code&gt;
+	 * @return blend mode, or &lt;null&gt;
+	 */
+	private Composite getBlend(String colorMode) {
+<span class="nc bnc" id="L276" title="All 2 branches missed.">		if (&quot;bleach&quot;.equals(colorMode)) {</span>
+<span class="nc bnc" id="L277" title="All 2 branches missed.">			if (zoneInfo.getZoneColor() != null) {</span>
+<span class="nc" id="L278">				return Blend.createBleach(zoneInfo.getZoneColor());</span>
+			}
+<span class="nc bnc" id="L280" title="All 2 branches missed.">		} else if (&quot;generic_light&quot;.equals(colorMode)) {</span>
+<span class="nc" id="L281">			return Blend.GenericLight;</span>
+<span class="nc bnc" id="L282" title="All 2 branches missed.">		} else if (&quot;multiply&quot;.equals(colorMode)) {</span>
+<span class="nc" id="L283">			return Blend.Multiply;</span>
+<span class="nc bnc" id="L284" title="All 2 branches missed.">		} else if (&quot;screen&quot;.equals(colorMode)) {</span>
+<span class="nc" id="L285">			return Blend.Screen;</span>
+<span class="nc bnc" id="L286" title="All 2 branches missed.">		} else if (&quot;softlight&quot;.equals(colorMode)) {</span>
+<span class="nc" id="L287">			return Blend.SoftLight;</span>
+<span class="nc bnc" id="L288" title="All 2 branches missed.">		} else if (&quot;truecolor&quot;.equals(colorMode)) {</span>
+<span class="nc" id="L289">			return Blend.TrueColor;</span>
+		}
+<span class="nc" id="L291">		return null;</span>
+	}
+	
+	/**
+	 * Get the name of the zone.
+	 * 
+	 * @return zone name
+	 */
+	String getName() {
+<span class="nc" id="L300">		return name;</span>
+	}
+	
+	/**
+	 * Get the user representable name of the zone.
+	 * 
+	 * @return user readable name
+	 */
+	public String getReadableName() {
+<span class="nc bnc" id="L309" title="All 2 branches missed.">		if (readableName != null) {</span>
+<span class="nc" id="L310">			return readableName;</span>
+		}
+<span class="nc" id="L312">		return name;</span>
+	}
+	
+	/**
+	 * Get the zone width.
+	 * 
+	 * @return zone width, or 0 if the zone is not ready enough to return the
+	 * 	real width 
+	 */
+	double getWidth() {
+<span class="nc bnc" id="L322" title="All 2 branches missed.">		if (!isValid) {</span>
+<span class="nc" id="L323">			return 0.0;</span>
+		}
+<span class="nc" id="L325">		return collision.getWidth();</span>
+	}
+	
+	/**
+	 * Get the zone height.
+	 * 
+	 * @return zone height, or 0 if the zone is not ready enough to return the
+	 * 	real height
+	 */
+	double getHeight() {
+<span class="nc bnc" id="L335" title="All 2 branches missed.">		if (!isValid) {</span>
+<span class="nc" id="L336">			return 0.0;</span>
+		}
+<span class="nc" id="L338">		return collision.getHeight();</span>
+	}
+	
+	/**
+	 * Get the zone danger level.
+	 * 
+	 * @return danger level
+	 */
+	public double getDangerLevel() {
+<span class="nc" id="L347">		return dangerLevel;</span>
+	}
+	
+	/**
+	 * Check if a shape collides within the zone.
+	 * 
+	 * @param shape checked area
+	 * @return &lt;code&gt;true&lt;/code&gt;, if the shape overlaps the static zone
+	 *	collision, &lt;code&gt;false&lt;/code&gt; otherwise
+	 */
+	boolean collides(final Rectangle2D shape) {
+<span class="nc bnc" id="L358" title="All 2 branches missed.">		if (collision != null) {</span>
+<span class="nc" id="L359">			return collision.collides(shape);</span>
+		}
+<span class="nc" id="L361">		return false;</span>
+	}
+
+	/**
+	 * Get the collision map.
+	 * 
+	 * @return collision
+	 */
+	public CollisionDetection getCollision() {
+<span class="nc" id="L370">		return collision;</span>
+	}
+	
+	/**
+	 * Get the protection map.
+	 * 
+	 * @return protection.
+	 */
+	public CollisionDetection getProtection() {
+<span class="nc" id="L379">		return protection;</span>
+	}
+	
+	/**
+	 * Get a composite representation of multiple tile layers.
+	 * 
+	 * @param compositeName name to be used for the composite for caching
+	 * @param adjustName name of the adjustment layer
+	 * @param layerNames names of the layers making up the composite starting
+	 * from the bottom
+	 * @return layer corresponding to all sub layers or &lt;code&gt;null&lt;/code&gt; if
+	 * 	they can not be merged
+	 */
+	LayerRenderer getMerged(String compositeName, String adjustName,
+			String ... layerNames) {
+<span class="nc" id="L394">		LayerRenderer r = layers.get(compositeName);</span>
+<span class="nc bnc" id="L395" title="All 2 branches missed.">		if (r == null) {</span>
+<span class="nc" id="L396">			List&lt;TileRenderer&gt; subLayers = new ArrayList&lt;TileRenderer&gt;(layerNames.length);</span>
+<span class="nc bnc" id="L397" title="All 2 branches missed.">			for (int i = 0; i &lt; layerNames.length; i++) {</span>
+<span class="nc" id="L398">				LayerRenderer subLayer = layers.get(layerNames[i]);</span>
+<span class="nc bnc" id="L399" title="All 2 branches missed.">				if (subLayer instanceof TileRenderer) {</span>
+<span class="nc" id="L400">					subLayers.add((TileRenderer) subLayer);</span>
+<span class="nc bnc" id="L401" title="All 2 branches missed.">				} else if (subLayer != null) {</span>
+					// Can't merge
+<span class="nc" id="L403">					return null;</span>
+				}
+			}
+			
+			// e.g. if 3_roof is not present for the roof bundle
+<span class="nc bnc" id="L408" title="All 2 branches missed.">			if (subLayers.isEmpty()) {</span>
+<span class="nc" id="L409">				return new EmptyGroupRenderer();</span>
+			}
+			
+<span class="nc" id="L412">			TileRenderer adjLayer = null;</span>
+<span class="nc" id="L413">			LayerRenderer subLayer = layers.get(adjustName);</span>
+<span class="nc bnc" id="L414" title="All 2 branches missed.">			if (subLayer instanceof TileRenderer) {</span>
+<span class="nc" id="L415">				adjLayer = (TileRenderer) subLayer;</span>
+			}
+			// Make sure the sub layers have their tiles defined before passing
+			// them to CompositeLayerRenderer
+<span class="nc bnc" id="L419" title="All 2 branches missed.">			if (!isValid) {</span>
+<span class="nc" id="L420">				return null;</span>
+			}
+			
+			// The partial sublayers won't be needed for anything anymore, and
+			// they can be dropped to save some memory
+<span class="nc bnc" id="L425" title="All 2 branches missed.">			for (String layer : layerNames) {</span>
+<span class="nc" id="L426">				layers.remove(layer);</span>
+			}
+<span class="nc" id="L428">			layers.remove(adjustName);</span>
+
+			// ** adjustment layer **
+<span class="nc" id="L431">			Composite adjustment = zoneInfo.getEffectBlend();</span>
+<span class="nc bnc" id="L432" title="All 2 branches missed.">			if (adjLayer == null) {</span>
+<span class="nc" id="L433">				adjustment = null;</span>
+			}
+<span class="nc bnc" id="L435" title="All 2 branches missed.">			if (adjustment == null) {</span>
+				// Set to null, so that we don't needlessly fetch the sprites
+				// in an unused layer.
+<span class="nc" id="L438">				adjLayer = null;</span>
+			}
+			
+<span class="nc" id="L441">			r = new CompositeLayerRenderer(subLayers, adjustment, adjLayer);</span>
+<span class="nc" id="L442">			layers.put(compositeName, r);</span>
+		}
+<span class="nc" id="L444">		return r;</span>
+	}
+	
+	/**
+	 * Get the weather renderer. 
+	 * 
+	 * @return renderer for the weather layer. The value is always a valid
+	 * renderer
+	 */
+	LayerRenderer getWeather() {
+<span class="nc" id="L454">		return weather;</span>
+	}
+	
+	/**
+	 * Get the name of the weather type.
+	 * 
+	 * @return weather name, or &lt;code&gt;null&lt;/code&gt; if the zone has no special
+	 * 	weather
+	 */
+	String getWeatherName() {
+<span class="nc" id="L464">		return weatherName;</span>
+	}
+	
+	/**
+	 * Try validating the zone.
+	 * 
+	 * @return &lt;code&gt;true&lt;/code&gt;, if the zone has been successfully validated,
+	 * 	&lt;code&gt;false&lt;/code&gt; otherwise.
+	 */
+	boolean validate() {
+<span class="nc bnc" id="L474" title="All 2 branches missed.">		if (isValid) {</span>
+<span class="nc" id="L475">			return true;</span>
+		}
+
+		// Tilesets are always required. Also fail validation until required
+		// data_map has been added
+<span class="nc bnc" id="L480" title="All 4 branches missed.">		if (tileset == null || requireData) {</span>
+<span class="nc" id="L481">			return false;</span>
+		}
+		// Collision is always required
+<span class="nc bnc" id="L484" title="All 2 branches missed.">		if (collision == null) {</span>
+<span class="nc" id="L485">			return false;</span>
+		}
+<span class="nc bnc" id="L487" title="All 2 branches missed.">		if (!tileset.validate(zoneInfo.getZoneColor(), zoneInfo.getColorMethod())) {</span>
+<span class="nc" id="L488">			return false;</span>
+		}
+
+<span class="nc bnc" id="L491" title="All 2 branches missed.">		for (final LayerRenderer lr : layers.values()) {</span>
+<span class="nc" id="L492">			lr.setTileset(tileset);</span>
+<span class="nc" id="L493">		}</span>
+
+<span class="nc" id="L495">		isValid = true;</span>
+<span class="nc" id="L496">		return true;</span>
+	}
+	
+	/**
+	 * A dummy renderer for empty layer groups.
+	 */
+<span class="nc" id="L502">	private static class EmptyGroupRenderer extends LayerRenderer {</span>
+		@Override
+		public void draw(Graphics g, int x, int y, int w, int h) {
+<span class="nc" id="L505">		}</span>
+
+		@Override
+		public void setTileset(Tileset tileset) {
+<span class="nc" id="L509">		}</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

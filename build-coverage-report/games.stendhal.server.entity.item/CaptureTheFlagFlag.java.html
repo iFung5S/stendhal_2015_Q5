@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>CaptureTheFlagFlag.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.item</a> &gt; <span class="el_source">CaptureTheFlagFlag.java</span></div><h1>CaptureTheFlagFlag.java</h1><pre class="source lang-java linenums">/*
+ * CaptureTheFlagFlag.java
+ * 
+ * TODO:
+ *   - move to new package - games.stendhal.server.games.capturetheflag.item,
+ *     as soon as i figure out how to do that in eclipse
+ */
+
+package games.stendhal.server.entity.item;
+
+import games.stendhal.server.entity.Outfit;
+import games.stendhal.server.entity.RPEntity;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import marauroa.common.game.SlotOwner;
+
+
+// XXX obviously not about NPC
+// import games.stendhal.server.entity.npc.NPCAttrUtils;
+
+/**
+ * represents the flag in Capture the Flag games - when player
+ * holds flag in hand, outfit displays flag.  when player
+ * drops flag, outfit reverts to previous.
+ * 
+ * @author sjtsp2008
+ *
+ */
+public class CaptureTheFlagFlag extends Item {
+
+	// this is the detail that you set for the outfit overlay
+	// (and then you have to set a color)
+<span class="fc" id="L35">	int     detailValue = 5;</span>
+
+<span class="fc" id="L37">	String colorValue   = &quot;0x00ff00&quot;;</span>
+	
+	// boolean droppable;
+	
+	public CaptureTheFlagFlag(final String name, 
+							  final String clazz, 
+							  final String subclass,
+							  final Map&lt;String,String&gt; attributes) {
+<span class="fc" id="L45">		super(name, clazz, subclass, attributes);</span>
+		
+		// XXX get a string, map to integer
+		// this.colorValue = NPCAttrUtils.getAttrInt(&quot;color&quot;, attributes, 3);
+<span class="fc" id="L49">		String colorStr = attributes.get(&quot;color&quot;);</span>
+<span class="pc bpc" id="L50" title="1 of 2 branches missed.">		if (colorStr != null) {</span>
+<span class="nc" id="L51">		    this.colorValue = colorStr;</span>
+		}
+		
+		// this.droppable = NPCAttrUtils.getAttr(&quot;droppable&quot;, attributes);
+		
+<span class="fc" id="L56">	}</span>
+
+	/**
+	 * default constructor.  maybe just for test harness, maybe for simpler xml
+	 */
+	public CaptureTheFlagFlag() {
+		// XXX
+<span class="fc" id="L63">		this(&quot;flag&quot;, &quot;token&quot;, &quot;flag&quot;, new HashMap&lt;String,String&gt;());</span>
+<span class="fc" id="L64">	}</span>
+
+	public String getColorValue() {
+<span class="fc" id="L67">		return this.colorValue;</span>
+	}
+
+	/**
+	 * return the detail id for flag
+	 * @return detail id
+	 */
+	public int getDetailValue() {
+<span class="fc" id="L75">		return this.detailValue;</span>
+	}
+	
+	// XXX lift in to some superclass - currently, this is the *only* thing
+	//     that is droppable
+	public boolean isDroppable() {
+<span class="nc" id="L81">		return true;</span>
+	}
+	
+	/**
+	 * if flag is held, update player's outfit.
+	 * 
+	 * XXX current api returns boolean, but that has little value
+	 */
+	@Override
+	public boolean onEquipped(RPEntity equipper, String slot) {
+
+<span class="fc" id="L92">		super.onEquipped(equipper, slot);</span>
+
+		// System.out.println(&quot;flag.onEquipped() - super result: &quot; + result);
+		
+		// TODO: should we double-check that slot is hand?
+		//         currently, xml definition restricts
+		
+		// System.out.println(&quot;CaptureTheFlagFlag.onEquipped(): &quot; + this.get(&quot;name&quot;) + &quot; -&gt; &quot; + equipper);
+		
+		Outfit flagOutfit;
+<span class="fc" id="L102">		flagOutfit  = new Outfit(this.detailValue, null, null, null, null);</span>
+				
+<span class="fc" id="L104">		equipper.put(&quot;outfit_colors&quot;, &quot;detail&quot;, this.colorValue);</span>
+		
+<span class="fc" id="L106">		equipper.setOutfit(flagOutfit.putOver(equipper.getOutfit()));</span>
+		
+		// equipper.put(&quot;outfit_colors&quot;, &quot;detail&quot;, colorValue);
+		// equipper.put(&quot;outfit_colors&quot;, &quot;detail&quot;, 0x00ff00);
+		
+<span class="fc" id="L111">		return true;</span>
+	}
+
+	/**
+	 * item is being removed from owner - remove flag from players outfit 
+	 * 
+	 * this is called in the process of removing item from
+	 * original owner, perhaps just before giving it to a 
+	 * new owner (or maybe just dropping it).  at this point,
+	 * the item still &quot;belongs&quot; to the original owner.
+	 */
+	@Override
+	public boolean onUnequipped() {
+	
+		// System.out.println(&quot;CaptureTheFlagFlag.onUnequipped(): &quot; + this.get(&quot;name&quot;));
+
+<span class="fc" id="L127">		super.onUnequipped();</span>
+
+<span class="fc" id="L129">		SlotOwner owner     = this.getContainerOwner();</span>
+		
+<span class="fc bfc" id="L131" title="All 2 branches covered.">		if (owner == null) {</span>
+<span class="fc" id="L132">			return false;</span>
+		}
+
+		//
+		// note that we just replace the outfit detail, versus
+		// trying to replace what was there originally.
+		//
+<span class="fc" id="L139">		Outfit   noFlagOutfit = new Outfit(0, null, null, null, null);</span>
+<span class="fc" id="L140">		RPEntity entity       = (RPEntity) owner;</span>
+		
+<span class="fc" id="L142">		entity.setOutfit(noFlagOutfit.putOver(entity.getOutfit()));</span>
+
+<span class="fc" id="L144">		return true;</span>
+	}
+	
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Path.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.core.pathfinder</a> &gt; <span class="el_source">Path.java</span></div><h1>Path.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                      (C) Copyright 2003 - Marauroa                      *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.core.pathfinder;
+
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.entity.Entity;
+import games.stendhal.server.entity.GuidedEntity;
+
+import java.awt.Rectangle;
+import java.awt.geom.Rectangle2D;
+import java.util.List;
+
+import org.apache.log4j.Logger;
+
+<span class="nc" id="L25">public abstract class Path {</span>
+
+	/** the logger instance. */
+<span class="fc" id="L28">	private static final Logger logger = Logger.getLogger(Path.class);</span>
+	
+	/**
+	 * Get a reasonable maximum path length to search
+	 * 
+	 * @param entity
+	 *        moving Entity
+	 * @param x
+	 *        destination x
+	 * @param y
+	 *        destination y
+	 * @return distance
+	 */
+	private static int defaultMaximumDistance(final Entity entity, final int x, final int y) {
+		/*
+		 * Pathfinding can be expensive for long distances, 
+		 * so don't allow arbitrary length searches.
+		 */
+<span class="fc" id="L46">		int manhattan = Math.abs(x - entity.getX()) + Math.abs(y - entity.getY());</span>
+<span class="fc" id="L47">		return Math.max(2 * manhattan, 40);</span>
+	}
+
+	//
+	// Path
+	//
+
+	/**
+	 * Finds a path for the Entity &lt;code&gt;entity&lt;/code&gt;.
+	 * 
+	 * @param entity
+	 *            the Entity
+	 * @param ex 
+	 *            destination x
+	 * @param ey
+	 *            destination y
+	 *             
+	 * @return a list with the path nodes or an empty list if no path is found
+	 */
+	public static List&lt;Node&gt; searchPath(final Entity entity, final int ex, final int ey) {
+<span class="fc" id="L67">		return searchPath(entity, entity.getX(), entity.getY(), entity.getArea(</span>
+				ex, ey), defaultMaximumDistance(entity, ex, ey));
+	}
+
+	/**
+	 * Finds a path for the Entity &lt;code&gt;entity&lt;/code&gt;.
+	 * 
+	 * @param entity
+	 *            the Entity
+	 * @param x
+	 *            start x
+	 * @param y
+	 *            start y
+	 * @param destination
+	 *            the destination area
+	 * @param maxDistance
+	 *            the maximum distance (as the crow flies) a possible path may
+	 *            be
+	 * @return a list with the path nodes or an empty list if no path is found
+	 */
+	public static List&lt;Node&gt; searchPath(final Entity entity, final int x, final int y,
+			final Rectangle2D destination, final double maxDistance) {
+<span class="fc" id="L89">		return searchPath(entity, null, x, y, destination, maxDistance, true);</span>
+	}
+
+	/**
+	 * Finds a path for the Entity &lt;code&gt;entity&lt;/code&gt;.
+	 * 
+	 * @param sourceEntity
+	 *            the Entity
+	 * @param zone
+	 *            the zone, if null the current zone of entity is used.
+	 * @param x
+	 *            start x
+	 * @param y
+	 *            start y
+	 * @param destination
+	 *            the destination area
+	 * @param maxDistance
+	 *            the maximum distance (air line) a possible path may be
+	 * @param withEntities 
+	 * @return a list with the path nodes or an empty list if no path is found
+	 */
+	public static List&lt;Node&gt; searchPath(final Entity sourceEntity,
+			StendhalRPZone zone, final int x, final int y, final Rectangle2D destination,
+			final double maxDistance, final boolean withEntities) {
+
+<span class="fc bfc" id="L114" title="All 2 branches covered.">		if (zone == null) {</span>
+<span class="fc" id="L115">			zone = sourceEntity.getZone();</span>
+		}
+
+		//
+		// long startTimeNano = System.nanoTime();
+<span class="fc" id="L120">		final long startTime = System.currentTimeMillis();</span>
+
+<span class="fc" id="L122">		final EntityPathfinder pathfinder = new EntityPathfinder(sourceEntity, zone, x, y,</span>
+				destination, maxDistance, withEntities);
+
+<span class="fc" id="L125">		final List&lt;Node&gt; resultPath = pathfinder.getPath();</span>
+<span class="pc bpc" id="L126" title="3 of 4 branches missed.">		if (logger.isDebugEnabled()</span>
+				&amp;&amp; (pathfinder.getStatus() == EntityPathfinder.PATH_NOT_FOUND)) {
+<span class="nc" id="L128">			logger.debug(&quot;Pathfinding aborted: &quot; + zone.getID() + &quot; &quot;</span>
+					+ sourceEntity.getTitle() + &quot; (&quot; + x + &quot;, &quot; + y + &quot;) &quot;
+					+ destination + &quot; Pathfinding time: &quot;
+					+ (System.currentTimeMillis() - startTime));
+		}
+
+<span class="fc" id="L134">		return resultPath;</span>
+	}
+	
+	/**
+	 * Find an one tile wide path. Entities on the map are ignored.
+	 * 
+	 * @param zone zone to search
+	 * @param startX x coordinate of the starting point 
+	 * @param startY y coordinate of the starting point
+	 * @param destX x coordinate of the destination
+	 * @param destY y coordinate of the destination
+	 * @param maxDistance maximum search distance
+	 * 
+	 * @return found path, or an empty list if no path was found
+	 */
+	public static List&lt;Node&gt; searchPath(final StendhalRPZone zone, final int startX, final int startY, final int destX,
+			final int destY, final double maxDistance) {
+<span class="fc" id="L151">		final Pathfinder pathfinder = new SimplePathfinder(zone, startX, startY, new Rectangle(destX, destY, 1, 1), maxDistance);</span>
+<span class="fc" id="L152">		return pathfinder.getPath();</span>
+	}
+
+	/**
+	 * Finds a path for the Entity &lt;code&gt;entity&lt;/code&gt; to the other Entity
+	 * &lt;code&gt;dest&lt;/code&gt;.
+	 * 
+	 * @param entity
+	 *            the Entity (also start point)
+	 * @param dest
+	 *            the destination Entity
+	 * @param maxDistance
+	 *            the maximum distance (air line) a possible path may be
+	 * @return a list with the path nodes or an empty list if no path is found
+	 */
+	public static List&lt;Node&gt; searchPath(final Entity entity, final Entity dest,
+			final double maxDistance) {
+		/*
+		 * Choose destination area so that the result corresponds to 
+		 * any part of the entities being next to each other
+		 */
+<span class="fc" id="L173">		final Rectangle2D area = new Rectangle((int) (dest.getX() - entity.getWidth()), </span>
+				(int) (dest.getY() - entity.getHeight()),
+				(int) (dest.getWidth() + entity.getWidth() + 1), 
+				(int) (dest.getHeight() + entity.getHeight() + 1));
+		
+<span class="fc" id="L178">		return searchPath(entity, entity.getX(), entity.getY(), area, maxDistance);</span>
+	}
+
+	/**
+	 * Follow the current path (if any) by pointing the direction toward the
+	 * next destination point.
+	 * 
+	 * @param entity
+	 *            The entity to point.
+	 * @return true if done with path
+	 */
+	static boolean followPath(final GuidedEntity entity) {
+<span class="fc" id="L190">		final List&lt;Node&gt; path = entity.getGuide().path.getNodeList();</span>
+
+<span class="pc bpc" id="L192" title="1 of 2 branches missed.">		if (path == null) {</span>
+<span class="nc" id="L193">			return true;</span>
+		}
+
+<span class="fc" id="L196">		int pos = entity.getPathPosition();</span>
+<span class="fc" id="L197">		Node actual = path.get(pos);</span>
+
+<span class="pc bpc" id="L199" title="1 of 4 branches missed.">		if ((actual.getX() == entity.getX())</span>
+				&amp;&amp; (actual.getY() == entity.getY())) {
+<span class="fc" id="L201">			logger.debug(&quot;Completed waypoint(&quot; + pos + &quot;)(&quot; + actual.getX()</span>
+					+ &quot;,&quot; + actual.getY() + &quot;) on Path&quot;);
+<span class="fc" id="L203">			pos++;</span>
+<span class="pc bpc" id="L204" title="1 of 2 branches missed.">			if (pos &lt; path.size()) {</span>
+<span class="fc" id="L205">				entity.setPathPosition(pos);</span>
+<span class="fc" id="L206">				actual = path.get(pos);</span>
+<span class="fc" id="L207">				logger.debug(&quot;Moving to waypoint(&quot; + pos + &quot;)(&quot; + actual.getX()</span>
+						+ &quot;,&quot; + actual.getY() + &quot;) on Path from (&quot;
+						+ entity.getX() + &quot;,&quot; + entity.getY() + &quot;)&quot;);
+<span class="fc" id="L210">				entity.faceto(actual.getX(), actual.getY());</span>
+<span class="fc" id="L211">				return false;</span>
+			} else {
+<span class="nc bnc" id="L213" title="All 2 branches missed.">				if (entity.isPathLoop()) {</span>
+<span class="nc" id="L214">					entity.setPathPosition(0);</span>
+				} else {
+<span class="nc" id="L216">					entity.stop();</span>
+<span class="nc" id="L217">					entity.clearPath();</span>
+				}
+<span class="nc" id="L219">				entity.onFinishedPath();</span>
+<span class="nc" id="L220">				return true;</span>
+			}
+		} else {
+<span class="fc" id="L223">			logger.debug(&quot;Moving to waypoint(&quot; + pos + &quot;)(&quot; + actual.getX()</span>
+					+ &quot;,&quot; + actual.getY() + &quot;) on Path from (&quot; + entity.getX()
+					+ &quot;,&quot; + entity.getY() + &quot;)&quot;);
+<span class="fc" id="L226">			entity.faceto(actual.getX(), actual.getY());</span>
+<span class="fc" id="L227">			return false;</span>
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

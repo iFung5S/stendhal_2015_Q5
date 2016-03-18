@@ -1,0 +1,252 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>OutfitChangerBehaviour.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.npc.behaviour.impl</a> &gt; <span class="el_source">OutfitChangerBehaviour.java</span></div><h1>OutfitChangerBehaviour.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2011 - Marauroa                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+
+package games.stendhal.server.entity.npc.behaviour.impl;
+
+import games.stendhal.common.Rand;
+import games.stendhal.common.grammar.ItemParserResult;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.events.TurnListener;
+import games.stendhal.server.entity.Outfit;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.player.Player;
+
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Represents the behaviour of a NPC who is able to sell outfits to a player.
+ */
+public class OutfitChangerBehaviour extends MerchantBehaviour {
+	public static final int NEVER_WEARS_OFF = -1;
+	
+	/** outfit expiry in minutes */
+	private int endurance;
+
+	private final String wearOffMessage;
+
+	// all available outfit types are predefined here.
+<span class="fc" id="L40">	private static Map&lt;String, List&lt;Outfit&gt;&gt; outfitTypes = new HashMap&lt;String, List&lt;Outfit&gt;&gt;();</span>
+	static {
+		// In each line, there is one possible outfit of this
+		// outfit type, in the order: hair, head, dress, base.
+		// One of these outfit will be chosen randomly.
+
+		// FIXME: Use new outfit system
+		// swimsuits for men
+<span class="fc" id="L48">		outfitTypes.put(&quot;trunks&quot;, Arrays.asList(</span>
+				new Outfit(null, null, null, 95, null), new Outfit(null, null, null, 96,
+						null), new Outfit(null, null, null, 97, null), new Outfit(
+								null, null, null, 98, null)));
+
+		// swimsuits for women
+<span class="fc" id="L54">		outfitTypes.put(&quot;swimsuit&quot;, Arrays.asList(new Outfit(null, null, null, 91,</span>
+				null), new Outfit(null, null, null, 92, null), new Outfit(null, null, null,
+				93, null), new Outfit(null, null, null, 94, null)));
+
+<span class="fc" id="L58">		outfitTypes.put(&quot;mask&quot;, Arrays.asList(new Outfit(null, 0, 80, null, null),</span>
+				new Outfit(null, 0, 81, null, null), new Outfit(null, 0, 82, null, null),
+				new Outfit(null, 0, 83, null, null), new Outfit(null, 0, 84, null, null),
+				new Outfit(null, 0, 85, null, null)));
+
+		// wedding dress for brides
+		// it seems this must be an array as list even though it's only one item
+<span class="fc" id="L65">		outfitTypes.put(&quot;gown&quot;, Arrays.asList(new Outfit(6, null, null, 88, null)));</span>
+
+		// // wedding suit for grooms
+		// it seems this must be an array as list even though it's only one item
+<span class="fc" id="L69">		outfitTypes.put(&quot;suit&quot;, Arrays.asList(new Outfit(null, null, null, 87, null)));</span>
+<span class="fc" id="L70">	}</span>
+
+	/**
+	 * Creates a new OutfitChangerBehaviour for outfits that never wear off
+	 * automatically.
+	 * 
+	 * @param priceList
+	 *            list of outfit types and their prices
+	 */
+	public OutfitChangerBehaviour(final Map&lt;String, Integer&gt; priceList) {
+<span class="fc" id="L80">		this(priceList, NEVER_WEARS_OFF, null);</span>
+<span class="fc" id="L81">	}</span>
+
+	/**
+	 * Creates a new OutfitChangerBehaviour for outfits that wear off
+	 * automatically after some time.
+	 * 
+	 * @param priceList
+	 *            list of outfit types and their prices
+	 * @param endurance
+	 *            the time (in turns) the outfit will stay, or NEVER_WEARS_OFF
+	 *            if the outfit should never disappear automatically.
+	 * @param wearOffMessage
+	 *            the message that the player should receive after the outfit
+	 *            has worn off, or null if no message should be sent.
+	 */
+	public OutfitChangerBehaviour(final Map&lt;String, Integer&gt; priceList,
+			final int endurance, final String wearOffMessage) {
+<span class="fc" id="L98">		super(priceList);</span>
+<span class="fc" id="L99">		this.endurance = endurance;</span>
+<span class="fc" id="L100">		this.wearOffMessage = wearOffMessage;</span>
+<span class="fc" id="L101">	}</span>
+
+	/**
+	 * Transacts the sale that has been agreed on earlier via setChosenItem()
+	 * and setAmount().
+	 * 
+	 * @param seller
+	 *            The NPC who sells
+	 * @param player
+	 *            The player who buys
+	 * @return true iff the transaction was successful, that is when the player
+	 *         was able to equip the item(s).
+	 */
+	@Override
+	public boolean transactAgreedDeal(ItemParserResult res, final EventRaiser seller, final Player player) {
+<span class="fc" id="L116">		final String outfitType = res.getChosenItemName();</span>
+
+<span class="pc bpc" id="L118" title="1 of 2 branches missed.">		if (!player.getOutfit().isCompatibleWithClothes()) {</span>
+			// if the player is wearing a non standard player base  
+			// then swimsuits, masks and many other outfits wouldn't look good mixed with it
+<span class="nc" id="L121">			seller.say(&quot;You already have a magic outfit on which just wouldn't look good with another - could you please put yourself in something more conventional and ask again? Thanks!&quot;);</span>
+<span class="nc" id="L122">			return false;</span>
+		}
+
+<span class="fc" id="L125">		int charge = getCharge(res, player);</span>
+
+<span class="pc bpc" id="L127" title="1 of 2 branches missed.">		if (player.isEquipped(&quot;money&quot;, charge)) {</span>
+<span class="fc" id="L128">			player.drop(&quot;money&quot;, charge);</span>
+<span class="fc" id="L129">			putOnOutfit(player, outfitType);</span>
+<span class="fc" id="L130">			return true;</span>
+		} else {
+<span class="nc" id="L132">			seller.say(&quot;Sorry, you don't have enough money!&quot;);</span>
+<span class="nc" id="L133">			return false;</span>
+		}
+	}
+
+	/**
+	 * removes the special outfit after it outwore.
+	 */
+	public static class ExpireOutfit implements TurnListener {
+		private String name;
+
+		/**
+		 * creates a OutwearClothes turn listener
+		 *
+		 * @param playerName of player
+		 */
+<span class="fc" id="L148">		public ExpireOutfit(String playerName) {</span>
+<span class="fc" id="L149">			name = playerName;</span>
+<span class="fc" id="L150">		}</span>
+
+		@Override
+		public boolean equals(final Object obj) {
+<span class="fc bfc" id="L154" title="All 2 branches covered.">			if (obj instanceof ExpireOutfit) {</span>
+<span class="fc" id="L155">				ExpireOutfit other = (ExpireOutfit) obj;</span>
+<span class="fc" id="L156">				return name.equals(other.name);</span>
+			} else {
+<span class="fc" id="L158">				return false;</span>
+			}
+
+		}
+
+		@Override
+		public int hashCode() {
+<span class="fc" id="L165">			return name.hashCode();</span>
+		}
+
+		@Override
+		public void onTurnReached(final int currentTurn) {
+<span class="nc" id="L170">			Player player = SingletonRepository.getRuleProcessor().getPlayer(name);</span>
+<span class="nc bnc" id="L171" title="All 4 branches missed.">			if ((player == null) || player.isDisconnected()) {</span>
+<span class="nc" id="L172">				return;</span>
+			}
+<span class="nc" id="L174">			player.sendPrivateText(&quot;Your costume has worn off&quot;);</span>
+<span class="nc" id="L175">			player.returnToOriginalOutfit();</span>
+<span class="nc" id="L176">		}</span>
+	}
+
+	/**
+	 * Tries to get back the bought/lent outfit and give the player his original
+	 * outfit back. This will only be successful if the player is wearing an
+	 * outfit he got here, and if the original outfit has been stored.
+	 * 
+	 * @param player
+	 *            The player.
+	 * @param outfitType the outfit to wear
+	 */
+	public void putOnOutfit(final Player player, final String outfitType) {
+<span class="fc" id="L189">		final List&lt;Outfit&gt; possibleNewOutfits = outfitTypes.get(outfitType);</span>
+<span class="fc" id="L190">		final Outfit newOutfit = Rand.rand(possibleNewOutfits);</span>
+<span class="fc" id="L191">		player.setOutfit(newOutfit.putOver(player.getOutfit()), true);</span>
+<span class="fc" id="L192">		player.registerOutfitExpireTime(endurance);</span>
+<span class="fc" id="L193">	}</span>
+
+	/**
+	 * Checks whether or not the given player is currently wearing an outfit
+	 * that may have been bought/lent from an NPC with this behaviour.
+	 * 
+	 * @param player
+	 *            The player.
+	 * @return true iff the player wears an outfit from here.
+	 */
+	public boolean wearsOutfitFromHere(final Player player) {
+<span class="nc" id="L204">		final Outfit currentOutfit = player.getOutfit();</span>
+
+<span class="nc bnc" id="L206" title="All 2 branches missed.">		for (final String outfitType : priceCalculator.dealtItems()) {</span>
+<span class="nc" id="L207">			final List&lt;Outfit&gt; possibleOutfits = outfitTypes.get(outfitType);</span>
+<span class="nc bnc" id="L208" title="All 2 branches missed.">			for (final Outfit possibleOutfit : possibleOutfits) {</span>
+<span class="nc bnc" id="L209" title="All 2 branches missed.">				if (possibleOutfit.isPartOf(currentOutfit)) {</span>
+<span class="nc" id="L210">					return true;</span>
+				}
+<span class="nc" id="L212">			}</span>
+<span class="nc" id="L213">		}</span>
+<span class="nc" id="L214">		return false;</span>
+	}
+
+	/**
+	 * Tries to get back the bought/lent outfit and give the player his original
+	 * outfit back. This will only be successful if the player is wearing an
+	 * outfit he got here, and if the original outfit has been stored.
+	 * 
+	 * @param player
+	 *            The player.
+	 * @return true iff returning was successful.
+	 */
+	public boolean returnToOriginalOutfit(final Player player) {
+<span class="nc bnc" id="L227" title="All 2 branches missed.">		if (wearsOutfitFromHere(player)) {</span>
+<span class="nc" id="L228">			return player.returnToOriginalOutfit();</span>
+		}
+<span class="nc" id="L230">		return false;</span>
+	}
+
+	/**
+	 * Puts the outfit off, but only if the player hasn't taken it off himself
+	 * already.
+	 * @param player who wears the outfit
+	 */
+	protected void onWornOff(final Player player) {
+<span class="nc bnc" id="L239" title="All 2 branches missed.">		if (wearsOutfitFromHere(player)) {</span>
+<span class="nc" id="L240">			player.sendPrivateText(wearOffMessage);</span>
+<span class="nc" id="L241">			returnToOriginalOutfit(player);</span>
+		}
+<span class="nc" id="L243">	}</span>
+	/**
+	 * Outfit expiry period in minutes
+	 * @return endurance in minutes
+	 */
+	public int getEndurance() {
+<span class="nc" id="L249">		return endurance;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

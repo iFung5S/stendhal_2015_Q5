@@ -1,0 +1,1288 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Grammar.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.common.grammar</a> &gt; <span class="el_source">Grammar.java</span></div><h1>Grammar.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                    (C) Copyright 2009-2015 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.common.grammar;
+
+
+import games.stendhal.common.parser.Expression;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Locale;
+
+import org.apache.log4j.Logger;
+
+/**
+ * Helper functions for producing and parsing grammatically-correct sentences.
+ */
+<span class="nc" id="L27">public class Grammar {</span>
+
+<span class="fc" id="L29">	private static final Logger logger = Logger.getLogger(Grammar.class);</span>
+
+	/**
+	 * &quot;it&quot; or &quot;them&quot;, depending on the quantity.
+	 * 
+	 * @param quantity
+	 *            The quantity to examine
+	 * @return Either &quot;it&quot; or &quot;them&quot; as appropriate
+	 */
+	public static String itthem(final int quantity) {
+<span class="fc bfc" id="L39" title="All 4 branches covered.">		if (quantity == 1) {</span>
+<span class="fc" id="L40">			return &quot;it&quot;;</span>
+		} else {
+<span class="fc" id="L42">			return &quot;them&quot;;</span>
+		}
+	}
+
+	/**
+	 * Modify a word to upper case notation.
+	 * 
+	 * @param word
+	 * @return word with first letter in upper case
+	 */
+	public static String makeUpperCaseWord(final String word) {
+<span class="fc" id="L53">		final StringBuilder res = new StringBuilder();</span>
+<span class="pc bpc" id="L54" title="2 of 4 branches missed.">		if (word.length() &gt; 0) {</span>
+<span class="fc" id="L55">			res.append(Character.toUpperCase(word.charAt(0)));</span>
+<span class="fc bfc" id="L56" title="All 4 branches covered.">			if (word.length() &gt; 1) {</span>
+<span class="fc" id="L57">				res.append(word.substring(1));</span>
+			}
+		}
+<span class="fc" id="L60">		return res.toString();</span>
+	}
+
+	/**
+	 * &quot;It&quot; or &quot;Them&quot;, depending on the quantity.
+	 * 
+	 * @param quantity
+	 *            The quantity to examine
+	 * @return Either &quot;It&quot; or &quot;Them&quot; as appropriate
+	 */
+	public static String ItThem(final int quantity) {
+<span class="fc" id="L71">		return makeUpperCaseWord(itthem(quantity));</span>
+	}
+
+	/**
+	 * &quot;it&quot; or &quot;they&quot;, depending on the quantity.
+	 * 
+	 * @param quantity
+	 *            The quantity to examine
+	 * @return Either &quot;it&quot; or &quot;they&quot; as appropriate
+	 */
+	public static String itthey(final int quantity) {
+<span class="fc bfc" id="L82" title="All 4 branches covered.">		if (quantity == 1) {</span>
+<span class="fc" id="L83">			return &quot;it&quot;;</span>
+		} else {
+<span class="fc" id="L85">			return &quot;they&quot;;</span>
+		}
+	}
+
+	/**
+	 * &quot;It&quot; or &quot;They&quot;, depending on the quantity.
+	 * 
+	 * @param quantity
+	 *            The quantity to examine
+	 * @return Either &quot;It&quot; or &quot;They&quot; as appropriate
+	 */
+	public static String ItThey(final int quantity) {
+<span class="fc" id="L97">		return makeUpperCaseWord(itthey(quantity));</span>
+	}
+
+	/**
+	 * &quot;is&quot; or &quot;are&quot;, depending on the quantity.
+	 * 
+	 * @param quantity
+	 *            The quantity to examine
+	 * @return Either &quot;is&quot; or &quot;are&quot; as appropriate
+	 */
+	public static String isare(final int quantity) {
+<span class="fc bfc" id="L108" title="All 4 branches covered.">		if (quantity == 1) {</span>
+<span class="fc" id="L109">			return &quot;is&quot;;</span>
+		} else {
+<span class="fc" id="L111">			return &quot;are&quot;;</span>
+		}
+	}
+
+	/**
+	 * &quot;Is&quot; or &quot;Are&quot;, depending on the quantity.
+	 * 
+	 * @param quantity
+	 *            The quantity to examine
+	 * @return Either &quot;Is&quot; or &quot;Are&quot; as appropriate
+	 */
+	public static String IsAre(final int quantity) {
+<span class="fc" id="L123">		return makeUpperCaseWord(isare(quantity));</span>
+	}
+	
+	/**
+	 * &quot;has&quot; or &quot;have&quot;, depending on the quantity.
+	 * 
+	 * @param quantity
+	 *            The quantity to examine
+	 * @return Either &quot;has&quot; or &quot;have&quot; as appropriate
+	 */
+	public static String hashave(final int quantity) {
+<span class="fc bfc" id="L134" title="All 4 branches covered.">		if (quantity == 1) {</span>
+<span class="fc" id="L135">			return &quot;has&quot;;</span>
+		} else {
+<span class="fc" id="L137">			return &quot;have&quot;;</span>
+		}
+	}
+	
+	/**
+	 * &quot;Has&quot; or &quot;Have&quot;, depending on the quantity.
+	 * 
+	 * @param quantity
+	 *            The quantity to examine
+	 * @return Either &quot;Has&quot; or &quot;Have&quot; as appropriate
+	 */
+	public static String HasHave(final int quantity) {
+<span class="fc" id="L149">		return makeUpperCaseWord(hashave(quantity));</span>
+	}
+	
+	/**
+	 * &quot;that&quot; or &quot;those&quot;, depending on the quantity.
+	 * 
+	 * @param quantity
+	 *            The quantity to examine
+	 * @return Either &quot;that&quot; or &quot;those&quot; as appropriate
+	 */
+	public static String thatthose(final int quantity) {
+<span class="pc bpc" id="L160" title="2 of 4 branches missed.">		if (quantity == 1) {</span>
+<span class="fc" id="L161">			return &quot;that&quot;;</span>
+		} else {
+<span class="nc" id="L163">			return &quot;those&quot;;</span>
+		}
+	}
+
+	/**
+	 * &quot;That or &quot;Those&quot;, depending on the quantity.
+	 * 
+	 * @param quantity
+	 *            The quantity to examine
+	 * @return Either &quot;That&quot; or &quot;Those&quot; as appropriate
+	 */
+	public static String ThatThose(final int quantity) {
+<span class="fc" id="L175">		return makeUpperCaseWord(thatthose(quantity));</span>
+	}
+	
+	/**
+	 * &quot;this&quot; or &quot;these&quot;, depending on the quantity.
+	 * 
+	 * @param quantity
+	 *            The quantity to examine
+	 * @return Either &quot;this&quot; or &quot;these&quot; as appropriate
+	 */
+	public static String thisthese(final int quantity) {
+<span class="fc bfc" id="L186" title="All 4 branches covered.">		if (quantity == 1) {</span>
+<span class="fc" id="L187">			return &quot;this&quot;;</span>
+		} else {
+<span class="fc" id="L189">			return &quot;these&quot;;</span>
+		}
+	}
+
+	/**
+	 * &quot;This or &quot;These&quot;, depending on the quantity.
+	 * 
+	 * @param quantity
+	 *            The quantity to examine
+	 * @return Either &quot;This&quot; or &quot;These&quot; as appropriate
+	 */
+	public static String ThisThese(final int quantity) {
+<span class="fc" id="L201">		return makeUpperCaseWord(thisthese(quantity));</span>
+	}
+
+	/**
+	 * Prefixes a noun with an article.
+	 * 
+	 * @param noun
+	 *            noun
+	 * @param definite
+	 *            true for &quot;the&quot;, false for a/an
+	 * @return noun with article
+	 */
+	public static String article_noun(final String noun, final boolean definite) {
+<span class="fc bfc" id="L214" title="All 4 branches covered.">		if (definite) {</span>
+<span class="fc" id="L215">			return &quot;the &quot; + noun;</span>
+		} else {
+<span class="fc" id="L217">			return a_noun(noun);</span>
+		}
+	}
+
+	/**
+	 * &quot;a [noun]&quot; or &quot;an [noun]&quot;, depending on the first syllable.
+	 * 
+	 * @param noun
+	 *            The noun to examine
+	 * @return Either &quot;a [noun]&quot; or &quot;an [noun]&quot; as appropriate
+	 */
+	public static String a_noun(final String noun) {
+<span class="fc bfc" id="L229" title="All 4 branches covered.">		if (noun == null) {</span>
+<span class="fc" id="L230">			return null;</span>
+		}
+<span class="fc" id="L232">		final String enoun = fullForm(noun);</span>
+<span class="fc" id="L233">		return a_an(enoun) + enoun;</span>
+	}
+	
+	/**
+	 * &quot;a [noun]&quot; or &quot;an [noun]&quot;, depending on the first syllable.
+	 * Method to prevent collision of items and creatures.
+	 * 
+	 * @param noun
+	 *            The noun to examine
+	 * @return Either &quot;a [noun]&quot; or &quot;an [noun]&quot; as appropriate
+	 */
+	public static String a_nounCreature(final String noun) {
+<span class="nc bnc" id="L245" title="All 4 branches missed.">		if (noun.equals(&quot;chicken&quot;)) {</span>
+<span class="nc" id="L246">			return &quot;a chicken&quot;;</span>
+		}
+		
+<span class="nc" id="L249">		return a_noun(noun);</span>
+	}
+	
+	/**
+	 * &quot;a &quot; or &quot;an &quot;, depending on the noun
+	 * 
+	 * @param noun the noun to be examined
+	 * @return either &quot;a &quot; or &quot;an &quot; as appropriate
+	 */
+	private static String a_an(final String noun) {
+<span class="fc" id="L259">		String lowerCaseString = noun.toLowerCase();</span>
+		final char initial;
+<span class="fc bfc" id="L261" title="All 4 branches covered.">		if (lowerCaseString.length() == 0) {</span>
+<span class="fc" id="L262">			return &quot;a &quot;;</span>
+		} else {
+<span class="fc" id="L264">			initial = lowerCaseString.charAt(0);</span>
+		}
+		
+<span class="fc bfc" id="L267" title="All 4 branches covered.">		if (lowerCaseString.length()==1){</span>
+<span class="fc bfc" id="L268" title="All 8 branches covered.">			if (isVowel(initial) &amp;&amp; initial != 'u') {</span>
+<span class="fc" id="L269">				return &quot;an &quot;;</span>
+			} else {
+<span class="fc" id="L271">				return &quot;a &quot;;</span>
+			}
+		}
+		
+	
+<span class="fc bfc" id="L276" title="All 4 branches covered.">		if (&quot;eu&quot;.equals(lowerCaseString.substring(0, 2))){</span>
+<span class="fc" id="L277">			return &quot;a &quot;;</span>
+		}
+<span class="fc bfc" id="L279" title="All 4 branches covered.">		if (isVowel(initial)) {</span>
+<span class="fc" id="L280">			return &quot;an &quot;;</span>
+		}
+<span class="fc bfc" id="L282" title="All 8 branches covered.">		if ((initial == 'y') &amp;&amp; isConsonant(lowerCaseString.charAt(1))) {</span>
+<span class="fc" id="L283">			return &quot;an &quot;;</span>
+		}
+		
+<span class="fc" id="L286">		return &quot;a &quot;;</span>
+	}
+
+	/**
+	 * Adds a prefix unless it was already added.
+	 * 
+	 * @param noun
+	 *            the noun (which may already start with the specified prefix
+	 * @param prefixSingular
+	 *            prefix to add
+	 * @param prefixPlural
+	 *            prefix, that may be present in plural form
+	 * @return noun starting with prefix
+	 */
+	static String addPrefixIfNotAlreadyThere(final String noun,
+			final String prefixSingular, final String prefixPlural) {
+<span class="fc bfc" id="L302" title="All 4 branches covered.">		if (noun.startsWith(prefixSingular)) {</span>
+<span class="fc" id="L303">			return noun;</span>
+<span class="fc bfc" id="L304" title="All 4 branches covered.">		} else if (noun.startsWith(prefixPlural)) {</span>
+<span class="fc" id="L305">			return noun;</span>
+		} else {
+<span class="fc" id="L307">			return prefixSingular + noun;</span>
+		}
+	}
+
+	/**
+	 * Prefix a noun with an expression like &quot;piece of&quot;.
+	 * 
+	 * @param noun
+	 * @return noun with prefix
+	 */
+	public static String fullForm(final String noun) {
+<span class="fc" id="L318">		final String lowString = noun.toLowerCase(Locale.ENGLISH);</span>
+<span class="fc" id="L319">		String str = lowString.replace(&quot;#&quot;, &quot;&quot;);</span>
+
+<span class="fc bfc" id="L321" title="All 4 branches covered.">		if (str.startsWith(&quot;book &quot;)) {</span>
+<span class="fc" id="L322">			str = str.substring(5) + &quot; book&quot;;</span>
+<span class="fc bfc" id="L323" title="All 4 branches covered.">		} else if (str.indexOf(&quot; armor&quot;) &gt; -1) {</span>
+<span class="fc" id="L324">			str = addPrefixIfNotAlreadyThere(lowString, &quot;suit of &quot;, &quot;suits of &quot;);</span>
+		} else {
+<span class="fc" id="L326">			str = replaceInternalByDisplayNames(PrefixManager.s_instance.fullForm(str, lowString));</span>
+		}
+
+<span class="fc" id="L329">		return str;</span>
+	}
+
+	/**
+	 * Replace internal item names bye their display name.
+	 * @param str
+	 * @return fixed string
+	 */
+	public static String replaceInternalByDisplayNames(final String str) {
+<span class="fc" id="L338">		return str.</span>
+			replace(&quot;icecream&quot;, &quot;ice cream&quot;);
+	}
+
+	/**
+	 * Merge two expressions into a compound noun.
+	 * @param word1
+	 * @param word2
+	 * @return resulting expression: word1 or word2
+	 */
+
+	public static Expression mergeCompoundNoun(final Expression word1, Expression word2) {
+		// handle special cases:
+				// &quot;ice cream&quot; -&gt; &quot;ice&quot;
+<span class="pc bpc" id="L352" title="4 of 16 branches missed.">		if ((word1.getMainWord().equals(&quot;ice&quot;) &amp;&amp; word2.getMainWord().equals(&quot;cream&quot;)) ||</span>
+				// &quot;teddy bear&quot; -&gt; &quot;teddy&quot;
+				(word1.getMainWord().equals(&quot;teddy&quot;) &amp;&amp; word2.getMainWord().equals(&quot;bear&quot;))) {
+
+		    // transform &quot;ice cream&quot; into the item name &quot;icecream&quot;
+<span class="fc bfc" id="L357" title="All 4 branches covered.">		    if (word1.getMainWord().equals(&quot;ice&quot;)) {</span>
+<span class="fc" id="L358">		    	word1.setNormalized(&quot;icecream&quot;);</span>
+		    }
+
+<span class="fc" id="L361">		    return word1;</span>
+        } else {
+<span class="fc" id="L363">            word2.mergeLeft(word1, true);</span>
+
+<span class="fc" id="L365">            return word2;</span>
+        }
+	}
+
+	/**
+	 * Extracts noun from a string, that may be prefixed with a plural expression
+	 * like &quot;piece of&quot;, ... So this function is just the counter part to fullForm().
+	 * 
+	 * @param text
+	 * @return the extracted noun
+	 */
+	public static String extractNoun(final String text) {
+		String result;
+
+<span class="pc bpc" id="L379" title="2 of 4 branches missed.">		if (text == null) {</span>
+<span class="nc" id="L380">			result = null;</span>
+		} else {
+<span class="fc" id="L382">			final PrefixExtractor extractor = new PrefixExtractor(text);</span>
+			boolean changed;
+
+			// loop until all prefix strings are removed
+			do {
+<span class="fc" id="L387">				changed = false;</span>
+
+<span class="fc bfc" id="L389" title="All 4 branches covered.">				if (extractor.extractNounSingular()) {</span>
+<span class="fc" id="L390">					changed = true;</span>
+				}
+
+<span class="fc bfc" id="L393" title="All 4 branches covered.">				if (extractor.extractNounPlural()) {</span>
+<span class="fc" id="L394">					changed = true;</span>
+				}
+<span class="fc bfc" id="L396" title="All 4 branches covered.">			} while(changed);</span>
+
+<span class="fc" id="L398">			result = extractor.toString();</span>
+		}
+
+<span class="fc" id="L401">		return result;</span>
+	}
+
+	/**
+	 * Check if an expression is normalized.
+	 * equivalent to: {return extractNoun(text) == text}
+	 * 
+	 * @param text
+	 * @return true if the expression is already normalized
+	 */
+	public static boolean isNormalized(final String text) {
+		boolean ret;
+
+<span class="pc bpc" id="L414" title="2 of 4 branches missed.">		if (text == null) {</span>
+<span class="nc" id="L415">			ret = true;</span>
+		} else {
+<span class="fc" id="L417">			final PrefixExtractor extractor = new PrefixExtractor(text);</span>
+
+			// If there is detected any prefix, the reviewed text was not normalized.
+<span class="pc bpc" id="L420" title="6 of 8 branches missed.">			if (extractor.extractNounSingular() || extractor.extractNounPlural()) {</span>
+<span class="fc" id="L421">				ret = false;</span>
+			} else {
+<span class="nc" id="L423">				ret = true;</span>
+			}
+		}
+
+<span class="fc" id="L427">		return ret;</span>
+	}
+
+	/**
+	 * &quot;A [noun]&quot; or &quot;An [noun]&quot;, depending on the first syllable.
+	 * 
+	 * @param noun
+	 *            The noun to examine
+	 * @return Either &quot;A [noun]&quot; or &quot;An [noun]&quot; as appropriate
+	 */
+	public static String A_noun(final String noun) {
+<span class="fc" id="L438">		return makeUpperCaseWord(a_noun(noun));</span>
+	}
+
+	/**
+	 * &quot;[noun]'s&quot; or &quot;[noun]'&quot;, depending on the last character.
+	 * 
+	 * @param noun
+	 *            The noun to examine
+	 * @return Either &quot;[noun]'s&quot; or &quot;[noun]'&quot; as appropriate
+	 */
+	public static String suffix_s(final String noun) {
+<span class="fc" id="L449">		final char last = Character.toLowerCase(noun.charAt(noun.length() - 1));</span>
+<span class="fc bfc" id="L450" title="All 4 branches covered.">		if (last == 's') {</span>
+<span class="fc" id="L451">			return noun + &quot;'&quot;;</span>
+		}
+<span class="fc" id="L453">		return noun + &quot;'s&quot;;</span>
+	}
+
+	private static final String of = &quot; of &quot;;
+
+	/**
+	 * Returns the plural form of the given noun if not already given in plural
+	 * form.
+	 * 
+	 * @param noun
+	 *            The noun to examine
+	 * @return An appropriate plural form
+	 */
+	public static String plural(final String noun) {
+<span class="pc bpc" id="L467" title="2 of 4 branches missed.">		if (noun == null) {</span>
+<span class="nc" id="L468">			return null;</span>
+		}
+
+<span class="fc" id="L471">		String enoun = fullForm(noun);</span>
+<span class="fc" id="L472">		String postfix = &quot;&quot;;</span>
+
+<span class="fc" id="L474">		final int position = enoun.indexOf('+');</span>
+<span class="fc bfc" id="L475" title="All 4 branches covered.">		if (position != -1) {</span>
+<span class="pc bpc" id="L476" title="2 of 4 branches missed.">			if (enoun.charAt(position - 1) == ' ') {</span>
+<span class="fc" id="L477">				postfix = enoun.substring(position - 1);</span>
+<span class="fc" id="L478">				enoun = enoun.substring(0, position - 1);</span>
+			} else {
+<span class="nc" id="L480">				postfix = enoun.substring(position);</span>
+<span class="nc" id="L481">				enoun = enoun.substring(0, position);</span>
+			}
+		}
+
+		// in &quot;of&quot;-phrases pluralize only the first part
+<span class="fc bfc" id="L486" title="All 4 branches covered.">		if (enoun.indexOf(of) &gt; -1) {</span>
+<span class="fc" id="L487">			return plural(enoun.substring(0, enoun.indexOf(of)))</span>
+					+ enoun.substring(enoun.indexOf(of)) + postfix;
+
+			// first of all handle words which do not change
+<span class="fc bfc" id="L491" title="All 24 branches covered.">		} else if (enoun.endsWith(&quot;money&quot;) || enoun.endsWith(&quot;dice&quot;)</span>
+				|| enoun.endsWith(&quot;sheep&quot;) || enoun.equals(&quot;deer&quot;)
+				|| enoun.equals(&quot;moose&quot;) || enoun.equals(&quot;magic&quot;)){
+<span class="fc" id="L494">			return enoun + postfix;</span>
+
+			// ok and now all the special cases
+<span class="fc bfc" id="L497" title="All 8 branches covered.">		} else if (enoun.endsWith(&quot;staff&quot;) || enoun.endsWith(&quot;chief&quot;)) {</span>
+<span class="fc" id="L498">			return enoun + &quot;s&quot; + postfix;</span>
+<span class="fc bfc" id="L499" title="All 12 branches covered.">		} else if ((enoun.length() &gt; 2) &amp;&amp; enoun.endsWith(&quot;f&quot;)</span>
+				&amp;&amp; (&quot;aeiourl&quot;.indexOf(enoun.charAt(enoun.length() - 2)) &gt; -1)) {
+<span class="fc" id="L501">			return enoun.substring(0, enoun.length() - 1) + &quot;ves&quot; + postfix;</span>
+<span class="fc bfc" id="L502" title="All 4 branches covered.">		} else if (enoun.endsWith(&quot;fe&quot;)) {</span>
+<span class="fc" id="L503">			return enoun.substring(0, enoun.length() - 2) + &quot;ves&quot; + postfix;</span>
+<span class="fc bfc" id="L504" title="All 12 branches covered.">		} else if ((enoun.length() &gt;= 4) &amp;&amp; enoun.endsWith(&quot;ouse&quot;)</span>
+				&amp;&amp; (&quot;mMlL&quot;.indexOf(enoun.charAt(enoun.length() - 5)) &gt; -1)) {
+<span class="fc" id="L506">			return enoun.substring(0, enoun.length() - 4) + &quot;ice&quot; + postfix;</span>
+<span class="fc bfc" id="L507" title="All 12 branches covered.">		} else if (enoun.endsWith(&quot;oose&quot;) &amp;&amp; !enoun.endsWith(&quot;caboose&quot;)</span>
+				&amp;&amp; !enoun.endsWith(&quot;noose&quot;)) {
+<span class="fc" id="L509">			return enoun.substring(0, enoun.length() - 4) + &quot;eese&quot; + postfix;</span>
+<span class="fc bfc" id="L510" title="All 4 branches covered.">		} else if (enoun.endsWith(&quot;ooth&quot;)) {</span>
+<span class="fc" id="L511">			return enoun.substring(0, enoun.length() - 4) + &quot;eeth&quot; + postfix;</span>
+<span class="fc bfc" id="L512" title="All 4 branches covered.">		} else if (enoun.endsWith(&quot;foot&quot;)) {</span>
+<span class="fc" id="L513">			return enoun.substring(0, enoun.length() - 4) + &quot;feet&quot; + postfix;</span>
+<span class="fc bfc" id="L514" title="All 4 branches covered.">		} else if (enoun.endsWith(&quot;child&quot;)) {</span>
+<span class="fc" id="L515">			return enoun + &quot;ren&quot; + postfix;</span>
+<span class="fc bfc" id="L516" title="All 4 branches covered.">		} else if (enoun.endsWith(&quot;eau&quot;)) {</span>
+<span class="fc" id="L517">			return enoun + &quot;x&quot; + postfix;</span>
+<span class="fc bfc" id="L518" title="All 4 branches covered.">		} else if (enoun.endsWith(&quot;ato&quot;)) {</span>
+<span class="fc" id="L519">			return enoun + &quot;es&quot; + postfix;</span>
+<span class="fc bfc" id="L520" title="All 4 branches covered.">		} else if (enoun.endsWith(&quot;ium&quot;)) {</span>
+<span class="fc" id="L521">			return enoun.substring(0, enoun.length() - 2) + &quot;a&quot; + postfix;</span>
+<span class="fc bfc" id="L522" title="All 12 branches covered.">		} else if (enoun.endsWith(&quot;alga&quot;) || enoun.endsWith(&quot;hypha&quot;)</span>
+				|| enoun.endsWith(&quot;larva&quot;)) {
+<span class="fc" id="L524">			return enoun + &quot;e&quot; + postfix;</span>
+<span class="fc bfc" id="L525" title="All 16 branches covered.">		} else if ((enoun.length() &gt; 3) &amp;&amp; enoun.endsWith(&quot;us&quot;)</span>
+				&amp;&amp; !(enoun.endsWith(&quot;lotus&quot;) || enoun.endsWith(&quot;wumpus&quot;))) {
+<span class="fc" id="L527">			return enoun.substring(0, enoun.length() - 2) + &quot;i&quot; + postfix;</span>
+<span class="pc bpc" id="L528" title="2 of 4 branches missed.">		} else if (enoun.equals(&quot;oni&quot;)) {</span>
+<span class="nc" id="L529">			return enoun;</span>
+<span class="pc bpc" id="L530" title="2 of 12 branches missed.">		} else if (enoun.endsWith(&quot;man&quot;)</span>
+				&amp;&amp; !(enoun.endsWith(&quot;shaman&quot;) || enoun.endsWith(&quot;human&quot;))) {
+<span class="fc" id="L532">			return enoun.substring(0, enoun.length() - 3) + &quot;men&quot; + postfix;</span>
+<span class="fc bfc" id="L533" title="All 8 branches covered.">		} else if (enoun.endsWith(&quot;rtex&quot;) || enoun.endsWith(&quot;index&quot;)) {</span>
+<span class="fc" id="L534">			return enoun.substring(0, enoun.length() - 2) + &quot;ices&quot; + postfix;</span>
+<span class="fc bfc" id="L535" title="All 4 branches covered.">		} else if (enoun.endsWith(&quot;trix&quot;)) {</span>
+<span class="fc" id="L536">			return enoun.substring(0, enoun.length() - 1) + &quot;ces&quot; + postfix;</span>
+<span class="fc bfc" id="L537" title="All 4 branches covered.">		} else if (enoun.endsWith(&quot;sis&quot;)) {</span>
+<span class="fc" id="L538">			return enoun.substring(0, enoun.length() - 2) + &quot;es&quot; + postfix;</span>
+<span class="fc bfc" id="L539" title="All 4 branches covered.">		} else if (enoun.endsWith(&quot;erinys&quot;)) { </span>
+<span class="fc" id="L540">			return enoun.substring(0, enoun.length() - 1) + &quot;es&quot; + postfix;</span>
+<span class="fc bfc" id="L541" title="All 4 branches covered.">		} else if (enoun.endsWith(&quot;mumak&quot;)) {</span>
+<span class="fc" id="L542">			return enoun + &quot;il&quot; + postfix;</span>
+<span class="fc bfc" id="L543" title="All 8 branches covered.">		} else if (enoun.endsWith(&quot;djinni&quot;) || enoun.endsWith(&quot;efreeti&quot;)) {</span>
+<span class="fc" id="L544">			return enoun.substring(0, enoun.length() - 1) + postfix;</span>
+<span class="fc bfc" id="L545" title="All 8 branches covered.">		} else if (enoun.endsWith(&quot;porcini&quot;) || enoun.endsWith(&quot;porcino&quot;)) {</span>
+<span class="fc" id="L546">			return enoun.substring(0, enoun.length() - 1) + &quot;i&quot; + postfix;</span>
+<span class="fc bfc" id="L547" title="All 12 branches covered.">		} else if ((enoun.length() &gt; 2) &amp;&amp; enoun.endsWith(&quot;y&quot;)</span>
+				&amp;&amp; isConsonant(enoun.charAt(enoun.length() - 2))) {
+<span class="fc" id="L549">			return enoun.substring(0, enoun.length() - 1) + &quot;ies&quot; + postfix;</span>
+
+			// If the word is already in plural form, return it unchanged.
+<span class="fc bfc" id="L552" title="All 4 branches covered.">		} else if (!singular(enoun).equals(enoun)) {</span>
+<span class="fc" id="L553">			return enoun + postfix;</span>
+
+			// last special case: Does the word end with &quot;ch&quot;, &quot;sh&quot;, &quot;s&quot;, &quot;x&quot;
+			// oder &quot;z&quot;?
+<span class="fc bfc" id="L557" title="All 16 branches covered.">		} else if (enoun.endsWith(&quot;ch&quot;)</span>
+				|| enoun.endsWith(&quot;sh&quot;)
+				|| ((enoun.length() &gt; 1) &amp;&amp; (&quot;sxz&quot;.indexOf(enoun.charAt(enoun.length() - 1)) &gt; -1))) {
+<span class="fc" id="L560">			return enoun + &quot;es&quot; + postfix;</span>
+			// German special case
+<span class="pc bpc" id="L562" title="2 of 8 branches missed.">		} else if (enoun.equals(&quot;glück&quot;) || enoun.equals(&quot;glücke&quot;)) {</span>
+<span class="fc" id="L563">			return &quot;glücke&quot;;</span>
+		} else {
+			// no special case matched, so use the boring default plural rule
+<span class="fc" id="L566">			return enoun + &quot;s&quot; + postfix;</span>
+		}
+	}
+	
+	/**
+	 * Returns the plural form of the given noun if not already given in plural
+	 * form. Method to prevent collision of items and creatures.
+	 * 
+	 * @param noun
+	 *            The noun to examine
+	 * @return An appropriate plural form
+	 */
+	public static String pluralCreature(final String noun) {
+<span class="pc bpc" id="L579" title="2 of 4 branches missed.">		if (noun.equals(&quot;chicken&quot;)) {</span>
+<span class="nc" id="L580">			return &quot;chickens&quot;;</span>
+		}
+		
+<span class="fc" id="L583">		return plural(noun);</span>
+	}
+
+	/**
+	 * Returns the singular form of the given noun if not already given in
+	 * singular form.
+	 * 
+	 * @param enoun
+	 *            The noun to examine
+	 * @return An appropriate singular form
+	 */
+	public static String singular(String enoun) {
+<span class="fc bfc" id="L595" title="All 4 branches covered.">		if (enoun == null) {</span>
+<span class="fc" id="L596">			return null;</span>
+		}
+
+<span class="fc" id="L599">		String postfix = &quot;&quot;;</span>
+
+<span class="fc" id="L601">		final int position = enoun.indexOf('+');</span>
+<span class="fc bfc" id="L602" title="All 4 branches covered.">		if (position != -1) {</span>
+<span class="fc" id="L603">			postfix = enoun.substring(position - 1);</span>
+<span class="fc" id="L604">			enoun = enoun.substring(0, position - 1);</span>
+		}
+
+		// in &quot;of&quot;-phrases build only the singular of the first part
+<span class="fc bfc" id="L608" title="All 4 branches covered.">		if (enoun.indexOf(of) &gt; -1) {</span>
+<span class="fc" id="L609">			return singular(enoun.substring(0, enoun.indexOf(of)))</span>
+					+ enoun.substring(enoun.indexOf(of)) + postfix;
+
+			// first of all handle words which do not change
+<span class="pc bpc" id="L613" title="4 of 32 branches missed.">		} else if (enoun.endsWith(&quot;money&quot;) || enoun.endsWith(&quot;dice&quot;)</span>
+				|| enoun.endsWith(&quot;sheep&quot;)
+				|| enoun.endsWith(&quot;legs&quot;) || enoun.endsWith(&quot;boots&quot;)
+				|| enoun.equals(&quot;deer&quot;) || enoun.equals(&quot;moose&quot;) || enoun.equals(&quot;magic&quot;)) {
+<span class="fc" id="L617">			return enoun + postfix;</span>
+
+			// now all the special cases
+<span class="fc bfc" id="L620" title="All 8 branches covered.">		} else if (enoun.endsWith(&quot;staffs&quot;) || enoun.endsWith(&quot;chiefs&quot;)) {</span>
+<span class="fc" id="L621">			return enoun.substring(0, enoun.length() - 1) + postfix;</span>
+<span class="pc bpc" id="L622" title="2 of 16 branches missed.">		} else if ((enoun.length() &gt; 4) &amp;&amp; enoun.endsWith(&quot;ves&quot;)</span>
+				&amp;&amp; (&quot;aeiourl&quot;.indexOf(enoun.charAt(enoun.length() - 4)) &gt; -1)
+				&amp;&amp; !enoun.endsWith(&quot;knives&quot;)) {
+<span class="fc" id="L625">			return enoun.substring(0, enoun.length() - 3) + &quot;f&quot; + postfix;</span>
+<span class="fc bfc" id="L626" title="All 4 branches covered.">		} else if (enoun.endsWith(&quot;ves&quot;)) {</span>
+<span class="fc" id="L627">			return enoun.substring(0, enoun.length() - 3) + &quot;fe&quot; + postfix;</span>
+<span class="fc bfc" id="L628" title="All 4 branches covered.">		} else if (enoun.endsWith(&quot;houses&quot;)) {</span>
+<span class="fc" id="L629">			return enoun.substring(0, enoun.length() - 1) + postfix;</span>
+<span class="fc bfc" id="L630" title="All 12 branches covered.">		} else if ((enoun.length() &gt; 3) &amp;&amp; enoun.endsWith(&quot;ice&quot;)</span>
+				&amp;&amp; (&quot;mMlL&quot;.indexOf(enoun.charAt(enoun.length() - 4)) &gt; -1)) {
+<span class="fc" id="L632">			return enoun.substring(0, enoun.length() - 3) + &quot;ouse&quot; + postfix;</span>
+<span class="pc bpc" id="L633" title="2 of 12 branches missed.">		} else if (enoun.endsWith(&quot;eese&quot;) </span>
+				&amp;&amp; !enoun.endsWith(&quot;cabeese&quot;) &amp;&amp; !enoun.endsWith(&quot;cheese&quot;)) {
+<span class="fc" id="L635">			return enoun.substring(0, enoun.length() - 4) + &quot;oose&quot; + postfix;</span>
+<span class="fc bfc" id="L636" title="All 4 branches covered.">		} else if (enoun.endsWith(&quot;eeth&quot;)) {</span>
+<span class="fc" id="L637">			return enoun.substring(0, enoun.length() - 4) + &quot;ooth&quot; + postfix;</span>
+<span class="fc bfc" id="L638" title="All 4 branches covered.">		} else if (enoun.endsWith(&quot;feet&quot;)) {</span>
+<span class="fc" id="L639">			return enoun.substring(0, enoun.length() - 4) + &quot;foot&quot; + postfix;</span>
+<span class="fc bfc" id="L640" title="All 4 branches covered.">		} else if (enoun.endsWith(&quot;children&quot;)) {</span>
+<span class="fc" id="L641">			return enoun.substring(0, enoun.length() - 3) + postfix;</span>
+<span class="fc bfc" id="L642" title="All 4 branches covered.">		} else if (enoun.endsWith(&quot;eaux&quot;)) {</span>
+<span class="fc" id="L643">			return enoun.substring(0, enoun.length() - 1) + postfix;</span>
+<span class="fc bfc" id="L644" title="All 4 branches covered.">		} else if (enoun.endsWith(&quot;atoes&quot;)) {</span>
+<span class="fc" id="L645">			return enoun.substring(0, enoun.length() - 2) + postfix;</span>
+		// don't transform &quot;wikipedia&quot; to &quot;wikipedium&quot; -&gt; endswith(&quot;ia&quot;) is not enough
+<span class="fc bfc" id="L647" title="All 8 branches covered.">		} else if (enoun.endsWith(&quot;helia&quot;) || enoun.endsWith(&quot;sodia&quot;)) {</span>
+<span class="fc" id="L648">			return enoun.substring(0, enoun.length() - 1) + &quot;um&quot; + postfix;</span>
+<span class="fc bfc" id="L649" title="All 12 branches covered.">		} else if (enoun.endsWith(&quot;algae&quot;) || enoun.endsWith(&quot;hyphae&quot;)</span>
+				|| enoun.endsWith(&quot;larvae&quot;)) {
+<span class="fc" id="L651">			return enoun.substring(0, enoun.length() - 1) + postfix;</span>
+<span class="fc bfc" id="L652" title="All 8 branches covered.">		} else if ((enoun.length() &gt; 2) &amp;&amp; enoun.endsWith(&quot;ei&quot;)) {</span>
+<span class="fc" id="L653">			return enoun.substring(0, enoun.length() - 1) + &quot;us&quot; + postfix;</span>
+<span class="fc bfc" id="L654" title="All 4 branches covered.">		} else if (enoun.endsWith(&quot;men&quot;)) {</span>
+<span class="fc" id="L655">			return enoun.substring(0, enoun.length() - 3) + &quot;man&quot; + postfix;</span>
+<span class="fc bfc" id="L656" title="All 4 branches covered.">		} else if (enoun.endsWith(&quot;matrices&quot;)) {</span>
+<span class="fc" id="L657">			return enoun.substring(0, enoun.length() - 4) + &quot;ix&quot; + postfix;</span>
+<span class="fc bfc" id="L658" title="All 4 branches covered.">		} else if (enoun.endsWith(&quot;ices&quot;)) { </span>
+			// indices, vertices, ...
+<span class="fc" id="L660">			return enoun.substring(0, enoun.length() - 4) + &quot;ex&quot; + postfix;</span>
+<span class="fc bfc" id="L661" title="All 4 branches covered.">		} else if (enoun.endsWith(&quot;erinyes&quot;)) { </span>
+<span class="fc" id="L662">			return enoun.substring(0, enoun.length() - 2) + &quot;s&quot; + postfix;</span>
+<span class="fc bfc" id="L663" title="All 8 branches covered.">		} else if (enoun.endsWith(&quot;erinys&quot;) || enoun.endsWith(&quot;cyclops&quot;)) {</span>
+			// singular detected
+<span class="fc" id="L665">			return enoun + postfix; </span>
+<span class="fc bfc" id="L666" title="All 4 branches covered.">		} else if (enoun.endsWith(&quot;mumakil&quot;)) {</span>
+<span class="fc" id="L667">			return enoun.substring(0, enoun.length() - 2) + postfix;</span>
+<span class="pc bpc" id="L668" title="2 of 4 branches missed.">		} else if (enoun.endsWith(&quot;djin&quot;)) {</span>
+<span class="nc" id="L669">			return enoun + &quot;ni&quot; + postfix;</span>
+<span class="fc bfc" id="L670" title="All 8 branches covered.">		} else if (enoun.endsWith(&quot;djinn&quot;) || enoun.endsWith(&quot;efreet&quot;)) {</span>
+<span class="fc" id="L671">			return enoun + &quot;i&quot; + postfix;</span>
+<span class="fc bfc" id="L672" title="All 8 branches covered.">		} else if (enoun.endsWith(&quot;porcini&quot;) || enoun.endsWith(&quot;porcino&quot;)) {</span>
+<span class="fc" id="L673">			return enoun.substring(0, enoun.length() - 1) + &quot;o&quot; + postfix;</span>
+<span class="fc bfc" id="L674" title="All 12 branches covered.">		} else if (enoun.endsWith(&quot;lotus&quot;) || enoun.endsWith(&quot;wumpus&quot;)</span>
+				|| enoun.endsWith(&quot;deus&quot;)) {
+<span class="fc" id="L676">			return enoun + postfix;</span>
+<span class="fc bfc" id="L677" title="All 4 branches covered.">		} else if (enoun.endsWith(&quot;cabooses&quot;)) {</span>
+<span class="fc" id="L678">			return enoun.substring(0, enoun.length() - 1) + postfix;</span>
+<span class="fc bfc" id="L679" title="All 8 branches covered.">		} else if (enoun.endsWith(&quot;yses&quot;) || enoun.endsWith(&quot;ysis&quot;)) {</span>
+<span class="fc" id="L680">			return enoun.substring(0, enoun.length() - 2) + &quot;is&quot; + postfix;</span>
+<span class="fc bfc" id="L681" title="All 32 branches covered.">		} else if ((enoun.length() &gt; 3)</span>
+				&amp;&amp; enoun.endsWith(&quot;es&quot;)
+				&amp;&amp; ((&quot;zxs&quot;.indexOf(enoun.charAt(enoun.length() - 3)) &gt; -1) || (enoun.endsWith(&quot;ches&quot;) || enoun.endsWith(&quot;shes&quot;)))
+				&amp;&amp; !enoun.endsWith(&quot;axes&quot;) &amp;&amp; !enoun.endsWith(&quot;bardiches&quot;)
+				&amp;&amp; !enoun.endsWith(&quot;nooses&quot;)) {
+<span class="fc" id="L686">			return enoun.substring(0, enoun.length() - 2) + postfix;</span>
+<span class="pc bpc" id="L687" title="2 of 16 branches missed.">		} else if ((enoun.length() &gt; 4) &amp;&amp; enoun.endsWith(&quot;ies&quot;)</span>
+				&amp;&amp; isConsonant(enoun.charAt(enoun.length() - 4))
+				&amp;&amp; !enoun.endsWith(&quot;zombies&quot;)) {
+<span class="fc" id="L690">			return enoun.substring(0, enoun.length() - 3) + &quot;y&quot; + postfix;</span>
+			// no special case matched, so look for the standard &quot;s&quot; plural
+<span class="fc bfc" id="L692" title="All 8 branches covered.">		} else if (enoun.endsWith(&quot;s&quot;) &amp;&amp; !enoun.endsWith(&quot;ss&quot;)) {</span>
+<span class="fc" id="L693">			return enoun.substring(0, enoun.length() - 1) + postfix;</span>
+			// German special case
+<span class="fc bfc" id="L695" title="All 8 branches covered.">		} else if (enoun.equals(&quot;glück&quot;) || enoun.equals(&quot;glücke&quot;)) {</span>
+<span class="fc" id="L696">			return &quot;glück&quot;;</span>
+		} else {
+<span class="fc" id="L698">			return enoun + postfix;</span>
+		}
+	}
+
+	/**
+	 * Returns either the plural or singular form of the given noun, depending
+	 * on the quantity.
+	 * 
+	 * @param quantity
+	 *            The quantity to examine
+	 * @param noun
+	 *            The noun to examine
+	 * @return Either &quot;[noun]&quot; or plural(&quot;[noun]&quot;) as appropriate
+	 */
+	public static String plnoun(final int quantity, final String noun) {
+<span class="fc" id="L713">		final String enoun = fullForm(noun);</span>
+<span class="fc bfc" id="L714" title="All 4 branches covered.">		if (quantity == 1) {</span>
+<span class="fc" id="L715">			return singular(enoun);</span>
+		} else {
+<span class="fc" id="L717">			return plural(noun);</span>
+		}
+	}
+	
+	/**
+	 * Returns either the plural or singular form of the given noun, depending
+	 * on the quantity. Method to prevent collision of items and creatures.
+	 * 
+	 * @param quantity
+	 *            The quantity to examine
+	 * @param noun
+	 *            The noun to examine
+	 * @return Either &quot;[noun]&quot; or plural(&quot;[noun]&quot;) as appropriate
+	 */
+	public static String plnounCreature(final int quantity, final String noun) {
+<span class="nc bnc" id="L732" title="All 4 branches missed.">		if (noun.equals(&quot;chicken&quot;)) {</span>
+<span class="nc bnc" id="L733" title="All 4 branches missed.">			if (quantity == 1) {</span>
+<span class="nc" id="L734">				return &quot;chicken&quot;;</span>
+			} else {
+<span class="nc" id="L736">				return &quot;chickens&quot;;</span>
+			}
+		}
+		
+<span class="nc" id="L740">		return plnoun(quantity, noun);</span>
+	}
+
+	/**
+	 * Returns either the plural or singular form of the given noun, depending
+	 * on the quantity; also prefixes the quantity.
+	 * 
+	 * @param quantity
+	 *            The quantity to examine
+	 * @param noun
+	 *            The noun to examine
+	 * @return Either &quot;[quantity] [noun]&quot; or &quot;[quantity]&quot; + plural(&quot;[noun]&quot;) as
+	 *         appropriate
+	 */
+	public static String quantityplnoun(final int quantity, final String noun) {
+<span class="fc" id="L755">		final String end = plnoun(quantity, noun);</span>
+<span class="fc" id="L756">		return Integer.toString(quantity) + &quot; &quot; + end;	</span>
+	}
+	
+	/**
+	 * Returns either the plural or singular form of the given noun, depending
+	 * on the quantity; also prefixes the quantity. Method to prevent
+	 * collision of items and creatures
+	 * 
+	 * 
+	 * @param quantity
+	 *            The quantity to examine
+	 * @param noun
+	 *            The noun to examine
+	 * @return Either &quot;[quantity] [noun]&quot; or &quot;[quantity]&quot; + plural(&quot;[noun]&quot;) as
+	 *         appropriate
+	 */
+	public static String quantityplnounCreature(final int quantity, final String noun) {
+<span class="pc bpc" id="L773" title="2 of 4 branches missed.">		if (noun.equals(&quot;chicken&quot;)) {</span>
+<span class="nc" id="L774">			final String end = plnounCreature(quantity, noun);</span>
+<span class="nc" id="L775">			return Integer.toString(quantity) + &quot; &quot; + end;</span>
+		}
+		
+<span class="fc" id="L778">		return quantityplnoun(quantity, noun);</span>
+	}
+
+	/**
+	 * Returns either the plural or singular form of the given noun, depending
+	 * on the quantity; also prefixes the quantity. In case the quantity is exactly
+	 * 1, the specified prefix is used. Note: There is some additional magic to convert
+	 * &quot;a&quot; and &quot;A&quot; to &quot;an&quot; and &quot;An&quot; in case that is required by the noun.
+	 * 
+	 * @param quantity
+	 *            The quantity to examine
+	 * @param noun
+	 *            The noun to examine
+	 * @param one replacement for &quot;1&quot;.
+	 * @return Either &quot;[quantity] [noun]&quot; or &quot;[quantity]&quot; + plural(&quot;[noun]&quot;) as
+	 *         appropriate
+	 */
+	public static String quantityplnoun(final int quantity, final String noun, final String one) {
+<span class="fc" id="L796">		final String word = plnoun(quantity, noun);</span>
+
+<span class="fc bfc" id="L798" title="All 4 branches covered.">		if (quantity == 1) {</span>
+<span class="fc bfc" id="L799" title="All 4 branches covered.">			if (one.equals(&quot;a&quot;)) {</span>
+<span class="fc" id="L800">				return a_noun(word);</span>
+<span class="fc bfc" id="L801" title="All 4 branches covered.">			} else if (one.equals(&quot;A&quot;)) {</span>
+<span class="fc" id="L802">				return A_noun(word);</span>
+<span class="fc bfc" id="L803" title="All 4 branches covered.">			} else if (one.equals(&quot;&quot;)) {</span>
+<span class="fc" id="L804">				return word;</span>
+			} else {
+<span class="fc" id="L806">				return one + &quot; &quot; + word;</span>
+			}
+		} else {
+<span class="fc" id="L809">			return Integer.toString(quantity) + &quot; &quot; + plural(noun);	</span>
+		}
+	}
+
+	/**
+	 * Returns either the plural or singular form of the given noun, depending on
+	 * the quantity; also prefixes the quantity and prints the noun with a hash prefix.
+	 * 
+	 * @param quantity
+	 *            The quantity to examine
+	 * @param noun
+	 *            The noun to examine
+	 * @return Either &quot;[quantity] [noun]&quot; or &quot;[quantity]&quot; + plural(&quot;[noun]&quot;) as
+	 *         appropriate
+	 */
+	public static String quantityplnounWithHash(final int quantity, final String noun) {
+<span class="fc" id="L825">		return quantityplnounWithMarker(quantity, noun, '#');</span>
+	}
+	
+	/**
+	 * Returns either the plural or singular form of the given noun, depending on
+	 * the quantity; also prefixes the quantity and prints the noun with a
+	 * specifier prefix.
+	 * 
+	 * @param quantity The quantity to examine
+	 * @param noun The noun to examine
+	 * @param marker The character use for the markup. '#' or '§'
+	 * @return Either &quot;[quantity] [noun]&quot; or &quot;[quantity]&quot; + plural(&quot;[noun]&quot;) as
+	 *         appropriate
+	 */
+	public static String quantityplnounWithMarker(int quantity, String noun, char marker) {
+<span class="fc" id="L840">		final String fullNoun = plnoun(quantity, noun);</span>
+		String prefix;
+<span class="fc bfc" id="L842" title="All 4 branches covered.">		if (quantity == 1) {</span>
+<span class="fc" id="L843">			prefix = a_an(fullNoun);</span>
+		} else {
+<span class="fc" id="L845">			prefix = Integer.toString(quantity) + &quot; &quot;;</span>
+		}
+<span class="fc" id="L847">		final StringBuilder sb = new StringBuilder(prefix);</span>
+
+<span class="fc bfc" id="L849" title="All 4 branches covered.">		if (fullNoun.indexOf(' ') == -1) {</span>
+<span class="fc" id="L850">			sb.append(marker);</span>
+<span class="fc" id="L851">			sb.append(fullNoun);</span>
+		} else {
+<span class="fc" id="L853">			sb.append(marker);</span>
+<span class="fc" id="L854">			sb.append(&quot;'&quot; + fullNoun + &quot;'&quot;);</span>
+		}
+
+<span class="fc" id="L857">		return sb.toString();</span>
+	}
+
+	/**
+	 * Returns either the plural or singular form of the given noun, depending
+	 * on the quantity; also prefixes the quantity as number string, if appropriate.
+	 * 
+	 * @param quantity
+	 *            The quantity to examine
+	 * @param noun
+	 *            The noun to examine
+	 * @return Either &quot;[quantity string] [noun]&quot; or &quot;[quantity string]&quot; + plural(&quot;[noun]&quot;) as
+	 *         appropriate
+	 */
+	public static String quantityNumberStrNoun(final int quantity, final String noun) {
+<span class="fc" id="L872">		StringBuilder sb = new StringBuilder();</span>
+
+<span class="fc bfc" id="L874" title="All 6 branches covered.">		switch(quantity) {</span>
+			case 0:
+<span class="fc" id="L876">				sb.append(&quot;0 &quot;);</span>
+<span class="fc" id="L877">				break;</span>
+
+			case 1:
+				// skip quantity string
+<span class="fc" id="L881">				break;</span>
+
+			default:
+<span class="fc" id="L884">				sb.append(numberString(quantity)).append(' ');</span>
+				break;
+		}
+
+<span class="fc" id="L888">		sb.append(plnoun(quantity, noun));</span>
+
+<span class="fc" id="L890">		return sb.toString();</span>
+	}
+
+	/**
+	 * Is the character a vowel?
+	 * 
+	 * @param c
+	 *            The character to examine
+	 * @return true if c is a vowel, false otherwise
+	 */
+	protected static boolean isVowel(final char c) {
+<span class="fc" id="L901">		final char l = Character.toLowerCase(c);</span>
+<span class="fc bfc" id="L902" title="All 20 branches covered.">		return ((l == 'a') || (l == 'e') || (l == 'i') || (l == 'o') || (l == 'u'));</span>
+	}
+
+	/**
+	 * Is the character a consonant?
+	 * 
+	 * @param c
+	 *            The character to examine
+	 * @return true if c is a consonant, false otherwise
+	 */
+	protected static boolean isConsonant(final char c) {
+<span class="fc bfc" id="L913" title="All 4 branches covered.">		return !isVowel(c);</span>
+	}
+
+	/**
+	 * first, second, third, ...
+	 * 
+	 * @param n
+	 *            a number
+	 * @return first, second, third, ...
+	 */
+	public static String ordered(final int n) {
+<span class="fc bfc" id="L924" title="All 22 branches covered.">		switch (n) {</span>
+<span class="fc" id="L925">		case 1:	return &quot;first&quot;;</span>
+<span class="fc" id="L926">		case 2:	return &quot;second&quot;;</span>
+<span class="fc" id="L927">		case 3:	return &quot;third&quot;;</span>
+<span class="fc" id="L928">		case 4:	return &quot;fourth&quot;;</span>
+<span class="fc" id="L929">		case 5:	return &quot;fifth&quot;;</span>
+<span class="fc" id="L930">		case 6:	return &quot;sixth&quot;;</span>
+<span class="fc" id="L931">		case 7:	return &quot;seventh&quot;;</span>
+<span class="fc" id="L932">		case 8:	return &quot;eighth&quot;;</span>
+<span class="fc" id="L933">		case 9:	return &quot;ninth&quot;;</span>
+<span class="fc" id="L934">		case 10:return &quot;tenth&quot;;</span>
+		default:
+<span class="pc bpc" id="L936" title="2 of 4 branches missed.">			if (n &gt; 0) {</span>
+<span class="fc" id="L937">				return n + ordinalSuffix(n);</span>
+			}
+<span class="nc" id="L939">			logger.error(&quot;Grammar.ordered not implemented for: &quot; + n);</span>
+<span class="nc" id="L940">			return Integer.toString(n);</span>
+		}
+	}
+	
+	/**
+	 * Get ordinal suffix string corresponding to an integer.
+	 * 
+	 * @param n integer whose ordinal's suffix is wanted
+	 * @return ordinal suffix
+	 */
+	private static String ordinalSuffix(int n) {
+<span class="fc" id="L951">		int penultimate = (n % 100) / 10;</span>
+<span class="fc bfc" id="L952" title="All 4 branches covered.">		if (penultimate == 1) {</span>
+<span class="fc" id="L953">			return &quot;th&quot;;</span>
+		}
+<span class="fc" id="L955">		int last = n % 10;</span>
+<span class="fc bfc" id="L956" title="All 4 branches covered.">		if (last == 1) {</span>
+<span class="fc" id="L957">			return &quot;st&quot;;</span>
+<span class="fc bfc" id="L958" title="All 4 branches covered.">		} else if (last == 2) {</span>
+<span class="fc" id="L959">			return &quot;nd&quot;;</span>
+<span class="fc bfc" id="L960" title="All 4 branches covered.">		} else if (last == 3) {</span>
+<span class="fc" id="L961">			return &quot;rd&quot;;</span>
+		}
+<span class="fc" id="L963">		return &quot;th&quot;;</span>
+	}
+
+	/**
+	 * Helper function to nicely formulate an enumeration of a collection.
+	 * &lt;p&gt; 
+	 * For example, for a collection containing the 3 elements x, y, z, returns the
+	 * string &quot;x, y, and z&quot;.
+	 * 
+	 * @param collection
+	 *            The collection whose elements should be enumerated
+	 * @return A nice String representation of the collection
+	 */
+	public static String enumerateCollection(final Collection&lt;String&gt; collection) {
+<span class="fc bfc" id="L977" title="All 4 branches covered.">		if (collection == null) {</span>
+<span class="fc" id="L978">			return &quot;&quot;;</span>
+		}
+<span class="fc" id="L980">		final String[] elements = collection.toArray(new String[collection.size()]);</span>
+		String ret;
+
+<span class="fc bfc" id="L983" title="All 4 branches covered.">		if (elements.length == 0) {</span>
+<span class="fc" id="L984">			ret = &quot;&quot;;</span>
+<span class="fc bfc" id="L985" title="All 4 branches covered.">		} else if (elements.length == 1) {</span>
+<span class="fc" id="L986">			ret = quoteHash(elements[0]);</span>
+<span class="fc bfc" id="L987" title="All 4 branches covered.">		} else if (elements.length == 2) {</span>
+<span class="fc" id="L988">			ret = quoteHash(elements[0]) + &quot; and &quot; + quoteHash(elements[1]);</span>
+		} else {
+<span class="fc" id="L990">			final StringBuilder sb = new StringBuilder();</span>
+
+<span class="fc bfc" id="L992" title="All 4 branches covered.">			for(int i = 0; i &lt; elements.length - 1; i++) {</span>
+<span class="fc" id="L993">				sb.append(quoteHash(elements[i]) + &quot;, &quot;);</span>
+			}
+<span class="fc" id="L995">			sb.append(&quot;and &quot; + quoteHash(elements[elements.length - 1]));</span>
+
+<span class="fc" id="L997">			ret = sb.toString();</span>
+		}
+
+<span class="fc" id="L1000">		return replaceInternalByDisplayNames(ret);</span>
+	}
+
+	/**
+	 * Helper function to nicely formulate an enumeration of a collection, 
+	 * with hashes to colour the words.
+	 * &lt;p&gt; 
+	 * For example, for a collection containing the 3 elements x, y, z, returns the
+	 * string &quot;#x, #y, and #z&quot;.
+	 * 
+	 * @param collection
+	 *            The collection whose elements should be enumerated
+	 * @return A nice String representation of the collection with hashes
+	 */
+	public static String enumerateCollectionWithHash(final Collection&lt;String&gt; collection) {
+<span class="fc bfc" id="L1015" title="All 4 branches covered.">		if (collection == null) {</span>
+<span class="fc" id="L1016">			return &quot;&quot;;</span>
+		}
+		
+<span class="fc" id="L1019">		final List&lt;String&gt; result = new ArrayList&lt;String&gt;(collection.size());</span>
+<span class="fc bfc" id="L1020" title="All 4 branches covered.">		for (String entry : collection) {</span>
+<span class="fc" id="L1021">			result.add(&quot;#&quot; + entry);</span>
+<span class="fc" id="L1022">		}</span>
+		
+<span class="fc" id="L1024">		return enumerateCollection(result);</span>
+	}
+	
+
+	/**
+	 * To let the client display compound words like &quot;#battle axe&quot; in blue, we put the whole item name in quotes.
+	 *
+	 * @param str
+	 * @return the hashed word
+	 */
+	public static String quoteHash(final String str) {
+<span class="pc bpc" id="L1035" title="2 of 4 branches missed.">		if (str != null) {</span>
+<span class="fc" id="L1036">			final int idx = str.indexOf('#');</span>
+
+<span class="fc bfc" id="L1038" title="All 12 branches covered.">			if ((idx != -1) &amp;&amp; (str.indexOf(' ', idx) != -1) &amp;&amp; (str.charAt(idx + 1) != '\'')) {</span>
+<span class="fc" id="L1039">				return str.substring(0, idx) + &quot;#'&quot; + str.substring(idx + 1) + '\'';</span>
+			}
+		}
+
+<span class="fc" id="L1043">		return str;</span>
+	}
+
+	/**
+	 * Converts numbers into their textual representation.
+	 * 
+	 * @param n
+	 *            a number
+	 * @return one, two, three, ...
+	 */
+	public static String numberString(final int n) {
+<span class="fc bfc" id="L1054" title="All 28 branches covered.">		switch (n) {</span>
+		case 0:
+<span class="fc" id="L1056">			return &quot;no&quot;;</span>
+		case 1:
+<span class="fc" id="L1058">			return &quot;one&quot;;</span>
+		case 2:
+<span class="fc" id="L1060">			return &quot;two&quot;;</span>
+		case 3:
+<span class="fc" id="L1062">			return &quot;three&quot;;</span>
+		case 4:
+<span class="fc" id="L1064">			return &quot;four&quot;;</span>
+		case 5:
+<span class="fc" id="L1066">			return &quot;five&quot;;</span>
+		case 6:
+<span class="fc" id="L1068">			return &quot;six&quot;;</span>
+		case 7:
+<span class="fc" id="L1070">			return &quot;seven&quot;;</span>
+		case 8:
+<span class="fc" id="L1072">			return &quot;eight&quot;;</span>
+		case 9:
+<span class="fc" id="L1074">			return &quot;nine&quot;;</span>
+		case 10:
+<span class="fc" id="L1076">			return &quot;ten&quot;;</span>
+		case 11:
+<span class="fc" id="L1078">			return &quot;eleven&quot;;</span>
+		case 12:
+<span class="fc" id="L1080">			return &quot;twelve&quot;;</span>
+		default:
+<span class="fc" id="L1082">			return Integer.toString(n);</span>
+		}
+	}
+
+	/**
+	 * Interprets number texts.
+	 * 
+	 * @param text
+	 *            a number
+	 * @return one, two, three, ...
+	 */
+	public static Integer number(final String text) {
+<span class="fc bfc" id="L1094" title="All 8 branches covered.">		if (text.equals(&quot;no&quot;) || text.equals(&quot;zero&quot;)) {</span>
+<span class="fc" id="L1095">			return 0;</span>
+<span class="fc bfc" id="L1096" title="All 8 branches covered.">		} else if (text.equals(&quot;a&quot;) || text.equals(&quot;an&quot;)) {</span>
+<span class="fc" id="L1097">			return 1;</span>
+<span class="fc bfc" id="L1098" title="All 4 branches covered.">		} else if (text.equals(&quot;one&quot;)) {</span>
+<span class="fc" id="L1099">			return 1;</span>
+<span class="fc bfc" id="L1100" title="All 4 branches covered.">		} else if (text.equals(&quot;two&quot;)) {</span>
+<span class="fc" id="L1101">			return 2;</span>
+<span class="fc bfc" id="L1102" title="All 4 branches covered.">		} else if (text.equals(&quot;three&quot;)) {</span>
+<span class="fc" id="L1103">			return 3;</span>
+<span class="fc bfc" id="L1104" title="All 4 branches covered.">		} else if (text.equals(&quot;four&quot;)) {</span>
+<span class="fc" id="L1105">			return 4;</span>
+<span class="fc bfc" id="L1106" title="All 4 branches covered.">		} else if (text.equals(&quot;five&quot;)) {</span>
+<span class="fc" id="L1107">			return 5;</span>
+<span class="fc bfc" id="L1108" title="All 4 branches covered.">		} else if (text.equals(&quot;six&quot;)) {</span>
+<span class="fc" id="L1109">			return 6;</span>
+<span class="fc bfc" id="L1110" title="All 4 branches covered.">		} else if (text.equals(&quot;seven&quot;)) {</span>
+<span class="fc" id="L1111">			return 7;</span>
+<span class="fc bfc" id="L1112" title="All 4 branches covered.">		} else if (text.equals(&quot;eight&quot;)) {</span>
+<span class="fc" id="L1113">			return 8;</span>
+<span class="fc bfc" id="L1114" title="All 4 branches covered.">		} else if (text.equals(&quot;nine&quot;)) {</span>
+<span class="fc" id="L1115">			return 9;</span>
+<span class="fc bfc" id="L1116" title="All 4 branches covered.">		} else if (text.equals(&quot;ten&quot;)) {</span>
+<span class="fc" id="L1117">			return 10;</span>
+<span class="fc bfc" id="L1118" title="All 4 branches covered.">		} else if (text.equals(&quot;eleven&quot;)) {</span>
+<span class="fc" id="L1119">			return 11;</span>
+<span class="pc bpc" id="L1120" title="2 of 4 branches missed.">		} else if (text.equals(&quot;twelve&quot;)) {</span>
+<span class="fc" id="L1121">			return 12;</span>
+		} else {
+			// also handle &quot;a dozen&quot;, ...
+<span class="nc" id="L1124">			return null;</span>
+		}
+	}
+
+	/**
+	 * Return type for normalizedRegularVerb().
+	 */
+<span class="nc" id="L1131">	public static class Verb {</span>
+<span class="fc" id="L1132">		public Verb(String normalized) {</span>
+<span class="fc" id="L1133">			this.word = normalized;</span>
+<span class="fc" id="L1134">			isGerund = false;</span>
+<span class="fc" id="L1135">			isPast = false;</span>
+<span class="fc" id="L1136">		}</span>
+
+<span class="fc" id="L1138">		public Verb(Verb other) {</span>
+<span class="fc" id="L1139">			word = other.word;</span>
+<span class="fc" id="L1140">			isGerund = other.isGerund;</span>
+<span class="fc" id="L1141">			isPast = other.isPast;</span>
+<span class="fc" id="L1142">		}</span>
+
+		public String word;
+		public boolean isGerund;
+		public boolean isPast;
+	}
+
+	/**
+	 * Normalize the given regular verb, or return null if not applicable.
+	 * Note: Some words like &quot;close&quot; are returned without the trailing &quot;e&quot;
+	 * character. This is handled in WordList.normalizeVerb().
+	 *
+	 * @param word
+	 * @return normalized string
+	 */
+	public static Verb normalizeRegularVerb(final String word) {
+<span class="fc" id="L1158">		Verb verb = null;</span>
+
+<span class="fc bfc" id="L1160" title="All 12 branches covered.">		if ((word.length() &gt; 4) &amp;&amp; (word.endsWith(&quot;ed&quot;) || word.endsWith(&quot;es&quot;))) {</span>
+<span class="pc bpc" id="L1161" title="2 of 4 branches missed.">			if (word.charAt(word.length() - 4) == word.charAt(word.length() - 3)) {</span>
+<span class="nc" id="L1162">				verb = new Verb(word.substring(0, word.length() - 3));</span>
+			} else {
+<span class="fc" id="L1164">				verb = new Verb(word.substring(0, word.length() - 2));</span>
+			}
+
+<span class="fc bfc" id="L1167" title="All 4 branches covered.">			if (word.endsWith(&quot;ed&quot;)) {</span>
+<span class="fc" id="L1168">				verb.isPast = true;</span>
+			}
+<span class="fc bfc" id="L1170" title="All 12 branches covered.">		} else if (word.length() &gt; 3 &amp;&amp; word.endsWith(&quot;s&quot;) &amp;&amp;</span>
+					!Grammar.isVowel(word.charAt(word.length()-2))) {
+<span class="fc" id="L1172">			verb = new Verb(word.substring(0, word.length() - 1));</span>
+<span class="fc bfc" id="L1173" title="All 4 branches covered.">		} else if (isGerund(word)) {</span>
+<span class="fc" id="L1174">			verb = new Verb(word.substring(0, word.length() - 3));</span>
+<span class="fc" id="L1175">			verb.isGerund = true;</span>
+		}
+
+<span class="fc" id="L1178">		return verb;</span>
+	}
+
+	/**
+	 * Check the given verb for gerund form, e.g. &quot;doing&quot;.
+	 *
+	 * @param word
+	 * @return true if gerund false otherwise
+	 */
+	public static boolean isGerund(final String word) {
+<span class="fc bfc" id="L1188" title="All 8 branches covered.">		if ((word.length() &gt; 4) &amp;&amp; word.endsWith(&quot;ing&quot;)) {</span>
+			// Is there a vowel in the preceding characters?
+<span class="fc bfc" id="L1190" title="All 4 branches covered.">			for (int i = word.length() - 3; --i &gt;= 0;) {</span>
+<span class="fc bfc" id="L1191" title="All 4 branches covered.">				if (isVowel(word.charAt(i))) {</span>
+<span class="fc" id="L1192">					return true;</span>
+				}
+			}
+		}
+
+<span class="fc" id="L1197">		return false;</span>
+	}
+
+	
+	/**
+	 * Return gerund form, e.g. &quot;making&quot; or &quot;casting&quot;.
+	 *
+	 * @param word
+	 * @return gerund form
+	 */
+	public static String gerundForm(final String word) {
+<span class="pc bpc" id="L1208" title="2 of 4 branches missed.">		if (word.length() &gt; 2) {</span>
+<span class="fc" id="L1209">			char last = word.charAt(word.length()-1);</span>
+
+<span class="pc bpc" id="L1211" title="2 of 8 branches missed.">			if (last == 'y' || last == 'w') {</span>
+				// word finishes with a 'y' or a 'w'
+<span class="fc" id="L1213">				return word + &quot;ing&quot;;</span>
+<span class="fc bfc" id="L1214" title="All 4 branches covered.">			} else if (isVowel(last)) {</span>
+				// word finishes with a vowel
+<span class="fc" id="L1216">				return word.substring(0, word.length() - 1) + &quot;ing&quot;;</span>
+<span class="fc bfc" id="L1217" title="All 4 branches covered.">			} else if (isVowel(word.charAt(word.length()-2))) {</span>
+				// word finishes with a single consonant
+				// duplicate the last character
+<span class="fc" id="L1220">				return word + word.charAt(word.length()-1) + &quot;ing&quot;;</span>
+			}
+		}
+
+		// word is too short or finishes with more than one consonant  (e.g. &quot;st&quot;)
+<span class="fc" id="L1225">		return word + &quot;ing&quot;;</span>
+	}
+
+	/**
+	 * Check the given word for derived adjectives like &quot;magical&quot;
+	 * or &quot;nomadic&quot;.
+	 *
+	 * @param word
+	 * @return true if ends with &quot;al&quot;, &quot;ic&quot; or &quot;ed&quot;
+	 */
+	public static boolean isDerivedAdjective(final String word) {
+<span class="fc bfc" id="L1236" title="All 4 branches covered.">		if (word.length() &gt; 4) {</span>
+<span class="fc bfc" id="L1237" title="All 8 branches covered.">			if (word.endsWith(&quot;al&quot;) || word.endsWith(&quot;ic&quot;))</span>
+<span class="fc" id="L1238">				return true;</span>
+
+<span class="fc bfc" id="L1240" title="All 4 branches covered.">			if (word.endsWith(&quot;ed&quot;))</span>
+<span class="fc" id="L1241">				return true;</span>
+		}
+
+<span class="fc" id="L1244">		return false;</span>
+	}
+
+	/**
+	 * Normalize the given derived adjective, or return null if not applicable.
+	 * 
+	 * @param word
+	 * @return normalized string
+	 */
+	public static String normalizeDerivedAdjective(final String word) {
+<span class="fc bfc" id="L1254" title="All 4 branches covered.">		if (isDerivedAdjective(word)) {</span>
+<span class="fc" id="L1255">			return word.substring(0, word.length() - 2);</span>
+		} else {
+<span class="fc" id="L1257">			return null;</span>
+		}
+    }
+
+	/**
+	 * Check for words with ambiguity between noun and verb.
+	 * @param normalized word in normalized form
+	 * @return ambiguity flag
+	 */
+	public static boolean isAmbiguousNounVerb(final String normalized) {
+<span class="pc bpc" id="L1267" title="4 of 12 branches missed.">		if (normalized.equals(&quot;mill&quot;) || normalized.equals(&quot;fish&quot;) || normalized.equals(&quot;esacpe&quot;)) {</span>
+<span class="fc" id="L1268">			return true;</span>
+		} else {
+<span class="fc" id="L1270">			return false;</span>
+		}
+	}
+
+	/**
+	 * enumerates a collections using the plural forms.
+	 *
+	 * @param collection Collection
+	 * @return enumeration using plural forms
+	 */
+	public static String enumerateCollectionPlural(Collection&lt;String&gt; collection) {
+<span class="fc" id="L1281">		Collection&lt;String&gt; pluralCollection = new ArrayList&lt;String&gt;(collection.size());</span>
+<span class="fc bfc" id="L1282" title="All 4 branches covered.">		for (String entry : collection) {</span>
+<span class="fc" id="L1283">			pluralCollection.add(plural(entry));</span>
+<span class="fc" id="L1284">		}</span>
+<span class="fc" id="L1285">		return enumerateCollection(pluralCollection);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

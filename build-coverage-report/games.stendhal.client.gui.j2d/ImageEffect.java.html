@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ImageEffect.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui.j2d</a> &gt; <span class="el_source">ImageEffect.java</span></div><h1>ImageEffect.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2012 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui.j2d;
+
+import games.stendhal.client.entity.IEntity;
+import games.stendhal.client.gui.j2d.entity.Entity2DView;
+import games.stendhal.client.gui.j2d.entity.helpers.HorizontalAlignment;
+import games.stendhal.client.gui.j2d.entity.helpers.VerticalAlignment;
+import games.stendhal.client.sprite.SequenceSprite;
+import games.stendhal.client.sprite.Sprite;
+import games.stendhal.client.sprite.SpriteStore;
+
+/**
+ * A graphical effect that attachs itself to an entity view, and removes itself
+ * once all the animation frames have been drawn.
+ */
+public class ImageEffect implements SequenceSprite.SequenceSpriteListener {
+	private final static String IMAGE_LOCATION = &quot;data/sprites/effects/&quot;;
+	
+	private final Entity2DView&lt;? extends IEntity&gt; view;
+	private final Sprite sequence;
+	
+	/**
+	 * Create a new ImageEffect.
+	 * 
+	 * @param view the view where the effect binds itself to
+	 * @param image name of the image that is used for the the animation 
+	 */
+<span class="nc" id="L38">	public ImageEffect(Entity2DView&lt;? extends IEntity&gt; view, String image) {</span>
+<span class="nc" id="L39">		this.view = view;</span>
+<span class="nc" id="L40">		SpriteStore store = SpriteStore.get();</span>
+		/*
+		 * TODO: get the frame delays from a configuration file. Also the file
+		 * should specify whether the effect must obey zone coloring.
+		 */
+<span class="nc" id="L45">		Sprite base = store.getSprite(IMAGE_LOCATION + image + &quot;.png&quot;);</span>
+<span class="nc" id="L46">		int width = base.getWidth();</span>
+<span class="nc" id="L47">		int height = base.getHeight();</span>
+<span class="nc" id="L48">		int count = width / height;</span>
+<span class="nc" id="L49">		Sprite[] frames = store.getTiles(base, 0, 0, count, height, height);</span>
+<span class="nc" id="L50">		sequence = new SequenceSprite(this, frames, 100);</span>
+<span class="nc" id="L51">		view.attachSprite(sequence, HorizontalAlignment.CENTER,</span>
+				VerticalAlignment.MIDDLE, 0, 0);
+<span class="nc" id="L53">	}</span>
+
+	@Override
+	public void endSequence() {
+<span class="nc" id="L57">		view.detachSprite(sequence);</span>
+<span class="nc" id="L58">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

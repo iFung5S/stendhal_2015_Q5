@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>WikipediaAccess.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.util</a> &gt; <span class="el_source">WikipediaAccess.java</span></div><h1>WikipediaAccess.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.util;
+
+import games.stendhal.client.update.HttpClient;
+
+import javax.xml.parsers.SAXParser;
+import javax.xml.parsers.SAXParserFactory;
+
+import org.xml.sax.Attributes;
+import org.xml.sax.SAXException;
+import org.xml.sax.helpers.DefaultHandler;
+
+/**
+ * Gets the first text paragraph from the specified Wikipedia article using the
+ * MediaWiki bot API.
+ * 
+ * You can invoke the parser either inline using the method parse() or start it
+ * in a new thread.
+ * 
+ * TODO: handle redirects (but take care, there might be two redirects that
+ * point to each other).
+ * 
+ * @author hendrik
+ */
+public class WikipediaAccess extends DefaultHandler implements Runnable {
+
+	private final String title;
+
+<span class="fc" id="L40">	private final StringBuilder text = new StringBuilder();</span>
+
+	/** used by the parser to detect the right tag. */
+	private boolean isContent;
+
+	/** was the parsing completed. */
+	private boolean finished;
+
+	private String error;
+
+	/**
+	 * Creates a new WikipeidaAccess.
+	 * 
+	 * @param title
+	 *            title of the page to access
+	 */
+<span class="fc" id="L56">	public WikipediaAccess(final String title) {</span>
+<span class="fc" id="L57">		this.title = title;</span>
+<span class="fc" id="L58">	}</span>
+
+	@Override
+	public void startElement(final String namespaceURI, final String lName, final String qName,
+			final Attributes attrs) {
+<span class="fc" id="L63">		isContent = qName.equals(&quot;rev&quot;);</span>
+<span class="fc" id="L64">	}</span>
+
+	@Override
+	public void characters(final char[] ch, final int start, final int length) throws SAXException {
+<span class="pc bpc" id="L68" title="1 of 2 branches missed.">		if (isContent) {</span>
+<span class="fc" id="L69">			text.append(ch, start, length);</span>
+		}
+<span class="fc" id="L71">	}</span>
+
+	/**
+	 * Returns the unparsed text.
+	 * 
+	 * @return content
+	 */
+	public String getText() {
+<span class="fc" id="L79">		return text.toString();</span>
+	}
+
+	/**
+	 * Gets the last error message.
+	 * 
+	 * @return error message or &lt;code&gt;null&lt;/code&gt; in case no error occurred
+	 */
+	public String getError() {
+<span class="fc" id="L88">		return error;</span>
+	}
+
+	/**
+	 * Returns the first paragraph of the specified article without wiki code.
+	 * 
+	 * @return content
+	 */
+	public String getProcessedText() {
+<span class="fc" id="L97">		String content = getText();</span>
+
+<span class="pc bpc" id="L99" title="1 of 2 branches missed.">		if (content != null) {</span>
+			// remove REDIRECT headers
+<span class="fc bfc" id="L101" title="All 2 branches covered.">			if (content.startsWith(&quot;#REDIRECT&quot;)) {</span>
+<span class="fc" id="L102">				content = content.replaceFirst(&quot;.*\n&quot;, &quot;&quot;);</span>
+			}
+
+<span class="fc" id="L105">			content = wikiToPlainText(content);</span>
+		}
+
+<span class="fc" id="L108">		return content;</span>
+	}
+
+	/**
+	 * Extract plain text from Wikipedia article content.
+	 * 
+	 * @param content
+	 * @return plain text
+	 */
+	private static String wikiToPlainText(String content) {
+		// remove image links
+<span class="fc" id="L119">		content = content.replaceAll(&quot;\\[\\[[iI]mage:[^\\]]*\\]\\]&quot;, &quot;&quot;);</span>
+		// remove comments
+		// (?s) means that . should also match newlines (DOTALL mode).
+<span class="fc" id="L122">		content = content.replaceAll(&quot;(?s)&lt;!--.*?--&gt;&quot;, &quot;&quot;);</span>
+		// remove ref
+<span class="fc" id="L124">		content = content.replaceAll(&quot;(?s)&lt;ref&gt;.*?&lt;/ref&gt;&quot;, &quot;&quot;);</span>
+
+		// remove templates
+		// first for two level deep templates
+<span class="fc" id="L128">		content = content.replaceAll(&quot;(?s)\\{\\{([^{}]*?\\{\\{[^{}]*?\\}\\})+[^{}].*?\\}\\}&quot;, &quot;&quot;);</span>
+		// then handle one level templates (This doesn't work with templates inside templates.)
+<span class="fc" id="L130">		content = content.replaceAll(&quot;(?s)\\{\\{.*?\\}\\}&quot;, &quot;&quot;);</span>
+
+		// remove tables
+		// This doesn't work with templates inside templates.
+<span class="fc" id="L134">		content = content.replaceAll(&quot;(?s)\\{\\|.*?\\|\\}&quot;, &quot;&quot;);</span>
+
+		// remove complex links
+<span class="fc" id="L137">		content = content.replaceAll(&quot;\\[\\[[^\\]]*\\|&quot;, &quot;&quot;);</span>
+		// remove simple links
+<span class="fc" id="L139">		content = content.replaceAll(&quot;\\[\\[&quot;, &quot;&quot;);</span>
+<span class="fc" id="L140">		content = content.replaceAll(&quot;\\]\\]&quot;, &quot;&quot;);</span>
+		// remove tags
+<span class="fc" id="L142">		content = content.replaceAll(&quot;(?s)&lt;.*?&gt;&quot;, &quot;&quot;);</span>
+
+		// ignore leading empty lines and spaces
+<span class="fc" id="L145">		content = content.trim();</span>
+
+		// extract the first paragraph (ignoring very short ones but opposing a max len)
+<span class="fc" id="L148">		final int size = content.length();</span>
+<span class="fc" id="L149">		int endOfFirstParagraph = content.indexOf(&quot;\n&quot;, 50);</span>
+<span class="fc bfc" id="L150" title="All 2 branches covered.">		if (endOfFirstParagraph &lt; 0) {</span>
+<span class="fc" id="L151">			endOfFirstParagraph = size;</span>
+		}
+<span class="fc" id="L153">		content = content.substring(0, Math.min(endOfFirstParagraph, 1024));</span>
+
+<span class="fc" id="L155">		return content;</span>
+	}
+
+	/**
+	 * Starts the parsing of the specified article.
+	 * 
+	 * @return &lt;code&gt;true&lt;/code&gt; on successful parsing, &lt;code&gt;false&lt;/code&gt; on
+	 * 	failure
+	 */
+	private boolean parse() {
+<span class="fc" id="L165">		String keyword = title;</span>
+		boolean success;
+
+		try {
+<span class="fc bfc" id="L169" title="All 2 branches covered.">			while(keyword != null) {</span>
+				// look it up using the Wikipedia API
+<span class="fc" id="L171">				final HttpClient httpClient = new HttpClient(</span>
+						&quot;https://en.wikipedia.org/w/api.php?action=query&amp;titles=&quot;
+								+ keyword.replace(' ', '_').replace(&quot;%&quot;, &quot;%25&quot;)
+								+ &quot;&amp;prop=revisions&amp;rvprop=content&amp;format=xml&quot;);
+<span class="fc" id="L175">				final SAXParserFactory factory = SAXParserFactory.newInstance();</span>
+
+				// Parse the input
+<span class="fc" id="L178">				final SAXParser saxParser = factory.newSAXParser();</span>
+<span class="fc" id="L179">				saxParser.parse(httpClient.getInputStream(), this);</span>
+
+<span class="fc" id="L181">				final String response = getText();</span>
+
+<span class="fc bfc" id="L183" title="All 2 branches covered.">				if (response.startsWith(&quot;#REDIRECT&quot;)) {</span>
+					// extract the new keyword
+<span class="fc" id="L185">					final String redirect = wikiToPlainText(response).substring(9);</span>
+
+					// check for new line to detect if we got only a one liner to redirect
+<span class="fc bfc" id="L188" title="All 2 branches covered.">					if (redirect.indexOf('\n') &gt; -1) {</span>
+						// We found the redirected article.
+<span class="fc" id="L190">						keyword = null;</span>
+					} else {
+<span class="pc bpc" id="L192" title="1 of 2 branches missed.">						if (keyword.equalsIgnoreCase(redirect)) {</span>
+							// stop to avoid an infinite loop
+<span class="nc" id="L194">							keyword = null;</span>
+						} else {
+<span class="fc" id="L196">							reset();</span>
+<span class="fc" id="L197">							keyword = redirect;</span>
+						}
+					}
+<span class="fc" id="L200">				} else {</span>
+					// finished
+<span class="fc" id="L202">					keyword = null;</span>
+				}
+<span class="fc" id="L204">			}</span>
+
+<span class="fc" id="L206">			success = true;</span>
+<span class="nc" id="L207">		} catch (final Exception e) { // SAXException, IOException</span>
+<span class="nc" id="L208">			error = e.toString();</span>
+<span class="nc" id="L209">			success = false;</span>
+		} finally {
+<span class="pc" id="L211">			finished = true;</span>
+<span class="pc" id="L212">		}</span>
+
+<span class="fc" id="L214">		return success;</span>
+	}
+
+	/**
+	 * Reset internal state to repeat a query.
+	 */
+	private void reset() {
+<span class="fc" id="L221">		isContent = false;</span>
+<span class="fc" id="L222">		finished = false;</span>
+<span class="fc" id="L223">	}</span>
+
+	@Override
+	public void run() {
+<span class="fc" id="L227">		parse();</span>
+
+		// ignore failures as they are already logged in the parse()-method itself
+<span class="fc" id="L230">	}</span>
+
+	/**
+	 * Returns true when the XML response was completely parsed.
+	 * 
+	 * @return true if the parsing was completed, false otherwise
+	 */
+	public boolean isFinished() {
+<span class="fc" id="L238">		return finished;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

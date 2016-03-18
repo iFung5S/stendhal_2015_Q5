@@ -1,0 +1,606 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>CreateAccountDialog.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui.login</a> &gt; <span class="el_source">CreateAccountDialog.java</span></div><h1>CreateAccountDialog.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                  (C) Copyright 2003 - 2015 Faiumoni e.V.                *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui.login;
+
+import java.awt.Frame;
+import java.awt.GridLayout;
+import java.awt.Toolkit;
+import java.awt.Window;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.util.Locale;
+
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JComponent;
+import javax.swing.JDialog;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JPasswordField;
+import javax.swing.JTextField;
+import javax.swing.SwingConstants;
+import javax.swing.text.AbstractDocument;
+import javax.swing.text.AttributeSet;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.PlainDocument;
+
+import org.apache.log4j.Logger;
+
+import games.stendhal.client.StendhalClient;
+import games.stendhal.client.stendhal;
+import games.stendhal.client.gui.NumberDocumentFilter;
+import games.stendhal.client.gui.ProgressBar;
+import games.stendhal.client.gui.WindowUtils;
+import games.stendhal.client.gui.layout.SBoxLayout;
+import games.stendhal.client.gui.layout.SLayout;
+import games.stendhal.client.update.ClientGameConfiguration;
+import marauroa.client.BannedAddressException;
+import marauroa.client.LoginFailedException;
+import marauroa.client.TimeoutException;
+import marauroa.common.game.AccountResult;
+import marauroa.common.net.InvalidVersionException;
+
+/**
+ * The account creation dialog. For requesting account name, password, and all
+ * other needed data.
+ */
+public class CreateAccountDialog extends JDialog {
+	/** Logger instance. */
+<span class="fc" id="L66">	private static final Logger LOGGER = Logger.getLogger(CreateAccountDialog.class);</span>
+	
+	/** User name input field. */
+	private JTextField usernameField;
+	/** Password input field. */ 
+	private JPasswordField passwordField;
+	/** Password verification field. */
+	private JPasswordField passwordretypeField;
+	/** Email input field. */
+	private JTextField emailField;
+	/** Server name input field. */
+	private JTextField serverField;
+	/** Server port input field. */
+	private JTextField serverPortField;
+	
+	/** The client used for login. */
+	private StendhalClient client;
+	/** Descriptions of error conditions. */
+	private String badEmailTitle, badEmailReason, badPasswordReason;
+	
+	/**
+	 * Create an CreateAccountDialog for a parent window, and specified client.
+	 * 
+	 * @param owner parent frame
+	 * @param client client used for login
+	 */
+	public CreateAccountDialog(final Frame owner, final StendhalClient client) {
+<span class="nc" id="L93">		super(owner, true);</span>
+<span class="nc" id="L94">		this.client = client;</span>
+<span class="nc" id="L95">		initializeComponent(owner);</span>
+		
+<span class="nc" id="L97">		WindowUtils.closeOnEscape(this);</span>
+<span class="nc" id="L98">		this.setVisible(true);</span>
+<span class="nc" id="L99">	}</span>
+	
+	/**
+	 * A dumb constructor used only for tests.
+	 */
+	CreateAccountDialog() {
+<span class="fc" id="L105">		super();</span>
+<span class="fc" id="L106">		initializeComponent(null);</span>
+<span class="fc" id="L107">	}</span>
+	
+	/**
+	 * Create the dialog contents.
+	 * 
+	 * @param owner parent window
+	 */
+	private void initializeComponent(final Frame owner) {
+<span class="fc" id="L115">		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);</span>
+<span class="pc bpc" id="L116" title="1 of 2 branches missed.">		if (owner != null) {</span>
+<span class="nc" id="L117">			addWindowListener(new WindowAdapter() {</span>
+				@Override
+				public void windowClosing(WindowEvent e) {
+<span class="nc" id="L120">					owner.setEnabled(true);</span>
+<span class="nc" id="L121">				}</span>
+			});
+		}
+		
+<span class="fc" id="L125">		JLabel serverLabel = new JLabel(&quot;Server name&quot;);</span>
+<span class="fc" id="L126">		serverField = new JTextField(</span>
+				ClientGameConfiguration.get(&quot;DEFAULT_SERVER&quot;));
+<span class="fc" id="L128">		serverField.setEditable(true);</span>
+<span class="fc" id="L129">		JLabel serverPortLabel = new JLabel(&quot;Server port&quot;);</span>
+<span class="fc" id="L130">		serverPortField = new JTextField(</span>
+				ClientGameConfiguration.get(&quot;DEFAULT_PORT&quot;));
+<span class="fc" id="L132">		((AbstractDocument) serverPortField.getDocument()).setDocumentFilter(new NumberDocumentFilter(serverPortField, false));</span>
+		
+<span class="fc" id="L134">		JLabel usernameLabel = new JLabel(&quot;Choose a username&quot;);</span>
+<span class="fc" id="L135">		usernameField = new JTextField();</span>
+<span class="fc" id="L136">		usernameField.setDocument(new LowerCaseLetterDocument());</span>
+		
+<span class="fc" id="L138">		JLabel passwordLabel = new JLabel(&quot;Choose a password&quot;);</span>
+<span class="fc" id="L139">		passwordField = new JPasswordField();</span>
+		
+<span class="fc" id="L141">		JLabel passwordretypeLabel = new JLabel(&quot;Retype password&quot;);</span>
+<span class="fc" id="L142">		passwordretypeField = new JPasswordField();</span>
+		
+<span class="fc" id="L144">		JLabel emailLabel = new JLabel(&quot;E-mail address (optional)&quot;);</span>
+<span class="fc" id="L145">		emailField = new JTextField();</span>
+		
+		// createAccountButton
+		//
+<span class="fc" id="L149">		JButton createAccountButton = new JButton();</span>
+<span class="fc" id="L150">		createAccountButton.setText(&quot;Create Account&quot;);</span>
+<span class="fc" id="L151">		createAccountButton.setMnemonic(KeyEvent.VK_A);</span>
+<span class="fc" id="L152">		this.rootPane.setDefaultButton(createAccountButton);</span>
+<span class="fc" id="L153">		createAccountButton.addActionListener(new ActionListener() {</span>
+			@Override
+			public void actionPerformed(final ActionEvent e) {
+<span class="nc" id="L156">				onCreateAccount();</span>
+<span class="nc" id="L157">			}</span>
+		});
+		
+		//
+		// contentPane
+		//
+<span class="fc" id="L163">		int padding = SBoxLayout.COMMON_PADDING;</span>
+<span class="fc" id="L164">		JPanel contentPane = (JPanel) this.getContentPane();</span>
+<span class="fc" id="L165">		contentPane.setLayout(new SBoxLayout(SBoxLayout.VERTICAL, padding));</span>
+<span class="fc" id="L166">		contentPane.setBorder(BorderFactory.createEmptyBorder(padding, padding, padding, padding));</span>
+		
+<span class="fc" id="L168">		JComponent grid = new JComponent() {};</span>
+<span class="fc" id="L169">		grid.setLayout(new GridLayout(0, 2, padding, padding));</span>
+<span class="fc" id="L170">		contentPane.add(grid, SBoxLayout.constraint(SLayout.EXPAND_X, SLayout.EXPAND_Y));</span>
+		
+		// row 0
+<span class="fc" id="L173">		grid.add(serverLabel);</span>
+<span class="fc" id="L174">		grid.add(serverField);</span>
+		
+		// row 1
+<span class="fc" id="L177">		grid.add(serverPortLabel);</span>
+<span class="fc" id="L178">		grid.add(serverPortField);</span>
+		
+		// row 2
+<span class="fc" id="L181">		grid.add(usernameLabel);</span>
+<span class="fc" id="L182">		grid.add(usernameField);</span>
+		
+		// row 3
+<span class="fc" id="L185">		grid.add(passwordLabel);</span>
+<span class="fc" id="L186">		grid.add(passwordField);</span>
+		
+		// row 4
+<span class="fc" id="L189">		grid.add(passwordretypeLabel);</span>
+<span class="fc" id="L190">		grid.add(passwordretypeField);</span>
+		
+		// row 5
+<span class="fc" id="L193">		grid.add(emailLabel);</span>
+<span class="fc" id="L194">		grid.add(emailField);</span>
+		
+		// A toggle for showing the contents of the password fields 
+<span class="fc" id="L197">		grid.add(new JComponent(){});</span>
+<span class="fc" id="L198">		JCheckBox showPWToggle = new JCheckBox(&quot;Show password&quot;);</span>
+<span class="fc" id="L199">		showPWToggle.setHorizontalAlignment(SwingConstants.RIGHT);</span>
+<span class="fc" id="L200">		final char normalEchoChar = passwordField.getEchoChar();</span>
+<span class="fc" id="L201">		showPWToggle.addItemListener(new ItemListener() {</span>
+			@Override
+			public void itemStateChanged(ItemEvent e) {
+				char echoChar;
+<span class="nc bnc" id="L205" title="All 2 branches missed.">				if (e.getStateChange() == ItemEvent.SELECTED) {</span>
+<span class="nc" id="L206">					echoChar = (char) 0;</span>
+				} else {
+<span class="nc" id="L208">					echoChar = normalEchoChar;</span>
+				}
+<span class="nc" id="L210">				passwordField.setEchoChar(echoChar);</span>
+<span class="nc" id="L211">				passwordretypeField.setEchoChar(echoChar);</span>
+<span class="nc" id="L212">			}</span>
+		});
+<span class="fc" id="L214">		grid.add(showPWToggle);</span>
+		
+		// Warning label
+<span class="fc" id="L217">		JLabel logLabel = new JLabel(&quot;&lt;html&gt;&lt;body&gt;&lt;p&gt;&lt;font size=\&quot;-2\&quot;&gt;On login information which identifies your computer on &lt;br&gt;the internet will be logged to prevent abuse (like many &lt;br&gt;attempts to guess a password in order to hack an &lt;br&gt;account or creation of many accounts to cause trouble). &lt;br&gt;Furthermore all events and actions that happen within &lt;br&gt;the game-world (like solving quests, attacking monsters) &lt;br&gt;are logged. This information is used to analyse bugs and &lt;br&gt;in rare cases for abuse handling.&lt;/font&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;&quot;);</span>
+		// Add a bit more empty space around it
+<span class="fc" id="L219">		logLabel.setBorder(BorderFactory.createEmptyBorder(padding, padding, padding, padding));</span>
+<span class="fc" id="L220">		logLabel.setAlignmentX(CENTER_ALIGNMENT);</span>
+<span class="fc" id="L221">		contentPane.add(logLabel, SBoxLayout.constraint(SLayout.EXPAND_X, SLayout.EXPAND_Y));</span>
+		
+		// Button row
+<span class="fc" id="L224">		JComponent buttonRow = SBoxLayout.createContainer(SBoxLayout.HORIZONTAL, SBoxLayout.COMMON_PADDING);</span>
+<span class="fc" id="L225">		buttonRow.setAlignmentX(RIGHT_ALIGNMENT);</span>
+<span class="fc" id="L226">		JButton cancelButton = new JButton(&quot;Cancel&quot;);</span>
+<span class="fc" id="L227">		cancelButton.setMnemonic(KeyEvent.VK_C);</span>
+<span class="fc" id="L228">		cancelButton.addActionListener(new ActionListener() {</span>
+			@Override
+			public void actionPerformed(ActionEvent e) {
+<span class="nc" id="L231">				dispatchEvent(new WindowEvent(CreateAccountDialog.this, WindowEvent.WINDOW_CLOSING));</span>
+<span class="nc" id="L232">			}</span>
+		});
+<span class="fc" id="L234">		buttonRow.add(cancelButton);</span>
+<span class="fc" id="L235">		buttonRow.add(createAccountButton);</span>
+<span class="fc" id="L236">		contentPane.add(buttonRow);</span>
+		
+		// CreateAccountDialog
+<span class="fc" id="L239">		this.setTitle(&quot;Create New Account&quot;);</span>
+<span class="fc" id="L240">		this.setResizable(false);</span>
+		// required on Compiz
+<span class="fc" id="L242">		this.pack(); </span>
+		
+<span class="fc" id="L244">		usernameField.requestFocusInWindow();</span>
+<span class="pc bpc" id="L245" title="1 of 2 branches missed.">		if (owner != null) {</span>
+<span class="nc" id="L246">			owner.setEnabled(false);</span>
+<span class="nc" id="L247">			this.setLocationRelativeTo(owner);</span>
+		}
+<span class="fc" id="L249">	}</span>
+	
+	/**
+	 * Run when the &quot;Create account&quot; button is activated.
+	 */
+	private void onCreateAccount() {
+<span class="nc" id="L255">		final String accountUsername = usernameField.getText();</span>
+<span class="nc" id="L256">		final String password = new String(passwordField.getPassword());</span>
+		
+		// If this window isn't enabled, we shouldn't act.
+<span class="nc bnc" id="L259" title="All 2 branches missed.">		if (!this.isEnabled()) {</span>
+<span class="nc" id="L260">			return;</span>
+		}
+		
+<span class="nc" id="L263">		final boolean ok = checkFields();</span>
+		
+<span class="nc bnc" id="L265" title="All 2 branches missed.">		if (!ok) {</span>
+<span class="nc" id="L266">			return;</span>
+		}
+		
+<span class="nc" id="L269">		final String email = emailField.getText();</span>
+<span class="nc" id="L270">		final String server = serverField.getText();</span>
+<span class="nc" id="L271">		int port = 32160;</span>
+		
+		// port couldn't be accessed from inner class
+		final int finalPort; 
+<span class="nc" id="L275">		final ProgressBar progressBar = new ProgressBar(this);</span>
+		
+		try {
+<span class="nc" id="L278">			port = Integer.parseInt(serverPortField.getText());</span>
+<span class="nc" id="L279">		} catch (final NumberFormatException ex) {</span>
+<span class="nc" id="L280">			JOptionPane.showMessageDialog(getOwner(),</span>
+					&quot;That is not a valid port number. Please try again.&quot;,
+					&quot;Invalid Port&quot;, JOptionPane.WARNING_MESSAGE);
+<span class="nc" id="L283">			return;</span>
+<span class="nc" id="L284">		}</span>
+<span class="nc" id="L285">		finalPort = port;</span>
+		
+		// standalone check
+<span class="nc bnc" id="L288" title="All 2 branches missed.">		if (client == null) {</span>
+<span class="nc" id="L289">			JOptionPane.showMessageDialog(this,</span>
+					&quot;Account not created (running standalone)!&quot;);
+<span class="nc" id="L291">			return;</span>
+		}
+		
+		/* separate thread for connection process added by TheGeneral */
+		// run the connection process in separate thread
+<span class="nc" id="L296">		final Thread connectionThread = new Thread() {</span>
+			
+			@Override
+			public void run() {
+				// initialize progress bar
+<span class="nc" id="L301">				progressBar.start(); </span>
+				// disable this screen when attempting to connect
+<span class="nc" id="L303">				setEnabled(false); </span>
+				
+				
+				try {
+<span class="nc" id="L307">					client.connect(server, finalPort);</span>
+					// for each major connection milestone call step()
+<span class="nc" id="L309">					progressBar.step(); </span>
+<span class="nc" id="L310">				} catch (final Exception ex) {</span>
+					// if something goes horribly just cancel the progress bar
+<span class="nc" id="L312">					progressBar.cancel(); </span>
+<span class="nc" id="L313">					setEnabled(true);</span>
+<span class="nc" id="L314">					JOptionPane.showMessageDialog(</span>
+							getOwner(),
+							&quot;Unable to connect to server to create your account. The server may be down or, if you are using a custom server, &quot; +
+							&quot;you may have entered its name and port number incorrectly.&quot;);
+					
+<span class="nc" id="L319">					LOGGER.error(ex, ex);</span>
+					
+<span class="nc" id="L321">					return;</span>
+<span class="nc" id="L322">				}</span>
+<span class="nc" id="L323">				final Window owner = getOwner();</span>
+				try {
+<span class="nc" id="L325">					final AccountResult result = client.createAccount(</span>
+							accountUsername, password, email);
+<span class="nc bnc" id="L327" title="All 2 branches missed.">					if (result.failed()) {</span>
+						/*
+						 * If the account can't be created, show an error
+						 * message and don't continue.
+						 */
+<span class="nc" id="L332">						progressBar.cancel();</span>
+<span class="nc" id="L333">						setEnabled(true);</span>
+<span class="nc" id="L334">						JOptionPane.showMessageDialog(owner,</span>
+								result.getResult().getText(),
+								&quot;Create account failed&quot;,
+								JOptionPane.ERROR_MESSAGE);
+					} else {
+						
+						/*
+						 * Print username returned by server, as server can
+						 * modify it at will to match account names rules.
+						 */
+						
+<span class="nc" id="L345">						progressBar.step();</span>
+<span class="nc" id="L346">						progressBar.finish();</span>
+						
+<span class="nc" id="L348">						client.setAccountUsername(accountUsername);</span>
+<span class="nc" id="L349">						client.setCharacter(accountUsername);</span>
+						
+						/*
+						 * Once the account is created, login into server.
+						 */
+<span class="nc" id="L354">						client.login(accountUsername, password);</span>
+<span class="nc" id="L355">						progressBar.step();</span>
+<span class="nc" id="L356">						progressBar.finish();</span>
+						
+<span class="nc" id="L358">						setEnabled(false);</span>
+<span class="nc bnc" id="L359" title="All 2 branches missed.">						if (owner != null) {</span>
+<span class="nc" id="L360">							owner.setVisible(false);</span>
+<span class="nc" id="L361">							owner.dispose();</span>
+						}
+						
+<span class="nc" id="L364">						stendhal.setDoLogin();</span>
+					}
+<span class="nc" id="L366">				} catch (final TimeoutException e) {</span>
+<span class="nc" id="L367">					progressBar.cancel();</span>
+<span class="nc" id="L368">					setEnabled(true);</span>
+<span class="nc" id="L369">					JOptionPane.showMessageDialog(</span>
+							owner,
+							&quot;Unable to connect to server to create your account. The server may be down or, if you are using a custom server, you may have entered its name and port number incorrectly.&quot;,
+							&quot;Error Creating Account&quot;, JOptionPane.ERROR_MESSAGE);
+<span class="nc" id="L373">				} catch (final InvalidVersionException e) {</span>
+<span class="nc" id="L374">					progressBar.cancel();</span>
+<span class="nc" id="L375">					setEnabled(true);</span>
+<span class="nc" id="L376">					JOptionPane.showMessageDialog(</span>
+							owner,
+							&quot;You are running an incompatible version of Stendhal. Please update&quot;,
+							&quot;Invalid version&quot;, JOptionPane.ERROR_MESSAGE);
+<span class="nc" id="L380">				} catch (final BannedAddressException e) {</span>
+<span class="nc" id="L381">					progressBar.cancel();</span>
+<span class="nc" id="L382">					setEnabled(true);</span>
+<span class="nc" id="L383">					JOptionPane.showMessageDialog(</span>
+							owner,
+							&quot;Your IP is banned. If you think this is not right, please send a Support Request to http://sourceforge.net/tracker/?func=add&amp;group_id=1111&amp;atid=201111&quot;,
+							&quot;IP Banned&quot;, JOptionPane.ERROR_MESSAGE);
+<span class="nc" id="L387">				} catch (final LoginFailedException e) {</span>
+<span class="nc" id="L388">					progressBar.cancel();</span>
+<span class="nc" id="L389">					setEnabled(true);</span>
+<span class="nc" id="L390">					JOptionPane.showMessageDialog(owner, e.getMessage(),</span>
+							&quot;Login failed&quot;, JOptionPane.INFORMATION_MESSAGE);
+<span class="nc" id="L392">				}</span>
+<span class="nc" id="L393">			}</span>
+		};
+<span class="nc" id="L395">		connectionThread.start();</span>
+<span class="nc" id="L396">	}</span>
+	
+	/**
+	 * Runs field checks, to, ex. confirm the passwords correct, etc.
+	 * @return if no error found
+	 */
+	private boolean checkFields() {
+		//
+		// Check the password
+		//
+<span class="nc" id="L406">		final String password = new String(passwordField.getPassword());</span>
+<span class="nc" id="L407">		final String passwordretype = new String(</span>
+				passwordretypeField.getPassword());
+<span class="nc" id="L409">		final Window owner = getOwner();</span>
+<span class="nc bnc" id="L410" title="All 2 branches missed.">		if (!password.equals(passwordretype)) {</span>
+<span class="nc" id="L411">			JOptionPane.showMessageDialog(owner,</span>
+					&quot;The passwords do not match. Please retype both.&quot;,
+					&quot;Password Mismatch&quot;, JOptionPane.WARNING_MESSAGE);
+<span class="nc" id="L414">			return false;</span>
+		}
+		
+		//
+		// Password strength
+		//
+<span class="nc" id="L420">		final boolean valPass = validatePassword(usernameField.getText(), password);</span>
+<span class="nc bnc" id="L421" title="All 2 branches missed.">		if (!valPass) {</span>
+<span class="nc bnc" id="L422" title="All 2 branches missed.">			if (badPasswordReason != null) {</span>
+				// didn't like the password for some reason, show a dialog and
+				// try again
+<span class="nc" id="L425">				final int i = JOptionPane.showOptionDialog(owner, badPasswordReason,</span>
+						&quot;Bad Password&quot;, JOptionPane.YES_NO_OPTION,
+						JOptionPane.WARNING_MESSAGE, null, null, 1);
+				
+<span class="nc bnc" id="L429" title="All 2 branches missed.">				if (i == JOptionPane.NO_OPTION) {</span>
+<span class="nc" id="L430">					return false;</span>
+				}
+<span class="nc" id="L432">			} else {</span>
+<span class="nc" id="L433">				return false;</span>
+			}
+		}
+		
+		//
+		// Check the email
+		//
+<span class="nc" id="L440">		final String email = (emailField.getText()).trim();</span>
+<span class="nc bnc" id="L441" title="All 2 branches missed.">		if  (!validateEmail(email)) {</span>
+<span class="nc" id="L442">			final String warning = badEmailReason + &quot;An email address is the only means for administrators to contact with the legitimate owner of an account.\nIf you don't provide one then you won't be able to get a new password for this account if, for example:\n- You forget your password.\n- Another player somehow gets your password and changes it.\nDo you want to continue anyway?&quot;;	</span>
+<span class="nc" id="L443">			final int i = JOptionPane.showOptionDialog(owner, warning, badEmailTitle,</span>
+					JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE,
+					null, null, 1);
+<span class="nc bnc" id="L446" title="All 2 branches missed.">			if (i != 0) {</span>
+				// no, let me type a valid email
+<span class="nc" id="L448">				return false;</span>
+			} 
+			// yes, continue anyway		
+		}
+<span class="nc" id="L452">		return true;</span>
+	}
+	
+	/**
+	 * Validate email field format.
+	 * 
+	 * @param email address to be validate
+	 * @return &lt;code&gt;true&lt;/code&gt; if the email looks good enough, otherwise
+	 *	&lt;code&gt;false&lt;/code&gt;
+	 */
+	private boolean validateEmail(final String email) {
+<span class="nc bnc" id="L463" title="All 2 branches missed.">		if  (email.isEmpty()) {</span>
+<span class="nc" id="L464">			badEmailTitle = &quot;Email address is empty&quot;;</span>
+<span class="nc" id="L465">			badEmailReason = &quot;You didn't enter an email address.\n&quot;;</span>
+<span class="nc" id="L466">			return false;</span>
+		} else {
+<span class="nc bnc" id="L468" title="All 6 branches missed.">			if (!email.contains(&quot;@&quot;) || !email.contains(&quot;.&quot;) || (email.length() &lt;= 5)) {</span>
+<span class="nc" id="L469">				badEmailTitle =  &quot;Misspelled email address?&quot;;</span>
+<span class="nc" id="L470">				badEmailReason = &quot;The email address you entered is probably misspelled.\n&quot;;</span>
+<span class="nc" id="L471">				return false;</span>
+			}
+		}
+<span class="nc" id="L474">		return true;</span>
+	}
+	
+	
+	/**
+	 * Prints text only when running stand-alone.
+	 * @param text text to be printed
+	 */
+	private void debug(final String text) {
+<span class="pc bpc" id="L483" title="1 of 2 branches missed.">		if (client == null) {</span>
+<span class="fc" id="L484">			LOGGER.debug(text);</span>
+		}
+<span class="fc" id="L486">	}</span>
+	
+	/**
+	 * Used to preview the CreateAccountDialog.
+	 * @param args ignored
+	 */
+	public static void main(final String[] args) {
+<span class="nc" id="L493">		new CreateAccountDialog(null, null);</span>
+<span class="nc" id="L494">	}</span>
+	
+	/**
+	 * Do some sanity checks for the password.
+	 * 
+	 * @param username user name
+	 * @param password checked password
+	 * @return &lt;code&gt;true&lt;/code&gt; if the password seems reasonable,
+	 *	&lt;code&gt;false&lt;/code&gt; if the password should be rejected
+	 */
+	boolean validatePassword(final String username, final String password) {
+<span class="fc bfc" id="L505" title="All 2 branches covered.">		if (password.length() &gt; 5) {</span>
+			
+			// check for all numbers
+<span class="fc" id="L508">			boolean allNumbers = true;</span>
+			try {
+<span class="nc" id="L510">				Integer.parseInt(password);</span>
+<span class="fc" id="L511">			} catch (final NumberFormatException e) {</span>
+<span class="fc" id="L512">				allNumbers = false;</span>
+<span class="nc" id="L513">			}</span>
+<span class="pc bpc" id="L514" title="1 of 2 branches missed.">			if (allNumbers) {</span>
+<span class="nc" id="L515">				badPasswordReason = &quot;You have used only numbers in your password. This is not a good security practice.\n&quot;</span>
+						+ &quot; Are you sure that you want to use this password?&quot;;
+			}
+			
+			// check for username
+<span class="fc" id="L520">			boolean hasUsername = false;</span>
+<span class="fc bfc" id="L521" title="All 2 branches covered.">			if (password.contains(username)) {</span>
+<span class="fc" id="L522">				hasUsername = true;</span>
+			}
+			
+<span class="fc bfc" id="L525" title="All 2 branches covered.">			if (!hasUsername) {</span>
+				// now we'll do some more checks to see if the password
+				// contains more than three letters of the username
+<span class="fc" id="L528">				debug(&quot;Checking if password contains a derivative of the username, trimming from the back...&quot;);</span>
+				final int minUserLength = 3;
+<span class="pc bpc" id="L530" title="1 of 2 branches missed.">				for (int i = 1; i &lt; username.length(); i++) {</span>
+<span class="fc" id="L531">					final String subuser = username.substring(0, username.length()</span>
+							- i);
+<span class="fc" id="L533">					debug(&quot;\tchecking for \&quot;&quot; + subuser + &quot;\&quot;...&quot;);</span>
+<span class="fc bfc" id="L534" title="All 2 branches covered.">					if (subuser.length() &lt;= minUserLength) {</span>
+<span class="fc" id="L535">						break;</span>
+					}
+					
+<span class="fc bfc" id="L538" title="All 2 branches covered.">					if (password.contains(subuser)) {</span>
+<span class="fc" id="L539">						hasUsername = true;</span>
+<span class="fc" id="L540">						debug(&quot;Password contains username!&quot;);</span>
+<span class="fc" id="L541">						break;</span>
+					}
+				}
+				
+<span class="fc bfc" id="L545" title="All 2 branches covered.">				if (!hasUsername) {</span>
+					// now from the end of the password..
+<span class="fc" id="L547">					debug(&quot;Checking if password contains a derivative of the username, trimming from the front...&quot;);</span>
+<span class="pc bpc" id="L548" title="1 of 2 branches missed.">					for (int i = 0; i &lt; username.length(); i++) {</span>
+<span class="fc" id="L549">						final String subuser = username.substring(i);</span>
+<span class="fc" id="L550">						debug(&quot;\tchecking for \&quot;&quot; + subuser + &quot;\&quot;...&quot;);</span>
+<span class="fc bfc" id="L551" title="All 2 branches covered.">						if (subuser.length() &lt;= minUserLength) {</span>
+<span class="fc" id="L552">							break;</span>
+						}
+<span class="fc bfc" id="L554" title="All 2 branches covered.">						if (password.contains(subuser)) {</span>
+<span class="fc" id="L555">							hasUsername = true;</span>
+<span class="fc" id="L556">							debug(&quot;Password contains username!&quot;);</span>
+<span class="fc" id="L557">							break;</span>
+						}
+					}
+				}
+			}
+			
+<span class="fc bfc" id="L563" title="All 2 branches covered.">			if (hasUsername) {</span>
+<span class="fc" id="L564">				badPasswordReason = &quot;You have used your username or a derivative of your username in your password. This is a bad security practice.\n&quot;</span>
+						+ &quot; Are you sure that you want to use this password?&quot;;
+<span class="fc" id="L566">				return false;</span>
+			}
+			
+<span class="fc" id="L569">		} else {</span>
+			final String text = &quot;The password you provided is too short. It must be at least 6 characters long.&quot;;
+<span class="pc bpc" id="L571" title="1 of 2 branches missed.">			if (isVisible()) {</span>
+<span class="nc" id="L572">				JOptionPane.showMessageDialog(getOwner(), text);</span>
+			} else {
+<span class="fc" id="L574">				LOGGER.warn(text);</span>
+			}
+<span class="fc" id="L576">			return false;</span>
+		}
+		
+<span class="fc" id="L579">		return true;</span>
+	}
+	
+	/**
+	 * A document that can contain only lower case characters.
+	 */
+<span class="fc" id="L585">	private static class LowerCaseLetterDocument extends PlainDocument {</span>
+		@Override
+		public void insertString(final int offs, final String str, final AttributeSet a)
+				throws BadLocationException {
+<span class="nc" id="L589">			final String lower = str.toLowerCase(Locale.ENGLISH);</span>
+<span class="nc" id="L590">			boolean ok = true;</span>
+<span class="nc bnc" id="L591" title="All 2 branches missed.">			for (int i = lower.length() - 1; i &gt;= 0; i--) {</span>
+<span class="nc" id="L592">				final char chr = lower.charAt(i);</span>
+<span class="nc bnc" id="L593" title="All 4 branches missed.">				if ((chr &lt; 'a') || (chr &gt; 'z')) {</span>
+<span class="nc" id="L594">					ok = false;</span>
+<span class="nc" id="L595">					break;</span>
+				}
+			}
+<span class="nc bnc" id="L598" title="All 2 branches missed.">			if (ok) {</span>
+<span class="nc" id="L599">				super.insertString(offs, lower, a);</span>
+			} else {
+<span class="nc" id="L601">				Toolkit.getDefaultToolkit().beep();</span>
+			}
+<span class="nc" id="L603">		}</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

@@ -1,0 +1,340 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SettingsPanel.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui</a> &gt; <span class="el_source">SettingsPanel.java</span></div><h1>SettingsPanel.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                  (C) Copyright 2005-2012 - Stendhal                     *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+
+package games.stendhal.client.gui;
+
+import games.stendhal.client.actions.SlashAction;
+import games.stendhal.client.actions.SlashActionRepository;
+import games.stendhal.client.gui.styled.Style;
+import games.stendhal.client.gui.styled.StyleUtil;
+
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Graphics2D;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.image.BufferedImage;
+
+import javax.swing.BorderFactory;
+import javax.swing.Icon;
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.JMenuItem;
+import javax.swing.JPopupMenu;
+import javax.swing.JSeparator;
+import javax.swing.SwingConstants;
+
+/**
+ * The panel where you can adjust your settings.
+ */
+class SettingsPanel extends JButton {
+	/** Extra padding for 
+	/** Empty space above and below the separators in the popup menu */
+	private static final int SEPARATOR_MARGIN = 8;
+	
+	/**
+	 * Creates a new instance of SettingsPanel.
+	 */
+<span class="nc" id="L53">	SettingsPanel() {</span>
+<span class="nc" id="L54">		setText(&quot;Menu&quot;);</span>
+<span class="nc" id="L55">		setIcon(createArrowIcon(true));</span>
+<span class="nc" id="L56">		setSelectedIcon(createArrowIcon(false));</span>
+		// Don't steal focus from the game screen
+<span class="nc" id="L58">		setFocusable(false);</span>
+	
+		// JMenu is not flexible enough for custom layout management.
+<span class="nc" id="L61">		final JPopupMenu menu = new JPopupMenu();</span>
+
+		/*
+		 * JPopupMenu is unable to cope with nested components, so we need to
+		 * use a complicated layout manager. GroupLayout could in principle
+		 * produce the the desired layout, but any changes to the menu structure
+		 * would have global effects, so to spare the sanity of anyone adding
+		 * new menu items, we use GridBag and hope for the best.  
+		 */
+<span class="nc" id="L70">		GridBagLayout layout = new GridBagLayout();</span>
+<span class="nc" id="L71">		menu.setLayout(layout);</span>
+<span class="nc" id="L72">		GridBagConstraints c = new GridBagConstraints();</span>
+		
+		// Accounts
+<span class="nc" id="L75">		Column column = new Column(menu, c);</span>
+<span class="nc" id="L76">		createAccountsMenu(column);</span>
+		
+<span class="nc" id="L78">		addSeparator(menu, c);</span>
+		
+		// Tools
+<span class="nc" id="L81">		column = new Column(menu, c);</span>
+<span class="nc" id="L82">		createToolsMenu(column);</span>
+		
+<span class="nc" id="L84">		addSeparator(menu, c);</span>
+
+		// Commands
+<span class="nc" id="L87">		column = new Column(menu, c);</span>
+<span class="nc" id="L88">		createCommandsMenu(column);</span>
+		
+<span class="nc" id="L90">		addSeparator(menu, c);</span>
+		
+		// Help
+<span class="nc" id="L93">		column = new Column(menu, c);</span>
+<span class="nc" id="L94">		createHelpMenu(column);</span>
+		
+<span class="nc" id="L96">		addActionListener(new ActionListener() {</span>
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				// Place the menu right justified to the button
+<span class="nc" id="L100">				menu.show(SettingsPanel.this, getWidth() - menu.getPreferredSize().width, getHeight());</span>
+<span class="nc" id="L101">			}</span>
+		});
+		/*
+		 * Menu is its own component root, so it needs to be registered to
+		 * listening font size changes.
+		 */
+<span class="nc" id="L107">		WindowUtils.watchFontSize(menu);</span>
+<span class="nc" id="L108">	}</span>
+	
+	/**
+	 * Add a column separator.
+	 * 
+	 * @param container
+	 * @param c
+	 */
+	private void addSeparator(JComponent container, GridBagConstraints c) {
+<span class="nc" id="L117">		c.gridy = 0;</span>
+<span class="nc" id="L118">		c.gridx++;</span>
+<span class="nc" id="L119">		c.gridheight = GridBagConstraints.REMAINDER;</span>
+<span class="nc" id="L120">		JComponent separator = new JSeparator(SwingConstants.VERTICAL);</span>
+		// Add a bit empty space to top and bottom
+<span class="nc" id="L122">		Insets tmpInsets = c.insets;</span>
+<span class="nc" id="L123">		c.insets = new Insets(SEPARATOR_MARGIN, 0, SEPARATOR_MARGIN, 0);</span>
+<span class="nc" id="L124">		container.add(separator, c);</span>
+		// Reset to default
+<span class="nc" id="L126">		c.gridheight = 1;</span>
+<span class="nc" id="L127">		c.insets = tmpInsets;</span>
+<span class="nc" id="L128">	}</span>
+	
+	/**
+	 * Create arrow icon for the menu button.
+	 * 
+	 * @param etched &lt;code&gt;true&lt;/code&gt; if the arrow should be drawn as an etched
+	 * image. If &lt;code&gt;false&lt;/code&gt; the arrow will be drawn as a raised image
+	 *  
+	 * @return arrow icon
+	 */
+	private Icon createArrowIcon(boolean etched) {
+<span class="nc" id="L139">		BufferedImage image = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);</span>
+<span class="nc" id="L140">		Graphics2D g = image.createGraphics();</span>
+		Color highLight, shadow;
+<span class="nc" id="L142">		Style style = StyleUtil.getStyle();</span>
+<span class="nc bnc" id="L143" title="All 2 branches missed.">		if (style != null) {</span>
+<span class="nc" id="L144">			highLight = style.getHighLightColor();</span>
+<span class="nc" id="L145">			shadow = style.getShadowColor();</span>
+		} else {
+<span class="nc" id="L147">			highLight = Color.WHITE;</span>
+<span class="nc" id="L148">			shadow = Color.BLACK;</span>
+		}
+		Color nwColor, seColor;
+<span class="nc bnc" id="L151" title="All 2 branches missed.">		if (etched) {</span>
+<span class="nc" id="L152">			nwColor = shadow;</span>
+<span class="nc" id="L153">			seColor = highLight;</span>
+		} else {
+<span class="nc" id="L155">			nwColor = highLight;</span>
+<span class="nc" id="L156">			seColor = shadow;</span>
+		}
+<span class="nc" id="L158">		g.setColor(nwColor);</span>
+<span class="nc" id="L159">		g.drawPolyline(new int[] { 7, 0, 13}, new int[] { 11, 4, 4}, 3);</span>
+<span class="nc" id="L160">		g.setColor(seColor);</span>
+<span class="nc" id="L161">		g.drawLine(7, 11, 14, 4);</span>
+<span class="nc" id="L162">		g.dispose();</span>
+		
+<span class="nc" id="L164">		return new ImageIcon(image);</span>
+	}
+	
+	/**
+	 * Create the account control submenu.
+	 * 
+	 * @param column
+	 */
+	private void createAccountsMenu(Column column) {
+<span class="nc" id="L173">		JComponent label = createMenuTitle(&quot;Accounts&quot;);</span>
+<span class="nc" id="L174">		column.addComponent(label);</span>
+		
+<span class="nc" id="L176">		JMenuItem item = createMenuItem(&quot;Change Password&quot;, &quot;changepassword&quot;);</span>
+<span class="nc" id="L177">		column.addComponent(item);</span>
+<span class="nc" id="L178">		item = createMenuItem(&quot;Merge Accounts&quot;, &quot;merge&quot;);</span>
+<span class="nc" id="L179">		column.addComponent(item);</span>
+<span class="nc" id="L180">		item = createMenuItem(&quot;Login History&quot;, &quot;loginhistory&quot;);</span>
+<span class="nc" id="L181">		column.addComponent(item);</span>
+<span class="nc" id="L182">	}</span>
+	
+	/**
+	 * Create the tools submenu.
+	 * 
+	 * @param column
+	 */
+	private void createToolsMenu(Column column) {
+<span class="nc" id="L190">		JComponent label = createMenuTitle(&quot;Tools&quot;);</span>
+<span class="nc" id="L191">		column.addComponent(label);</span>
+		
+<span class="nc" id="L193">		JMenuItem item = createMenuItem(&quot;Take Screenshot&quot;, &quot;takescreenshot&quot;);</span>
+<span class="nc" id="L194">		column.addComponent(item);</span>
+<span class="nc" id="L195">		item = createMenuItem(&quot;Settings&quot;, &quot;settings&quot;);</span>
+<span class="nc" id="L196">		column.addComponent(item);</span>
+<span class="nc" id="L197">	}</span>
+	
+	/**
+	 * Create the game commands submenu.
+	 * 
+	 * @param column
+	 */
+	private void createCommandsMenu(Column column) {
+<span class="nc" id="L205">		JComponent label = createMenuTitle(&quot;Commands&quot;);</span>
+<span class="nc" id="L206">		column.addComponent(label);</span>
+		
+<span class="nc" id="L208">		JMenuItem item = createMenuItem(&quot;Atlas&quot;, &quot;atlas&quot;);</span>
+<span class="nc" id="L209">		column.addComponent(item);</span>
+<span class="nc" id="L210">		item = createMenuItem(&quot;Online Players&quot;, &quot;who&quot;);</span>
+<span class="nc" id="L211">		column.addComponent(item);</span>
+<span class="nc" id="L212">		item = createMenuItem(&quot;Hall of Fame&quot;, &quot;halloffame&quot;);</span>
+<span class="nc" id="L213">		column.addComponent(item);</span>
+<span class="nc" id="L214">		item = createMenuItem(&quot;Travel Log&quot;, &quot;travellog&quot;);</span>
+<span class="nc" id="L215">		column.addComponent(item);</span>
+<span class="nc" id="L216">	}</span>
+	
+	/**
+	 * Create the help submenu.
+	 * 
+	 * @param column
+	 */
+	private void createHelpMenu(Column column) {
+<span class="nc" id="L224">		JComponent label = createMenuTitle(&quot;Help&quot;);</span>
+<span class="nc" id="L225">		column.addComponent(label);</span>
+		
+<span class="nc" id="L227">		JMenuItem item = createMenuItem(&quot;Manual&quot;, &quot;manual&quot;);</span>
+<span class="nc" id="L228">		column.addComponent(item);</span>
+<span class="nc" id="L229">		item = createMenuItem(&quot;FAQ&quot;, &quot;faq&quot;);</span>
+<span class="nc" id="L230">		column.addComponent(item);</span>
+<span class="nc" id="L231">		item = createMenuItem(&quot;Beginners Guide&quot;, &quot;beginnersguide&quot;);</span>
+<span class="nc" id="L232">		column.addComponent(item);</span>
+<span class="nc" id="L233">		item = createMenuItem(&quot;Commands&quot;, &quot;help&quot;);</span>
+<span class="nc" id="L234">		column.addComponent(item);</span>
+<span class="nc" id="L235">		item = createMenuItem(&quot;Rules&quot;, &quot;rules&quot;);</span>
+<span class="nc" id="L236">		column.addComponent(item);</span>
+<span class="nc" id="L237">	}</span>
+	
+	/**
+	 * Create title for a sumbenu.
+	 * 
+	 * @param title title string
+	 * @return component with the title
+	 */
+	private JComponent createMenuTitle(String title) {
+<span class="nc" id="L246">		JLabel label = new JLabel(title);</span>
+<span class="nc" id="L247">		label.setBorder(BorderFactory.createEmptyBorder(5, 4, 10, 0));</span>
+<span class="nc" id="L248">		return label;</span>
+	}
+	
+	/**
+	 * Create a menu item.
+	 * 
+	 * @param name title of the menu item
+	 * @param action SlashAction name
+	 * @return menu item
+	 */
+	private JMenuItem createMenuItem(String name, String action) {
+<span class="nc" id="L259">		JMenuItem item = new VariableWidthMenuItem(name);</span>
+<span class="nc" id="L260">		item.addActionListener(new CommandActionListener(action));</span>
+<span class="nc" id="L261">		item.setBorder(null);</span>
+<span class="nc" id="L262">		return item;</span>
+	}
+	
+	/**
+	 * Listener for menu actions.
+	 */
+	private static class CommandActionListener implements ActionListener {
+		private final SlashAction action;
+		
+		/**
+		 * Create a CommandActionListener.
+		 * 
+		 * @param identifier SlashAction name
+		 */
+<span class="nc" id="L276">		public CommandActionListener(String identifier) {</span>
+<span class="nc" id="L277">			action = SlashActionRepository.get(identifier);</span>
+<span class="nc" id="L278">		}</span>
+		
+		@Override
+		public void actionPerformed(ActionEvent e) {
+<span class="nc" id="L282">			action.execute(null, null);</span>
+<span class="nc" id="L283">		}</span>
+	}
+	
+	/**
+	 * A workaround for a design flaw in swing menu items. BasicMenuItemUI tries
+	 * to force all menu items to the same width, instead of doing that properly
+	 * in the menu layout manager. So this JMenuItem stores the preferred size
+	 * before it gets knowledge about other items in the menu.
+	 */
+	private static class VariableWidthMenuItem extends JMenuItem {
+		Dimension pref;
+		VariableWidthMenuItem(String name) {
+<span class="nc" id="L295">			super(name);</span>
+<span class="nc" id="L296">			pref = super.getPreferredSize();</span>
+<span class="nc" id="L297">		}</span>
+		
+		@Override
+		public Dimension getPreferredSize() {
+<span class="nc" id="L301">			return pref;</span>
+		}
+	}
+
+	/**
+	 * A helper class for filling the grid in top down order. An object that
+	 * represents the next column given a constraints object that has been used
+	 * for the previous columns.
+	 */
+	private static class Column {
+		final JComponent container;
+		final GridBagConstraints c;
+		
+		/**
+		 * Create a new ColumnHelper.
+		 * 
+		 * @param container parent component 
+		 * @param c constraints object to be used, and which will be modified
+		 * 	for subsequent uses
+		 */
+<span class="nc" id="L321">		Column(JComponent container, GridBagConstraints c) {</span>
+<span class="nc" id="L322">			this.container = container;</span>
+<span class="nc" id="L323">			this.c = c; </span>
+<span class="nc" id="L324">			c.gridy = 0;</span>
+<span class="nc" id="L325">			c.gridx++;</span>
+<span class="nc" id="L326">			c.fill = GridBagConstraints.BOTH;</span>
+<span class="nc" id="L327">		}</span>
+		
+		/**
+		 * Add a component to the colum.
+		 * 
+		 * @param component
+		 */
+		void addComponent(JComponent component) {
+<span class="nc" id="L335">			container.add(component, c);</span>
+<span class="nc" id="L336">			c.gridy++;</span>
+<span class="nc" id="L337">		}</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

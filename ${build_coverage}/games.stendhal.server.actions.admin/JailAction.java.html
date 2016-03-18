@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>JailAction.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.actions.admin</a> &gt; <span class="el_source">JailAction.java</span></div><h1>JailAction.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2016 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.actions.admin;
+
+import static games.stendhal.common.constants.Actions.JAIL;
+import static games.stendhal.common.constants.Actions.MINUTES;
+import static games.stendhal.common.constants.Actions.TARGET;
+import games.stendhal.server.actions.CommandCenter;
+import games.stendhal.server.core.engine.GameEvent;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.engine.StendhalRPRuleProcessor;
+import games.stendhal.server.entity.player.Player;
+
+import java.sql.SQLException;
+
+import marauroa.common.game.RPAction;
+import marauroa.server.game.db.CharacterDAO;
+import marauroa.server.game.db.DAORegister;
+
+<span class="fc" id="L29">public class JailAction extends AdministrationAction {</span>
+
+	private static final String USAGE_JAIL_NAME_MINUTES_REASON = &quot;Usage: /jail &lt;name&gt; &lt;minutes&gt; &lt;reason&gt;&quot;;
+
+	public static void register() {
+<span class="fc" id="L34">		CommandCenter.register(JAIL, new JailAction(), 400);</span>
+
+<span class="fc" id="L36">	}</span>
+
+	@Override
+	public void perform(final Player player, final RPAction action) {
+
+<span class="pc bpc" id="L41" title="1 of 4 branches missed.">		if (!action.has(TARGET) || !action.has(MINUTES)) {</span>
+<span class="fc" id="L42">			player.sendPrivateText(USAGE_JAIL_NAME_MINUTES_REASON);</span>
+<span class="fc" id="L43">			return;</span>
+		}
+
+		// extract and validate minutes
+		int minutes;
+		try {
+<span class="fc" id="L49">			minutes = action.getInt(MINUTES);</span>
+<span class="fc" id="L50">		} catch (final NumberFormatException e) {</span>
+<span class="fc" id="L51">			player.sendPrivateText(USAGE_JAIL_NAME_MINUTES_REASON);</span>
+<span class="fc" id="L52">			return;</span>
+<span class="fc" id="L53">		}</span>
+
+		// extract and validate player
+<span class="fc" id="L56">		final String target = action.get(TARGET);</span>
+<span class="fc bfc" id="L57" title="All 2 branches covered.">		if (StendhalRPRuleProcessor.get().getPlayer(target) == null) {</span>
+			try {
+<span class="fc bfc" id="L59" title="All 2 branches covered.">				if (!DAORegister.get().get(CharacterDAO.class).hasCharacter(target)) {</span>
+<span class="fc" id="L60">					player.sendPrivateText(&quot;No character with that name: &quot; + target);</span>
+<span class="fc" id="L61">					return;</span>
+				}
+<span class="nc" id="L63">			} catch (SQLException e) {</span>
+<span class="nc" id="L64">				logger.error(e, e);</span>
+<span class="fc" id="L65">			}</span>
+		}
+
+		// extract reason
+<span class="fc" id="L69">		String reason = &quot;&quot;;</span>
+<span class="pc bpc" id="L70" title="1 of 2 branches missed.">		if (action.has(&quot;reason&quot;)) {</span>
+<span class="fc" id="L71">			reason = action.get(&quot;reason&quot;);</span>
+		}
+
+<span class="fc" id="L74">		SingletonRepository.getJail().imprison(target, player, minutes, reason);</span>
+<span class="fc" id="L75">		new GameEvent(player.getName(), JAIL, target, Integer.toString(minutes), reason).raise();</span>
+
+<span class="fc" id="L77">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

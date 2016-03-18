@@ -1,0 +1,559 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ShopList.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.npc</a> &gt; <span class="el_source">ShopList.java</span></div><h1>ShopList.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.npc;
+
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+
+/**
+ * Singleton class that contains inventory and prices of NPC stores.
+ */
+public final class ShopList {
+
+	static {
+<span class="fc" id="L27">		final ShopList shops = ShopList.get();</span>
+
+<span class="fc" id="L29">		shops.add(&quot;food&amp;drinks&quot;, &quot;beer&quot;, 10);</span>
+<span class="fc" id="L30">		shops.add(&quot;food&amp;drinks&quot;, &quot;wine&quot;, 15);</span>
+<span class="fc" id="L31">		shops.add(&quot;food&amp;drinks&quot;, &quot;flask&quot;, 5);</span>
+<span class="fc" id="L32">		shops.add(&quot;food&amp;drinks&quot;, &quot;cheese&quot;, 20);</span>
+<span class="fc" id="L33">		shops.add(&quot;food&amp;drinks&quot;, &quot;apple&quot;, 10);</span>
+<span class="fc" id="L34">		shops.add(&quot;food&amp;drinks&quot;, &quot;carrot&quot;, 10);</span>
+<span class="fc" id="L35">		shops.add(&quot;food&amp;drinks&quot;, &quot;meat&quot;, 40);</span>
+<span class="fc" id="L36">		shops.add(&quot;food&amp;drinks&quot;, &quot;ham&quot;, 80);</span>
+
+<span class="fc" id="L38">		shops.add(&quot;adosfoodseller&quot;, &quot;apple&quot;, 50);</span>
+<span class="fc" id="L39">		shops.add(&quot;adosfoodseller&quot;, &quot;carrot&quot;, 50);</span>
+
+<span class="fc" id="L41">		shops.add(&quot;buyfood&quot;, &quot;cheese&quot;, 5);</span>
+<span class="fc" id="L42">		shops.add(&quot;buyfood&quot;, &quot;meat&quot;, 10);</span>
+<span class="fc" id="L43">		shops.add(&quot;buyfood&quot;, &quot;spinach&quot;, 15);</span>
+<span class="fc" id="L44">		shops.add(&quot;buyfood&quot;, &quot;ham&quot;, 20);</span>
+<span class="fc" id="L45">		shops.add(&quot;buyfood&quot;, &quot;flour&quot;, 25);</span>
+<span class="fc" id="L46">		shops.add(&quot;buyfood&quot;, &quot;porcini&quot;, 30);</span>
+
+<span class="fc" id="L48">		shops.add(&quot;healing&quot;, &quot;antidote&quot;, 50);</span>
+<span class="fc" id="L49">		shops.add(&quot;healing&quot;, &quot;minor potion&quot;, 100);</span>
+<span class="fc" id="L50">		shops.add(&quot;healing&quot;, &quot;potion&quot;, 250);</span>
+<span class="fc" id="L51">		shops.add(&quot;healing&quot;, &quot;greater potion&quot;, 500);</span>
+
+<span class="fc" id="L53">		shops.add(&quot;superhealing&quot;, &quot;antidote&quot;, 50);</span>
+<span class="fc" id="L54">		shops.add(&quot;superhealing&quot;, &quot;greater antidote&quot;, 100);</span>
+<span class="fc" id="L55">		shops.add(&quot;superhealing&quot;, &quot;potion&quot;, 250);</span>
+<span class="fc" id="L56">		shops.add(&quot;superhealing&quot;, &quot;greater potion&quot;, 500);</span>
+<span class="fc" id="L57">		shops.add(&quot;superhealing&quot;, &quot;mega potion&quot;, 1500);</span>
+
+<span class="fc" id="L59">		shops.add(&quot;scrolls&quot;, &quot;home scroll&quot;, 250);</span>
+<span class="fc" id="L60">		shops.add(&quot;scrolls&quot;, &quot;summon scroll&quot;, 200);</span>
+<span class="fc" id="L61">		shops.add(&quot;scrolls&quot;, &quot;empty scroll&quot;, 2000);</span>
+
+<span class="fc" id="L63">		shops.add(&quot;fadoscrolls&quot;, &quot;fado city scroll&quot;, 600);</span>
+<span class="fc" id="L64">		shops.add(&quot;fadoscrolls&quot;, &quot;empty scroll&quot;, 2200);</span>
+
+<span class="fc" id="L66">		shops.add(&quot;nalworscrolls&quot;, &quot;nalwor city scroll&quot;, 400);</span>
+<span class="fc" id="L67">		shops.add(&quot;nalworscrolls&quot;, &quot;empty scroll&quot;, 2000);</span>
+
+<span class="fc" id="L69">		shops.add(&quot;adosscrolls&quot;, &quot;ados city scroll&quot;, 400);</span>
+<span class="fc" id="L70">		shops.add(&quot;adosscrolls&quot;, &quot;empty scroll&quot;, 2000);</span>
+
+<span class="fc" id="L72">		shops.add(&quot;kirdnehscrolls&quot;, &quot;kirdneh city scroll&quot;, 400);</span>
+<span class="fc" id="L73">		shops.add(&quot;kirdnehscrolls&quot;, &quot;home scroll&quot;, 400);</span>
+<span class="fc" id="L74">		shops.add(&quot;kirdnehscrolls&quot;, &quot;empty scroll&quot;, 2000);</span>
+
+<span class="fc" id="L76">		shops.add(&quot;allscrolls&quot;, &quot;home scroll&quot;, 250);</span>
+<span class="fc" id="L77">		shops.add(&quot;allscrolls&quot;, &quot;summon scroll&quot;, 200);</span>
+<span class="fc" id="L78">		shops.add(&quot;allscrolls&quot;, &quot;empty scroll&quot;, 2000);</span>
+<span class="fc" id="L79">		shops.add(&quot;allscrolls&quot;, &quot;ados city scroll&quot;, 400);</span>
+<span class="fc" id="L80">		shops.add(&quot;allscrolls&quot;, &quot;nalwor city scroll&quot;, 400);</span>
+<span class="fc" id="L81">		shops.add(&quot;allscrolls&quot;, &quot;fado city scroll&quot;, 600);</span>
+<span class="fc" id="L82">		shops.add(&quot;allscrolls&quot;, &quot;kirdneh city scroll&quot;, 600);</span>
+
+<span class="fc" id="L84">		shops.add(&quot;sellstuff&quot;, &quot;knife&quot;, 15);</span>
+<span class="fc" id="L85">		shops.add(&quot;sellstuff&quot;, &quot;club&quot;, 10);</span>
+<span class="fc" id="L86">		shops.add(&quot;sellstuff&quot;, &quot;dagger&quot;, 25);</span>
+<span class="fc" id="L87">		shops.add(&quot;sellstuff&quot;, &quot;wooden shield&quot;, 25);</span>
+<span class="fc" id="L88">		shops.add(&quot;sellstuff&quot;, &quot;dress&quot;, 25);</span>
+<span class="fc" id="L89">		shops.add(&quot;sellstuff&quot;, &quot;leather helmet&quot;, 25);</span>
+<span class="fc" id="L90">		shops.add(&quot;sellstuff&quot;, &quot;cloak&quot;, 30);</span>
+<span class="fc" id="L91">		shops.add(&quot;sellstuff&quot;, &quot;leather legs&quot;, 35);</span>
+
+<span class="fc" id="L93">		shops.add(&quot;sellbetterstuff1&quot;, &quot;blue armor&quot;, 14000);</span>
+<span class="fc" id="L94">		shops.add(&quot;sellbetterstuff1&quot;, &quot;blue boots&quot;, 3000);</span>
+<span class="fc" id="L95">		shops.add(&quot;sellbetterstuff1&quot;, &quot;blue striped cloak&quot;, 5000);</span>
+<span class="fc" id="L96">		shops.add(&quot;sellbetterstuff1&quot;, &quot;blue helmet&quot;, 6000);</span>
+<span class="fc" id="L97">		shops.add(&quot;sellbetterstuff1&quot;, &quot;blue legs&quot;, 6000);</span>
+<span class="fc" id="L98">		shops.add(&quot;sellbetterstuff1&quot;, &quot;blue shield&quot;, 20000);</span>
+<span class="fc" id="L99">		shops.add(&quot;sellbetterstuff1&quot;, &quot;assassin dagger&quot;, 12000);</span>
+
+<span class="fc" id="L101">		shops.add(&quot;sellbetterstuff2&quot;, &quot;shadow armor&quot;, 18000);</span>
+<span class="fc" id="L102">		shops.add(&quot;sellbetterstuff2&quot;, &quot;shadow boots&quot;, 4000);</span>
+<span class="fc" id="L103">		shops.add(&quot;sellbetterstuff2&quot;, &quot;shadow cloak&quot;, 7000);</span>
+<span class="fc" id="L104">		shops.add(&quot;sellbetterstuff2&quot;, &quot;shadow helmet&quot;, 8000);</span>
+<span class="fc" id="L105">		shops.add(&quot;sellbetterstuff2&quot;, &quot;shadow legs&quot;, 10000);</span>
+<span class="fc" id="L106">		shops.add(&quot;sellbetterstuff2&quot;, &quot;shadow shield&quot;, 30000);</span>
+<span class="fc" id="L107">		shops.add(&quot;sellbetterstuff2&quot;, &quot;hell dagger&quot;, 20000);</span>
+
+<span class="fc" id="L109">		shops.add(&quot;sellrangedstuff&quot;, &quot;wooden bow&quot;, 300);</span>
+<span class="fc" id="L110">		shops.add(&quot;sellrangedstuff&quot;, &quot;wooden arrow&quot;, 2);</span>
+
+<span class="fc" id="L112">		shops.add(&quot;buystuff&quot;, &quot;short sword&quot;, 15);</span>
+<span class="fc" id="L113">		shops.add(&quot;buystuff&quot;, &quot;sword&quot;, 60);</span>
+<span class="fc" id="L114">		shops.add(&quot;buystuff&quot;, &quot;studded shield&quot;, 20);</span>
+<span class="fc" id="L115">		shops.add(&quot;buystuff&quot;, &quot;studded armor&quot;, 22);</span>
+<span class="fc" id="L116">		shops.add(&quot;buystuff&quot;, &quot;studded helmet&quot;, 17);</span>
+<span class="fc" id="L117">		shops.add(&quot;buystuff&quot;, &quot;studded legs&quot;, 20);</span>
+<span class="fc" id="L118">		shops.add(&quot;buystuff&quot;, &quot;chain armor&quot;, 29);</span>
+<span class="fc" id="L119">		shops.add(&quot;buystuff&quot;, &quot;chain helmet&quot;, 25);</span>
+<span class="fc" id="L120">		shops.add(&quot;buystuff&quot;, &quot;chain legs&quot;, 27);</span>
+
+<span class="fc" id="L122">		shops.add(&quot;selltools&quot;, &quot;small axe&quot;, 15);</span>
+<span class="fc" id="L123">		shops.add(&quot;selltools&quot;, &quot;hand axe&quot;, 25);</span>
+<span class="fc" id="L124">		shops.add(&quot;selltools&quot;, &quot;axe&quot;, 40);</span>
+		// enable these if you need them for a quest or something
+		// shops.add(&quot;selltools&quot;, &quot;pick&quot;, 50);
+		// shops.add(&quot;selltools&quot;, &quot;shovel&quot;, 50);
+<span class="fc" id="L128">		shops.add(&quot;selltools&quot;, &quot;hammer&quot;, 60);</span>
+		// used for harvest grain.
+<span class="fc" id="L130">		shops.add(&quot;selltools&quot;, &quot;old scythe&quot;, 120);</span>
+        // for harvesting cane fields
+<span class="fc" id="L132">		shops.add(&quot;selltools&quot;, &quot;sickle&quot;, 80);</span>
+<span class="fc" id="L133">		shops.add(&quot;selltools&quot;, &quot;gold pan&quot;, 230);</span>
+
+<span class="fc" id="L135">		shops.add(&quot;buyiron&quot;, &quot;iron&quot;, 75);</span>
+
+<span class="fc" id="L137">		shops.add(&quot;buygrain&quot;, &quot;grain&quot;, 1);</span>
+
+<span class="fc" id="L139">		shops.add(&quot;sellrings&quot;, &quot;engagement ring&quot;, 5000);</span>
+		// gold and gemstones
+<span class="fc" id="L141">		shops.add(&quot;buyprecious&quot;, &quot;gold bar&quot;, 250);</span>
+<span class="fc" id="L142">		shops.add(&quot;buyprecious&quot;, &quot;emerald&quot;, 200);</span>
+<span class="fc" id="L143">		shops.add(&quot;buyprecious&quot;, &quot;sapphire&quot;, 400);</span>
+<span class="fc" id="L144">		shops.add(&quot;buyprecious&quot;, &quot;carbuncle&quot;, 600);</span>
+<span class="fc" id="L145">		shops.add(&quot;buyprecious&quot;, &quot;diamond&quot;, 800);</span>
+<span class="fc" id="L146">		shops.add(&quot;buyprecious&quot;, &quot;obsidian&quot;, 1000);</span>
+<span class="fc" id="L147">		shops.add(&quot;buyprecious&quot;, &quot;mithril bar&quot;, 2500);</span>
+
+		// rare weapons shop
+<span class="fc" id="L150">		shops.add(&quot;buyrare&quot;, &quot;scimitar&quot;, 65);</span>
+<span class="fc" id="L151">		shops.add(&quot;buyrare&quot;, &quot;katana&quot;, 70);</span>
+<span class="fc" id="L152">		shops.add(&quot;buyrare&quot;, &quot;bardiche&quot;, 75);</span>
+<span class="fc" id="L153">		shops.add(&quot;buyrare&quot;, &quot;golden hammer&quot;, 80);</span>
+
+		// rare armor shop
+<span class="fc" id="L156">		shops.add(&quot;buyrare&quot;, &quot;enhanced chainmail&quot;, 32);</span>
+<span class="fc" id="L157">		shops.add(&quot;buyrare&quot;, &quot;golden chainmail&quot;, 52);</span>
+<span class="fc" id="L158">		shops.add(&quot;buyrare&quot;, &quot;plate armor&quot;, 62);</span>
+<span class="fc" id="L159">		shops.add(&quot;buyrare&quot;, &quot;plate shield&quot;, 40);</span>
+<span class="fc" id="L160">		shops.add(&quot;buyrare&quot;, &quot;lion shield&quot;, 50);</span>
+
+		// rare elf weapons buyer
+<span class="fc" id="L163">		shops.add(&quot;elfbuyrare&quot;, &quot;battle axe&quot;, 70);</span>
+<span class="fc" id="L164">		shops.add(&quot;elfbuyrare&quot;, &quot;twoside axe&quot;, 80);</span>
+<span class="fc" id="L165">		shops.add(&quot;elfbuyrare&quot;, &quot;claymore&quot;, 90);</span>
+<span class="fc" id="L166">		shops.add(&quot;elfbuyrare&quot;, &quot;broadsword&quot;, 100);</span>
+<span class="fc" id="L167">		shops.add(&quot;elfbuyrare&quot;, &quot;staff&quot;, 75);</span>
+<span class="fc" id="L168">		shops.add(&quot;elfbuyrare&quot;, &quot;enhanced lion shield&quot;, 100);</span>
+<span class="fc" id="L169">		shops.add(&quot;elfbuyrare&quot;, &quot;crown shield&quot;, 120);</span>
+
+		// more rare weapons shop (fado)
+<span class="fc" id="L172">		shops.add(&quot;buyrare2&quot;, &quot;war hammer&quot;, 120);</span>
+<span class="fc" id="L173">		shops.add(&quot;buyrare2&quot;, &quot;biting sword&quot;, 150);</span>
+<span class="fc" id="L174">		shops.add(&quot;buyrare2&quot;, &quot;crossbow&quot;, 175);</span>
+<span class="fc" id="L175">		shops.add(&quot;buyrare2&quot;, &quot;great sword&quot;, 250);</span>
+<span class="fc" id="L176">		shops.add(&quot;buyrare2&quot;, &quot;fire sword&quot;, 2000);</span>
+<span class="fc" id="L177">		shops.add(&quot;buyrare2&quot;, &quot;ice sword&quot;, 5000);</span>
+<span class="fc" id="L178">        shops.add(&quot;buyrare2&quot;, &quot;hell dagger&quot;, 8000);</span>
+
+		// very rare armor shop (ados)
+<span class="fc" id="L181">		shops.add(&quot;buyrare3&quot;, &quot;golden legs&quot;, 3000);</span>
+<span class="fc" id="L182">		shops.add(&quot;buyrare3&quot;, &quot;shadow legs&quot;, 5000);</span>
+<span class="fc" id="L183">		shops.add(&quot;buyrare3&quot;, &quot;golden armor&quot;, 7000);</span>
+<span class="fc" id="L184">		shops.add(&quot;buyrare3&quot;, &quot;shadow armor&quot;, 9000);</span>
+<span class="fc" id="L185">		shops.add(&quot;buyrare3&quot;, &quot;golden shield&quot;, 10000);</span>
+<span class="fc" id="L186">		shops.add(&quot;buyrare3&quot;, &quot;shadow shield&quot;, 15000);</span>
+
+		// less rare armor shop (kobold city - kobolds drop some of these
+		// things)
+<span class="fc" id="L190">		shops.add(&quot;buystuff2&quot;, &quot;leather scale armor&quot;, 65);</span>
+<span class="fc" id="L191">		shops.add(&quot;buystuff2&quot;, &quot;studded legs&quot;, 70);</span>
+<span class="fc" id="L192">		shops.add(&quot;buystuff2&quot;, &quot;studded boots&quot;, 75);</span>
+<span class="fc" id="L193">		shops.add(&quot;buystuff2&quot;, &quot;chain boots&quot;, 100);</span>
+<span class="fc" id="L194">		shops.add(&quot;buystuff2&quot;, &quot;skull shield&quot;, 100);</span>
+<span class="fc" id="L195">		shops.add(&quot;buystuff2&quot;, &quot;unicorn shield&quot;, 125);</span>
+<span class="fc" id="L196">		shops.add(&quot;buystuff2&quot;, &quot;viking helmet&quot;, 250);</span>
+
+<span class="fc" id="L198">		shops.add(&quot;sellstuff2&quot;, &quot;leather boots&quot;, 50);</span>
+<span class="fc" id="L199">		shops.add(&quot;sellstuff2&quot;, &quot;studded helmet&quot;, 60);</span>
+<span class="fc" id="L200">		shops.add(&quot;sellstuff2&quot;, &quot;studded shield&quot;, 80);</span>
+<span class="fc" id="L201">		shops.add(&quot;sellstuff2&quot;, &quot;sword&quot;, 90);</span>
+<span class="fc" id="L202">		shops.add(&quot;sellstuff2&quot;, &quot;dwarf cloak&quot;, 230);</span>
+
+		// cloaks shop
+<span class="fc" id="L205">		shops.add(&quot;buycloaks&quot;, &quot;blue elf cloak&quot;, 300);</span>
+<span class="fc" id="L206">		shops.add(&quot;buycloaks&quot;, &quot;green dragon cloak&quot;, 400);</span>
+<span class="fc" id="L207">		shops.add(&quot;buycloaks&quot;, &quot;blue dragon cloak&quot;, 2000);</span>
+<span class="fc" id="L208">		shops.add(&quot;buycloaks&quot;, &quot;shadow cloak&quot;, 3000);</span>
+<span class="fc" id="L209">		shops.add(&quot;buycloaks&quot;, &quot;black dragon cloak&quot;, 4000);</span>
+<span class="fc" id="L210">		shops.add(&quot;buycloaks&quot;, &quot;golden cloak&quot;, 5000);</span>
+<span class="fc" id="L211">		shops.add(&quot;buycloaks&quot;, &quot;chaos cloak&quot;, 10000);</span>
+<span class="fc" id="L212">		shops.add(&quot;buycloaks&quot;, &quot;black cloak&quot;, 20000);</span>
+
+		// boots shop (mithrilbourgh)
+		// Note the shop sign is done by hand in
+		// games.stendhal.server.maps.mithrilbourgh.stores
+		// Because I wanted to split boots and helmets
+		// Please if you change anything, change also the sign (by hand)
+<span class="fc" id="L219">		shops.add(&quot;boots&amp;helm&quot;, &quot;steel boots&quot;, 1000);</span>
+<span class="fc" id="L220">		shops.add(&quot;boots&amp;helm&quot;, &quot;golden boots&quot;, 1500);</span>
+<span class="fc" id="L221">		shops.add(&quot;boots&amp;helm&quot;, &quot;shadow boots&quot;, 2000);</span>
+<span class="fc" id="L222">		shops.add(&quot;boots&amp;helm&quot;, &quot;stone boots&quot;, 2500);</span>
+<span class="fc" id="L223">		shops.add(&quot;boots&amp;helm&quot;, &quot;chaos boots&quot;, 4000);</span>
+<span class="fc" id="L224">        shops.add(&quot;boots&amp;helm&quot;, &quot;green thing boots&quot;, 6000);</span>
+<span class="fc" id="L225">        shops.add(&quot;boots&amp;helm&quot;, &quot;xeno boots&quot;, 8000);</span>
+<span class="fc" id="L226">        shops.add(&quot;boots&amp;helm&quot;, &quot;xeno helmet&quot;, 8000);</span>
+
+		// helmet shop (mithrilbourgh)
+		// Note the shop sign is done by hand in
+		// games.stendhal.server.maps.mithrilbourgh.stores
+<span class="fc" id="L231">		shops.add(&quot;boots&amp;helm&quot;, &quot;golden helmet&quot;, 3000);</span>
+<span class="fc" id="L232">		shops.add(&quot;boots&amp;helm&quot;, &quot;shadow helmet&quot;, 4000);</span>
+<span class="fc" id="L233">		shops.add(&quot;boots&amp;helm&quot;, &quot;horned golden helmet&quot;, 5000);</span>
+<span class="fc" id="L234">		shops.add(&quot;boots&amp;helm&quot;, &quot;chaos helmet&quot;, 6000);</span>
+<span class="fc" id="L235">		shops.add(&quot;boots&amp;helm&quot;, &quot;magic chain helmet&quot;, 8000);</span>
+<span class="fc" id="L236">		shops.add(&quot;boots&amp;helm&quot;, &quot;black helmet&quot;, 10000);</span>
+
+		// buy axes (woodcutter)
+<span class="fc" id="L239">		shops.add(&quot;buyaxe&quot;, &quot;halberd&quot;, 2000);</span>
+<span class="fc" id="L240">		shops.add(&quot;buyaxe&quot;, &quot;golden twoside axe&quot;, 4000);</span>
+<span class="fc" id="L241">		shops.add(&quot;buyaxe&quot;, &quot;magic twoside axe&quot;, 6000);</span>
+<span class="fc" id="L242">		shops.add(&quot;buyaxe&quot;, &quot;durin axe&quot;, 8000);</span>
+<span class="fc" id="L243">		shops.add(&quot;buyaxe&quot;, &quot;black scythe&quot;, 9000);</span>
+<span class="fc" id="L244">		shops.add(&quot;buyaxe&quot;, &quot;chaos axe&quot;, 10000);</span>
+<span class="fc" id="L245">		shops.add(&quot;buyaxe&quot;, &quot;black halberd&quot;, 12000);</span>
+
+		// buy chaos items (scared dwarf, after quest)
+<span class="fc" id="L248">		shops.add(&quot;buychaos&quot;, &quot;chaos legs&quot;, 8000);</span>
+<span class="fc" id="L249">		shops.add(&quot;buychaos&quot;, &quot;chaos sword&quot;, 12000);</span>
+<span class="fc" id="L250">		shops.add(&quot;buychaos&quot;, &quot;chaos shield&quot;, 18000);</span>
+<span class="fc" id="L251">		shops.add(&quot;buychaos&quot;, &quot;chaos armor&quot;, 20000);</span>
+
+		// buy elvish items (albino elf, after quest)
+<span class="fc" id="L254">		shops.add(&quot;buyelvish&quot;, &quot;elvish boots&quot;, 300);</span>
+<span class="fc" id="L255">		shops.add(&quot;buyelvish&quot;, &quot;elvish legs&quot;, 300);</span>
+<span class="fc" id="L256">		shops.add(&quot;buyelvish&quot;, &quot;elvish sword&quot;, 800);</span>
+<span class="fc" id="L257">		shops.add(&quot;buyelvish&quot;, &quot;elvish shield&quot;, 1000);</span>
+<span class="fc" id="L258">		shops.add(&quot;buyelvish&quot;, &quot;drow sword&quot;, 1200);</span>
+<span class="fc" id="L259">		shops.add(&quot;buyelvish&quot;, &quot;elvish cloak&quot;, 400);</span>
+<span class="fc" id="L260">		shops.add(&quot;buyelvish&quot;, &quot;elvish armor&quot;, 400);</span>
+
+		// magic items or 'relics' (witch in magic city)
+<span class="fc" id="L263">		shops.add(&quot;buymagic&quot;, &quot;demon sword&quot;, 4000);</span>
+<span class="fc" id="L264">		shops.add(&quot;buymagic&quot;, &quot;dark dagger&quot;, 8000);</span>
+<span class="fc" id="L265">		shops.add(&quot;buymagic&quot;, &quot;liberty helmet&quot;, 8000);</span>
+<span class="fc" id="L266">		shops.add(&quot;buymagic&quot;, &quot;immortal sword&quot;, 10000);</span>
+<span class="fc" id="L267">		shops.add(&quot;buymagic&quot;, &quot;jewelled legs&quot;, 12000);</span>
+<span class="fc" id="L268">		shops.add(&quot;buymagic&quot;, &quot;magic plate shield&quot;, 16000);</span>
+<span class="fc" id="L269">		shops.add(&quot;buymagic&quot;, &quot;magic plate armor&quot;, 20000);</span>
+
+		// red items (supplier in sedah city)
+<span class="fc" id="L272">		shops.add(&quot;buyred&quot;, &quot;red armor&quot;, 300);</span>
+<span class="fc" id="L273">		shops.add(&quot;buyred&quot;, &quot;red boots&quot;, 200);</span>
+<span class="fc" id="L274">		shops.add(&quot;buyred&quot;, &quot;red cloak&quot;, 250);</span>
+<span class="fc" id="L275">		shops.add(&quot;buyred&quot;, &quot;red helmet&quot;, 200);</span>
+<span class="fc" id="L276">		shops.add(&quot;buyred&quot;, &quot;red legs&quot;, 200);</span>
+<span class="fc" id="L277">		shops.add(&quot;buyred&quot;, &quot;red shield&quot;, 750);</span>
+
+		// mainio items (despot in mithrilbourgh throne room)
+<span class="fc" id="L280">		shops.add(&quot;buymainio&quot;, &quot;mainio armor&quot;, 22000);</span>
+<span class="fc" id="L281">		shops.add(&quot;buymainio&quot;, &quot;mainio boots&quot;, 4000);</span>
+<span class="fc" id="L282">		shops.add(&quot;buymainio&quot;, &quot;mainio cloak&quot;, 12000);</span>
+<span class="fc" id="L283">		shops.add(&quot;buymainio&quot;, &quot;mainio helmet&quot;, 8000);</span>
+<span class="fc" id="L284">		shops.add(&quot;buymainio&quot;, &quot;mainio legs&quot;, 7000);</span>
+<span class="fc" id="L285">		shops.add(&quot;buymainio&quot;, &quot;mainio shield&quot;, 16000);</span>
+
+		// assassinhq principal Femme Fatale)
+<span class="fc" id="L288">		shops.add(&quot;buy4assassins&quot;, &quot;buckler&quot;, 20);</span>
+<span class="fc" id="L289">		shops.add(&quot;buy4assassins&quot;, &quot;aventail&quot;, 25);</span>
+<span class="fc" id="L290">		shops.add(&quot;buy4assassins&quot;, &quot;robins hat&quot;, 30);</span>
+<span class="fc" id="L291">		shops.add(&quot;buy4assassins&quot;, &quot;leather boots&quot;, 30);</span>
+<span class="fc" id="L292">		shops.add(&quot;buy4assassins&quot;, &quot;dwarf cloak&quot;, 60);</span>
+<span class="fc" id="L293">		shops.add(&quot;buy4assassins&quot;, &quot;dwarvish armor&quot;, 17000);</span>
+<span class="fc" id="L294">		shops.add(&quot;buy4assassins&quot;, &quot;dwarvish legs&quot;, 15000);</span>
+<span class="fc" id="L295">		shops.add(&quot;buy4assassins&quot;, &quot;assassin dagger&quot;, 7000);</span>
+
+		// mountain dwarf buyer of odds and ends -3 ados abandoned keep)
+<span class="fc" id="L298">		shops.add(&quot;buyoddsandends&quot;, &quot;shuriken&quot;, 20);</span>
+<span class="fc" id="L299">		shops.add(&quot;buyoddsandends&quot;, &quot;amulet&quot;, 800);</span>
+<span class="fc" id="L300">		shops.add(&quot;buyoddsandends&quot;, &quot;black pearl&quot;, 100);</span>
+<span class="fc" id="L301">		shops.add(&quot;buyoddsandends&quot;, &quot;lucky charm&quot;, 60);</span>
+<span class="fc" id="L302">		shops.add(&quot;buyoddsandends&quot;, &quot;knife&quot;, 5);</span>
+<span class="fc" id="L303">		shops.add(&quot;buyoddsandends&quot;, &quot;dagger&quot;, 20);</span>
+<span class="fc" id="L304">		shops.add(&quot;buyoddsandends&quot;, &quot;skull ring&quot;, 250);</span>
+<span class="fc" id="L305">		shops.add(&quot;buyoddsandends&quot;, &quot;greater antidote&quot;, 80);</span>
+<span class="fc" id="L306">		shops.add(&quot;buyoddsandends&quot;, &quot;marbles&quot;, 80);</span>
+<span class="fc" id="L307">		shops.add(&quot;buyoddsandends&quot;, &quot;magical needle&quot;, 1500);</span>
+<span class="fc" id="L308">		shops.add(&quot;buyoddsandends&quot;, &quot;snowglobe&quot;, 150);</span>
+<span class="fc" id="L309">		shops.add(&quot;buyoddsandends&quot;, &quot;silk gland&quot;, 500);</span>
+
+		// archery shop in nalwor)
+<span class="fc" id="L312">		shops.add(&quot;buyarcherstuff&quot;, &quot;wooden arrow&quot;, 1);</span>
+<span class="fc" id="L313">		shops.add(&quot;buyarcherstuff&quot;, &quot;steel arrow&quot;, 5);</span>
+<span class="fc" id="L314">		shops.add(&quot;buyarcherstuff&quot;, &quot;golden arrow&quot;, 10);</span>
+<span class="fc" id="L315">		shops.add(&quot;buyarcherstuff&quot;, &quot;power arrow&quot;, 35);</span>
+<span class="fc" id="L316">		shops.add(&quot;buyarcherstuff&quot;, &quot;wooden bow&quot;, 250);</span>
+<span class="fc" id="L317">		shops.add(&quot;buyarcherstuff&quot;, &quot;crossbow&quot;, 400);</span>
+<span class="fc" id="L318">		shops.add(&quot;buyarcherstuff&quot;, &quot;longbow&quot;, 300);</span>
+<span class="fc" id="L319">		shops.add(&quot;buyarcherstuff&quot;, &quot;composite bow&quot;, 350);</span>
+<span class="fc" id="L320">		shops.add(&quot;buyarcherstuff&quot;, &quot;hunter crossbow&quot;, 800);</span>
+<span class="fc" id="L321">		shops.add(&quot;buyarcherstuff&quot;, &quot;mithril bow&quot;, 2000);</span>
+
+		// selling arrows
+<span class="fc" id="L324">		shops.add(&quot;sellarrows&quot;, &quot;wooden arrow&quot;, 2);</span>
+<span class="fc" id="L325">		shops.add(&quot;sellarrows&quot;, &quot;steel arrow&quot;, 7);</span>
+<span class="fc" id="L326">		shops.add(&quot;sellarrows&quot;, &quot;golden arrow&quot;, 25);</span>
+<span class="fc" id="L327">		shops.add(&quot;sellarrows&quot;, &quot;power arrow&quot;, 45);</span>
+
+		// assassinhq chief falatheen the dishwasher and veggie buyer)
+		// sign is hard coded so if you change this change the sign
+<span class="fc" id="L331">		shops.add(&quot;buyveggiesandherbs&quot;, &quot;carrot&quot;, 5);</span>
+<span class="fc" id="L332">		shops.add(&quot;buyveggiesandherbs&quot;, &quot;salad&quot;, 10);</span>
+<span class="fc" id="L333">		shops.add(&quot;buyveggiesandherbs&quot;, &quot;leek&quot;, 25);</span>
+<span class="fc" id="L334">		shops.add(&quot;buyveggiesandherbs&quot;, &quot;broccoli&quot;, 30);</span>
+<span class="fc" id="L335">		shops.add(&quot;buyveggiesandherbs&quot;, &quot;courgette&quot;, 10);</span>
+<span class="fc" id="L336">		shops.add(&quot;buyveggiesandherbs&quot;, &quot;cauliflower&quot;, 30);</span>
+<span class="fc" id="L337">		shops.add(&quot;buyveggiesandherbs&quot;, &quot;tomato&quot;, 20);</span>
+<span class="fc" id="L338">		shops.add(&quot;buyveggiesandherbs&quot;, &quot;onion&quot;, 20);</span>
+<span class="fc" id="L339">		shops.add(&quot;buyveggiesandherbs&quot;, &quot;arandula&quot;, 10);</span>
+<span class="fc" id="L340">		shops.add(&quot;buyveggiesandherbs&quot;, &quot;kokuda&quot;, 200);</span>
+<span class="fc" id="L341">		shops.add(&quot;buyveggiesandherbs&quot;, &quot;kekik&quot;, 25);</span>
+<span class="fc" id="L342">		shops.add(&quot;buyveggiesandherbs&quot;, &quot;sclaria&quot;, 25);</span>
+
+		// gnome village buyer in 0 ados mountain n2 w2)
+<span class="fc" id="L345">		shops.add(&quot;buy4gnomes&quot;, &quot;leather armor&quot;, 25);</span>
+<span class="fc" id="L346">		shops.add(&quot;buy4gnomes&quot;, &quot;club&quot;, 3);</span>
+<span class="fc" id="L347">		shops.add(&quot;buy4gnomes&quot;, &quot;leather helmet&quot;, 15);</span>
+<span class="fc" id="L348">		shops.add(&quot;buy4gnomes&quot;, &quot;cloak&quot;, 25);</span>
+<span class="fc" id="L349">		shops.add(&quot;buy4gnomes&quot;, &quot;apple&quot;, 5);</span>
+<span class="fc" id="L350">		shops.add(&quot;buy4gnomes&quot;, &quot;marbles&quot;, 50);</span>
+<span class="fc" id="L351">		shops.add(&quot;buy4gnomes&quot;, &quot;wooden shield&quot;, 20);</span>
+
+		// hotdog lady in athor)
+<span class="fc" id="L354">		shops.add(&quot;buy4hotdogs&quot;, &quot;sausage&quot;, 30);</span>
+<span class="fc" id="L355">		shops.add(&quot;buy4hotdogs&quot;, &quot;cheese sausage&quot;, 25);</span>
+<span class="fc" id="L356">		shops.add(&quot;buy4hotdogs&quot;, &quot;bread&quot;, 15);</span>
+<span class="fc" id="L357">		shops.add(&quot;buy4hotdogs&quot;, &quot;onion&quot;, 20);</span>
+<span class="fc" id="L358">		shops.add(&quot;buy4hotdogs&quot;, &quot;canned tuna&quot;, 15);</span>
+<span class="fc" id="L359">		shops.add(&quot;buy4hotdogs&quot;, &quot;ham&quot;, 15);</span>
+<span class="fc" id="L360">		shops.add(&quot;buy4hotdogs&quot;, &quot;cheese&quot;, 5);</span>
+
+<span class="fc" id="L362">		shops.add(&quot;sellhotdogs&quot;, &quot;hotdog&quot;, 160);</span>
+<span class="fc" id="L363">		shops.add(&quot;sellhotdogs&quot;, &quot;cheeseydog&quot;, 180);</span>
+<span class="fc" id="L364">		shops.add(&quot;sellhotdogs&quot;, &quot;tuna sandwich&quot;, 130);</span>
+<span class="fc" id="L365">		shops.add(&quot;sellhotdogs&quot;, &quot;sandwich&quot;, 120);</span>
+<span class="fc" id="L366">		shops.add(&quot;sellhotdogs&quot;, &quot;vanilla shake&quot;, 110);</span>
+<span class="fc" id="L367">		shops.add(&quot;sellhotdogs&quot;, &quot;chocolate shake&quot;, 110);</span>
+<span class="fc" id="L368">		shops.add(&quot;sellhotdogs&quot;, &quot;chocolate bar&quot;, 100);</span>
+<span class="fc" id="L369">		shops.add(&quot;sellhotdogs&quot;, &quot;snowglobe&quot;, 200);</span>
+
+		// magic city barmaid)
+<span class="fc" id="L372">		shops.add(&quot;sellmagic&quot;, &quot;hotdog&quot;, 160);</span>
+<span class="fc" id="L373">		shops.add(&quot;sellmagic&quot;, &quot;cheeseydog&quot;, 180);</span>
+<span class="fc" id="L374">		shops.add(&quot;sellmagic&quot;, &quot;tuna sandwich&quot;, 130);</span>
+<span class="fc" id="L375">		shops.add(&quot;sellmagic&quot;, &quot;sandwich&quot;, 120);</span>
+<span class="fc" id="L376">		shops.add(&quot;sellmagic&quot;, &quot;vanilla shake&quot;, 110);</span>
+<span class="fc" id="L377">		shops.add(&quot;sellmagic&quot;, &quot;chocolate shake&quot;, 110);</span>
+<span class="fc" id="L378">		shops.add(&quot;sellmagic&quot;, &quot;chocolate bar&quot;, 100);</span>
+<span class="fc" id="L379">		shops.add(&quot;sellmagic&quot;, &quot;licorice&quot;, 100);</span>
+
+		// kirdneh city armor)
+<span class="fc" id="L382">		shops.add(&quot;buykirdneharmor&quot;, &quot;blue armor&quot;, 13000);</span>
+<span class="fc" id="L383">		shops.add(&quot;buykirdneharmor&quot;, &quot;stone armor&quot;, 18000);</span>
+<span class="fc" id="L384">		shops.add(&quot;buykirdneharmor&quot;, &quot;ice armor&quot;, 19000);</span>
+<span class="fc" id="L385">		shops.add(&quot;buykirdneharmor&quot;, &quot;xeno armor&quot;, 21000);</span>
+<span class="fc" id="L386">		shops.add(&quot;buykirdneharmor&quot;, &quot;barbarian armor&quot;, 5000);</span>
+<span class="fc" id="L387">		shops.add(&quot;buykirdneharmor&quot;, &quot;green dragon shield&quot;, 13000);</span>
+<span class="fc" id="L388">		shops.add(&quot;buykirdneharmor&quot;, &quot;xeno shield&quot;, 20000);</span>
+
+
+		// amazon cloaks shop
+<span class="fc" id="L392">		shops.add(&quot;buyamazoncloaks&quot;, &quot;vampire cloak&quot;, 14000);</span>
+<span class="fc" id="L393">		shops.add(&quot;buyamazoncloaks&quot;, &quot;xeno cloak&quot;, 18000);</span>
+<span class="fc" id="L394">		shops.add(&quot;buyamazoncloaks&quot;, &quot;elf cloak&quot;, 50);</span>
+<span class="fc" id="L395">		shops.add(&quot;buyamazoncloaks&quot;, &quot;lich cloak&quot;, 10000);</span>
+<span class="fc" id="L396">		shops.add(&quot;buyamazoncloaks&quot;, &quot;stone cloak&quot;, 350);</span>
+<span class="fc" id="L397">		shops.add(&quot;buyamazoncloaks&quot;, &quot;blue striped cloak&quot;, 280);</span>
+<span class="fc" id="L398">		shops.add(&quot;buyamazoncloaks&quot;, &quot;red dragon cloak&quot;, 4000);</span>
+<span class="fc" id="L399">		shops.add(&quot;buyamazoncloaks&quot;, &quot;bone dragon cloak&quot;, 1500);</span>
+
+		// kirdneh city fishy market)
+<span class="fc" id="L402">		shops.add(&quot;buyfishes&quot;, &quot;perch&quot;, 22);</span>
+<span class="fc" id="L403">		shops.add(&quot;buyfishes&quot;, &quot;mackerel&quot;, 20);</span>
+<span class="fc" id="L404">		shops.add(&quot;buyfishes&quot;, &quot;roach&quot;, 10);</span>
+<span class="fc" id="L405">		shops.add(&quot;buyfishes&quot;, &quot;char&quot;, 30);</span>
+<span class="fc" id="L406">		shops.add(&quot;buyfishes&quot;, &quot;clownfish&quot;, 30);</span>
+<span class="fc" id="L407">		shops.add(&quot;buyfishes&quot;, &quot;surgeonfish&quot;, 15);</span>
+<span class="fc" id="L408">		shops.add(&quot;buyfishes&quot;, &quot;trout&quot;, 45);</span>
+<span class="fc" id="L409">		shops.add(&quot;buyfishes&quot;, &quot;cod&quot;, 10);</span>
+
+		// semos trading - swords)
+<span class="fc" id="L412">		shops.add(&quot;tradeswords&quot;, &quot;dagger&quot;, 10);</span>
+
+		// party time! For maria for example. Bit more expensive than normal
+<span class="fc" id="L415">		shops.add(&quot;sellparty&quot;, &quot;pina colada&quot;, 100);</span>
+<span class="fc" id="L416">		shops.add(&quot;sellparty&quot;, &quot;chocolate bar&quot;, 100);</span>
+<span class="fc" id="L417">		shops.add(&quot;sellparty&quot;, &quot;beer&quot;, 10);</span>
+<span class="fc" id="L418">		shops.add(&quot;sellparty&quot;, &quot;wine&quot;, 15);</span>
+<span class="fc" id="L419">		shops.add(&quot;sellparty&quot;, &quot;vanilla shake&quot;, 150);</span>
+<span class="fc" id="L420">		shops.add(&quot;sellparty&quot;, &quot;icecream&quot;, 50);</span>
+<span class="fc" id="L421">		shops.add(&quot;sellparty&quot;, &quot;hotdog&quot;, 180);</span>
+<span class="fc" id="L422">		shops.add(&quot;sellparty&quot;, &quot;sandwich&quot;, 140);</span>
+
+
+		// black items (balduin, when ultimate collector quest completed)
+<span class="fc" id="L426">		shops.add(&quot;buyblack&quot;, &quot;black armor&quot;, 60000);</span>
+<span class="fc" id="L427">		shops.add(&quot;buyblack&quot;, &quot;black boots&quot;, 10000);</span>
+<span class="fc" id="L428">		shops.add(&quot;buyblack&quot;, &quot;black cloak&quot;, 20000);</span>
+<span class="fc" id="L429">		shops.add(&quot;buyblack&quot;, &quot;black helmet&quot;, 15000);</span>
+<span class="fc" id="L430">		shops.add(&quot;buyblack&quot;, &quot;black legs&quot;, 40000);</span>
+<span class="fc" id="L431">		shops.add(&quot;buyblack&quot;, &quot;black shield&quot;, 75000);</span>
+<span class="fc" id="L432">		shops.add(&quot;buyblack&quot;, &quot;black sword&quot;, 20000);</span>
+<span class="fc" id="L433">		shops.add(&quot;buyblack&quot;, &quot;black scythe&quot;, 40000);</span>
+<span class="fc" id="L434">		shops.add(&quot;buyblack&quot;, &quot;black halberd&quot;, 30000);</span>
+
+		// ados market
+<span class="fc" id="L437">		shops.add(&quot;buyadosarmors&quot;, &quot;blue shield&quot;, 900);</span>
+
+		// Athor ferry
+<span class="fc" id="L440">		shops.add(&quot;buypoisons&quot;, &quot;poison&quot;, 40);</span>
+<span class="fc" id="L441">		shops.add(&quot;buypoisons&quot;, &quot;toadstool&quot;, 60);</span>
+<span class="fc" id="L442">		shops.add(&quot;buypoisons&quot;, &quot;greater poison&quot;, 60);</span>
+<span class="fc" id="L443">		shops.add(&quot;buypoisons&quot;, &quot;red lionfish&quot;, 50);</span>
+<span class="fc" id="L444">		shops.add(&quot;buypoisons&quot;, &quot;deadly poison&quot;, 100);</span>
+<span class="fc" id="L445">		shops.add(&quot;buypoisons&quot;, &quot;mega poison&quot;, 500);</span>
+<span class="fc" id="L446">		shops.add(&quot;buypoisons&quot;, &quot;disease poison&quot;, 2000);</span>
+
+		// Should have its own shop (buytraps)
+<span class="fc" id="L449">		shops.add(&quot;buypoisons&quot;, &quot;rodent trap&quot;, 50);</span>
+		
+		//Scuba Instructor Edward
+<span class="fc" id="L452">		shops.add(&quot;sellScubaStuff&quot;, &quot;scuba gear&quot;, 45000);</span>
+		
+		// Mine Town Revival Weeks Caroline
+<span class="fc" id="L455">		shops.add(&quot;sellrevivalweeks&quot;, &quot;cherry pie&quot;, 195);</span>
+<span class="fc" id="L456">		shops.add(&quot;sellrevivalweeks&quot;, &quot;apple pie&quot;, 195);</span>
+<span class="fc" id="L457">		shops.add(&quot;sellrevivalweeks&quot;, &quot;vanilla shake&quot;, 120);</span>
+<span class="fc" id="L458">		shops.add(&quot;sellrevivalweeks&quot;, &quot;chocolate shake&quot;, 120);</span>
+<span class="fc" id="L459">		shops.add(&quot;sellrevivalweeks&quot;, &quot;icecream&quot;, 60);</span>
+<span class="fc" id="L460">		shops.add(&quot;sellrevivalweeks&quot;, &quot;chocolate bar&quot;, 100);</span>
+<span class="fc" id="L461">		shops.add(&quot;sellrevivalweeks&quot;, &quot;grilled steak&quot;, 250);</span>
+<span class="fc" id="L462">		shops.add(&quot;sellrevivalweeks&quot;, &quot;hotdog&quot;, 170);</span>
+<span class="fc" id="L463">		shops.add(&quot;sellrevivalweeks&quot;, &quot;cheeseydog&quot;, 175);</span>
+<span class="fc" id="L464">		shops.add(&quot;sellrevivalweeks&quot;, &quot;tuna sandwich&quot;, 140);</span>
+<span class="fc" id="L465">		shops.add(&quot;sellrevivalweeks&quot;, &quot;sandwich&quot;, 130);</span>
+<span class="fc" id="L466">		shops.add(&quot;sellrevivalweeks&quot;, &quot;wine&quot;, 25);</span>
+<span class="fc" id="L467">		shops.add(&quot;sellrevivalweeks&quot;, &quot;beer&quot;, 20);</span>
+<span class="fc" id="L468">		shops.add(&quot;sellrevivalweeks&quot;, &quot;water&quot;, 15);</span>
+
+		// for ados botanical gardens or if you like, other cafes. 
+		// expensive prices to make sure that the npc production of these items isn't compromised
+<span class="fc" id="L472">		shops.add(&quot;cafe&quot;, &quot;tea&quot;, 80);</span>
+<span class="fc" id="L473">		shops.add(&quot;cafe&quot;, &quot;water&quot;, 50);</span>
+<span class="fc" id="L474">		shops.add(&quot;cafe&quot;, &quot;chocolate shake&quot;, 150);</span>
+<span class="fc" id="L475">		shops.add(&quot;cafe&quot;, &quot;sandwich&quot;, 170);</span>
+<span class="fc" id="L476">		shops.add(&quot;cafe&quot;, &quot;tuna sandwich&quot;, 180);</span>
+<span class="fc" id="L477">		shops.add(&quot;cafe&quot;, &quot;apple pie&quot;, 250);</span>
+		
+<span class="fc" id="L479">	}</span>
+
+	private static ShopList instance;
+
+	/**
+	 * Returns the Singleton instance.
+	 *
+	 * @return The instance
+	 */
+	public static ShopList get() {
+<span class="fc bfc" id="L489" title="All 2 branches covered.">		if (instance == null) {</span>
+<span class="fc" id="L490">			instance = new ShopList();</span>
+		}
+<span class="fc" id="L492">		return instance;</span>
+	}
+
+	private final Map&lt;String, Map&lt;String, Integer&gt;&gt; contents;
+
+<span class="fc" id="L497">	private ShopList() {</span>
+<span class="fc" id="L498">		contents = new HashMap&lt;String, Map&lt;String, Integer&gt;&gt;();</span>
+<span class="fc" id="L499">	}</span>
+
+	/**
+	 * gets the items offered by a shop with their prices
+	 *
+	 * @param name name of shop
+	 * @return items and prices
+	 */
+	public Map&lt;String, Integer&gt; get(final String name) {
+<span class="fc" id="L508">		return contents.get(name);</span>
+	}
+
+	/**
+	 * gets a set of all shops
+	 *
+	 * @return set of shops
+	 */
+	public Set&lt;String&gt; getShops() {
+<span class="nc" id="L517">		return contents.keySet();</span>
+	}
+
+	/**
+	 * converts a shop into a human readable form
+	 *
+	 * @param name   name of shop
+	 * @param header prefix
+	 * @return human readable description
+	 */
+	public String toString(final String name, final String header) {
+<span class="nc" id="L528">		final Map&lt;String, Integer&gt; items = contents.get(name);</span>
+
+<span class="nc" id="L530">		final StringBuilder sb = new StringBuilder(header + &quot;\n&quot;);</span>
+
+<span class="nc bnc" id="L532" title="All 2 branches missed.">		for (final Entry&lt;String, Integer&gt; entry : items.entrySet()) {</span>
+<span class="nc" id="L533">			sb.append(entry.getKey() + &quot; \t&quot; + entry.getValue() + &quot;\n&quot;);</span>
+<span class="nc" id="L534">		}</span>
+
+<span class="nc" id="L536">		return sb.toString();</span>
+	}
+
+	/**
+	 * Add an item to a shop
+	 *
+	 * @param name the shop name
+	 * @param item the item to add
+	 * @param price the price for the item
+	 */
+	public void add(final String name, final String item, final int price) {
+		Map&lt;String, Integer&gt; shop;
+
+<span class="fc bfc" id="L549" title="All 2 branches covered.">		if (contents.containsKey(name)) {</span>
+<span class="fc" id="L550">			shop = contents.get(name);</span>
+		} else {
+<span class="fc" id="L552">			shop = new LinkedHashMap&lt;String, Integer&gt;();</span>
+<span class="fc" id="L553">			contents.put(name, shop);</span>
+		}
+
+<span class="fc" id="L556">		shop.put(item, Integer.valueOf(price));</span>
+<span class="fc" id="L557">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

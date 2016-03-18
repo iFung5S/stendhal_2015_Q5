@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>MakeRings.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests.marriage</a> &gt; <span class="el_source">MakeRings.java</span></div><h1>MakeRings.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests.marriage;
+
+import games.stendhal.common.MathHelper;
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.entity.item.Item;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.npc.NPCList;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.condition.AndCondition;
+import games.stendhal.server.entity.npc.condition.NotCondition;
+import games.stendhal.server.entity.npc.condition.PlayerHasItemWithHimCondition;
+import games.stendhal.server.entity.npc.condition.QuestCompletedCondition;
+import games.stendhal.server.entity.npc.condition.QuestInStateCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotStartedCondition;
+import games.stendhal.server.entity.npc.condition.QuestStateStartsWithCondition;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.util.TimeUtil;
+
+import java.util.Arrays;
+
+class MakeRings {
+	private static final int REQUIRED_GOLD = 10;
+
+	private static final int REQUIRED_MONEY = 500;
+
+	private static final int REQUIRED_MINUTES = 10;
+
+<span class="fc" id="L44">	private final NPCList npcs = SingletonRepository.getNPCList();</span>
+	private MarriageQuestInfo marriage;
+
+<span class="fc" id="L47">	public MakeRings(final MarriageQuestInfo marriage) {</span>
+<span class="fc" id="L48">		this.marriage = marriage;</span>
+<span class="fc" id="L49">	}</span>
+
+	private void makeRingsStep() {
+<span class="fc" id="L52">		final SpeakerNPC npc = npcs.get(&quot;Ognir&quot;);</span>
+
+<span class="fc" id="L54">		npc.add(ConversationStates.ATTENDING,</span>
+				Arrays.asList(&quot;wedding ring&quot;, &quot;wedding&quot;),
+				new QuestStateStartsWithCondition(marriage.getQuestSlot(), &quot;engaged&quot;),
+				ConversationStates.QUEST_ITEM_QUESTION, 
+				null,
+<span class="fc" id="L59">				new ChatAction() {</span>
+					@Override
+					public void fire(final Player player, final Sentence sentence, final EventRaiser npc) {
+<span class="fc bfc" id="L62" title="All 2 branches covered.">						if (player.isQuestInState(marriage.getQuestSlot(), &quot;engaged_with_ring&quot;)) {</span>
+							// player has wedding ring already. just remind to
+							// get spouse to get one and hint to get dressed.
+<span class="fc" id="L65">							npc.say(&quot;Looking forward to your wedding? Make sure your fiancee gets a wedding ring made for you, too! Oh and remember to get #dressed up for the big day.&quot;);</span>
+<span class="fc" id="L66">							npc.setCurrentState(ConversationStates.INFORMATION_2);</span>
+						} else {
+							// says you'll need a ring
+<span class="fc" id="L69">							npc.say(&quot;I need &quot;</span>
+									+ REQUIRED_GOLD
+									+ &quot; gold bars and a fee of &quot;
+									+ REQUIRED_MONEY
+									+ &quot; money, to make a wedding ring for your fiancee. Do you have it?&quot;);
+						}
+<span class="fc" id="L75">					}</span>
+				});
+
+		// response to wedding ring enquiry if you are not engaged
+<span class="fc" id="L79">		npc.add(ConversationStates.ATTENDING,</span>
+				Arrays.asList(&quot;wedding ring&quot;, &quot;wedding&quot;),
+				new QuestNotStartedCondition(marriage.getQuestSlot()),
+				ConversationStates.ATTENDING,
+				&quot;I'd forge a wedding ring for you to give your partner, if you were engaged to someone. If you want to get engaged, speak to the nun outside the church.&quot;,
+				null);
+
+		// response to wedding ring enquiry when you're already married
+<span class="fc" id="L87">		npc.add(ConversationStates.ATTENDING,</span>
+				Arrays.asList(&quot;wedding ring&quot;, &quot;wedding&quot;),
+				new AndCondition(new QuestCompletedCondition(marriage.getQuestSlot()), new PlayerHasItemWithHimCondition(&quot;wedding ring&quot;)),
+				ConversationStates.ATTENDING,
+				&quot;I hope you're still happily married! If you are having trouble and want a divorce, speak to the clerk in Ados Town Hall.&quot;,
+				null);
+
+		// response to wedding ring enquiry when you're already married and not wearing ring
+<span class="fc" id="L95">		npc.add(ConversationStates.ATTENDING,</span>
+				Arrays.asList(&quot;wedding ring&quot;, &quot;wedding&quot;),
+				new AndCondition(new QuestCompletedCondition(marriage.getQuestSlot()), new NotCondition(new PlayerHasItemWithHimCondition(&quot;wedding ring&quot;))),
+				ConversationStates.QUEST_ITEM_QUESTION,
+				&quot;Uh oh! You haven't got your wedding ring on! I can forge you another for &quot; + REQUIRED_GOLD
+									+ &quot; gold bars and a fee of &quot;
+									+ REQUIRED_MONEY
+									+ &quot; money, do you want another?&quot;,
+				null);
+
+		// response to wedding ring enquiry when you're married but not taken honeymoon
+<span class="fc" id="L106">		npc.add(ConversationStates.ATTENDING,</span>
+				Arrays.asList(&quot;wedding ring&quot;, &quot;wedding&quot;),
+				new QuestInStateCondition(marriage.getQuestSlot(), &quot;just_married&quot;),
+				ConversationStates.ATTENDING,
+				&quot;Congratulations on your recent wedding! Don't forget to ask Linda in Fado Hotel about your honeymoon.&quot;,
+				null);
+
+		// Here the behaviour is defined for if you make a wedding ring enquiry to Ognir and your
+		// ring is being made
+<span class="fc" id="L115">	 	npc.add(ConversationStates.ATTENDING, </span>
+				Arrays.asList(&quot;wedding ring&quot;, &quot;wedding&quot;),
+		 		new QuestStateStartsWithCondition(marriage.getQuestSlot(), &quot;forging&quot;),
+				ConversationStates.IDLE, 
+		 		null, 
+<span class="fc" id="L120">				new ChatAction() {</span>
+	 				@Override
+					public void fire(final Player player, final Sentence sentence, final EventRaiser npc) {
+<span class="fc" id="L123">	 					final String[] tokens = player.getQuest(marriage.getQuestSlot()).split(&quot;;&quot;);</span>
+						final long delayInMIlliSeconds = REQUIRED_MINUTES * MathHelper.MILLISECONDS_IN_ONE_MINUTE; 
+<span class="fc" id="L125">						final long timeRemaining = (Long.parseLong(tokens[1]) + delayInMIlliSeconds)</span>
+								- System.currentTimeMillis();
+						// ring is not ready yet
+<span class="fc bfc" id="L128" title="All 2 branches covered.">						if (timeRemaining &gt; 0L) {</span>
+<span class="fc" id="L129">							npc.say(&quot;I haven't finished making the wedding ring. Please check back in &quot;</span>
+									+ TimeUtil.approxTimeUntil((int) (timeRemaining / 1000L))
+									+ &quot;. Bye for now.&quot;);
+<span class="fc" id="L132">							return;</span>
+						}
+						/*The ring is ready now. It was either forging ready for a wedding or 
+						 * forging again because a married player lost theirs.
+						 * In each case we bind to the player. If player is engaged the rings get swapped at marriage ceremony
+						 * If this is a forgingagain we must set the infostring to spouse name so the ring works
+						 * We don't give them any XP if it is to replace a lost ring. (fools.)
+						 * If this is for an engaged player, npc gives a hitn about getting dressed for big day
+						 */
+<span class="fc" id="L141">						final Item weddingRing = SingletonRepository.getEntityManager().getItem(</span>
+								&quot;wedding ring&quot;);
+<span class="fc" id="L143">						weddingRing.setBoundTo(player.getName());</span>
+<span class="pc bpc" id="L144" title="1 of 2 branches missed.">						if (player.getQuest(marriage.getQuestSlot()).startsWith(&quot;forgingagain&quot;)) {</span>
+<span class="nc" id="L145">							npc.say(&quot;I've finished making your replacement wedding ring. Do try to be more careful next time!&quot;);</span>
+<span class="nc" id="L146">							weddingRing.setInfoString(player.getQuest(marriage.getSpouseQuestSlot()));</span>
+<span class="nc" id="L147">							player.setQuest(marriage.getQuestSlot(), &quot;done&quot;);</span>
+						} else {							
+<span class="fc" id="L149">							npc.say(&quot;I'm pleased to say, the wedding ring for your fiancee is finished! Make sure one is made for you, too! *psst* just a little #hint for the wedding day ...&quot;);</span>
+<span class="fc" id="L150">							player.setQuest(marriage.getQuestSlot(), &quot;engaged_with_ring&quot;);</span>
+<span class="fc" id="L151">							player.addXP(500);</span>
+						}
+<span class="fc" id="L153">						player.equipOrPutOnGround(weddingRing);</span>
+<span class="fc" id="L154">						player.notifyWorldAboutChanges();</span>
+<span class="fc" id="L155">						npc.setCurrentState(ConversationStates.INFORMATION_2);</span>
+<span class="fc" id="L156">					}</span>
+				});
+
+
+		// player says yes, they want a wedding ring made
+<span class="fc" id="L161">		npc.add(ConversationStates.QUEST_ITEM_QUESTION,</span>
+				ConversationPhrases.YES_MESSAGES, 
+				null,
+				ConversationStates.ATTENDING, 
+				null,
+<span class="fc" id="L166">				new ChatAction() {</span>
+					@Override
+					public void fire(final Player player, final Sentence sentence, final EventRaiser npc) {
+<span class="pc bpc" id="L169" title="1 of 4 branches missed.">						if ((player.isEquipped(&quot;gold bar&quot;, REQUIRED_GOLD))</span>
+								&amp;&amp; (player.isEquipped(&quot;money&quot;, REQUIRED_MONEY))) {
+<span class="fc" id="L171">							player.drop(&quot;gold bar&quot;, REQUIRED_GOLD);</span>
+<span class="fc" id="L172">							player.drop(&quot;money&quot;, REQUIRED_MONEY);</span>
+<span class="fc" id="L173">							npc.say(&quot;Good, come back in &quot;</span>
+									+ REQUIRED_MINUTES
+									+ &quot; minutes and it will be ready. Goodbye until then.&quot;);
+<span class="pc bpc" id="L176" title="1 of 2 branches missed.">							if (player.isQuestCompleted(marriage.getQuestSlot())) {</span>
+<span class="nc" id="L177">								player.setQuest(marriage.getQuestSlot(), &quot;forgingagain;&quot;	+ System.currentTimeMillis());</span>
+							} else {
+<span class="fc" id="L179">								player.setQuest(marriage.getQuestSlot(), &quot;forging;&quot;</span>
+												+ System.currentTimeMillis());
+							}
+<span class="fc" id="L182">							npc.setCurrentState(ConversationStates.IDLE);</span>
+						} else {
+							// player said they had the money and/or gold but they lied
+<span class="fc" id="L185">							npc.say(&quot;Come back when you have both the money and the gold.&quot;);</span>
+						}
+<span class="fc" id="L187">					}</span>
+				});
+
+		// player says (s)he doesn't have the money and/or gold
+<span class="fc" id="L191">		npc.add(ConversationStates.QUEST_ITEM_QUESTION,</span>
+				ConversationPhrases.NO_MESSAGES,
+				null,
+				ConversationStates.ATTENDING,
+				&quot;No problem, just come back when you have both the money and the gold.&quot;,
+				null);
+
+		// Just a little hint about getting dressed for the wedding.
+<span class="fc" id="L199">		npc.add(ConversationStates.INFORMATION_2,</span>
+				Arrays.asList(&quot;dressed&quot;, &quot;hint&quot;, &quot;dress&quot;),
+				null,
+				ConversationStates.ATTENDING,
+				&quot;When my wife and I got married we went to Fado hotel and hired special clothes. The dressing rooms are on your right when you go in, look for the wooden door. Good luck!&quot;,
+				null);
+
+<span class="fc" id="L206">	}</span>
+
+	public void addToWorld() {
+<span class="fc" id="L209">		makeRingsStep();</span>
+<span class="fc" id="L210">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

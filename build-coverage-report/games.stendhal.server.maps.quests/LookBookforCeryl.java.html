@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>LookBookforCeryl.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests</a> &gt; <span class="el_source">LookBookforCeryl.java</span></div><h1>LookBookforCeryl.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2011 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests;
+
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.action.DropItemAction;
+import games.stendhal.server.entity.npc.action.EquipItemAction;
+import games.stendhal.server.entity.npc.action.IncreaseKarmaAction;
+import games.stendhal.server.entity.npc.action.IncreaseXPAction;
+import games.stendhal.server.entity.npc.action.MultipleActions;
+import games.stendhal.server.entity.npc.action.SetQuestAction;
+import games.stendhal.server.entity.npc.action.SetQuestAndModifyKarmaAction;
+import games.stendhal.server.entity.npc.condition.AndCondition;
+import games.stendhal.server.entity.npc.condition.GreetingMatchesNameCondition;
+import games.stendhal.server.entity.npc.condition.NotCondition;
+import games.stendhal.server.entity.npc.condition.PlayerHasItemWithHimCondition;
+import games.stendhal.server.entity.npc.condition.QuestCompletedCondition;
+import games.stendhal.server.entity.npc.condition.QuestInStateCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotStartedCondition;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.maps.Region;
+
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+
+/**
+ * QUEST: Look for a book for Ceryl
+ * 
+ * PARTICIPANTS:
+ * &lt;ul&gt;
+ * &lt;li&gt; Ceryl &lt;/li&gt;
+ * &lt;li&gt; Jynath &lt;/li&gt;
+ * &lt;/ul&gt;
+ * 
+ * STEPS:
+ * &lt;ul&gt;
+ * &lt;li&gt; Talk with Ceryl to activate the quest. &lt;/li&gt;
+ * &lt;li&gt; Talk with Jynath for the book. &lt;/li&gt;
+ * &lt;li&gt; Return the book to Ceryl. &lt;/li&gt;
+ * &lt;/ul&gt;
+ * 
+ * REWARD:
+ * &lt;ul&gt;
+ * &lt;li&gt; 100 XP &lt;/li&gt;
+ * &lt;li&gt; some karma (10 + (5 | -5) &lt;/li&gt;
+ * &lt;li&gt; 50 gold coins &lt;/li&gt;
+ * &lt;/ul&gt;
+ * 
+ * REPETITIONS: None
+ */
+<span class="fc" id="L65">public class LookBookforCeryl extends AbstractQuest {</span>
+	private static final String QUEST_SLOT = &quot;ceryl_book&quot;;
+
+
+
+	@Override
+	public String getSlotName() {
+<span class="fc" id="L72">		return QUEST_SLOT;</span>
+	}
+	
+	private void step1LearnAboutQuest() {
+
+<span class="fc" id="L77">		final SpeakerNPC npc = npcs.get(&quot;Ceryl&quot;);</span>
+
+<span class="fc" id="L79">		npc.add(ConversationStates.ATTENDING,</span>
+			ConversationPhrases.QUEST_MESSAGES,
+			new QuestNotStartedCondition(QUEST_SLOT),
+			ConversationStates.ATTENDING, 
+			&quot;I am looking for a very special #book.&quot;, null);
+
+<span class="fc" id="L85">		npc.add(ConversationStates.ATTENDING,</span>
+			ConversationPhrases.QUEST_MESSAGES,
+			new QuestCompletedCondition(QUEST_SLOT),
+			ConversationStates.ATTENDING, 
+			&quot;I have nothing for you now.&quot;, null);
+
+		/** Other conditions not met e.g. quest completed */
+<span class="fc" id="L92">		npc.addReply(&quot;book&quot;,&quot;If you want to learn more, chat to my friend Wikipedian in Ados library.&quot;, null);</span>
+
+		/** If quest is not started yet, start it. */
+<span class="fc" id="L95">		npc.add(</span>
+			ConversationStates.ATTENDING,
+			&quot;book&quot;, new QuestNotStartedCondition(QUEST_SLOT),
+			ConversationStates.QUEST_OFFERED,
+			&quot;Could you ask #Jynath to return her book? She's had it for months now, and people are looking for it.&quot;,
+			null);
+
+<span class="fc" id="L102">		npc.add(</span>
+			ConversationStates.QUEST_OFFERED,
+			ConversationPhrases.YES_MESSAGES,
+			null,
+			ConversationStates.ATTENDING,
+			&quot;Great! Please get me it as quickly as possible... there's a huge waiting list!&quot;,
+			new SetQuestAction(QUEST_SLOT, &quot;start&quot;));
+
+<span class="fc" id="L110">		npc.add(</span>
+			ConversationStates.QUEST_OFFERED,
+			ConversationPhrases.NO_MESSAGES,
+			null,
+			ConversationStates.ATTENDING,
+			&quot;Oh... I suppose I will have to get somebody else to do it, then.&quot;,
+			new SetQuestAndModifyKarmaAction(QUEST_SLOT, &quot;rejected&quot;, -5.0));
+
+<span class="fc" id="L118">		npc.add(</span>
+			ConversationStates.QUEST_OFFERED,
+			&quot;jynath&quot;,
+			null,
+			ConversationStates.QUEST_OFFERED,
+			&quot;Jynath is the witch who lives south of Or'ril castle, southwest of here. So, will you get me the book?&quot;,
+			null);
+
+		/** Remind player about the quest */
+<span class="fc" id="L127">		npc.add(ConversationStates.ATTENDING, &quot;book&quot;,</span>
+			new QuestInStateCondition(QUEST_SLOT, &quot;start&quot;),
+			ConversationStates.ATTENDING,
+			&quot;I really need that book now! Go to talk with #Jynath.&quot;, null);
+
+<span class="fc" id="L132">		npc.add(</span>
+			ConversationStates.ATTENDING,
+			&quot;jynath&quot;,
+			null,
+			ConversationStates.ATTENDING,
+			&quot;Jynath is the witch who lives south of Or'ril castle, southwest of here.&quot;,
+			null);
+<span class="fc" id="L139">	}</span>
+
+	private void step2getBook() {
+<span class="fc" id="L142">		final SpeakerNPC npc = npcs.get(&quot;Jynath&quot;);</span>
+
+		/**
+		 * If player has quest and is in the correct state, just give him the
+		 * book.
+		 */
+<span class="fc" id="L148">		npc.add(</span>
+			ConversationStates.IDLE,
+			ConversationPhrases.GREETING_MESSAGES,
+			new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+					new QuestInStateCondition(QUEST_SLOT, &quot;start&quot;)),
+			ConversationStates.ATTENDING,
+			&quot;Oh, Ceryl's looking for that book back? My goodness! I completely forgot about it... here you go!&quot;,
+			new MultipleActions(new EquipItemAction(&quot;black book&quot;, 1, true), new SetQuestAction(QUEST_SLOT, &quot;jynath&quot;)));
+
+		/** If player keeps asking for the book, just tell him to hurry up */
+<span class="fc" id="L158">		npc.add(</span>
+			ConversationStates.IDLE,
+			ConversationPhrases.GREETING_MESSAGES,
+			new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+					new QuestInStateCondition(QUEST_SLOT, &quot;jynath&quot;)),
+			ConversationStates.ATTENDING,
+			&quot;You'd better take that book back to #Ceryl quickly... he'll be waiting for you.&quot;,
+			null);
+
+<span class="fc" id="L167">		npc.add(ConversationStates.ATTENDING, &quot;ceryl&quot;, null,</span>
+			ConversationStates.ATTENDING,
+			&quot;Ceryl is the librarian at Semos, of course.&quot;, null);
+
+		/** Finally if player didn't start the quest, just ignore him/her */
+<span class="fc" id="L172">		npc.add(</span>
+			ConversationStates.ATTENDING,
+			&quot;book&quot;,
+			new QuestNotStartedCondition(QUEST_SLOT),
+			ConversationStates.ATTENDING,
+			&quot;Sssh! I'm concentrating on this potion recipe... it's a tricky one.&quot;,
+			null);
+<span class="fc" id="L179">	}</span>
+
+	private void step3returnBook() {
+<span class="fc" id="L182">		final SpeakerNPC npc = npcs.get(&quot;Ceryl&quot;);</span>
+
+		/** Complete the quest */
+<span class="fc" id="L185">		final List&lt;ChatAction&gt; reward = new LinkedList&lt;ChatAction&gt;();</span>
+<span class="fc" id="L186">		reward.add(new DropItemAction(&quot;black book&quot;));</span>
+<span class="fc" id="L187">		reward.add(new EquipItemAction(&quot;money&quot;, 50));</span>
+<span class="fc" id="L188">		reward.add(new IncreaseXPAction(100));</span>
+<span class="fc" id="L189">		reward.add(new IncreaseKarmaAction(10.0));</span>
+<span class="fc" id="L190">		reward.add(new SetQuestAction(QUEST_SLOT, &quot;done&quot;));</span>
+
+<span class="fc" id="L192">		npc.add(</span>
+			ConversationStates.IDLE,
+			ConversationPhrases.GREETING_MESSAGES,
+			new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+					new QuestInStateCondition(QUEST_SLOT, &quot;jynath&quot;),
+					new PlayerHasItemWithHimCondition(&quot;black book&quot;)),
+			ConversationStates.ATTENDING,
+			&quot;Oh, you got the book back! Phew, thanks!&quot;,
+			new MultipleActions(reward));
+
+		// There is no other way to get the book.
+		// Remove that quest slot so that the player can get
+		// it again from Jynath
+		// As the book is both bound and useless outside the
+		// quest, this is not a problem
+<span class="fc" id="L207">		npc.add(</span>
+			ConversationStates.IDLE,
+			ConversationPhrases.GREETING_MESSAGES,
+			new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+					new QuestInStateCondition(QUEST_SLOT, &quot;jynath&quot;),
+					new NotCondition(new PlayerHasItemWithHimCondition(&quot;black book&quot;))),
+			ConversationStates.ATTENDING, 
+			&quot;Haven't you got that #book back from #Jynath? Please go look for it, quickly!&quot;,
+			new SetQuestAction(QUEST_SLOT, &quot;start&quot;));
+<span class="fc" id="L216">	}</span>
+
+	
+	@Override
+	public List&lt;String&gt; getHistory(final Player player) {
+<span class="fc" id="L221">		final List&lt;String&gt; res = new ArrayList&lt;String&gt;();</span>
+<span class="fc bfc" id="L222" title="All 2 branches covered.">		if (!player.hasQuest(QUEST_SLOT)) {</span>
+<span class="fc" id="L223">			return res;</span>
+		}
+<span class="fc" id="L225">		res.add(&quot;I have met Ceryl at the library, he's the librarian there.&quot;);</span>
+<span class="fc" id="L226">		final String questState = player.getQuest(QUEST_SLOT);</span>
+<span class="fc bfc" id="L227" title="All 2 branches covered.">		if (questState.equals(&quot;rejected&quot;)) {</span>
+<span class="fc" id="L228">			res.add(&quot;I do not want to find the book.&quot;);</span>
+		}
+<span class="fc bfc" id="L230" title="All 2 branches covered.">		if (player.isQuestInState(QUEST_SLOT, &quot;start&quot;, &quot;jynath&quot;, &quot;done&quot;)) {</span>
+<span class="fc" id="L231">			res.add(&quot;I promised to fetch the black book from Jynath.&quot;);</span>
+		}
+<span class="fc bfc" id="L233" title="All 6 branches covered.">		if (questState.equals(&quot;jynath&quot;) &amp;&amp; player.isEquipped(&quot;black book&quot;)</span>
+				|| questState.equals(&quot;done&quot;)) {
+<span class="fc" id="L235">			res.add(&quot;I have talked to Jynath, and have the book.&quot;);</span>
+		}
+<span class="fc bfc" id="L237" title="All 4 branches covered.">		if (questState.equals(&quot;jynath&quot;) &amp;&amp; !player.isEquipped(&quot;black book&quot;)) {</span>
+<span class="fc" id="L238">			res.add(&quot;I do not have the black book Jynath has.&quot;);</span>
+		}
+<span class="fc bfc" id="L240" title="All 2 branches covered.">		if (questState.equals(&quot;done&quot;)) {</span>
+<span class="fc" id="L241">			res.add(&quot;I have returned the book to Ceryl and got a little reward.&quot;);</span>
+		}
+<span class="fc" id="L243">		return res;</span>
+	}
+	
+	@Override
+	public void addToWorld() {
+<span class="fc" id="L248">		fillQuestInfo(</span>
+				&quot;Look for a book for Ceryl&quot;,
+				&quot;Ceryl wants an old book that was checked out.&quot;,
+				false);
+<span class="fc" id="L252">		step1LearnAboutQuest();</span>
+<span class="fc" id="L253">		step2getBook();</span>
+<span class="fc" id="L254">		step3returnBook();</span>
+<span class="fc" id="L255">	}</span>
+
+	@Override
+	public String getName() {
+<span class="nc" id="L259">		return &quot;LookBookforCeryl&quot;;</span>
+	}
+	
+	@Override
+	public String getRegion() {
+<span class="nc" id="L264">		return Region.SEMOS_CITY;</span>
+	}
+
+	@Override
+	public String getNPCName() {
+<span class="nc" id="L269">		return &quot;Ceryl&quot;;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

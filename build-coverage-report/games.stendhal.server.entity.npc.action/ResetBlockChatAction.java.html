@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ResetBlockChatAction.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.npc.action</a> &gt; <span class="el_source">ResetBlockChatAction.java</span></div><h1>ResetBlockChatAction.java</h1><pre class="source lang-java linenums">package games.stendhal.server.entity.npc.action;
+
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.entity.mapstuff.block.Block;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.player.Player;
+
+/**
+ * Resets a block to its initial position
+ * 
+ * @author madmetzger
+ */
+public class ResetBlockChatAction implements ChatAction {
+
+    private final Block blockToReset;
+
+    /**
+     * Create a new Action to reset the given Block
+     * 
+     * @param block 
+     *          The Block to reset
+     */
+<span class="nc" id="L24">    public ResetBlockChatAction(Block block) {</span>
+<span class="nc" id="L25">        this.blockToReset = block;</span>
+<span class="nc" id="L26">    }</span>
+
+    @Override
+    public void fire(Player player, Sentence sentence, EventRaiser npc) {
+<span class="nc" id="L30">        this.blockToReset.reset();</span>
+<span class="nc" id="L31">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

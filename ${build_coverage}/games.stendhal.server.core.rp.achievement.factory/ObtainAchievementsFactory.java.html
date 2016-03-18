@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ObtainAchievementsFactory.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.core.rp.achievement.factory</a> &gt; <span class="el_source">ObtainAchievementsFactory.java</span></div><h1>ObtainAchievementsFactory.java</h1><pre class="source lang-java linenums">package games.stendhal.server.core.rp.achievement.factory;
+
+import games.stendhal.server.core.rp.achievement.Achievement;
+import games.stendhal.server.core.rp.achievement.Category;
+import games.stendhal.server.entity.npc.condition.PlayerGotNumberOfItemsFromWellCondition;
+import games.stendhal.server.entity.npc.condition.PlayerHasHarvestedNumberOfItemsCondition;
+import games.stendhal.server.entity.npc.condition.QuestCompletedCondition;
+
+import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
+
+/**
+ * factory for obtaining items related achievements.
+ *
+ * @author madmetzger
+ */
+<span class="nc" id="L18">public class ObtainAchievementsFactory extends AbstractAchievementFactory {</span>
+
+	@Override
+	protected Category getCategory() {
+<span class="nc" id="L22">		return Category.OBTAIN;</span>
+	}
+
+	@Override
+	public Collection&lt;Achievement&gt; createAchievements() {
+<span class="nc" id="L27">		final List&lt;Achievement&gt; achievements = new LinkedList&lt;Achievement&gt;();</span>
+		
+		// Wishing well achievement
+<span class="nc" id="L30">		achievements.add(createAchievement(&quot;obtain.wish&quot;, &quot;A wish came true&quot;, &quot;Get an item from the wishing well&quot;,</span>
+				Achievement.EASY_BASE_SCORE, true,
+				new PlayerGotNumberOfItemsFromWellCondition(0)));
+		
+		// Vegetable harvest achievement
+<span class="nc" id="L35">		achievements.add(createAchievement(&quot;obtain.harvest.vegetable&quot;, &quot;Farmer&quot;, &quot;Harvest 3 of all vegetables that grow in Faiumoni&quot;,</span>
+				Achievement.EASY_BASE_SCORE, true,
+				new PlayerHasHarvestedNumberOfItemsCondition(3, &quot;carrot&quot;, &quot;salad&quot;, &quot;broccoli&quot;, &quot;cauliflower&quot;, &quot;leek&quot;,
+						&quot;onion&quot;, &quot;courgette&quot;, &quot;spinach&quot;, &quot;collard&quot;, &quot;garlic&quot;, &quot;artichoke&quot;)));
+		
+		// Fishing achievement
+<span class="nc" id="L41">		achievements.add(createAchievement(&quot;obtain.fish&quot;, &quot;Fisherman&quot;, &quot;Catch 15 of each type of fish&quot;,</span>
+				Achievement.MEDIUM_BASE_SCORE, true,
+				new PlayerHasHarvestedNumberOfItemsCondition(15, &quot;char&quot;, &quot;clownfish&quot;, &quot;cod&quot;, &quot;mackerel&quot;, &quot;perch&quot;,
+						&quot;red lionfish&quot;, &quot;roach&quot;, &quot;surgeonfish&quot;, &quot;trout&quot;)));
+		
+		//ultimate collector quest achievement
+<span class="nc" id="L47">		achievements.add(createAchievement(&quot;quest.special.collector&quot;, &quot;Ultimate Collector&quot;, &quot;Finish ultimate collector quest&quot;,</span>
+				Achievement.HARD_BASE_SCORE, true,
+				new QuestCompletedCondition(&quot;ultimate_collector&quot;)));
+		
+<span class="nc" id="L51">		return achievements;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

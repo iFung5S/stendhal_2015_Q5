@@ -1,0 +1,416 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>WizardBank.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests</a> &gt; <span class="el_source">WizardBank.java</span></div><h1>WizardBank.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2016 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests;
+
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import games.stendhal.common.Direction;
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.core.events.LoginListener;
+import games.stendhal.server.core.events.TurnListener;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.action.DropItemAction;
+import games.stendhal.server.entity.npc.action.MultipleActions;
+import games.stendhal.server.entity.npc.action.SayTextAction;
+import games.stendhal.server.entity.npc.action.SetQuestAction;
+import games.stendhal.server.entity.npc.action.TeleportAction;
+import games.stendhal.server.entity.npc.condition.AndCondition;
+import games.stendhal.server.entity.npc.condition.GreetingMatchesNameCondition;
+import games.stendhal.server.entity.npc.condition.NotCondition;
+import games.stendhal.server.entity.npc.condition.OrCondition;
+import games.stendhal.server.entity.npc.condition.PlayerHasItemWithHimCondition;
+import games.stendhal.server.entity.npc.condition.QuestActiveCondition;
+import games.stendhal.server.entity.npc.condition.QuestCompletedCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotActiveCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotCompletedCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotStartedCondition;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.maps.Region;
+import games.stendhal.server.util.TimeUtil;
+import marauroa.common.game.IRPZone;
+
+/**
+ * Controls player access to the Wizard's Bank via an NPC. 
+ * &lt;p&gt;He takes a fee to enter. Players are allowed only 5 minutes access at once.
+ * 
+ * @author kymara
+ */
+
+<span class="fc" id="L57">public class WizardBank extends AbstractQuest implements LoginListener {</span>
+	
+	// constants
+	private static final String QUEST_SLOT = &quot;wizard_bank&quot;;
+
+	private static final String GRAFINDLE_QUEST_SLOT = &quot;grafindle_gold&quot;;
+
+	private static final String ZARA_QUEST_SLOT = &quot;suntan_cream_zara&quot;;
+
+	private static final String ZONE_NAME = &quot;int_magic_bank&quot;;
+
+	/** Time (in Seconds) allowed in the bank. */
+	private static final int TIME = 60 * 5;
+
+	// Cost to access chests
+	private static final int COST = 1000;
+
+	// &quot;static&quot; data
+<span class="fc" id="L75">	private StendhalRPZone zone = null;</span>
+
+	private SpeakerNPC npc;
+
+	/**
+	 * Tells the player the remaining time and teleports him out when his time
+	 * is up.
+	 */
+<span class="fc" id="L83">	class Timer implements TurnListener {</span>
+		private final WeakReference&lt;Player&gt; timerPlayer;
+		/**
+		 * Using unique playername for hashcode.
+		 */
+		private final String playername;
+		/**
+		 * Starts a teleport-out-timer.
+		 * 
+		 * @param player
+		 *            the player who started the timer
+		 */
+<span class="fc" id="L95">		protected Timer(final Player player) {</span>
+<span class="fc" id="L96">			timerPlayer = new WeakReference&lt;Player&gt;(player);</span>
+<span class="fc" id="L97">			playername = player.getName();</span>
+<span class="fc" id="L98">		}</span>
+
+<span class="fc" id="L100">		private int counter = TIME;</span>
+
+		// override equals
+
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+<span class="fc" id="L107">			int result = 1;</span>
+			
+<span class="pc bpc" id="L109" title="1 of 2 branches missed.">			if (playername == null) {</span>
+<span class="nc" id="L110">				return prime * result;</span>
+			} else {
+<span class="fc" id="L112">				return prime * result + playername.hashCode();</span>
+			}
+
+		}
+
+		@Override
+		public boolean equals(final Object obj) {
+<span class="pc bpc" id="L119" title="1 of 2 branches missed.">			if (this == obj) {</span>
+<span class="nc" id="L120">				return true;</span>
+			}
+<span class="pc bpc" id="L122" title="1 of 2 branches missed.">			if (obj == null) {</span>
+<span class="nc" id="L123">				return false;</span>
+			}
+<span class="pc bpc" id="L125" title="1 of 2 branches missed.">			if (getClass() != obj.getClass()) {</span>
+<span class="nc" id="L126">				return false;</span>
+			}
+<span class="fc" id="L128">			Timer other = (Timer) obj;</span>
+			
+<span class="pc bpc" id="L130" title="1 of 2 branches missed.">			if (playername == null) {</span>
+<span class="nc bnc" id="L131" title="All 2 branches missed.">				if (other.playername != null) {</span>
+<span class="nc" id="L132">					return false;</span>
+				}
+<span class="pc bpc" id="L134" title="1 of 2 branches missed.">			} else if (!playername.equals(other.playername)) {</span>
+<span class="nc" id="L135">				return false;</span>
+			}
+<span class="fc" id="L137">			return true;</span>
+		}
+
+		// override hash
+
+		
+
+		@Override
+		public void onTurnReached(final int currentTurn) {
+			// check that the player is still in game and stop the timer
+			// in case the player is not playing anymore.
+			// Note that &quot;player&quot; always refers to the current player
+			// in order not to teleport the next player out too early,
+			// we have to compare it to the player who started this timer
+
+<span class="nc" id="L152">			final Player playerTemp = timerPlayer.get();</span>
+
+<span class="nc bnc" id="L154" title="All 2 branches missed.">			if (playerTemp != null) {</span>
+<span class="nc" id="L155">				final IRPZone playerZone = playerTemp.getZone();</span>
+
+<span class="nc bnc" id="L157" title="All 2 branches missed.">				if (playerZone.equals(zone)) {</span>
+<span class="nc bnc" id="L158" title="All 2 branches missed.">					if (counter &gt; 0) {</span>
+<span class="nc" id="L159">						npc.say(playerTemp.getTitle() + &quot;, you have &quot;</span>
+								+ TimeUtil.timeUntil(counter) + &quot; left.&quot;);
+<span class="nc" id="L161">						counter = counter - 10 * 6;</span>
+<span class="nc" id="L162">						SingletonRepository.getTurnNotifier().notifyInTurns(10 * 3 * 6, this);</span>
+					} else {
+						// teleport the player out
+<span class="nc" id="L165">						npc.say(&quot;Sorry, &quot; + playerTemp.getTitle()</span>
+								+ &quot;, your time here is up.&quot;);
+<span class="nc" id="L167">						teleportAway(playerTemp);</span>
+					}
+				}
+			}
+<span class="nc" id="L171">		}</span>
+	}
+
+	@Override
+	public String getSlotName() {
+<span class="nc" id="L176">		return QUEST_SLOT;</span>
+	}
+
+	private void createNPC() {
+		
+<span class="fc" id="L181">		npc = new SpeakerNPC(&quot;Javier X&quot;) {</span>
+			@Override
+			protected void createPath() {
+				// NPC doesn't move
+<span class="fc" id="L185">				setPath(null);</span>
+<span class="fc" id="L186">			}</span>
+
+			@Override
+			protected void createDialog() {
+
+				// has been here before
+<span class="fc" id="L192">				add(ConversationStates.IDLE,</span>
+						ConversationPhrases.GREETING_MESSAGES,
+						new AndCondition(new GreetingMatchesNameCondition(super.getName()),
+								new QuestCompletedCondition(GRAFINDLE_QUEST_SLOT), 
+								new QuestCompletedCondition(ZARA_QUEST_SLOT),
+								new QuestCompletedCondition(QUEST_SLOT)),
+					    ConversationStates.ATTENDING,
+					    null,
+					    new SayTextAction(&quot;Welcome to the Wizard's Bank, [name]. Do you wish to pay to access your chest again?&quot;));
+
+				// never started quest
+<span class="fc" id="L203">				add(ConversationStates.IDLE,</span>
+						ConversationPhrases.GREETING_MESSAGES,
+						new AndCondition(new GreetingMatchesNameCondition(super.getName()),
+								new QuestCompletedCondition(GRAFINDLE_QUEST_SLOT), 
+								new QuestCompletedCondition(ZARA_QUEST_SLOT),
+								new QuestNotStartedCondition(QUEST_SLOT)),
+					    ConversationStates.ATTENDING,
+					    null,
+					    new SayTextAction(&quot;Welcome to the Wizard's Bank, [name].&quot;));
+				
+				// currently in bank
+<span class="fc" id="L214">				add(ConversationStates.IDLE,</span>
+						ConversationPhrases.GREETING_MESSAGES,
+						new AndCondition(new GreetingMatchesNameCondition(super.getName()),
+								new QuestCompletedCondition(GRAFINDLE_QUEST_SLOT), 
+								new QuestCompletedCondition(ZARA_QUEST_SLOT),
+								new QuestActiveCondition(QUEST_SLOT)),
+					    ConversationStates.ATTENDING,
+					    null,
+					    new SayTextAction(&quot;Welcome to the Wizard's Bank, [name]. You may #leave sooner, if required.&quot;));
+				
+				// hasn't got access to all banks yet
+<span class="fc" id="L225">				add(ConversationStates.IDLE,</span>
+						ConversationPhrases.GREETING_MESSAGES,
+						new AndCondition(new GreetingMatchesNameCondition(super.getName()),
+							new OrCondition(
+									new QuestNotCompletedCondition(GRAFINDLE_QUEST_SLOT), 
+									new QuestNotCompletedCondition(ZARA_QUEST_SLOT))),
+						ConversationStates.IDLE,
+						&quot;You may not use this bank if you have not gained the right to use the chests at Nalwor, nor if you have not earned the trust of a certain young woman. Goodbye!&quot;,
+						null);
+				
+<span class="fc" id="L235">				add(ConversationStates.ATTENDING,</span>
+						Arrays.asList(&quot;fee&quot;, &quot;enter&quot;),
+						new QuestNotActiveCondition(QUEST_SLOT),
+						ConversationStates.ATTENDING,
+						&quot;The fee is &quot; + COST
+						+ &quot; money. Do you want to pay?&quot;,
+						null);
+				
+<span class="fc" id="L243">				add(ConversationStates.ATTENDING,</span>
+						Arrays.asList(&quot;fee&quot;, &quot;enter&quot;),
+						new QuestActiveCondition(QUEST_SLOT),
+						ConversationStates.ATTENDING,
+						&quot;As you already know, the fee is &quot;
+						+ COST + &quot; money.&quot;,
+						null);
+				
+<span class="fc" id="L251">				add(ConversationStates.ATTENDING,</span>
+						ConversationPhrases.YES_MESSAGES,
+						new AndCondition(
+								new PlayerHasItemWithHimCondition(&quot;money&quot;, COST), 
+								new QuestNotActiveCondition(QUEST_SLOT)),
+								ConversationStates.ATTENDING,
+								&quot;Semos, Nalwor and Fado bank chests are to my right. The chests owned by Ados Bank Merchants and your friend Zara are to my left. If you are finished before your time here is done, please say #leave.&quot;,
+								new MultipleActions(
+										new DropItemAction(&quot;money&quot;, COST),
+										new TeleportAction(ZONE_NAME, 10, 10, Direction.DOWN),
+										new SetQuestAction(QUEST_SLOT, &quot;start&quot;),
+<span class="fc" id="L262">										new ChatAction() {</span>
+											@Override
+											public void fire(final Player player, final Sentence sentence, final EventRaiser raiser) {
+<span class="fc" id="L265">												SingletonRepository.getTurnNotifier().notifyInTurns(0, new Timer(player));</span>
+<span class="fc" id="L266">											}}));</span>
+				
+<span class="fc" id="L268">				add(ConversationStates.ATTENDING,</span>
+						ConversationPhrases.YES_MESSAGES,
+						new AndCondition(
+								new NotCondition(new PlayerHasItemWithHimCondition(&quot;money&quot;, COST)), 
+								new QuestNotActiveCondition(QUEST_SLOT)),
+						ConversationStates.ATTENDING,
+						&quot;You do not have enough money!&quot;,
+						null);
+				
+<span class="fc" id="L277">				add(ConversationStates.ATTENDING,</span>
+						ConversationPhrases.YES_MESSAGES,
+						new QuestActiveCondition(QUEST_SLOT),
+						ConversationStates.ATTENDING,
+						&quot;Hm, I do not understand you. If you wish to #leave, just say&quot;,
+						null);
+
+<span class="fc" id="L284">				add(ConversationStates.ATTENDING,</span>
+						ConversationPhrases.NO_MESSAGES,
+						new QuestNotActiveCondition(QUEST_SLOT),
+						ConversationStates.ATTENDING,
+						&quot;Very well.&quot;,
+						null);
+
+<span class="fc" id="L291">				add(ConversationStates.ATTENDING,</span>
+						ConversationPhrases.NO_MESSAGES,
+						new QuestActiveCondition(QUEST_SLOT),
+						ConversationStates.ATTENDING,
+						&quot;Hm, I do not understand you. If you wish to #leave, just say&quot;,
+						null);
+
+<span class="fc" id="L298">				add(ConversationStates.ATTENDING,</span>
+						&quot;leave&quot;,
+						new QuestNotActiveCondition(QUEST_SLOT),
+						ConversationStates.ATTENDING,
+						&quot;Leave where?&quot;,
+						null);
+
+
+<span class="fc" id="L306">				add(ConversationStates.ATTENDING,</span>
+						&quot;leave&quot;,
+						new QuestActiveCondition(QUEST_SLOT),
+						ConversationStates.ATTENDING,
+						&quot;Thank you for using the Wizard's Bank&quot;,
+						// we used to use teleportAway() here 
+						new MultipleActions(
+								new TeleportAction(ZONE_NAME, 15, 16, Direction.DOWN),
+								new SetQuestAction(QUEST_SLOT, &quot;done&quot;),
+<span class="fc" id="L315">								new ChatAction() {</span>
+									@Override
+									public void fire(final Player player, final Sentence sentence, final EventRaiser raiser) {
+<span class="fc" id="L318">										SingletonRepository.getTurnNotifier().dontNotify(new Timer(player));</span>
+<span class="fc" id="L319">									}}));</span>
+
+
+<span class="fc" id="L322">				addJob(&quot;I control access to the bank. My spells ensure people cannot simply come and go as they please. We charge a #fee to #enter.&quot;);</span>
+
+<span class="fc" id="L324">				addReply(&quot;magic&quot;,</span>
+						&quot;Have you not heard of magic? It is what makes the grass grow here. Perhaps in time your kind will learn how to use this fine art.&quot;);
+
+<span class="fc" id="L327">				addOffer(&quot;I would have thought that the offer of these #fiscal services is enough for you.&quot;);</span>
+
+<span class="fc" id="L329">				addReply(&quot;fiscal&quot;,</span>
+						&quot;You do not understand the meaning of the word? You should spend more time in libraries, I hear the one in Ados is excellent. Anyhow, to #enter the bank just ask.&quot;);
+
+<span class="fc" id="L332">				addHelp(&quot;This bank is suffused with #magic, and as such you may access any vault you own. There will be a #fee to pay for this privilege, as we are not a charity.&quot;);</span>
+
+<span class="fc" id="L334">				addQuest(&quot;To #enter this bank you need only ask.&quot;);</span>
+
+<span class="fc" id="L336">				addGoodbye(&quot;Goodbye.&quot;);</span>
+<span class="fc" id="L337">			}</span>
+		};
+
+<span class="fc" id="L340">		npc.setDescription(&quot;You see a wizard who you should be afraid to mess with.&quot;);</span>
+<span class="fc" id="L341">		npc.setEntityClass(&quot;brownwizardnpc&quot;);</span>
+<span class="fc" id="L342">		npc.setPosition(15, 10);</span>
+<span class="fc" id="L343">		npc.initHP(100);</span>
+<span class="fc" id="L344">		zone.add(npc);</span>
+<span class="fc" id="L345">	}</span>
+
+	@Override
+	public void onLoggedIn(final Player player) {
+		/*
+		 *  Stop any possible running notifiers that might be left after the player
+		 *  logged out while in the bank. Otherwise the player could be thrown out 
+		 *  too early if he goes back.
+		 */
+<span class="nc" id="L354">		SingletonRepository.getTurnNotifier().dontNotify(new Timer(player));</span>
+<span class="nc" id="L355">		teleportAway(player);</span>
+<span class="nc" id="L356">	}</span>
+
+	/**
+	 * Finishes the time and teleports the player out.
+	 * 
+	 * @param player
+	 *            the player to teleport out
+	 */
+	private void teleportAway(final Player player) {
+<span class="nc bnc" id="L365" title="All 2 branches missed.">		if (player != null) {</span>
+<span class="nc" id="L366">			final IRPZone playerZone = player.getZone();</span>
+<span class="nc bnc" id="L367" title="All 2 branches missed.">			if (playerZone.equals(zone)) {</span>
+<span class="nc" id="L368">				player.teleport(zone, 15, 16, Direction.DOWN, player);</span>
+
+				// complete the quest if it already started
+<span class="nc bnc" id="L371" title="All 2 branches missed.">				if (player.hasQuest(QUEST_SLOT)) {</span>
+<span class="nc" id="L372">					player.setQuest(QUEST_SLOT, &quot;done&quot;);</span>
+				}
+			}
+		}
+<span class="nc" id="L376">	}</span>
+
+	@Override
+	public void addToWorld() {
+<span class="fc" id="L380">		fillQuestInfo(</span>
+				&quot;The Wizard Bank&quot;,
+				&quot;At the Wizard Bank, one can access many magical chests at once.&quot;,
+				false);
+
+<span class="fc" id="L385">		SingletonRepository.getLoginNotifier().addListener(this);</span>
+
+<span class="fc" id="L387">		zone = SingletonRepository.getRPWorld().getZone(ZONE_NAME);</span>
+<span class="fc" id="L388">		createNPC();</span>
+<span class="fc" id="L389">	}</span>
+
+	@Override
+	public String getName() {
+<span class="nc" id="L393">		return &quot;WizardBank&quot;;</span>
+	}
+	
+	@Override
+	public boolean isVisibleOnQuestStatus() {
+<span class="nc" id="L398">		return false;</span>
+	}
+	
+	@Override
+	public List&lt;String&gt; getHistory(final Player player) {
+<span class="nc" id="L403">		return new ArrayList&lt;String&gt;();</span>
+	}
+
+	@Override
+	public String getNPCName() {
+<span class="nc" id="L408">		return &quot;Javier X&quot;;</span>
+	}
+	
+	@Override
+	public String getRegion() {
+<span class="nc" id="L413">		return Region.FADO_CAVES;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

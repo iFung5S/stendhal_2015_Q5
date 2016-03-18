@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>RainbowBeansScroll.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.item.scroll</a> &gt; <span class="el_source">RainbowBeansScroll.java</span></div><h1>RainbowBeansScroll.java</h1><pre class="source lang-java linenums">/*
+ * $Id$
+ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2011 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.item.scroll;
+
+import games.stendhal.common.MathHelper;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.entity.item.Item;
+import games.stendhal.server.entity.player.Player;
+
+import java.util.Map;
+
+/**
+ * Represents the rainbow beans that takes the player to the dream world zone,
+ * after which it will teleport player to a random location in 0_semos_plains_s.
+ */
+public class RainbowBeansScroll extends TimedTeleportScroll {
+	
+	private static final long DELAY = 6 * MathHelper.MILLISECONDS_IN_ONE_HOUR;
+	
+	/**
+	 * Creates a new timed marked RainbowBeansScroll scroll.
+	 * 
+	 * @param name
+	 * @param clazz
+	 * @param subclass
+	 * @param attributes
+	 */
+	public RainbowBeansScroll(final String name, final String clazz, final String subclass,
+			final Map&lt;String, String&gt; attributes) {
+<span class="fc" id="L42">		super(name, clazz, subclass, attributes);</span>
+<span class="fc" id="L43">	}</span>
+
+	/**
+	 * Copy constructor.
+	 * 
+	 * @param item
+	 *            item to copy
+	 */
+	public RainbowBeansScroll(final RainbowBeansScroll item) {
+<span class="fc" id="L52">		super(item);</span>
+<span class="fc" id="L53">	}</span>
+	
+	@Override
+	protected boolean useTeleportScroll(final Player player) {
+		final String QUEST_SLOT = &quot;rainbow_beans&quot;;
+<span class="fc" id="L58">		long lastuse = -1;</span>
+<span class="pc bpc" id="L59" title="1 of 2 branches missed.">		if (player.hasQuest(QUEST_SLOT)) {</span>
+<span class="fc" id="L60">			final String[] tokens = player.getQuest(QUEST_SLOT).split(&quot;;&quot;);</span>
+<span class="pc bpc" id="L61" title="1 of 2 branches missed.">			if (tokens.length == 4) {</span>
+				// we stored a last time (or -1)
+<span class="fc" id="L63">				lastuse = Long.parseLong(tokens[3]);</span>
+			}
+<span class="fc" id="L65">			final long timeRemaining = (lastuse + DELAY) - System.currentTimeMillis();</span>
+<span class="pc bpc" id="L66" title="1 of 2 branches missed.">			if (timeRemaining &gt; 0) {</span>
+				// player used the beans within the last DELAY hours
+				// so are not allowed to go yet. but don't reset the last time taken.
+				// the private text doesn't get sent because events are lost on zone change. (marauroa bug)
+<span class="fc" id="L70">				player.sendPrivateText(&quot;You were just sick from overuse of the rainbow beans. Classy!&quot;);</span>
+<span class="fc" id="L71">				final Item sick = SingletonRepository.getEntityManager().getItem(&quot;vomit&quot;);</span>
+<span class="fc" id="L72">				player.getZone().add(sick);</span>
+<span class="fc" id="L73">				sick.setPosition(player.getX(), player.getY() + 1);</span>
+				// Success, so that the beans still gets used up, even though
+				// the player was not teleported.
+<span class="fc" id="L76">				return true;</span>
+			} else {
+				// don't overwrite the last bought time from Pdiddi, this is in tokens[1]
+<span class="nc" id="L79">				player.setQuest(QUEST_SLOT, &quot;bought;&quot; + tokens[1] + &quot;;taken;&quot; + System.currentTimeMillis());</span>
+<span class="nc" id="L80">				return super.useTeleportScroll(player);</span>
+			}
+		} else {
+			// players can only buy rainbow beans from Pdiddi who stores the time bought in quest slot
+			// so if they didn't have the quest slot they got the beans ''illegally''
+<span class="nc" id="L85">			player.sendPrivateText(&quot;Those dodgy beans made you sick. Next time buy them from Pdiddi.&quot;);</span>
+<span class="nc" id="L86">			this.removeOne();</span>
+<span class="nc" id="L87">			final Item sick = SingletonRepository.getEntityManager().getItem(&quot;vomit&quot;);</span>
+<span class="nc" id="L88">			player.getZone().add(sick);</span>
+<span class="nc" id="L89">			sick.setPosition(player.getX(), player.getY() + 1);</span>
+<span class="nc" id="L90">			return false;</span>
+		}
+	}
+	
+	@Override
+	protected String getBeforeReturnMessage() {
+<span class="nc" id="L96">		return &quot;Your head begins to feel clearer...&quot;;</span>
+	}
+
+	@Override
+	protected String getAfterReturnMessage() {
+<span class="nc" id="L101">		return &quot;You find yourself in the forest with a bad headache.&quot;</span>
+				+ &quot; That was a strange experience.&quot;;
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

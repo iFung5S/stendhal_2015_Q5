@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ConversationPhrases.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.npc</a> &gt; <span class="el_source">ConversationPhrases.java</span></div><h1>ConversationPhrases.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.npc;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
+
+/**
+ * Common phrases used by players to interact with a SpeakerNPC.
+ *
+ * @author hendrik
+ */
+<span class="nc" id="L26">public class ConversationPhrases {</span>
+
+	// define &quot;no&quot; trigger to be exactly matched while ignoring case
+	// (for available matching option strings see ExpressionMatcher)
+	public static final String NO_EXPRESSION = &quot;|EXACT|ICASE|no&quot;;
+
+	// do not use a mutable list here
+<span class="fc" id="L33">	public static final List&lt;String&gt; EMPTY = Arrays.asList(new String[0]);</span>
+
+<span class="fc" id="L35">	public static final List&lt;String&gt; GREETING_MESSAGES = Arrays.asList(&quot;hi&quot;,</span>
+			&quot;hello&quot;, &quot;hallo&quot;, &quot;greetings&quot;, &quot;hola&quot;);
+
+<span class="fc" id="L38">	public static final List&lt;String&gt; JOB_MESSAGES = Arrays.asList(&quot;job&quot;, &quot;work&quot;, &quot;occupation&quot;);</span>
+
+<span class="fc" id="L40">	public static final List&lt;String&gt; HELP_MESSAGES = Arrays.asList(&quot;help&quot;,</span>
+			&quot;ayuda&quot;);
+
+<span class="fc" id="L43">	public static final List&lt;String&gt; QUEST_MESSAGES = Arrays.asList(&quot;task&quot;,</span>
+			&quot;quest&quot;, &quot;favor&quot;, &quot;favour&quot;);
+
+<span class="fc" id="L46">	public static final List&lt;String&gt; FINISH_MESSAGES = Arrays.asList(&quot;done&quot;,</span>
+			&quot;finish&quot;, &quot;complete&quot;);
+
+<span class="fc" id="L49">	public static final List&lt;String&gt; ABORT_MESSAGES = Arrays.asList(&quot;another&quot;, &quot;abort&quot;);</span>
+
+<span class="fc" id="L51">	public static final List&lt;String&gt; OFFER_MESSAGES = Arrays.asList(&quot;offer&quot;, &quot;deal&quot;, &quot;trade&quot;);</span>
+
+<span class="fc" id="L53">	public static final List&lt;String&gt; YES_MESSAGES = Arrays.asList(&quot;yes&quot;, &quot;ok&quot;, &quot;yep&quot;, &quot;sure&quot;);</span>
+
+<span class="fc" id="L55">	public static final List&lt;String&gt; NO_MESSAGES = Arrays.asList(NO_EXPRESSION, &quot;nope&quot;,</span>
+			&quot;nothing&quot;, &quot;none&quot;);
+
+<span class="fc" id="L58">	public static final List&lt;String&gt; GOODBYE_MESSAGES = Arrays.asList(&quot;bye&quot;, &quot;goodbye&quot;,</span>
+			&quot;farewell&quot;, &quot;cya&quot;, &quot;adios&quot;);
+
+	/**
+	 * Combine a string collection (list) with additional strings.
+	 *  
+	 * @param list first collection of strings
+	 * @param args additional strings
+	 * @return new list with the contents of the list and all the additional
+	 * 	strings 
+	 */
+	public static final List&lt;String&gt; combine(Collection&lt;String&gt; list, String ...args) {
+<span class="fc" id="L70">		List&lt;String&gt; ret = new ArrayList&lt;String&gt;(list);</span>
+
+<span class="fc bfc" id="L72" title="All 2 branches covered.">		for(String s : args) {</span>
+<span class="fc" id="L73">			ret.add(s);</span>
+		}
+
+<span class="fc" id="L76">		return ret;</span>
+	}
+
+	/**
+	 * Combine a string collection with other collections.
+	 * 
+	 * @param list1 first collection
+	 * @param lists additional collections
+	 * @return a new list with contents of all the collections
+	 */
+	@SafeVarargs
+	public static final List&lt;String&gt; combine(Collection&lt;String&gt; list1, Collection&lt;String&gt;... lists) {
+<span class="nc" id="L88">		List&lt;String&gt; ret = new LinkedList&lt;String&gt;(list1);</span>
+<span class="nc bnc" id="L89" title="All 2 branches missed.">		for (Collection&lt;String&gt; list : lists) {</span>
+<span class="nc" id="L90">			ret.addAll(list);</span>
+		}
+<span class="nc" id="L92">		return ret;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>WeatherLayerRenderer.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client</a> &gt; <span class="el_source">WeatherLayerRenderer.java</span></div><h1>WeatherLayerRenderer.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                 (C) Copyright 2003-2014 - Faiumoni e.V.                 *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client;
+
+import games.stendhal.client.sprite.EmptySprite;
+import games.stendhal.client.sprite.Sprite;
+import games.stendhal.client.sprite.SpriteStore;
+import games.stendhal.client.sprite.SpriteTileset;
+import games.stendhal.client.sprite.Tileset;
+import games.stendhal.client.sprite.TilesetGroupAnimationMap;
+
+import java.awt.Color;
+import java.awt.Composite;
+import java.awt.Graphics;
+
+import org.apache.log4j.Logger;
+
+/**
+ * Weather renderer. The weather sprites are looked up from
+ * &quot;data/sprites/weather&quot;. Animation can be specified normally in animation.seq.
+ * The sprite height is taken as the tile size for both directions, the rest
+ * can be used for animation.
+ */
+public class WeatherLayerRenderer extends LayerRenderer {
+	private final Sprite weather;
+	
+	/**
+	 * Create a new weather layer.
+	 * 
+	 * @param weather weather description
+	 * @param color zone coloring data
+	 * @param blend zone blending mode
+	 */
+<span class="nc" id="L43">	public WeatherLayerRenderer(String weather, Color color, Composite blend) {</span>
+<span class="nc" id="L44">		SpriteStore sr = SpriteStore.get();</span>
+		
+<span class="nc" id="L46">		String name = &quot;data/sprites/weather/&quot; + weather + &quot;.png&quot;;</span>
+		Sprite template;
+		/*
+		 * The failsafe sprite must not be used here, under any circumstances.
+		 * It would cover all of the map, so revert to an empty sprite instead
+		 */
+<span class="nc bnc" id="L52" title="All 2 branches missed.">		if (sr.getSprite(name) == sr.getFailsafe()) {</span>
+<span class="nc" id="L53">			template = new EmptySprite(1024, 1024, null);</span>
+<span class="nc" id="L54">			Logger.getLogger(WeatherLayerRenderer.class).warn(&quot;Weather sprite not found:&quot; + name);</span>
+		} else {
+<span class="nc" id="L56">			template = sr.getModifiedSprite(name, color, blend);</span>
+		}
+<span class="nc" id="L58">		Tileset ts = new SpriteTileset(sr, template, template.getHeight());</span>
+<span class="nc" id="L59">		TilesetGroupAnimationMap animationMap = TileStore.getAnimationMap();</span>
+
+<span class="nc bnc" id="L61" title="All 4 branches missed.">		if (animationMap != null &amp;&amp; animationMap.get(name) != null) {</span>
+<span class="nc" id="L62">			this.weather = animationMap.get(name).getSprite(ts, 0);</span>
+		} else {
+<span class="nc" id="L64">			this.weather = ts.getSprite(0);</span>
+		}
+<span class="nc" id="L66">	}</span>
+
+	@Override
+	public void draw(Graphics g, int x, int y, int w, int h) {
+<span class="nc" id="L70">		int myX = (x * IGameScreen.SIZE_UNIT_PIXELS) / weather.getWidth();</span>
+<span class="nc" id="L71">		int myY = (y * IGameScreen.SIZE_UNIT_PIXELS) / weather.getHeight();</span>
+<span class="nc" id="L72">		int myW = (w * IGameScreen.SIZE_UNIT_PIXELS) / weather.getWidth() + 1;</span>
+<span class="nc" id="L73">		int myH = (h * IGameScreen.SIZE_UNIT_PIXELS) / weather.getHeight() + 1;</span>
+		
+<span class="nc" id="L75">		int sy = myY * weather.getHeight();</span>
+<span class="nc bnc" id="L76" title="All 2 branches missed.">		for (int j = myY; j &lt; myY + myH; j++) {</span>
+<span class="nc" id="L77">			int sx = myX * weather.getWidth();</span>
+			
+<span class="nc bnc" id="L79" title="All 2 branches missed.">			for (int i = myX; i &lt; myX + myW; i++) {</span>
+<span class="nc" id="L80">				weather.draw(g, sx, sy);</span>
+<span class="nc" id="L81">				sx += weather.getWidth();</span>
+			}
+<span class="nc" id="L83">			sy += weather.getHeight();</span>
+		}
+<span class="nc" id="L85">	}</span>
+
+	@Override
+	public void setTileset(Tileset tileset) {
+<span class="nc" id="L89">		throw new UnsupportedOperationException(&quot;Adding tilesets not supported&quot;);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

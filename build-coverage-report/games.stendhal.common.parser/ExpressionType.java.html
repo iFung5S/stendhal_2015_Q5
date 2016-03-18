@@ -1,0 +1,433 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ExpressionType.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.common.parser</a> &gt; <span class="el_source">ExpressionType.java</span></div><h1>ExpressionType.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.common.parser;
+
+import java.io.Serializable;
+import java.util.Arrays;
+import java.util.List;
+
+/**
+ * An ExpressionType defines the type of an Expression object.
+ * It uses a human readable string representation like &quot;VER&quot; (verb)
+ * or &quot;OBJ&quot; (object). Derived types like negative verbs are
+ * written in a concatenated form like &quot;VER-NEG&quot;.
+ * ExpressionType objects are immutable. To alter expression types,
+ * there is always created a new ExpressionType object (similar
+ * to the immutable Java String class).
+ *
+ * @author Martin Fuchs
+ */
+public final class ExpressionType implements Serializable {
+
+	private static final long serialVersionUID = -8694964043717271498L;
+
+    // Expression type string constants
+
+	/** String constant representing verb form. */
+    public static final String VERB = &quot;VER&quot;;
+
+    /** String constant representing gerund form. */
+    public static final String GERUND = &quot;GER&quot;;
+
+    /** String constant representing conditional form. */
+    public static final String CONDITIONAL = &quot;CON&quot;;
+    /** String constant representing negated form. */
+    public static final String NEGATED = &quot;NEG&quot;;
+    /** String constant representing pronoun. */
+    public static final String PRONOUN = &quot;PRO&quot;;
+
+    /** String constant representing an object (syntax).*/
+    public static final String OBJECT = &quot;OBJ&quot;;
+
+    /** String constant representing a fluid. */
+    public static final String FLUID = &quot;FLU&quot;;
+
+    /** String constant representing food. */
+    public static final String FOOD = &quot;FOO&quot;;
+
+    /** String constant representing an obsessional word. */
+    public static final String OBSESSIONAL = &quot;OBS&quot;;
+
+
+    /** String constant representing a subject. */
+    public static final String SUBJECT = &quot;SUB&quot;;
+
+    /** String constant representing an animal. */
+    public static final String ANIMAL = &quot;ANI&quot;;
+
+    /** String constant representing a person's name. */
+    public static final String NAME = &quot;NAM&quot;;
+
+    /** String constant representing an adjective or adverb. */
+    public static final String ADJECTIVE = &quot;ADJ&quot;;
+
+    /** String constant representing a color. */
+    public static final String COLOR = &quot;COL&quot;;
+
+    /** String constant representing a numeral. */
+    public static final String NUMERAL = &quot;NUM&quot;;
+
+    /** String constant representing a preposition. */
+    public static final String PREPOSITION = &quot;PRE&quot;;
+
+    /** String constant representing  a question word. */
+    public static final String QUESTION = &quot;QUE&quot;;
+
+    /** String constant representing an expression which is to be ignored. */
+    public static final String IGNORE = &quot;IGN&quot;;
+
+    /** String constant representing a suffix. */
+    public static final String SUFFIX = &quot;-&quot;;
+
+    /** String constant representing plural form. */
+    public static final String PLURAL = &quot;PLU&quot;;
+
+    /** String constant representing a n expression dynamically defined at runtime. */
+    public static final String DYNAMIC = &quot;DYN&quot;;
+
+    /** String constant representing a type less expression. */
+    public static final String UNKNOWN = &quot;&quot;;
+
+    // derived string type constants
+
+    public static final String SUFFIX_GERUND = SUFFIX + GERUND;
+    public static final String SUFFIX_COLOR = SUFFIX + COLOR;
+    public static final String SUFFIX_CONDITIONAL = SUFFIX + CONDITIONAL;
+    public static final String SUFFIX_NEGATED = SUFFIX + NEGATED;
+    public static final String SUFFIX_PRONOUN = SUFFIX + PRONOUN;
+    public static final String SUFFIX_FOOD = SUFFIX + FOOD;
+    public static final String SUFFIX_OBSESSIONAL = SUFFIX + OBSESSIONAL;
+    public static final String SUFFIX_FLUID = SUFFIX + FLUID;
+    public static final String SUFFIX_ANIMAL = SUFFIX + ANIMAL;
+    public static final String SUFFIX_NAME = SUFFIX + NAME;
+    public static final String SUBJECT_NAME = SUBJECT + SUFFIX_NAME;
+    public static final String SUFFIX_PLURAL = SUFFIX + PLURAL;
+    public static final String SUFFIX_QUESTION = SUFFIX + QUESTION;
+    public static final String VERB_GERUND = VERB + SUFFIX_GERUND;
+    public static final String SUFFIX_DYNAMIC = SUFFIX + DYNAMIC;
+
+    /** Type string specifiers, which can be used in sentence matching. */
+<span class="fc" id="L120">    public static final List&lt;String&gt; TYPESTRINGS = Arrays.asList(</span>
+		VERB, OBJECT, SUBJECT, ADJECTIVE, NUMERAL,
+		PREPOSITION, QUESTION, IGNORE,
+
+		SUFFIX_GERUND, SUFFIX_COLOR, SUFFIX_CONDITIONAL, SUFFIX_NEGATED, SUFFIX_PRONOUN, SUFFIX_FOOD,
+		SUFFIX_OBSESSIONAL, SUFFIX_FLUID, SUFFIX_ANIMAL, SUFFIX_NAME, SUFFIX_PLURAL
+    );
+
+    private final String typeString;
+
+<span class="fc" id="L130">    public ExpressionType(final String s) {</span>
+<span class="fc" id="L131">        typeString = s;</span>
+<span class="fc" id="L132">    }</span>
+
+    /**
+     * @return type string Note: There is no setTypeString to make ExpressionType objects immutable.
+     *
+
+     */
+    public String getTypeString() {
+<span class="fc" id="L140">        return typeString;</span>
+    }
+
+    /**
+     * @return main Expression type string (first 3 letters).
+     *
+     */
+    public String getMainType() {
+<span class="fc bfc" id="L148" title="All 4 branches covered.">        if (typeString.length() &gt;= 3) {</span>
+<span class="fc" id="L149">            return typeString.substring(0, 3);</span>
+        } else {
+<span class="fc" id="L151">            return typeString;</span>
+        }
+    }
+
+    /**
+	 * Returns true if, and only if, length() is 0.
+	 *
+	 * @return true if length() is 0, otherwise false
+	 */
+    public boolean isEmpty() {
+<span class="fc bfc" id="L161" title="All 4 branches covered.">    	return typeString.length() == 0;</span>
+    }
+
+    /**
+     * Determine if the Expression consists of verbs.
+     *
+     * @return true if the typeString starts with the verb-constant
+     */
+    public boolean isVerb() {
+<span class="fc" id="L170">        return typeString.startsWith(VERB);</span>
+    }
+
+    /**
+     * Determine if the Expression contains a verb in gerund form.
+     * @return true if so
+     *
+     */
+    public boolean isGerund() {
+<span class="fc" id="L179">        return typeString.startsWith(VERB_GERUND);</span>
+    }
+
+    /**
+     * Determine if the Expression is an object. (a thing, not a person)
+     *
+     * @return false if not an object or null, true otherwise
+     */
+    public boolean isObject() {
+<span class="fc" id="L188">        return typeString.startsWith(OBJECT);</span>
+    }
+
+    /**
+     * Determine if the Expression is an subject. (a thing, not a person)
+     *
+     * @return false if not a subject, true otherwise
+     */
+    public boolean isSubject() {
+<span class="fc" id="L197">        return typeString.startsWith(SUBJECT);</span>
+    }
+
+    /**
+     * Determine if the Expression consists of numeral words.
+     * @return true if typeString start with 'NUM'; false otherwise.
+     */
+    public boolean isNumeral() {
+<span class="fc" id="L205">        return typeString.startsWith(NUMERAL);</span>
+    }
+
+    /**
+     * Determine if the Expression consists of adjectives or adverbs.
+     * @return true if typeString start with 'ADJ'; false otherwise.
+     */
+    public boolean isAdjective() {
+<span class="fc" id="L213">        return typeString.startsWith(ADJECTIVE);</span>
+    }
+
+    /**
+     * Determine if the Expression consists of prepositions.
+     * @return true if typeString start with 'PRE'; false otherwise.
+
+     */
+    public boolean isPreposition() {
+<span class="fc" id="L222">        return typeString.startsWith(PREPOSITION);</span>
+    }
+
+    /**
+     * Determine Expressions to ignore.
+     * @return true if typeString start with 'IGN'; false otherwise.
+     */
+    public boolean isIgnore() {
+<span class="fc" id="L230">        return typeString.startsWith(IGNORE);</span>
+    }
+
+    /**
+     * Determine if the Expression is in plural form.
+     * @return true if typeString contains '-PLU'; false otherwise.
+     */
+    public boolean isPlural() {
+<span class="fc" id="L238">        return typeString.contains(SUFFIX_PLURAL);</span>
+    }
+
+    /**
+     * Determine if the Expression is a creature name.
+     * @return true if typeString contains '-NAM'; false otherwise.
+     */
+    public boolean isName() {
+<span class="fc" id="L246">        return typeString.contains(SUFFIX_NAME);</span>
+    }
+
+    /**
+     * Determine if the Expression is an animal.
+     * @return true if typeString contains '-ANI'; false otherwise.
+     */
+    public boolean isAnimal() {
+<span class="nc" id="L254">        return typeString.contains(SUFFIX_ANIMAL);</span>
+    }
+
+    /**
+     * Determine if the Expression is some food.
+     * @return true if typeString contains '-FOO'; false otherwise.
+     */
+    public boolean isFood() {
+<span class="nc" id="L262">        return typeString.contains(SUFFIX_FOOD);</span>
+    }
+
+    /**
+     * Determine if the Expression is some fluid.
+     * @return true if typeString contains '-FLU'; false otherwise.
+     */
+    public boolean isFluid() {
+<span class="nc" id="L270">        return typeString.contains(SUFFIX_FLUID);</span>
+    }
+
+    /**
+     * Determine if the Expression consists of question words.
+     * @return true if typeString start with 'QUE'; false otherwise.
+     */
+    public boolean isQuestion() {
+<span class="fc" id="L278">        return typeString.startsWith(QUESTION);</span>
+    }
+
+    /**
+     * Determine if the Expression is a or is merged with a question word.
+     * @return true if typeString contains 'QUE'; false otherwise.
+     */
+    public boolean hasQuestion() {
+<span class="fc" id="L286">        return typeString.contains(QUESTION);</span>
+    }
+
+    /**
+     * Determine if the Expression is a obsessional one.
+     * @return true if typeString contains '-OBS'; false otherwise.
+     */
+    public boolean isObsessional() {
+<span class="fc" id="L294">        return typeString.contains(SUFFIX_OBSESSIONAL);</span>
+    }
+
+    /**
+     * Determine if the Expression specifies a color.
+     * @return true if typeString contains 'COL'; false otherwise.
+     */
+    public boolean hasColor() {
+<span class="fc" id="L302">        return typeString.contains(COLOR);</span>
+    }
+
+    /**
+     * Determine if the Expression is a pronoun.
+     * @return true if typeString contains '-PRO'; false otherwise.
+     */
+    public boolean isPronoun() {
+<span class="fc" id="L310">        return typeString.contains(SUFFIX_PRONOUN);</span>
+    }
+
+    /**
+     * Determine if the Expression is in conditional form.
+     * @return true if typeString contains '-CON'; false otherwise.
+     */
+    public boolean isConditional() {
+<span class="fc" id="L318">        return typeString.contains(SUFFIX_CONDITIONAL);</span>
+    }
+
+    /**
+     * Determine if the Expression is negated.
+     * @return true if typeString contains '-NEG'; false otherwise.
+     */
+    public boolean isNegated() {
+<span class="fc" id="L326">        return typeString.contains(SUFFIX_NEGATED);</span>
+    }
+
+    /**
+     * Determine if the Expression contains a dynamically defined word.
+     * @return true if typeString contains '-DYN'; false otherwise.
+     */
+    public boolean isDynamic() {
+<span class="fc" id="L334">        return typeString.contains(SUFFIX_DYNAMIC);</span>
+    }
+
+    /**
+     * Check if the given String contains a type string specifier.
+     *
+     * @param str
+     *
+     * @return true if first letter is upper case and contains any of the predefined TYPESTRINGs
+     * */
+    public static boolean isTypeString(final String str) {
+<span class="pc bpc" id="L345" title="2 of 4 branches missed.">        if (str.length() &gt; 0) {</span>
+<span class="fc" id="L346">            final char first = str.charAt(0);</span>
+
+            // All type strings must start with an upper case letter,
+            // even the SUFFIX character '-' is not allowed.
+<span class="fc bfc" id="L350" title="All 4 branches covered.">            if (Character.isUpperCase(first)) {</span>
+<span class="fc bfc" id="L351" title="All 4 branches covered.">                for (final String ts : TYPESTRINGS) {</span>
+<span class="fc bfc" id="L352" title="All 4 branches covered.">                    if (str.contains(ts)) {</span>
+<span class="fc" id="L353">                        return true;</span>
+                    }
+<span class="fc" id="L355">                }</span>
+            }
+        }
+
+<span class="fc" id="L359">        return false;</span>
+    }
+
+    /**
+     * Merge with another ExpressionType.
+     *
+     * @param other
+     * @return new ExpressionType object or this
+     */
+    public ExpressionType merge(final ExpressionType other) {
+<span class="fc" id="L369">        String newTypeString = typeString;</span>
+<span class="fc" id="L370">        boolean modified = false;</span>
+
+<span class="pc bpc" id="L372" title="2 of 8 branches missed.">        if (other.hasColor() &amp;&amp; !hasColor()) {</span>
+<span class="fc" id="L373">            newTypeString += SUFFIX_COLOR;</span>
+<span class="fc" id="L374">            modified = true;</span>
+        }
+
+<span class="pc bpc" id="L377" title="2 of 8 branches missed.">        if (other.hasQuestion() &amp;&amp; !hasQuestion()) {</span>
+<span class="fc" id="L378">            newTypeString += SUFFIX_QUESTION;</span>
+<span class="fc" id="L379">            modified = true;</span>
+        }
+
+<span class="pc bpc" id="L382" title="2 of 8 branches missed.">        if (other.isConditional() &amp;&amp; !isConditional()) {</span>
+<span class="fc" id="L383">            newTypeString += SUFFIX_CONDITIONAL;</span>
+<span class="fc" id="L384">            modified = true;</span>
+        }
+
+<span class="pc bpc" id="L387" title="2 of 8 branches missed.">        if (other.isPronoun() &amp;&amp; !isPronoun()) {</span>
+<span class="fc" id="L388">            newTypeString += SUFFIX_PRONOUN;</span>
+<span class="fc" id="L389">            modified = true;</span>
+        }
+
+<span class="fc bfc" id="L392" title="All 4 branches covered.">        if (other.isNegated() != isNegated()) {</span>
+<span class="fc" id="L393">            newTypeString += SUFFIX_NEGATED;</span>
+<span class="fc" id="L394">            modified = true;</span>
+        }
+
+<span class="pc bpc" id="L397" title="2 of 8 branches missed.">        if (other.isDynamic() &amp;&amp; !isDynamic()) {</span>
+<span class="fc" id="L398">            newTypeString += SUFFIX_DYNAMIC;</span>
+<span class="fc" id="L399">            modified = true;</span>
+        }
+
+        // Check if there was any change of the type, then we must create and return
+        // a new ExpressionType object, as typeString is immutable.
+<span class="fc bfc" id="L404" title="All 4 branches covered.">        if (modified) {</span>
+<span class="fc" id="L405">            return new ExpressionType(newTypeString);</span>
+        } else {
+<span class="fc" id="L407">            return this;</span>
+        }
+    }
+
+    /**
+     * Negate the type.
+     * This are the two typical cases:
+     * VER -&gt; VER-NEG
+     * VER-NEG -&gt; VER
+     * @return negated expression
+     */
+    public ExpressionType negate()
+    {
+<span class="fc bfc" id="L420" title="All 4 branches covered.">    	if (isNegated()) {</span>
+<span class="fc" id="L421">			return new ExpressionType(typeString.replace(SUFFIX_NEGATED, &quot;&quot;));</span>
+		} else {
+<span class="fc" id="L423">			return new ExpressionType(typeString + SUFFIX_NEGATED);</span>
+		}
+    }
+
+    @Override
+    public String toString() {
+<span class="fc" id="L429">        return typeString;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

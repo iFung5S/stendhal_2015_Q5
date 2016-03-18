@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ConfigurableFactoryHelper.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.core.config.factory</a> &gt; <span class="el_source">ConfigurableFactoryHelper.java</span></div><h1>ConfigurableFactoryHelper.java</h1><pre class="source lang-java linenums">/*
+ * @(#) src/games/stendhal/common/ConfigurableFactoryHelper.java
+ *
+ * $Id$
+ */
+
+package games.stendhal.server.core.config.factory;
+
+//
+//
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+
+/**
+ * A utility class for creating objects using ConfigurableFactory.
+ */
+<span class="nc" id="L18">public class ConfigurableFactoryHelper {</span>
+
+	/**
+	 * A class type safe wrapper for a ConfigurableFactory that takes a desired
+	 * target class and returns &lt;code&gt;null&lt;/code&gt; if the factory returns an
+	 * incompatible object. This allows the called to cast the return values
+	 * without worrying about ClassCastExceptions.
+	 * 
+	 * @param factory
+	 *            Object factory.
+	 * @param ctx
+	 *            Configuration context.
+	 * @param clazz
+	 *            The target class.
+	 * 
+	 * @return A new object, or &lt;code&gt;null&lt;/code&gt; if allowed by the factory
+	 *         type, or of the wrong class.
+	 * 
+	 * @throws IllegalArgumentException
+	 *             If there is a problem with the attributes. The exception
+	 *             message should be a value suitable for meaningful user
+	 *             interpretation.
+	 */
+	public static Object create(final ConfigurableFactory factory,
+			final ConfigurableFactoryContext ctx, final Class&lt; ? &gt; clazz) {
+		Object obj;
+
+<span class="nc" id="L45">		obj = factory.create(ctx);</span>
+
+<span class="nc bnc" id="L47" title="All 2 branches missed.">		if (clazz.isInstance(obj)) {</span>
+<span class="nc" id="L48">			return obj;</span>
+		} else {
+<span class="nc" id="L50">			return null;</span>
+		}
+	}
+
+	/**
+	 * Create an object factory using a [logical] class name.
+	 * &lt;p&gt;
+	 * 
+	 * &lt;p&gt;
+	 * This will attempt to create a factory for the class in the following
+	 * order:
+	 * &lt;ul&gt;
+	 * &lt;li&gt;If a class named &lt;em&gt;&amp;lt;class-name&amp;gt&lt;/em&gt;&lt;code&gt;Factory&lt;/code&gt;
+	 * exists and implements &lt;code&gt;ConfigurableFactory&lt;/code&gt;, return an
+	 * instance of it.
+	 * 
+	 * &lt;li&gt;If a class named &lt;em&gt;&amp;lt;class-name&amp;gt&lt;/em&gt; exists and implements
+	 * &lt;code&gt;ConfigurableFactory&lt;/code&gt;, return an instance of it.
+	 * 
+	 * &lt;li&gt;If a class named &lt;em&gt;&amp;lt;class-name&amp;gt&lt;/em&gt; exists and accepts a
+	 * constructor with ConfigurableFactoryContext, return a factory that
+	 * creates an instance with that constructor when used.
+	 * 
+	 * &lt;li&gt;If a class named &lt;em&gt;&amp;lt;class-name&amp;gt&lt;/em&gt; exists and has a
+	 * default constructor, return a factory that creates an instance with that
+	 * constructor when used.
+	 * 
+	 * &lt;li&gt;Returns &lt;code&gt;null&lt;/code&gt;,
+	 * &lt;/ul&gt;
+	 * 
+	 * @param className
+	 *            A base class name to load.
+	 * 
+	 * @return A factory, or &lt;code&gt;null&lt;/code&gt; if no valid class was found.
+	 */
+	public static ConfigurableFactory getFactory(final String className) {
+		Class&lt; ? &gt; clazz;
+		/*
+		 * First the &lt;class&gt;Factory form
+		 */
+		try {
+<span class="nc" id="L91">			clazz = Class.forName(className + &quot;Factory&quot;);</span>
+
+			/*
+			 * Is it a ConfigurableFactory?
+			 */
+<span class="nc bnc" id="L96" title="All 2 branches missed.">			if (ConfigurableFactory.class.isAssignableFrom(clazz)) {</span>
+				try {
+<span class="nc" id="L98">					return (ConfigurableFactory) clazz.newInstance();</span>
+<span class="nc" id="L99">				} catch (final InstantiationException ex) {</span>
+<span class="nc" id="L100">					throw new IllegalArgumentException(</span>
+							&quot;Class is not instantiatable: &quot; + clazz.getName(),
+							ex);
+<span class="nc" id="L103">				} catch (final IllegalAccessException ex) {</span>
+<span class="nc" id="L104">					throw new IllegalArgumentException(</span>
+							&quot;Unable to access class: &quot; + clazz.getName(), ex);
+				}
+			}
+<span class="nc" id="L108">		} catch (final ClassNotFoundException ex) {</span>
+			// Fall through
+<span class="nc" id="L110">		}</span>
+
+		/*
+		 * Now &lt;class&gt; directly
+		 */
+		try {
+<span class="nc" id="L116">			clazz = Class.forName(className);</span>
+
+			/*
+			 * Is it a ConfigurableFactory?
+			 */
+<span class="nc bnc" id="L121" title="All 2 branches missed.">			if (ConfigurableFactory.class.isAssignableFrom(clazz)) {</span>
+				try {
+<span class="nc" id="L123">					return (ConfigurableFactory) clazz.newInstance();</span>
+<span class="nc" id="L124">				} catch (final InstantiationException ex) {</span>
+<span class="nc" id="L125">					throw new IllegalArgumentException(</span>
+							&quot;Class is not instantiatable: &quot; + className, ex);
+<span class="nc" id="L127">				} catch (final IllegalAccessException ex) {</span>
+<span class="nc" id="L128">					throw new IllegalArgumentException(</span>
+							&quot;Unable to access class: &quot; + className, ex);
+				}
+			}
+
+			/*
+			 * Look for &lt;Class&gt;(ConfigurableFactoryContext) constructor.
+			 */
+			try {
+<span class="nc" id="L137">				return new ACFactory(</span>
+						clazz.getConstructor(new Class&lt; ? &gt;[] { ConfigurableFactoryContext.class }));
+<span class="nc" id="L139">			} catch (final NoSuchMethodException ex) {</span>
+				// Fall through
+			}
+
+			/*
+			 * Look for &lt;Class&gt;() constructor.
+			 */
+			try {
+				/*
+				 * Trigger's NoSuchMethodException if missing.
+				 */
+<span class="nc" id="L150">				clazz.getConstructor(new Class[] {});</span>
+
+<span class="nc" id="L152">				return new DCFactory(clazz);</span>
+<span class="nc" id="L153">			} catch (final NoSuchMethodException ex) {</span>
+				// Fall through
+			}
+<span class="nc" id="L156">		} catch (final ClassNotFoundException ex) {</span>
+			// Fall through
+<span class="nc" id="L158">		}</span>
+
+<span class="nc" id="L160">		return null;</span>
+	}
+
+	//
+	//
+
+	/**
+	 * A wrapper factory for a &lt;code&gt;ConfigurableFactoryContext&lt;/code&gt;
+	 * parameter constructor.
+	 */
+	protected static class ACFactory implements ConfigurableFactory {
+
+		protected Constructor&lt; ? &gt; cnstr;
+
+<span class="nc" id="L174">		public ACFactory(final Constructor&lt; ? &gt; cnstr) {</span>
+<span class="nc" id="L175">			this.cnstr = cnstr;</span>
+<span class="nc" id="L176">		}</span>
+
+		//
+		// ConfigurableFactory
+		//
+
+		@Override
+		public Object create(final ConfigurableFactoryContext ctx) {
+			try {
+<span class="nc" id="L185">				return cnstr.newInstance(new Object[] { ctx });</span>
+<span class="nc" id="L186">			} catch (final InstantiationException ex) {</span>
+<span class="nc" id="L187">				throw new IllegalArgumentException(</span>
+						&quot;Class is not instantiatable: &quot;
+								+ cnstr.getDeclaringClass().getName(), ex);
+<span class="nc" id="L190">			} catch (final IllegalAccessException ex) {</span>
+<span class="nc" id="L191">				throw new IllegalArgumentException(&quot;Unable to access class: &quot;</span>
+						+ cnstr.getDeclaringClass().getName(), ex);
+<span class="nc" id="L193">			} catch (final InvocationTargetException ex) {</span>
+<span class="nc" id="L194">				throw new IllegalArgumentException(&quot;Error creating class: &quot;</span>
+						+ cnstr.getDeclaringClass().getName(), ex);
+			}
+		}
+	}
+
+	/**
+	 * A wrapper factory that uses the default constructor of a class.
+	 */
+<span class="nc" id="L203">	protected static class DCFactory implements ConfigurableFactory {</span>
+
+		protected Class&lt; ? &gt; clazz;
+
+<span class="nc" id="L207">		public DCFactory(final Class&lt; ? &gt; clazz) {</span>
+<span class="nc" id="L208">			this.clazz = clazz;</span>
+<span class="nc" id="L209">		}</span>
+
+		//
+		// ConfigurableFactory
+		//
+
+		@Override
+		public Object create(final ConfigurableFactoryContext ctx) {
+			try {
+<span class="nc" id="L218">				return clazz.newInstance();</span>
+<span class="nc" id="L219">			} catch (final InstantiationException ex) {</span>
+<span class="nc" id="L220">				throw new IllegalArgumentException(</span>
+						&quot;Class is not instantiatable: &quot; + clazz.getName(), ex);
+<span class="nc" id="L222">			} catch (final IllegalAccessException ex) {</span>
+<span class="nc" id="L223">				throw new IllegalArgumentException(&quot;Unable to access class: &quot;</span>
+						+ clazz.getName(), ex);
+			}
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

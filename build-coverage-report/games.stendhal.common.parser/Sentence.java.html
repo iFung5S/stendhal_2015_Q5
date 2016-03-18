@@ -1,0 +1,951 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Sentence.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.common.parser</a> &gt; <span class="el_source">Sentence.java</span></div><h1>Sentence.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.common.parser;
+
+import games.stendhal.common.ErrorBuffer;
+
+import java.util.AbstractList;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
+
+/**
+ * ConversationParser returns the parsed sentence in this class. The Sentence class stores the sentence content in a
+ * list of parsed and classified expressions composed of the words forming the sentence. Words belonging to each other
+ * are merged into common Expression objects.
+ *
+ * @author Martin Fuchs
+ */
+public class Sentence extends ErrorBuffer implements Iterable&lt;Expression&gt; {
+
+<span class="pc" id="L32">    public enum SentenceType {</span>
+<span class="fc" id="L33">        UNDEFINED, STATEMENT, IMPERATIVE, QUESTION</span>
+    }
+
+    protected String originalText;
+    
+    protected final ConversationContext context;
+
+<span class="fc" id="L40">    protected SentenceType sentenceType = SentenceType.UNDEFINED;</span>
+
+<span class="fc" id="L42">    protected AbstractList&lt;Expression&gt; expressions = new ArrayList&lt;Expression&gt;();</span>
+
+
+    /**
+     * Create a Sentence object.
+     *
+     * @param ctx
+     */
+<span class="fc" id="L50">    protected Sentence(final ConversationContext ctx) {</span>
+<span class="fc" id="L51">        context = ctx;</span>
+<span class="fc" id="L52">    }</span>
+
+    /**
+     * Set sentence type as STATEMENT, IMPERATIVE or QUESTION.
+     *
+     * @param type
+     */
+    void setType(final SentenceType type) {
+<span class="fc" id="L60">        this.sentenceType = type;</span>
+<span class="fc" id="L61">    }</span>
+
+    /**
+     *
+     * @return sentence type.
+     */
+    public SentenceType getType() {
+<span class="fc" id="L68">        return sentenceType;</span>
+    }
+
+    /**
+     * Return the list of expressions.
+     *
+     * @return Expression iterator
+     */
+    public List&lt;Expression&gt; getExpressions() {
+<span class="fc" id="L77">        return expressions;</span>
+    }
+
+    /**
+     * Return an array of the expressions.
+     *
+     * @return Expression array
+     */
+    protected Expression[] getExpressionsArrayList() {
+<span class="nc" id="L86">        return expressions.toArray(new Expression[expressions.size()]);</span>
+    }
+
+    /**
+     * Return an iterator over all expressions.
+     *
+     * @return Expression iterator
+     */
+    @Override
+	public Iterator&lt;Expression&gt; iterator() {
+<span class="fc" id="L96">        return expressions.iterator();</span>
+    }
+
+    /**
+     * Count the number of Expressions matching the given type string.
+     *
+     * @param typePrefix
+     * @return number of matching Expressions
+     */
+    private int countExpressions(final String typePrefix) {
+<span class="fc" id="L106">        int count = 0;</span>
+
+<span class="fc bfc" id="L108" title="All 4 branches covered.">        for (final Expression w : expressions) {</span>
+<span class="fc bfc" id="L109" title="All 4 branches covered.">            if (w.getTypeString().startsWith(typePrefix)) {</span>
+<span class="fc" id="L110">                ++count;</span>
+            }
+<span class="fc" id="L112">        }</span>
+
+<span class="fc" id="L114">        return count;</span>
+    }
+
+    /**
+     * Return verb [i] of the sentence.
+     *
+     * @param idx
+     * @param typePrefix
+     * @return verb
+     */
+    public Expression getExpression(final int idx, final String typePrefix) {
+<span class="fc" id="L125">        int i = 0;</span>
+
+<span class="fc bfc" id="L127" title="All 4 branches covered.">        for (final Expression w : expressions) {</span>
+<span class="fc bfc" id="L128" title="All 4 branches covered.">            if (w.getTypeString().startsWith(typePrefix)) {</span>
+<span class="fc bfc" id="L129" title="All 4 branches covered.">                if (i == idx) {</span>
+<span class="fc" id="L130">                    return w;</span>
+                }
+
+<span class="fc" id="L133">                ++i;</span>
+            }
+<span class="fc" id="L135">        }</span>
+
+<span class="fc" id="L137">        return null;</span>
+    }
+
+    /**
+     * Count the number of Expressions with unknown type.
+     *
+     * @return number of Expressions with unknown type
+     */
+    public int getUnknownTypeCount() {
+<span class="fc" id="L146">        int count = 0;</span>
+
+<span class="fc bfc" id="L148" title="All 4 branches covered.">        for (final Expression w : expressions) {</span>
+<span class="fc bfc" id="L149" title="All 4 branches covered.">            if (w.getTypeString().length() == 0) {</span>
+<span class="fc" id="L150">                ++count;</span>
+            }
+<span class="fc" id="L152">        }</span>
+
+<span class="fc" id="L154">        return count;</span>
+    }
+
+    /**
+     * Return unknown word [i] of the sentence.
+     *
+     * @param idx
+     * @return Expression with unknown type
+     */
+    public Expression getUnknownTypeExpression(final int idx) {
+<span class="fc" id="L164">        int i = 0;</span>
+
+<span class="fc bfc" id="L166" title="All 4 branches covered.">        for (final Expression w : expressions) {</span>
+<span class="fc bfc" id="L167" title="All 4 branches covered.">            if (w.getTypeString().length() == 0) {</span>
+<span class="pc bpc" id="L168" title="2 of 4 branches missed.">                if (i == idx) {</span>
+<span class="fc" id="L169">                    return w;</span>
+                }
+
+<span class="nc" id="L172">                ++i;</span>
+            }
+<span class="fc" id="L174">        }</span>
+
+<span class="fc" id="L176">        return null;</span>
+    }
+
+    /**
+     * Return trigger Expression for the FSM engine. 
+     * TODO mf - replace by sentence matching.
+     *
+     * @return trigger string
+     */
+    public Expression getTriggerExpression() {
+        // Return an empty expression for an empty sentence.
+<span class="fc bfc" id="L187" title="All 4 branches covered.">        if (expressions.isEmpty()) {</span>
+<span class="fc" id="L188">            return Expression.EMPTY_EXPRESSION;</span>
+        }
+
+<span class="fc bfc" id="L191" title="All 4 branches covered.">        if (expressions.size() &gt; 1) {</span>
+	        // Test for a list of items
+<span class="fc" id="L193">			StringBuilder objects = new StringBuilder();</span>
+<span class="fc" id="L194">			int simpleObjects = 0;</span>
+	
+<span class="fc bfc" id="L196" title="All 4 branches covered.">			for(Expression e : expressions) {</span>
+<span class="pc bpc" id="L197" title="2 of 8 branches missed.">				if (e.isObject() &amp;&amp; e.getAmount()==1) {</span>
+<span class="fc bfc" id="L198" title="All 4 branches covered.">					if (simpleObjects &gt; 0)</span>
+<span class="fc" id="L199">						objects.append(&quot; and &quot;);</span>
+	
+<span class="fc" id="L201">					objects.append(e.getNormalized());</span>
+	
+<span class="fc" id="L203">					++simpleObjects;</span>
+				} else {
+					break;
+				}
+<span class="fc" id="L207">			}</span>
+
+			// If the sentence consists only of a list of single objects (amount=1),
+			// return it as &quot;A and B and C and ...&quot;
+<span class="fc bfc" id="L211" title="All 4 branches covered.">			if (simpleObjects == expressions.size())</span>
+<span class="fc" id="L212">				return new Expression(objects.toString(), ExpressionType.OBJECT);</span>
+        }
+
+        // otherwise just return the first expression
+<span class="fc" id="L216">    	return expressions.get(0);</span>
+    }
+
+    /**
+     * Return the number of Expression objects of type &quot;VER&quot; in the sentence.
+     *
+     * @return number of subjects
+     */
+    public int getVerbCount() {
+<span class="fc" id="L225">        return countExpressions(ExpressionType.VERB);</span>
+    }
+
+    /**
+     * Return verb [i] of the sentence.
+     *
+     * @param i
+     * @return subject
+     */
+    public Expression getVerb(final int i) {
+<span class="fc" id="L235">        return getExpression(i, ExpressionType.VERB);</span>
+    }
+
+    /**
+     * Return verb as Expression object for the special case of sentences with only one verb.
+     *
+     * @return normalized verb string
+     */
+    public Expression getVerb() {
+//        if (getVerbCount() == 1) {
+//            return getVerb(0);
+//        } else {
+//            return null;
+//        }
+<span class="fc" id="L249">    	Expression verb = null;</span>
+
+<span class="fc bfc" id="L251" title="All 4 branches covered.">        for(final Expression w : expressions) {</span>
+<span class="fc bfc" id="L252" title="All 4 branches covered.">            if (w.isVerb()) {</span>
+<span class="fc bfc" id="L253" title="All 4 branches covered.">                if (verb == null) {</span>
+<span class="fc" id="L254">                	verb = w;</span>
+                } else {
+<span class="fc" id="L256">                	return null; // more than one verb present</span>
+                }
+            }
+<span class="fc" id="L259">        }</span>
+
+<span class="fc" id="L261">        return verb;</span>
+    }
+
+    /**
+     * Return verb as String for the special case of sentences with only one verb.
+     *
+     * @return normalized verb string
+     */
+    public String getVerbString() {
+//        if (getVerbCount() == 1) {
+//            return getVerb(0).getNormalized();
+//        } else {
+//            return null;
+//        }
+<span class="fc" id="L275">        String verb = null;</span>
+
+<span class="fc bfc" id="L277" title="All 4 branches covered.">        for(final Expression w : expressions) {</span>
+<span class="fc bfc" id="L278" title="All 4 branches covered.">            if (w.isVerb()) {</span>
+<span class="pc bpc" id="L279" title="2 of 4 branches missed.">                if (verb == null) {</span>
+<span class="fc" id="L280">                	verb = w.getNormalized();</span>
+                } else {
+<span class="nc" id="L282">                	return null; // more than one verb present</span>
+                }
+            }
+<span class="fc" id="L285">        }</span>
+
+<span class="fc" id="L287">        return verb;</span>
+    }
+
+    /**
+     * Return the number of subjects.
+     *
+     * @return number of subjects
+     */
+    public int getSubjectCount() {
+<span class="fc" id="L296">        return countExpressions(ExpressionType.SUBJECT);</span>
+    }
+
+    /**
+     * Return subject [i] of the sentence.
+     *
+     * @param i
+     * @return subject
+     */
+    public Expression getSubject(final int i) {
+<span class="fc" id="L306">        return getExpression(i, ExpressionType.SUBJECT);</span>
+    }
+
+    /**
+     * Return the subject as String for the special case of sentences with only one subject.
+     *
+     * @return normalized subject string
+     */
+    public String getSubjectName() {
+//        if (getSubjectCount() == 1) {
+//            return getSubject(0).getNormalized();
+//        } else {
+//            return null;
+//        }
+<span class="fc" id="L320">        String name = null;</span>
+
+<span class="fc bfc" id="L322" title="All 4 branches covered.">        for(final Expression w : expressions) {</span>
+<span class="fc bfc" id="L323" title="All 4 branches covered.">            if (w.isSubject()) {</span>
+<span class="pc bpc" id="L324" title="2 of 4 branches missed.">                if (name == null) {</span>
+<span class="fc" id="L325">                	name = w.getNormalized();</span>
+                } else {
+<span class="nc" id="L327">                	return null; // more than one subject present</span>
+                }
+            }
+<span class="fc" id="L330">        }</span>
+
+<span class="fc" id="L332">        return name;</span>
+    }
+
+    /**
+     * Return the number of objects.
+     *
+     * @return number of objects
+     */
+    public int getObjectCount() {
+<span class="fc" id="L341">        return countExpressions(ExpressionType.OBJECT);</span>
+    }
+
+    /**
+     * Return object [i] of the parsed sentence (e.g. item to be bought).
+     *
+     * @param i
+     * @return object
+     */
+    public Expression getObject(final int i) {
+<span class="fc" id="L351">        return getExpression(i, ExpressionType.OBJECT);</span>
+    }
+
+    /**
+     * Return the object as String for the special case of sentences with only one object.
+     *
+     * @return normalized object name
+     */
+    public String getObjectName() {
+//        if (getObjectCount() == 1) {
+//            return getObject(0).getNormalized();
+//        } else {
+//            return null;
+//        }
+<span class="fc" id="L365">        String name = null;</span>
+
+<span class="fc bfc" id="L367" title="All 4 branches covered.">        for(final Expression w : expressions) {</span>
+<span class="fc bfc" id="L368" title="All 4 branches covered.">            if (w.isObject()) {</span>
+<span class="pc bpc" id="L369" title="2 of 4 branches missed.">                if (name == null) {</span>
+<span class="fc" id="L370">                	name = w.getNormalized();</span>
+                } else {
+<span class="nc" id="L372">                	return null; // more than one object present</span>
+                }
+            }
+<span class="fc" id="L375">        }</span>
+
+<span class="fc" id="L377">        return name;</span>
+    }
+
+    /**
+     * Return object name [i] of the parsed sentence.
+     *
+     * @param i
+     * @return normalized object name
+     */
+    public String getObjectName(final int i) {
+<span class="nc" id="L387">        return getObject(i).getNormalized();</span>
+    }
+
+    /**
+     * Return the number of prepositions.
+     *
+     * @return number of objects
+     */
+    public int getPrepositionCount() {
+<span class="nc" id="L396">        return countExpressions(ExpressionType.PREPOSITION);</span>
+    }
+
+    /**
+     * Return the preposition [i] of the parsed sentence.
+     *
+     * @param i
+     * @return object
+     */
+    public Expression getPreposition(final int i) {
+<span class="fc" id="L406">        return getExpression(i, ExpressionType.PREPOSITION);</span>
+    }
+
+    /**
+     * Return the number of number Expressions.
+     *
+     * @return number of number Expressions
+     */
+    public int getNumeralCount() {
+<span class="fc" id="L415">        return countExpressions(ExpressionType.NUMERAL);</span>
+    }
+
+    /**
+     * Return numeral [i] of the parsed sentence.
+     *
+     * @param i
+     * @return numeral
+     */
+    public Expression getNumeral(final int i) {
+<span class="fc" id="L425">        return getExpression(i, ExpressionType.NUMERAL);</span>
+    }
+
+    /**
+     * Return the single numeral of the parsed sentence.
+     *
+     * @return numeral
+     */
+    public Expression getNumeral() {
+//        if (getNumeralCount() == 1) {
+//            return getNumeral(0);
+//        } else {
+//            return null;
+//        }
+<span class="fc" id="L439">    	Expression num = null;</span>
+
+<span class="fc bfc" id="L441" title="All 4 branches covered.">        for(final Expression w : expressions) {</span>
+<span class="fc bfc" id="L442" title="All 4 branches covered.">            if (w.isNumeral()) {</span>
+<span class="pc bpc" id="L443" title="2 of 4 branches missed.">                if (num == null) {</span>
+<span class="fc" id="L444">                	num = w;</span>
+                } else {
+<span class="nc" id="L446">                	return null; // more than one numeral present</span>
+                }
+            }
+<span class="fc" id="L449">        }</span>
+
+<span class="fc" id="L451">        return num;</span>
+    }
+
+    /**
+     * Return true if the sentence is empty.
+     *
+     * @return empty flag
+     */
+    public boolean isEmpty() {
+<span class="fc bfc" id="L460" title="All 8 branches covered.">        return (sentenceType == SentenceType.UNDEFINED) &amp;&amp; expressions.isEmpty();</span>
+    }
+
+    /**
+     * Return the complete text of the sentence with unchanged case, but with trimmed white space. 
+     * There should be only as few code places as possible to rely on this method.
+     *
+     * @return string
+     */
+    public String getTrimmedText() {
+<span class="fc" id="L470">        final SentenceBuilder builder = new SentenceBuilder();</span>
+
+<span class="fc bfc" id="L472" title="All 4 branches covered.">        for (final Expression w : expressions) {</span>
+<span class="fc" id="L473">            builder.append(w.getOriginal());</span>
+<span class="fc" id="L474">        }</span>
+
+<span class="fc" id="L476">        appendPunctation(builder);</span>
+
+<span class="fc" id="L478">        return builder.toString();</span>
+    }
+
+    /**
+     * Return the original parsed text of the sentence.
+     * Leading and trailing white space is already trimmed.
+     * 
+     * deprecate: There should be only as few code places as possible
+     * to rely on this method.
+     *
+     * @return string
+     */
+    public String getOriginalText() {
+<span class="fc" id="L491">        return originalText;</span>
+    }
+
+    /**
+     * Return the sentence with all words normalized.
+     *
+     * @return string
+     */
+    public String getNormalized() {
+<span class="fc" id="L500">        final SentenceBuilder builder = new SentenceBuilder();</span>
+
+<span class="fc bfc" id="L502" title="All 4 branches covered.">        for (final Expression w : expressions) {</span>
+<span class="pc bpc" id="L503" title="2 of 8 branches missed.">            if ((w.getType() == null) || !isIgnorable(w)) {</span>
+<span class="fc" id="L504">                builder.append(w.getNormalized());</span>
+            }
+<span class="fc" id="L506">        }</span>
+
+<span class="fc" id="L508">        appendPunctation(builder);</span>
+
+<span class="fc" id="L510">        return builder.toString();</span>
+    }
+
+    /**
+     * Return the expression matcher of the first expression.
+     * @return expression matcher
+     */
+	public ExpressionMatcher getMatcher() {
+<span class="fc bfc" id="L518" title="All 4 branches covered.">		if (!expressions.isEmpty()) {</span>
+<span class="fc" id="L519">			return expressions.get(0).getMatcher();</span>
+		} else {
+<span class="fc" id="L521">			return null;</span>
+		}
+	}
+
+    /**
+     * Parse the sentence again, using the given conversation context.
+     *
+     * @param ctx
+     * @return parsed Sentence
+     */
+    public Sentence parse(final ConversationContext ctx) {
+<span class="fc bfc" id="L532" title="All 4 branches covered.">    	if (context.equals(ctx)) {</span>
+<span class="fc" id="L533">    		return this;</span>
+    	} else {
+<span class="fc" id="L535">    		return ConversationParser.parse(originalText, ctx);</span>
+    	}
+    }
+
+    /**
+     * Return a parsed sentence object to be used as source in matching.
+     *
+     * @return parsed for matching as source Sentence
+     */
+    public Sentence parseAsMatchingSource() {
+<span class="fc" id="L545">    	return parse(new ConvCtxForMatchingSource());</span>
+    }
+
+    /**
+     * Check if the given Expression should be ignored.
+     *
+     * @param expr
+     * @return true, if the expression should be ignored
+     */
+    protected boolean isIgnorable(final Expression expr) {
+<span class="fc bfc" id="L555" title="All 8 branches covered.">        return context.getIgnoreIgnorable() &amp;&amp; expr.isIgnore();</span>
+    }
+
+    /**
+     * Return the full sentence as lower case string including type specifiers.
+     *
+     * @return string
+     */
+    @Override
+    public String toString() {
+<span class="fc" id="L565">        final SentenceBuilder builder = new SentenceBuilder();</span>
+
+<span class="fc bfc" id="L567" title="All 4 branches covered.">        for (final Expression w : expressions) {</span>
+<span class="fc bfc" id="L568" title="All 4 branches covered.">            if (w.getType() != null) {</span>
+<span class="fc bfc" id="L569" title="All 4 branches covered.">                if (!isIgnorable(w)) {</span>
+<span class="fc" id="L570">                    builder.append(w.getNormalizedWithTypeString());</span>
+                }
+            } else {
+<span class="fc" id="L573">                builder.append(w.getOriginal());</span>
+            }
+
+<span class="fc bfc" id="L576" title="All 4 branches covered.">            if (w.getBreakFlag()) {</span>
+<span class="fc" id="L577">                builder.append(',');</span>
+            }
+<span class="fc" id="L579">        }</span>
+
+<span class="fc" id="L581">        appendPunctation(builder);</span>
+
+<span class="fc" id="L583">        String ret = builder.toString();</span>
+
+        // prepend the ExpressionMatcher string of the first expression
+<span class="fc" id="L586">        ExpressionMatcher matcher = getMatcher();</span>
+
+<span class="fc bfc" id="L588" title="All 4 branches covered.">        if (matcher != null) {</span>
+<span class="fc" id="L589">            ret = matcher.toString() + ExpressionMatcher.PM_SEPARATOR + ret;</span>
+        }
+
+<span class="fc" id="L592">        return ret;</span>
+    }
+
+    /**
+     * Append the trailing punctuation depending on the sentence type to the given SentenceBuilder.
+     *
+     * @param builder
+     */
+    protected void appendPunctation(final SentenceBuilder builder) {
+<span class="fc bfc" id="L601" title="All 4 branches covered.">        if (sentenceType == SentenceType.STATEMENT) {</span>
+<span class="fc" id="L602">            builder.append('.');</span>
+<span class="fc bfc" id="L603" title="All 4 branches covered.">        } else if (sentenceType == SentenceType.IMPERATIVE) {</span>
+<span class="fc" id="L604">            builder.append('!');</span>
+<span class="fc bfc" id="L605" title="All 4 branches covered.">        } else if (sentenceType == SentenceType.QUESTION) {</span>
+<span class="fc" id="L606">            builder.append('?');</span>
+        }
+<span class="fc" id="L608">    }</span>
+
+    /**
+     * Check if two Sentences consist of identical normalized Expressions.
+     *
+     * @param other
+     * @return true if so
+     */
+    public boolean equalsNormalized(final Sentence other) {
+<span class="fc bfc" id="L617" title="All 4 branches covered.">        if (other == this) {</span>
+<span class="fc" id="L618">            return true;</span>
+<span class="pc bpc" id="L619" title="2 of 4 branches missed.">        } else if (other == null) {</span>
+<span class="nc" id="L620">            return false;</span>
+        }
+
+        // shortcut for sentences with differing lengths
+<span class="fc bfc" id="L624" title="All 4 branches covered.">        if (expressions.size() != other.expressions.size()) {</span>
+<span class="fc" id="L625">            return false;</span>
+        }
+
+        // loop over all expressions and compare both sides
+<span class="fc" id="L629">        final Iterator&lt;Expression&gt; it1 = expressions.iterator();</span>
+<span class="fc" id="L630">        final Iterator&lt;Expression&gt; it2 = other.expressions.iterator();</span>
+
+<span class="pc bpc" id="L632" title="2 of 8 branches missed.">        while (it1.hasNext() &amp;&amp; it2.hasNext()) {</span>
+<span class="fc" id="L633">            final Expression e1 = it1.next();</span>
+<span class="fc" id="L634">            final Expression e2 = it2.next();</span>
+
+<span class="pc bpc" id="L636" title="2 of 4 branches missed.">            if (!e1.matchesNormalized(e2)) {</span>
+<span class="nc" id="L637">                return false;</span>
+            }
+<span class="fc" id="L639">        }</span>
+
+        // Now there should be no more expressions at both sides.
+<span class="pc bpc" id="L642" title="4 of 8 branches missed.">        return (!it1.hasNext() &amp;&amp; !it2.hasNext());</span>
+    }
+
+    /**
+     * Compare two sentences and return the difference as String.
+     *
+     * @param other
+     * @return difference String
+     */
+	public String diffNormalized(final Sentence other) {
+<span class="fc" id="L652">        final SentenceBuilder ret = new SentenceBuilder();</span>
+
+        // loop over all expressions and match them between both sides
+<span class="fc" id="L655">        final Iterator&lt;Expression&gt; it1 = expressions.iterator();</span>
+<span class="fc" id="L656">        final Iterator&lt;Expression&gt; it2 = other.expressions.iterator();</span>
+
+        while (true) {
+<span class="fc" id="L659">            final Expression e1 = nextValid(it1);</span>
+<span class="fc" id="L660">            final Expression e2 = nextValid(it2);</span>
+
+<span class="fc bfc" id="L662" title="All 8 branches covered.">            if ((e1 == null) &amp;&amp; (e2 == null)) {</span>
+<span class="fc" id="L663">                break;</span>
+<span class="fc bfc" id="L664" title="All 8 branches covered.">            } else if ((e1 != null) &amp;&amp; (e2 != null)) {</span>
+<span class="fc bfc" id="L665" title="All 4 branches covered.">                if (!e1.matchesNormalized(e2)) {</span>
+<span class="fc" id="L666">                    ret.append(&quot;-[&quot; + e1.getNormalized() + &quot;]&quot;);</span>
+<span class="fc" id="L667">                    ret.append(&quot;+[&quot; + e2.getNormalized() + &quot;]&quot;);</span>
+                }
+<span class="fc bfc" id="L669" title="All 4 branches covered.">            } else if (e1 != null) {</span>
+<span class="fc" id="L670">                ret.append(&quot;-[&quot; + e1.getNormalized() + &quot;]&quot;);</span>
+            } else {
+<span class="fc" id="L672">                ret.append(&quot;+[&quot; + e2.getNormalized() + &quot;]&quot;);</span>
+            }
+<span class="fc" id="L674">        }</span>
+
+<span class="fc" id="L676">        return ret.toString();</span>
+    }
+
+    /**
+     * Advance the iterator and return the next non-ignorable Expression.
+     *
+     * @param it
+     * @return the next non-ignorable Expression
+     */
+    public Expression nextValid(final Iterator&lt;Expression&gt; it) {
+<span class="fc bfc" id="L686" title="All 4 branches covered.">        while (it.hasNext()) {</span>
+<span class="fc" id="L687">            final Expression expr = it.next();</span>
+
+<span class="fc bfc" id="L689" title="All 4 branches covered.">            if (!isIgnorable(expr)) {</span>
+<span class="fc" id="L690">                return expr;</span>
+            }
+<span class="fc" id="L692">        }</span>
+
+<span class="fc" id="L694">        return null;</span>
+    }
+
+    /**
+     * Check if the Sentence matches the given String. The match Sentence can contain explicit expressions, which are
+     * compared after normalizing, or ExpressionType specifiers like &quot;VER&quot; or &quot;SUB*&quot; in upper case.
+     *
+     * @param text
+     * @return true if it matches.
+     */
+    public boolean matchesNormalized(final String text) {
+<span class="fc" id="L705">        return matchesFull(ConversationParser.parseAsMatcher(text));</span>
+    }
+
+    /**
+     * Check if the Sentence beginning matches the given String. The match Sentence can contain explicit expressions,
+     * which are compared after normalizing, or ExpressionType specifiers like &quot;VER&quot; or &quot;SUB*&quot; in upper case.
+     *
+     * @param text
+     * @return true, if the text matches
+     */
+    public boolean matchesNormalizedStart(final String text) {
+<span class="fc" id="L716">        return matchesStart(ConversationParser.parseAsMatcher(text));</span>
+    }
+
+    /**
+     * Check if the Sentence matches the beginning of the given String. The match Sentence can contain explicit expressions,
+     * which are compared after normalizing, or ExpressionType specifiers like &quot;VER&quot; or &quot;SUB*&quot; in upper case.
+     *
+     * @param text
+     * @return true, if the text matches
+     */
+    public boolean matchesStartNormalized(final String text) {
+<span class="fc" id="L727">        return ConversationParser.parseAsMatcher(text).matchesStart(this);</span>
+    }
+
+    /**
+     * Check if the Sentence completely matches the given Sentence. The match Sentence can contain explicit expressions,
+     * which are compared after normalizing, or ExpressionType specifiers like &quot;VER&quot; or &quot;SUB*&quot; in upper case.
+     *
+     * @param other
+     * @return true, if the complete sentence matches
+     */
+    public boolean matchesFull(final Sentence other) {
+<span class="fc" id="L738">        return matches(other, false);</span>
+    }
+
+    /**
+     * Check if the Sentence start matches the given Sentence. The match Sentence can contain explicit expressions,
+     * which are compared after normalizing, or ExpressionType specifiers like &quot;VER&quot; or &quot;SUB*&quot; in upper case.
+     *
+     * @param other
+     * @return true, if the start sentence start matches
+     */
+    public boolean matchesStart(final Sentence other) {
+<span class="fc" id="L749">        return matches(other, true);</span>
+    }
+
+    /**
+     * Check if the Sentence matches the given Sentence. The match Sentence can contain explicit expressions, which are
+     * compared after normalizing, or ExpressionType specifiers like &quot;VER&quot; or &quot;SUB*&quot; in upper case.
+     *
+     * @param other
+     * @param matchStart
+     * @return if the specified sentence matches
+     */
+    private boolean matches(final Sentence other, final boolean matchStart) {
+<span class="pc bpc" id="L761" title="2 of 4 branches missed.">        if (other == null) {</span>
+<span class="nc" id="L762">            return false;</span>
+        }
+
+        // loop over all expressions and match them between both sides
+<span class="fc" id="L766">        final Iterator&lt;Expression&gt; it1 = expressions.iterator();</span>
+<span class="fc" id="L767">        final Iterator&lt;Expression&gt; it2 = other.expressions.iterator();</span>
+        Expression e1;
+        Expression e2;
+
+        while (true) {
+<span class="fc" id="L772">            e1 = nextValid(it1);</span>
+<span class="fc" id="L773">            e2 = nextValid(it2);</span>
+
+<span class="fc bfc" id="L775" title="All 8 branches covered.">            if ((e1 == null) || (e2 == null)) {</span>
+<span class="fc" id="L776">                break;</span>
+            }
+
+<span class="fc bfc" id="L779" title="All 4 branches covered.">            if (e2.getMatcher() != null) {</span>
+<span class="fc bfc" id="L780" title="All 4 branches covered.">                if (!e2.getMatcher().match(e1, e2)) {</span>
+<span class="fc" id="L781">                    return false;</span>
+                }
+<span class="fc bfc" id="L783" title="All 4 branches covered.">            } else if (!e1.sentenceMatchExpression(e2)) {</span>
+<span class="fc" id="L784">                return false;</span>
+            }
+        }
+
+        // If we look for a full match, there should be no more expressions at both sides.
+<span class="fc bfc" id="L789" title="All 8 branches covered.">        if ((e1 == null) &amp;&amp; (e2 == null)) {</span>
+<span class="fc" id="L790">            return true;</span>
+        } else {
+            // If we look for a match at Sentence start, there must be no more expressions at the right side.
+        	 
+<span class="fc bfc" id="L794" title="All 8 branches covered.">            return (matchStart &amp;&amp; (e2 == null));</span>
+        }
+    }
+
+    /**
+     * Searches for a matching name in the given Set.
+     *
+     * @param names
+     * @return name, or null if no match
+     */
+    public NameSearch findMatchingName(final Set&lt;String&gt; names) {
+<span class="fc" id="L805">        final NameSearch ret = new NameSearch(names);</span>
+
+        // check first object of the sentence
+<span class="fc" id="L808">        Expression name = getObject(0);</span>
+
+<span class="fc bfc" id="L810" title="All 4 branches covered.">        if (name != null) {</span>
+<span class="fc bfc" id="L811" title="All 4 branches covered.">            if (ret.search(name)) {</span>
+<span class="fc" id="L812">                return ret;</span>
+            }
+        }
+
+<span class="pc bpc" id="L816" title="2 of 4 branches missed.">        if (!ret.found()) {</span>
+            // check first subject
+<span class="fc" id="L818">            name = getSubject(0);</span>
+
+<span class="fc bfc" id="L820" title="All 4 branches covered.">            if (name != null) {</span>
+<span class="fc bfc" id="L821" title="All 4 branches covered.">                if (ret.search(name)) {</span>
+<span class="fc" id="L822">                    return ret;</span>
+                }
+            }
+        }
+
+<span class="pc bpc" id="L827" title="2 of 4 branches missed.">        if (!ret.found()) {</span>
+            // check second subject, e.g. in &quot;i buy cat&quot;
+<span class="fc" id="L829">            name = getSubject(1);</span>
+
+<span class="fc bfc" id="L831" title="All 4 branches covered.">            if (name != null) {</span>
+<span class="pc bpc" id="L832" title="2 of 4 branches missed.">                if (ret.search(name)) {</span>
+<span class="fc" id="L833">                    return ret;</span>
+                }
+            }
+        }
+
+<span class="pc bpc" id="L838" title="2 of 4 branches missed.">        if (!ret.found()) {</span>
+            // check unknown/misspelled words, e.g. in &quot;sell porcinis&quot;
+<span class="fc" id="L840">            name = getUnknownTypeExpression(0);</span>
+
+<span class="fc bfc" id="L842" title="All 4 branches covered.">            if (name != null) {</span>
+<span class="pc bpc" id="L843" title="2 of 4 branches missed.">            	if (!name.hasAmount()) {</span>
+<span class="fc" id="L844">                    Expression num = getNumeral(0);</span>
+
+<span class="fc bfc" id="L846" title="All 4 branches covered.">                    if (num != null) {</span>
+<span class="fc" id="L847">                    	name.setAmount(num.getAmount());</span>
+                    }
+            	}
+
+<span class="fc bfc" id="L851" title="All 4 branches covered.">            	if (ret.search(name)) {</span>
+<span class="fc" id="L852">                    return ret;</span>
+                }
+            }
+        }
+        
+<span class="fc" id="L857">        return ret;</span>
+    }
+
+    /**
+     * Return a string containing the sentence part referenced by a verb or simply the single object name.
+     *
+     * @return String or null if nothing found
+     */
+    public String getExpressionStringAfterVerb() {
+<span class="fc" id="L866">        String ret = null;</span>
+
+<span class="fc" id="L868">        final int unkownCount = getUnknownTypeCount();</span>
+<span class="fc" id="L869">        final int verbCount = getVerbCount();</span>
+
+        // If all words in the Sentence could be recognized, just return the object name, if available.
+<span class="fc bfc" id="L872" title="All 4 branches covered.">        if (unkownCount == 0) {</span>
+<span class="fc" id="L873">            ret = getObjectName();</span>
+        }
+
+        // If we could not find an object, look for the expressions following the single verb.
+<span class="pc bpc" id="L877" title="2 of 8 branches missed.">        if ((ret == null) &amp;&amp; (verbCount == 1)) {</span>
+<span class="fc" id="L878">            ret = stringFromExpressionsAfter(getVerb());</span>
+        }
+
+        // If we didn't find anything usable until now, take the first unknown word.
+<span class="pc bpc" id="L882" title="2 of 8 branches missed.">        if ((ret == null) &amp;&amp; (unkownCount &gt; 0)) {</span>
+<span class="nc" id="L883">            final Expression unknown = getUnknownTypeExpression(0);</span>
+
+<span class="nc bnc" id="L885" title="All 4 branches missed.">            if (unknown != null) {</span>
+<span class="nc" id="L886">                ret = unknown.getNormalized();</span>
+            }
+        }
+
+        // If this still didn't work, look for the expressions following the first verb.
+<span class="pc bpc" id="L891" title="2 of 8 branches missed.">        if ((ret == null) &amp;&amp; (verbCount &gt; 1)) {</span>
+<span class="nc" id="L892">            ret = stringFromExpressionsAfter(getVerb(0));</span>
+        }
+
+<span class="fc" id="L895">        return ret;</span>
+    }
+
+    /**
+     * Build a string from the list of expressions following the given one.
+     *
+     * @param expr
+     * @return next expression
+     */
+    private String stringFromExpressionsAfter(final Expression expr) {
+<span class="pc bpc" id="L905" title="2 of 4 branches missed.">        if (expr == null) {</span>
+<span class="nc" id="L906">            return null;</span>
+        }
+
+<span class="fc" id="L909">        final Iterator&lt;Expression&gt; it = iteratorFromExpression(expr);</span>
+
+        // skip leading amount expressions
+<span class="fc" id="L912">        final Iterator&lt;Expression&gt; it2 = iteratorFromExpression(expr);</span>
+<span class="fc bfc" id="L913" title="All 4 branches covered.">        if (it2.hasNext()) {</span>
+<span class="fc" id="L914">            final Expression e2 = it2.next();</span>
+
+<span class="pc bpc" id="L916" title="2 of 4 branches missed.">            if (e2.isNumeral()) {</span>
+<span class="nc" id="L917">                it.next();</span>
+            }
+        }
+
+        // build a string from the expression list
+<span class="fc" id="L922">        final SentenceBuilder buffer = new SentenceBuilder();</span>
+
+<span class="fc bfc" id="L924" title="All 4 branches covered.">        if (buffer.appendUntilBreak(it) &gt; 0) {</span>
+<span class="fc" id="L925">            return buffer.toString();</span>
+        } else {
+<span class="fc" id="L927">            return null;</span>
+        }
+    }
+
+    /**
+     * Iterate until we find the given Expression object.
+     *
+     * @param expr
+     * @return Iterator
+     */
+    private Iterator&lt;Expression&gt; iteratorFromExpression(final Expression expr) {
+<span class="fc" id="L938">        final Iterator&lt;Expression&gt; it = expressions.iterator();</span>
+
+<span class="pc bpc" id="L940" title="2 of 4 branches missed.">        while (it.hasNext()) {</span>
+            // Did we find it?
+<span class="pc bpc" id="L942" title="2 of 4 branches missed.">            if (expr == it.next()) {</span>
+<span class="fc" id="L943">                break;</span>
+            }
+        }
+
+<span class="fc" id="L947">        return it;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

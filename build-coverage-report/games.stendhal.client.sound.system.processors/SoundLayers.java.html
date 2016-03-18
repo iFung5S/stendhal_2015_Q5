@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SoundLayers.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.sound.system.processors</a> &gt; <span class="el_source">SoundLayers.java</span></div><h1>SoundLayers.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.sound.system.processors;
+
+import games.stendhal.common.math.Algebra;
+import games.stendhal.common.math.Numeric;
+import games.stendhal.client.sound.system.SignalProcessor;
+import java.util.Comparator;
+import java.util.LinkedList;
+import java.util.TreeMap;
+import java.util.concurrent.atomic.AtomicInteger;
+
+/**
+ *
+ * @author silvio
+ */
+<span class="nc" id="L27">public class SoundLayers</span>
+{
+    public final class VolumeAdjustor extends SignalProcessor
+    {
+        //private float mIntensity;
+<span class="nc" id="L32">        private AtomicInteger mIntensity = new AtomicInteger(floatToInt(1.0f));</span>
+        private Layer         mLayer;
+
+        private VolumeAdjustor(Layer layer)
+<span class="nc" id="L36">        {</span>
+<span class="nc" id="L37">            mLayer = layer;</span>
+<span class="nc" id="L38">        }</span>
+
+        public void setLayer(int level)
+        {
+<span class="nc bnc" id="L42" title="All 2 branches missed.">            if(mLayer.level == level)</span>
+<span class="nc" id="L43">                return;</span>
+            
+<span class="nc" id="L45">            synchronized(SoundLayers.this)</span>
+            {
+<span class="nc" id="L47">                mLayer.adjustors.remove(this);</span>
+<span class="nc" id="L48">                mLayer = getLayer(level);</span>
+<span class="nc" id="L49">                mLayer.adjustors.add(this);</span>
+<span class="nc" id="L50">                mStateChanged = true;</span>
+<span class="nc" id="L51">            }</span>
+<span class="nc" id="L52">        }</span>
+
+        public void setIntensity(float intensity)
+        {
+<span class="nc bnc" id="L56" title="All 2 branches missed.">            if(Algebra.isEqual_Scalf(intensity, intToFloat(mIntensity.get())))</span>
+<span class="nc" id="L57">                return;</span>
+            
+<span class="nc" id="L59">            synchronized(SoundLayers.this)</span>
+            {
+<span class="nc" id="L61">                mIntensity.set(floatToInt(intensity));</span>
+<span class="nc" id="L62">                mStateChanged = true;</span>
+<span class="nc" id="L63">            }</span>
+<span class="nc" id="L64">        }</span>
+        
+        @Override
+        protected void modify(float[] data, int frames, int channels, int rate)
+        {
+<span class="nc" id="L69">            synchronized(SoundLayers.this)</span>
+            {
+<span class="nc bnc" id="L71" title="All 2 branches missed.">                if(mStateChanged)</span>
+<span class="nc" id="L72">                    computeVolumes();</span>
+<span class="nc" id="L73">            }</span>
+
+<span class="nc" id="L75">            float volume = intToFloat(Math.min(mLayer.volume.get(), mIntensity.get()));</span>
+
+            // if volume is zero we return without processing the audio data
+<span class="nc bnc" id="L78" title="All 2 branches missed.">            if(Algebra.isEqual_Scalf(volume, 0.0f))</span>
+<span class="nc" id="L79">                return;</span>
+
+            // if volume is 1 we propagate the unmodified audio data
+<span class="nc bnc" id="L82" title="All 2 branches missed.">            if(!Algebra.isEqual_Scalf(volume, 1.0f))</span>
+            {
+<span class="nc bnc" id="L84" title="All 2 branches missed.">                for(int i=0; i&lt;(frames*channels); ++i)</span>
+<span class="nc" id="L85">                    data[i] *= volume;</span>
+            }
+
+<span class="nc" id="L88">            super.propagate(data, frames, channels, rate);</span>
+<span class="nc" id="L89">        }</span>
+    }
+
+    private static class Layer
+    {
+        int                        level;
+<span class="nc" id="L95">        LinkedList&lt;VolumeAdjustor&gt; adjustors = new LinkedList&lt;VolumeAdjustor&gt;();</span>
+<span class="nc" id="L96">        AtomicInteger              volume    = new AtomicInteger(floatToInt(1.0f));</span>
+
+<span class="nc" id="L98">        Layer(int lvl) { level = lvl; }</span>
+    }
+
+<span class="nc" id="L101">    private boolean                mStateChanged = true;</span>
+<span class="nc" id="L102">    private TreeMap&lt;Integer,Layer&gt; mLayers       = new TreeMap&lt;Integer, Layer&gt;(new Comparator&lt;Integer&gt;()</span>
+<span class="nc" id="L103">    {</span>
+        @Override
+		public int compare(Integer a, Integer b)
+        {
+<span class="nc" id="L107">            return b.compareTo(a);</span>
+        }
+    });
+
+    public synchronized VolumeAdjustor createVolumeAdjustor(int layerLevel)
+    {
+<span class="nc" id="L113">        Layer          layer    = getLayer(layerLevel);</span>
+<span class="nc" id="L114">        VolumeAdjustor adjustor = new VolumeAdjustor(layer);</span>
+<span class="nc" id="L115">        layer.adjustors.add(adjustor);</span>
+<span class="nc" id="L116">        return adjustor;</span>
+    }
+
+    public synchronized void removeVolumeAdjustor(VolumeAdjustor adjustor)
+    {
+<span class="nc" id="L121">        adjustor.mLayer.adjustors.remove(adjustor);</span>
+<span class="nc" id="L122">    }</span>
+
+    private void computeVolumes()
+    {
+<span class="nc" id="L126">        int summedIntensity = 0;</span>
+
+<span class="nc bnc" id="L128" title="All 2 branches missed.">        for(Layer layer: mLayers.values())</span>
+        {
+<span class="nc" id="L130">            int currIntensity = 0;</span>
+
+<span class="nc bnc" id="L132" title="All 2 branches missed.">            for(VolumeAdjustor adjustor: layer.adjustors)</span>
+<span class="nc" id="L133">                currIntensity = Math.max(currIntensity, adjustor.mIntensity.get());</span>
+
+<span class="nc" id="L135">            currIntensity    = Math.min(currIntensity, floatToInt(1.0f) - summedIntensity);</span>
+<span class="nc" id="L136">            currIntensity    = Math.max(currIntensity, 0);</span>
+<span class="nc" id="L137">            summedIntensity += currIntensity;</span>
+
+<span class="nc" id="L139">            layer.volume.set(currIntensity);</span>
+<span class="nc" id="L140">        }</span>
+
+<span class="nc" id="L142">        mStateChanged = false;</span>
+<span class="nc" id="L143">    }</span>
+
+    private Layer getLayer(int layerLevel)
+    {
+<span class="nc" id="L147">        Layer layer = mLayers.get(layerLevel);</span>
+
+<span class="nc bnc" id="L149" title="All 2 branches missed.">        if(layer == null)</span>
+        {
+<span class="nc" id="L151">            layer = new Layer(layerLevel);</span>
+<span class="nc" id="L152">            mLayers.put(layerLevel, layer);</span>
+        }
+
+<span class="nc" id="L155">        return layer;</span>
+    }
+
+<span class="nc" id="L158">    private static int   floatToInt(float v) { return Numeric.floatToInt(v, 10000000.0f); }</span>
+<span class="nc" id="L159">    private static float intToFloat(int   v) { return Numeric.intToFloat(v, 10000000.0f); }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

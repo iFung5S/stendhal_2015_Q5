@@ -1,0 +1,336 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>BowsForOuchit.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests</a> &gt; <span class="el_source">BowsForOuchit.java</span></div><h1>BowsForOuchit.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2011 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests;
+
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.action.DropItemAction;
+import games.stendhal.server.entity.npc.action.EquipItemAction;
+import games.stendhal.server.entity.npc.action.IncreaseXPAction;
+import games.stendhal.server.entity.npc.action.MultipleActions;
+import games.stendhal.server.entity.npc.action.SetQuestAndModifyKarmaAction;
+import games.stendhal.server.entity.npc.condition.AndCondition;
+import games.stendhal.server.entity.npc.condition.NotCondition;
+import games.stendhal.server.entity.npc.condition.PlayerHasItemWithHimCondition;
+import games.stendhal.server.entity.npc.condition.QuestCompletedCondition;
+import games.stendhal.server.entity.npc.condition.QuestInStateCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotStartedCondition;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.maps.Region;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
+
+/**
+ * QUEST: Bows for Ouchit
+ * 
+ * PARTICIPANTS:
+ * &lt;ul&gt;
+ * &lt;li&gt; Ouchit, ranged items seller&lt;/li&gt;
+ * &lt;li&gt; Karl, farmer&lt;/li&gt;
+ * &lt;/ul&gt;
+ * 
+ * STEPS:
+ * &lt;ul&gt;
+ * &lt;li&gt; Ouchit asks for wood for his bows and arrows. &lt;/li&gt;
+ * &lt;li&gt; Puchit asks you to fetch horse hair from Karl also.&lt;/li&gt;
+ * &lt;li&gt; Return and you get some equipment as reward.&lt;li&gt;
+ * &lt;/ul&gt;
+ * 
+ * REWARD:
+ * &lt;ul&gt;
+ * &lt;li&gt; 1 XP&lt;li&gt;
+ * &lt;li&gt; Scale armor&lt;/li&gt;
+ * &lt;li&gt; Chain legs&lt;/li&gt;
+ * &lt;li&gt; Karma: 14&lt;li&gt;
+ * &lt;/ul&gt;
+ * 
+ * REPETITIONS:
+ * &lt;ul&gt;
+ * &lt;li&gt; None.&lt;/li&gt;
+ * &lt;/ul&gt;
+ */
+
+<span class="fc" id="L68">public class BowsForOuchit extends AbstractQuest {</span>
+
+	public static final String QUEST_SLOT = &quot;bows_ouchit&quot;;
+
+	public void prepareQuestStep() {
+
+		/*
+		 * get a reference to the Ouchit NPC
+		 */
+<span class="fc" id="L77">		SpeakerNPC npc = npcs.get(&quot;Ouchit&quot;);</span>
+
+		/*
+		 * Add a reply on the trigger phrase &quot;quest&quot; to Ouchit
+		 */
+<span class="fc" id="L82">		npc.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.QUEST_MESSAGES,
+				new QuestNotStartedCondition(QUEST_SLOT),
+				ConversationStates.QUESTION_1,
+				&quot;Are you here to help me a bit?&quot;,
+				null);
+
+		/*
+		 * Player is interested in helping, so explain the quest.
+		 */
+<span class="fc" id="L92">		npc.add(ConversationStates.QUESTION_1,</span>
+				ConversationPhrases.YES_MESSAGES,
+				new QuestNotStartedCondition(QUEST_SLOT),
+				ConversationStates.QUEST_OFFERED,
+				&quot;Good! I sell bows and arrows. It would be great if you could &quot; +
+				&quot;bring me 10 pieces of #wood. Can you bring me the wood?&quot;,
+				null);
+
+		/*
+		 * Player refused to help - end the conversation.
+		 */
+<span class="fc" id="L103">		npc.add(ConversationStates.QUESTION_1,</span>
+				ConversationPhrases.NO_MESSAGES,
+				new QuestNotStartedCondition(QUEST_SLOT),
+				ConversationStates.IDLE,
+				&quot;Oh ok, bye.&quot;,
+				null);
+
+		/*
+		 * Player agreed to get wood, so tell them what they'll need to say
+		 */
+<span class="fc" id="L113">		npc.add(ConversationStates.QUEST_OFFERED,</span>
+				ConversationPhrases.YES_MESSAGES,
+				new QuestNotStartedCondition(QUEST_SLOT),
+				ConversationStates.ATTENDING,
+				&quot;Nice :-) Come back when you have them and say #wood.&quot;,
+				new SetQuestAndModifyKarmaAction(QUEST_SLOT, &quot;wood&quot;, 2.0));
+
+		/*
+		 * Player asks about wood.
+		 */
+<span class="fc" id="L123">		npc.add(ConversationStates.QUEST_OFFERED,</span>
+				&quot;wood&quot;,
+				new QuestNotStartedCondition(QUEST_SLOT),
+				ConversationStates.QUEST_OFFERED,
+				&quot;Wood is a great item with many purposes. Of course you will &quot; +
+				&quot;find some pieces in a forest. Will you bring me 10 pieces?&quot;,
+				null);
+
+		/*
+		 * Player refused to help - end the conversation.
+		 */
+<span class="fc" id="L134">		npc.add(ConversationStates.QUEST_OFFERED,</span>
+				ConversationPhrases.NO_MESSAGES,
+				new QuestNotStartedCondition(QUEST_SLOT),
+				ConversationStates.IDLE,
+				&quot;Ok, you can come back later if you want. Bye for now.&quot;,
+				null);
+<span class="fc" id="L140">	}</span>
+
+	public void bringWoodStep() {
+
+		/*
+		 * get a reference to the Ouchit NPC
+		 */
+<span class="fc" id="L147">		SpeakerNPC npc = npcs.get(&quot;Ouchit&quot;);</span>
+		
+		/*
+		 * Player asks about quest, remind what they're doing
+		 */
+<span class="fc" id="L152">		npc.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.QUEST_MESSAGES,
+				new QuestInStateCondition(QUEST_SLOT,&quot;wood&quot;),
+				ConversationStates.ATTENDING,
+				&quot;I'm waiting for you to bring me 10 pieces of #wood.&quot;,
+				null);
+		
+		/*
+		 * Player asks about wood, but hasn't collected any - remind them.
+		 */
+<span class="fc" id="L162">		npc.add(ConversationStates.ATTENDING,</span>
+				&quot;wood&quot;,
+				new AndCondition(new QuestInStateCondition(QUEST_SLOT,&quot;wood&quot;),
+								 new NotCondition (new PlayerHasItemWithHimCondition(&quot;wood&quot;,10))),
+				ConversationStates.ATTENDING,
+				&quot;Wood is a great item with many purposes. Of course you will &quot; +
+				&quot;find some pieces in a forest. Please remember to come back when you &quot; +
+				&quot;have ten pieces for me, and say #wood.&quot;,
+				null);
+
+		/*
+		 * Player asks about wood, and has collected some - take it and
+ask for horse hair.
+		 */
+<span class="fc" id="L176">		npc.add(ConversationStates.ATTENDING,</span>
+				&quot;wood&quot;,
+				new AndCondition(new QuestInStateCondition(QUEST_SLOT,&quot;wood&quot;),
+								new PlayerHasItemWithHimCondition(&quot;wood&quot;,10)),
+				ConversationStates.ATTENDING,
+				&quot;Great, now I can make new arrows. But for the bows I need &quot; +
+				&quot;bowstrings. Please go to #Karl. I know he has horses and if &quot; +
+				&quot;you tell him my name he will give you #'horse hairs' from a horsetail.&quot;,
+				new MultipleActions(new SetQuestAndModifyKarmaAction(QUEST_SLOT, &quot;hair&quot;, 2.0), new DropItemAction(&quot;wood&quot;, 10)));
+
+		/*
+		 * For simplicity, respond to 'Karl' at any time.
+		 */
+<span class="fc" id="L189">		npc.addReply(&quot;Karl&quot;, &quot;Karl is a farmer, east of Semos. He has many pets on his farm.&quot;);</span>
+<span class="fc" id="L190">	}</span>
+
+	public void getHairStep() {
+
+		/*
+		 * get a reference to the Karl NPC
+		 */
+<span class="fc" id="L197">		SpeakerNPC npc = npcs.get(&quot;Karl&quot;);</span>
+
+<span class="fc" id="L199">		npc.add(ConversationStates.ATTENDING,</span>
+				&quot;Ouchit&quot;,
+				new AndCondition(new QuestInStateCondition(QUEST_SLOT,&quot;hair&quot;),
+								new NotCondition (new PlayerHasItemWithHimCondition(&quot;horse hair&quot;,1))),
+				ConversationStates.ATTENDING,
+				&quot;Hello, hello! Ouchit needs more horse hairs from my horses? &quot; +
+				&quot;No problem, here you are. Send Ouchit greetings from me.&quot;,
+				new EquipItemAction(&quot;horse hair&quot;));
+
+<span class="fc" id="L208">	}</span>
+
+	public void bringHairStep() {
+
+		/*
+		 * get a reference to the Ouchit NPC
+		 */
+<span class="fc" id="L215">		SpeakerNPC npc = npcs.get(&quot;Ouchit&quot;);</span>
+
+		/*
+		 * Player asks about quest, remind what they're doing
+		 */
+<span class="fc" id="L220">		npc.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.QUEST_MESSAGES,
+				new QuestInStateCondition(QUEST_SLOT,&quot;hair&quot;),
+				ConversationStates.ATTENDING,
+				&quot;I'm waiting for you to bring me some #'horse hairs'.&quot;,
+				null);
+		
+		/*
+		 * Player asks about horse hair, but hasn't collected any - remind them.
+		 */
+<span class="fc" id="L230">		npc.add(ConversationStates.ATTENDING,</span>
+				Arrays.asList(&quot;hair&quot;, &quot;horse&quot;, &quot;horse hairs&quot;),
+				new AndCondition(new QuestInStateCondition(QUEST_SLOT,&quot;hair&quot;),
+								new NotCondition (new PlayerHasItemWithHimCondition(&quot;horse hair&quot;))),
+				ConversationStates.ATTENDING,
+				&quot;Horse hairs can be used as a bowstring. Please fetch me some from #Karl.&quot;,
+				null);
+
+		/*
+		 * These actions are part of the reward
+		 */
+<span class="fc" id="L241">		final List&lt;ChatAction&gt; reward = new LinkedList&lt;ChatAction&gt;();</span>
+<span class="fc" id="L242">		reward.add(new DropItemAction(&quot;horse hair&quot;));</span>
+<span class="fc" id="L243">		reward.add(new EquipItemAction(&quot;scale armor&quot;, 1, true));</span>
+<span class="fc" id="L244">		reward.add(new EquipItemAction(&quot;chain legs&quot;, 1, true));</span>
+<span class="fc" id="L245">		reward.add(new IncreaseXPAction(100));</span>
+<span class="fc" id="L246">		reward.add(new SetQuestAndModifyKarmaAction(QUEST_SLOT, &quot;done&quot;, 10.0));</span>
+		
+		/*
+		 * Player asks about horse hair, and has collected some - take it
+and ask for horse hair.
+		 */
+<span class="fc" id="L252">		npc.add(ConversationStates.ATTENDING,</span>
+				Arrays.asList(&quot;hair&quot;, &quot;horse&quot;, &quot;horse hairs&quot;),
+				new AndCondition(new QuestInStateCondition(QUEST_SLOT,&quot;hair&quot;),
+								new PlayerHasItemWithHimCondition(&quot;horse hair&quot;)),
+				ConversationStates.ATTENDING,
+				&quot;Yay, you got the horse hairs. Thanks a lot. Karl is really nice. Here, &quot; +
+				&quot;take this for your work. Someone left it here and I don't need those things.&quot;,
+				new MultipleActions(reward));
+		
+		/*
+		 * Player asks about quest, and it is finished
+		 */
+<span class="fc" id="L264">		npc.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.QUEST_MESSAGES,
+				new QuestCompletedCondition(QUEST_SLOT),
+				ConversationStates.ATTENDING,
+				&quot;Thanks for your help. If I can #offer you anything just ask.&quot;,
+				null);
+		
+<span class="fc" id="L271">	}</span>
+
+	@Override
+	public void addToWorld() {
+<span class="fc" id="L275">		prepareQuestStep();</span>
+<span class="fc" id="L276">		bringWoodStep();</span>
+<span class="fc" id="L277">		getHairStep();</span>
+<span class="fc" id="L278">		bringHairStep();</span>
+<span class="fc" id="L279">		fillQuestInfo(</span>
+				&quot;Bows for Ouchit&quot;,
+				&quot;Ouchit is running out of bows and arrows to sell!&quot;,
+				false);
+<span class="fc" id="L283">	}</span>
+
+	@Override
+	public List&lt;String&gt; getHistory(final Player player) {
+<span class="nc" id="L287">		final List&lt;String&gt; res = new ArrayList&lt;String&gt;();</span>
+<span class="nc bnc" id="L288" title="All 2 branches missed.">		if (!player.hasQuest(QUEST_SLOT)) {</span>
+<span class="nc" id="L289">			return res;</span>
+		}
+<span class="nc" id="L291">		final String questState = player.getQuest(QUEST_SLOT);</span>
+<span class="nc" id="L292">		res.add(&quot;Ouchit asked me for help to replenish his stocks of bows and arrows.&quot;);</span>
+<span class="nc bnc" id="L293" title="All 2 branches missed.">		if (player.isQuestInState(QUEST_SLOT, &quot;wood&quot;, &quot;hair&quot;, &quot;done&quot;)) {</span>
+<span class="nc" id="L294">			res.add(&quot;First I must fetch Ouchit 10 pieces of wood.&quot;);</span>
+		}
+<span class="nc bnc" id="L296" title="All 4 branches missed.">		if(player.isEquipped(&quot;wood&quot;, 10) &amp;&amp; &quot;wood&quot;.equals(questState)) {</span>
+<span class="nc" id="L297">			res.add(&quot;I've got the wood to take to Ouchit.&quot;);</span>
+		}
+<span class="nc bnc" id="L299" title="All 2 branches missed.">		if(player.isQuestInState(QUEST_SLOT, &quot;hair&quot;, &quot;done&quot;)) {</span>
+<span class="nc" id="L300">			res.add(&quot;Next I need to get some horse hairs, which Ouchit uses as bowstrings. I'm told the farmer Karl will help me.&quot;);</span>
+		}
+<span class="nc bnc" id="L302" title="All 6 branches missed.">		if(player.isEquipped(&quot;horse hair&quot;) &amp;&amp; &quot;hair&quot;.equals(questState) || isCompleted(player)) {</span>
+<span class="nc" id="L303">			res.add(&quot;Karl was kind and gave me some horse hairs.&quot;);</span>
+		}
+<span class="nc bnc" id="L305" title="All 2 branches missed.">		if (isCompleted(player)) {</span>
+<span class="nc" id="L306">			res.add(&quot;Ouchit gave me some new equipment as thanks for helping him.&quot;);</span>
+		}
+<span class="nc" id="L308">		return res;</span>
+	}
+	
+	@Override
+	public String getSlotName() {
+<span class="nc" id="L313">		return QUEST_SLOT;</span>
+	}
+
+	@Override
+	public String getName() {
+<span class="nc" id="L318">		return &quot;BowsForOuchit&quot;;</span>
+	}
+	
+	@Override
+	public int getMinLevel() {
+<span class="fc" id="L323">		return 0;</span>
+	}
+	
+	@Override
+	public String getRegion() {
+<span class="nc" id="L328">		return Region.SEMOS_CITY;</span>
+	}
+
+	@Override
+	public String getNPCName() {
+<span class="nc" id="L333">		return &quot;Ouchit&quot;;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

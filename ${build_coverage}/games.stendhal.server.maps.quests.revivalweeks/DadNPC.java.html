@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>DadNPC.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests.revivalweeks</a> &gt; <span class="el_source">DadNPC.java</span></div><h1>DadNPC.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests.revivalweeks;
+
+import games.stendhal.common.Direction;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.entity.Outfit;
+import games.stendhal.server.entity.npc.NPCList;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.maps.ados.rosshouse.FatherNPC;
+
+/**
+ * Susi's father during the Mine Town Revival Weeks
+ */
+<span class="fc" id="L26">public class DadNPC implements LoadableContent {</span>
+	private void createDadNPC() {
+<span class="nc" id="L28">		final StendhalRPZone zone2 = SingletonRepository.getRPWorld().getZone(&quot;int_semos_frank_house&quot;);</span>
+<span class="nc" id="L29">		final SpeakerNPC npc2 = new SpeakerNPC(&quot;Mr Ross&quot;) {</span>
+
+			@Override
+			protected void createPath() {
+<span class="nc" id="L33">				setPath(null);</span>
+<span class="nc" id="L34">			}</span>
+
+			@Override
+			protected void createDialog() {
+<span class="nc" id="L38">				addGreeting(&quot;Hi there.&quot;);</span>
+<span class="nc" id="L39">				addJob(&quot;I'm on vacation now for the Mine Town Revival Weeks. But I still need to finish some work before my daughter #Susi and I can enjoy the party.&quot;);</span>
+<span class="nc" id="L40">				addHelp(&quot;My daughter Susi is all excited about the Mine Town Revival Weeks. But I am really concerned that something bad may happen to her again. So she will have to wait until I finish my work.&quot;);</span>
+<span class="nc" id="L41">				addReply(&quot;susi&quot;, &quot;My daughter Susi is all excited about the Mine Town Revival Weeks. But I am really concerned that something bad may happen to her again. So she will have to wait until I finish my work.&quot;);</span>
+<span class="nc" id="L42">				addOffer(&quot;Sorry I do not have anything to offer you. I have to walk #Susi home to Ados once the party is over.&quot;);</span>
+<span class="nc" id="L43">				addQuest(&quot;Go meet my daughter #Susi, she'd love to make friends.&quot;);</span>
+<span class="nc" id="L44">				addGoodbye(&quot;Bye, nice to meet you.&quot;);</span>
+<span class="nc" id="L45">			}</span>
+		};
+		
+<span class="nc" id="L48">		npc2.setOutfit(new Outfit(0, 27, 7, 34, 1));</span>
+<span class="nc" id="L49">		npc2.setPosition(21, 10);</span>
+<span class="nc" id="L50">		npc2.setDirection(Direction.LEFT);</span>
+<span class="nc" id="L51">		npc2.initHP(100);</span>
+<span class="nc" id="L52">		zone2.add(npc2);</span>
+<span class="nc" id="L53">	}</span>
+
+
+	/**
+	 * removes an NPC from the world and NPC list
+	 *
+	 * @param name name of NPC
+	 */
+	private void removeNPC(String name) {
+<span class="nc" id="L62">		SpeakerNPC npc = NPCList.get().get(name);</span>
+<span class="nc bnc" id="L63" title="All 2 branches missed.">		if (npc == null) {</span>
+<span class="nc" id="L64">			return;</span>
+		}
+<span class="nc" id="L66">		npc.getZone().remove(npc);</span>
+<span class="nc" id="L67">	}</span>
+
+	@Override
+	public void addToWorld() {
+<span class="nc" id="L71">		removeNPC(&quot;Mr Ross&quot;);</span>
+<span class="nc" id="L72">		createDadNPC();</span>
+<span class="nc" id="L73">	}</span>
+
+
+	/**
+	 * removes Susi's father from the Mine Town and places him back into his home in Ados.
+	 *
+	 * @return &lt;code&gt;true&lt;/code&gt;, if the content was removed, &lt;code&gt;false&lt;/code&gt; otherwise
+	 */
+	@Override
+	public boolean removeFromWorld() {
+<span class="nc" id="L83">		removeNPC(&quot;Mr Ross&quot;);</span>
+
+<span class="nc" id="L85">		final StendhalRPZone zone = SingletonRepository.getRPWorld().getZone(&quot;int_ados_ross_house&quot;);</span>
+<span class="nc" id="L86">		new FatherNPC().createDadNPC(zone);</span>
+
+<span class="nc" id="L88">		return true;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

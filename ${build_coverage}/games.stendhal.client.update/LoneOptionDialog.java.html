@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>LoneOptionDialog.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.update</a> &gt; <span class="el_source">LoneOptionDialog.java</span></div><h1>LoneOptionDialog.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                (C) Copyright 2003-2013 - Faiumoni e.V.                  *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.update;
+
+import java.awt.MouseInfo;
+import java.awt.Rectangle;
+
+import javax.swing.JDialog;
+import javax.swing.JOptionPane;
+
+/**
+ * JOptionPane wrapper for dialogs that have no parent. Places the dialogs
+ * on the screen with the mouse cursor, unlike plain JOptionPane that always
+ * places them on the first screen. This is package private because any later
+ * situations should already have a proper main window to use as the parent.
+ */
+<span class="nc" id="L26">final class LoneOptionDialog {</span>
+	/**
+	 * Get the bounds of the screen where the mouse cursor is located.
+	 * 
+	 * @return screen bounds
+	 */
+	private static Rectangle mouseScreenBounds() {
+<span class="nc" id="L33">		return MouseInfo.getPointerInfo().getDevice().getDefaultConfiguration().getBounds();</span>
+	}
+	
+	/**
+	 * Place a dialog centered on the screen with the mouse cursor.
+	 * 
+	 * @param dialog dialog to be centered
+	 */
+	private static void setLocation(JDialog dialog) {
+<span class="nc" id="L42">		Rectangle r = mouseScreenBounds();</span>
+<span class="nc" id="L43">		dialog.setLocation(r.x + (r.width - dialog.getWidth()) / 2,</span>
+				r.y + (r.height - dialog.getHeight()) / 2);
+<span class="nc" id="L45">	}</span>
+	
+	/**
+	 * Show a message dialog with specified, selectable message.
+	 * 
+	 * @param message message string
+	 * @param title title of the dialog window
+	 * @param messageType type of the message. These are specified in
+	 * 	JOptionDialog 
+	 */
+	static void showMessageDialog(String message, String title, int messageType) {
+<span class="nc" id="L56">		JOptionPane pane = new JOptionPane(new SelectableLabel(message), messageType);</span>
+<span class="nc" id="L57">		JDialog dialog = pane.createDialog(title);</span>
+<span class="nc" id="L58">		dialog.setDefaultCloseOperation(JDialog.HIDE_ON_CLOSE);</span>
+<span class="nc" id="L59">		setLocation(dialog);</span>
+<span class="nc" id="L60">		dialog.setVisible(true);</span>
+<span class="nc" id="L61">		dialog.dispose();</span>
+<span class="nc" id="L62">	}</span>
+	
+	/**
+	 * Show a message dialog with specified, selectable message.
+	 * 
+	 * @param message message string
+	 * @param title title of the dialog window
+	 */
+	static void showMessageDialog(String message, String title) {
+<span class="nc" id="L71">		showMessageDialog(message, title, JOptionPane.INFORMATION_MESSAGE);</span>
+<span class="nc" id="L72">	}</span>
+	
+	/**
+	 * Show a message dialog with specified, selectable message. The dialog
+	 * will use &quot;Message&quot; as its title.
+	 * 
+	 * @param message message string
+	 */
+	static void showMessageDialog(String message) {
+<span class="nc" id="L81">		showMessageDialog(message, &quot;Message&quot;);</span>
+<span class="nc" id="L82">	}</span>
+	
+	/**
+	 * Show a confirmation dialog with specified, selectable message.
+	 * 
+	 * @param message message string 
+	 * @param title window title
+	 * @param optionType type of option, These are specified in JOptionDialog 
+	 * @param messageType type of message, These are specified in JOptionDialog
+	 *  
+	 * @return integer indicating the option selected by the user
+	 */
+static int showConfirmDialog(String message, String title, int optionType,
+			int messageType) {
+<span class="nc" id="L96">		JOptionPane pane = new JOptionPane(new SelectableLabel(message), messageType, optionType);</span>
+<span class="nc" id="L97">		JDialog dialog = pane.createDialog(title);</span>
+<span class="nc" id="L98">		dialog.setDefaultCloseOperation(JDialog.HIDE_ON_CLOSE);</span>
+<span class="nc" id="L99">		setLocation(dialog);</span>
+<span class="nc" id="L100">		dialog.setVisible(true);</span>
+<span class="nc" id="L101">		dialog.dispose();</span>
+		
+<span class="nc" id="L103">		Object        selectedValue = pane.getValue();</span>
+<span class="nc bnc" id="L104" title="All 2 branches missed.">		if (selectedValue == null) {</span>
+<span class="nc" id="L105">			return JOptionPane.CLOSED_OPTION;</span>
+		}
+		
+<span class="nc" id="L108">		Object[] options = pane.getOptions();</span>
+<span class="nc bnc" id="L109" title="All 2 branches missed.">		if (options == null) {</span>
+<span class="nc bnc" id="L110" title="All 2 branches missed.">			if (selectedValue instanceof Integer) {</span>
+<span class="nc" id="L111">				return (Integer) selectedValue;</span>
+			}
+<span class="nc" id="L113">			return JOptionPane.CLOSED_OPTION;</span>
+		}
+
+<span class="nc bnc" id="L116" title="All 2 branches missed.">		for (int i = 0; i &lt; options.length; i++) {</span>
+<span class="nc bnc" id="L117" title="All 2 branches missed.">			if (options[i].equals(selectedValue)) {</span>
+<span class="nc" id="L118">				return i;</span>
+			}
+		}
+
+<span class="nc" id="L122">		return JOptionPane.CLOSED_OPTION;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

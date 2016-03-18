@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>NineSwitchesGame.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests.revivalweeks</a> &gt; <span class="el_source">NineSwitchesGame.java</span></div><h1>NineSwitchesGame.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests.revivalweeks;
+
+import games.stendhal.common.Direction;
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.entity.RPEntity;
+import games.stendhal.server.entity.mapstuff.game.NineSwitchesGameBoard;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.npc.NPCList;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.player.Player;
+
+import java.util.Arrays;
+
+/**
+ * A Game about Nine switches game for one player
+ *
+ * @author hendrik
+ */
+<span class="fc" id="L35">public class NineSwitchesGame implements LoadableContent {</span>
+<span class="fc" id="L36">	private StendhalRPZone zone = null;</span>
+	private NineSwitchesGameBoard board;
+	private SpeakerNPC npc;
+
+	private static final int CHAT_TIMEOUT = 60;
+	
+	private void addBoard() {
+<span class="nc" id="L43">		board = new NineSwitchesGameBoard(zone, 94, 106);</span>
+<span class="nc" id="L44">	}</span>
+
+	private void addNPC() {
+<span class="nc" id="L47">		npc = new SpeakerNPC(&quot;Maltos&quot;) {</span>
+			@Override
+				protected void createPath() {
+					// NPC doesn't move
+<span class="nc" id="L51">					setPath(null);</span>
+<span class="nc" id="L52">			}</span>
+
+			@Override
+			protected void createDialog() {
+<span class="nc" id="L56">				addGreeting(&quot;Hi, welcome to our small game of nine switches. Your task is to make all arrows point to the right.&quot;</span>
+						+ &quot; Easy? Well, there is a #catch.&quot;);
+<span class="nc" id="L58">				addReply(&quot;catch&quot;, </span>
+						&quot; Each switch is linked to its neighbour and will change them as well. You have one minute to solve the puzzle.&quot;
+						+ &quot; Do you want to #play?.&quot;);
+<span class="nc" id="L61">				addJob(&quot;I am the supervisor of this game.&quot;);</span>
+<span class="nc" id="L62">				addGoodbye(&quot;It was nice to meet you.&quot;);</span>
+<span class="nc" id="L63">				add(ConversationStates.ATTENDING,</span>
+						Arrays.asList(&quot;play&quot;, &quot;play?&quot;, &quot;game&quot;, &quot;yes&quot;),
+						ConversationStates.ATTENDING,
+						&quot;Good luck.&quot;,
+						new PlayAction(board));
+<span class="nc" id="L68">			}</span>
+			
+			@Override
+			protected void onGoodbye(RPEntity player) {
+<span class="nc" id="L72">				setDirection(Direction.DOWN);</span>
+<span class="nc" id="L73">			}</span>
+		};
+<span class="nc" id="L75">		npc.setEntityClass(&quot;gamesupervisornpc&quot;); </span>
+<span class="nc" id="L76">		npc.setPlayerChatTimeout(CHAT_TIMEOUT);</span>
+<span class="nc" id="L77">		npc.setPosition(98, 104);</span>
+<span class="nc" id="L78">		npc.setDescription(&quot;You see Maltos. Aren't you jealous of his awesome hair?&quot;);</span>
+<span class="nc" id="L79">		npc.setDirection(Direction.DOWN);</span>
+<span class="nc" id="L80">		zone.add(npc);</span>
+<span class="nc" id="L81">	}</span>
+
+	/**
+	 * handles a play chat action
+	 */
+<span class="fc" id="L86">	private static class PlayAction implements ChatAction {</span>
+		private NineSwitchesGameBoard board;
+
+		/**
+		 * creates a new PlayAction.
+		 *
+		 * @param board
+		 */
+<span class="nc" id="L94">		public PlayAction(NineSwitchesGameBoard board) {</span>
+<span class="nc" id="L95">			this.board = board;</span>
+<span class="nc" id="L96">		}</span>
+
+		@Override
+		public void fire(Player player, Sentence sentence, EventRaiser npc) {
+<span class="nc bnc" id="L100" title="All 2 branches missed.">			if (board.getPlayerName() != null) {</span>
+<span class="nc" id="L101">				npc.say(&quot;Sorry, &quot; + player.getName() + &quot; there is already a game in progress. Please wait a little.&quot;);</span>
+<span class="nc" id="L102">				return;</span>
+			}
+<span class="nc" id="L104">			board.setPlayerName(player.getName());</span>
+<span class="nc" id="L105">		}</span>
+	}
+
+	@Override
+	public void addToWorld() {
+<span class="nc" id="L110">		zone = SingletonRepository.getRPWorld().getZone(&quot;0_semos_mountain_n2&quot;);</span>
+
+<span class="nc" id="L112">		addBoard();</span>
+<span class="nc" id="L113">		addNPC();</span>
+<span class="nc" id="L114">		board.setNPC(npc);</span>
+<span class="nc" id="L115">	}</span>
+
+
+	/**
+	 * try to remove the content from the world-
+	 *
+	 * @return &lt;code&gt;true&lt;/code&gt;
+	 */
+	@Override
+	public boolean removeFromWorld() {
+<span class="nc" id="L125">		NPCList.get().remove(&quot;Paul Sheriff&quot;);</span>
+<span class="nc" id="L126">		zone.remove(npc);</span>
+<span class="nc" id="L127">		board.remove();</span>
+<span class="nc" id="L128">		return true;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

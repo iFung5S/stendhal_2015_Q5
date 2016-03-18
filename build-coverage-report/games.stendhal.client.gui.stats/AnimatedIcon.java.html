@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>AnimatedIcon.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui.stats</a> &gt; <span class="el_source">AnimatedIcon.java</span></div><h1>AnimatedIcon.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui.stats;
+
+import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.Insets;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+
+import games.stendhal.client.sprite.Sprite;
+import games.stendhal.client.sprite.SpriteStore;
+
+import javax.swing.BorderFactory;
+import javax.swing.JComponent;
+import javax.swing.Timer;
+
+/**
+ * A component that draws an animated sprite.
+ */
+class AnimatedIcon extends JComponent {
+	private final Sprite[] sprite;
+	private final Timer timer;
+<span class="fc" id="L34">	private int current = 0;</span>
+
+	/*
+	 * AnimatedSprite is designed to be used in a drawing loop,
+	 * where it updates itself at the wanted intervals. That's 
+	 * rather wasteful for an image outside the game area, so handle
+	 * our own timing (and stop the timer if the icon is not visible).
+	 */
+
+	/**
+	 * Timer task to update and draw the icon.
+	 */
+<span class="fc" id="L46">	private final ActionListener timerTask = new ActionListener() {</span>
+		@Override
+		public void actionPerformed(final ActionEvent e) {
+<span class="nc" id="L49">			current++;</span>
+<span class="nc bnc" id="L50" title="All 2 branches missed.">			if (current &gt;= sprite.length) {</span>
+<span class="nc" id="L51">				current = 0;</span>
+			}
+<span class="nc" id="L53">			AnimatedIcon.this.repaint();</span>
+<span class="nc" id="L54">		}</span>
+	};
+
+	/**
+	 * Create an &lt;code&gt;AnimatedIcon&lt;/code&gt; from a Sprite. Each animation frame
+	 * will be a rectangle of the same height that the original sprite.
+	 * 
+	 * @param baseSprite animation frames image
+	 * @param delay delay between the frames
+	 */
+<span class="fc" id="L64">	AnimatedIcon(Sprite baseSprite, int delay) {</span>
+<span class="fc" id="L65">		setOpaque(false);</span>
+		
+<span class="fc" id="L67">		int height = baseSprite.getHeight();</span>
+<span class="fc" id="L68">		int frames = baseSprite.getWidth() / height;</span>
+
+<span class="fc" id="L70">		this.sprite = new Sprite[frames];</span>
+<span class="fc" id="L71">		timer = new Timer(delay, timerTask);</span>
+
+<span class="fc" id="L73">		setBorder(BorderFactory.createEmptyBorder(0, 2, 0, 2));</span>
+
+<span class="fc" id="L75">		final SpriteStore store = SpriteStore.get();</span>
+
+<span class="fc bfc" id="L77" title="All 2 branches covered.">		for (int i = 0; i &lt; frames; i++) {</span>
+<span class="fc" id="L78">			sprite[i] = store.getTile(baseSprite, i * height, 0, height, height);</span>
+		}
+<span class="fc" id="L80">	}</span>
+	
+	@Override
+	public Dimension getPreferredSize() {
+<span class="nc" id="L84">		Insets insets = getInsets();</span>
+		
+<span class="nc" id="L86">		return new Dimension(sprite[0].getWidth() + insets.left + insets.right,</span>
+				sprite[0].getHeight() + insets.top + insets.bottom);
+	}
+	
+	@Override
+	public Dimension getMinimumSize() {
+<span class="nc" id="L92">		return getPreferredSize();</span>
+	}
+
+	@Override
+	public void paintComponent(Graphics g) {
+<span class="nc" id="L97">		Insets insets = getInsets();</span>
+<span class="nc" id="L98">		sprite[current].draw(g, insets.left, insets.top);</span>
+<span class="nc" id="L99">	}</span>
+
+	@Override
+	public void setVisible(boolean visible) {
+<span class="fc" id="L103">		super.setVisible(visible);</span>
+<span class="fc bfc" id="L104" title="All 2 branches covered.">		if (visible) {</span>
+<span class="fc" id="L105">			timer.start();</span>
+		} else {
+<span class="fc" id="L107">			timer.stop();</span>
+		}
+<span class="fc" id="L109">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

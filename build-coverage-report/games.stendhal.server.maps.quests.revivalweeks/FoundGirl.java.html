@@ -1,0 +1,278 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>FoundGirl.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests.revivalweeks</a> &gt; <span class="el_source">FoundGirl.java</span></div><h1>FoundGirl.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2016 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests.revivalweeks;
+
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.LinkedList;
+import java.util.List;
+
+import games.stendhal.common.Direction;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.core.pathfinder.FixedPath;
+import games.stendhal.server.core.pathfinder.Node;
+import games.stendhal.server.entity.Outfit;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ChatCondition;
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.NPCList;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.action.IncreaseKarmaAction;
+import games.stendhal.server.entity.npc.action.IncreaseXPAction;
+import games.stendhal.server.entity.npc.action.MultipleActions;
+import games.stendhal.server.entity.npc.action.SayTextAction;
+import games.stendhal.server.entity.npc.action.SetQuestToYearAction;
+import games.stendhal.server.entity.npc.condition.AndCondition;
+import games.stendhal.server.entity.npc.condition.GreetingMatchesNameCondition;
+import games.stendhal.server.entity.npc.condition.OrCondition;
+import games.stendhal.server.entity.npc.condition.QuestInStateCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotStartedCondition;
+import games.stendhal.server.entity.npc.condition.QuestSmallerThanCondition;
+import games.stendhal.server.entity.npc.condition.QuestStartedCondition;
+import games.stendhal.server.entity.npc.condition.TriggerExactlyInListCondition;
+import games.stendhal.server.maps.ados.rosshouse.LittleGirlNPC;
+
+<span class="fc" id="L46">public class FoundGirl implements LoadableContent {</span>
+	private SpeakerNPC npc;
+	private ChatCondition noFriends;
+	private ChatCondition anyFriends;
+	private ChatCondition oldFriends;
+	private ChatCondition currentFriends;
+
+	private void buildConditions() {
+<span class="fc" id="L54">		noFriends = new QuestNotStartedCondition(&quot;susi&quot;);</span>
+<span class="fc" id="L55">		anyFriends = new QuestStartedCondition(&quot;susi&quot;);</span>
+<span class="fc" id="L56">		oldFriends = new OrCondition(</span>
+				new QuestInStateCondition(&quot;susi&quot;, &quot;friends&quot;),
+				new QuestSmallerThanCondition(&quot;susi&quot;, Calendar.getInstance().get(Calendar.YEAR)));
+<span class="fc" id="L59">		currentFriends = new QuestInStateCondition(&quot;susi&quot;, Integer.toString(Calendar.getInstance().get(Calendar.YEAR)));</span>
+<span class="fc" id="L60">	}</span>
+
+<span class="fc" id="L62">	final StendhalRPZone zone = SingletonRepository.getRPWorld().getZone(&quot;int_semos_frank_house&quot;);</span>
+
+	private void createGirlNPC() {
+
+<span class="fc" id="L66">		npc = new SpeakerNPC(&quot;Susi&quot;) {</span>
+
+			@Override
+			protected void createPath() {
+<span class="fc" id="L70">				final List&lt;Node&gt; nodes = new LinkedList&lt;Node&gt;();</span>
+<span class="fc" id="L71">				nodes.add(new Node(4, 17));</span>
+<span class="fc" id="L72">				nodes.add(new Node(4, 27));</span>
+<span class="fc" id="L73">				nodes.add(new Node(7, 27));</span>
+<span class="fc" id="L74">				nodes.add(new Node(7, 17));</span>
+<span class="fc" id="L75">				setPath(new FixedPath(nodes, true));</span>
+
+<span class="fc" id="L77">			}</span>
+
+			@Override
+			protected void createDialog() {
+				// done outside
+<span class="fc" id="L82">			}</span>
+		};
+
+		//	npcs.add(npc);
+<span class="fc" id="L86">		npc.setOutfit(new Outfit(0, 4, 7, 32, 13));</span>
+<span class="fc" id="L87">		npc.setPosition(4, 17);</span>
+<span class="fc" id="L88">		npc.setDirection(Direction.DOWN);</span>
+<span class="fc" id="L89">		npc.initHP(100);</span>
+<span class="fc" id="L90">		npc.setSpeed(1.0);</span>
+<span class="nc" id="L91">		zone.add(npc);</span>
+<span class="nc" id="L92">	}</span>
+
+	private void addDialog() {
+
+		// greeting
+<span class="nc" id="L97">		addGreetingDependingOnQuestState();</span>
+
+<span class="nc" id="L99">		npc.addJob(&quot;I am just a litte girl waiting for my father to take me out of the house. We will have lots of fun here at the #Mine #Town #Revival #Weeks!&quot;);</span>
+<span class="nc" id="L100">		npc.addGoodbye(&quot;Have fun!&quot;);</span>
+<span class="nc" id="L101">		npc.addHelp(&quot;Just have fun.&quot;);</span>
+<span class="nc" id="L102">		npc.addOffer(&quot;I can offer you my #friendship.&quot;);</span>
+
+		// Revival Weeks
+<span class="nc" id="L105">		npc.add(</span>
+			ConversationStates.ATTENDING,
+			Arrays.asList(&quot;Mine&quot;, &quot;Town&quot;, &quot;Revival&quot;, &quot;Weeks&quot;, &quot;Mine Town&quot;,
+					&quot;Mine Town Revival&quot;, &quot;Mine Town Revival Weeks&quot;, &quot;Mine Town&quot;, &quot;Revival Weeks&quot;),
+			ConversationStates.ATTENDING,
+			&quot;During the Revival Weeks we #celebrate the old and now mostly dead Mine Town north of Semos City. &quot;
+			+ &quot;The party was cancelled a few years ago because the people of Ados were searching for me after I got lost. &quot;
+			+ &quot;Now that I am found we can party again!&quot;,
+			null);
+<span class="nc" id="L114">		npc.add(</span>
+			ConversationStates.ATTENDING,
+			Arrays.asList(&quot;celebrate&quot;, &quot;celebration&quot;, &quot;party&quot;),
+			ConversationStates.ATTENDING,
+			&quot;You can get a mask from Fidorea just outside this house or you can try to solve a difficult puzzle in the other house. Or just play a game of Tic Tac Toe against your #friends or ask Maltos about a nice game.&quot;,
+			null);
+
+		// friends
+<span class="nc" id="L122">		npc.add(</span>
+			ConversationStates.ATTENDING, Arrays.asList(&quot;friend&quot;, &quot;friends&quot;, &quot;friendship&quot;),
+			new QuestInStateCondition(&quot;susi&quot;, Integer.toString(Calendar.getInstance().get(Calendar.YEAR))),
+			ConversationStates.ATTENDING,
+			&quot;Thanks for being a friend.&quot;, null);
+
+<span class="nc" id="L128">		addFirstQuest();</span>
+<span class="nc" id="L129">		addSecondQuest();</span>
+
+		// quest
+<span class="nc" id="L132">		addQuest();</span>
+<span class="nc" id="L133">	}</span>
+
+
+	private void addGreetingDependingOnQuestState() {
+<span class="nc" id="L137">		npc.add(ConversationStates.IDLE, ConversationPhrases.GREETING_MESSAGES,</span>
+				new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+						noFriends),
+				ConversationStates.ATTENDING,
+				&quot;Guess what, we are having another #Town #Revival #Weeks.&quot;, null);
+
+<span class="nc" id="L143">		npc.add(ConversationStates.IDLE, ConversationPhrases.GREETING_MESSAGES,</span>
+				new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+						anyFriends),
+				ConversationStates.ATTENDING,
+				null, new SayTextAction(&quot;Hello [name], nice to meet you again. &quot;
+						+ &quot;Guess what, we are having another #Town #Revival #Weeks.&quot;));
+		// TODO: Tell old friends about renewal
+<span class="nc" id="L150">	}</span>
+
+
+	private void addQuest() {
+<span class="nc" id="L154">		npc.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.QUEST_MESSAGES,
+				noFriends,
+				ConversationStates.ATTENDING, &quot;I need a #friend.&quot;, null);
+<span class="nc" id="L158">		npc.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.QUEST_MESSAGES,
+				oldFriends,
+				ConversationStates.ATTENDING, &quot;We should renew our #friendship.&quot;, null);
+<span class="nc" id="L162">		npc.add(</span>
+				ConversationStates.ATTENDING,
+				ConversationPhrases.QUEST_MESSAGES,
+				currentFriends,
+				ConversationStates.ATTENDING,
+				&quot;I have made a lot of friends during the #Town #Revival #Weeks.&quot;,
+				null);
+<span class="nc" id="L169">	}</span>
+
+	private void addFirstQuest() {
+		// initial friends quest
+<span class="nc" id="L173">		npc.add(ConversationStates.ATTENDING,</span>
+			Arrays.asList(&quot;friend&quot;, &quot;friends&quot;, &quot;friendship&quot;),
+			noFriends,
+			ConversationStates.INFORMATION_1,
+			&quot;Please repeat:\r\n                        \&quot;A circle is round,\&quot;&quot;,
+			null);
+<span class="nc" id="L179">		npc.add(ConversationStates.INFORMATION_1,</span>
+			&quot;&quot;,
+			new TriggerExactlyInListCondition(&quot;A circle is round,&quot;, &quot;A circle is round&quot;),
+			ConversationStates.INFORMATION_2, &quot;\&quot;it has no end.\&quot;&quot;,
+			null);
+<span class="nc" id="L184">		npc.add(ConversationStates.INFORMATION_2,</span>
+			&quot;&quot;,
+			new TriggerExactlyInListCondition(&quot;it has no end.&quot;, &quot;it has no end&quot;),
+			ConversationStates.INFORMATION_3,
+			&quot;\&quot;That's how long,\&quot;&quot;, null);
+<span class="nc" id="L189">		npc.add(ConversationStates.INFORMATION_3,</span>
+			&quot;&quot;,
+			new TriggerExactlyInListCondition(
+				&quot;That's how long,&quot;, &quot;That's how long&quot;,
+				&quot;Thats how long,&quot;, &quot;Thats how long&quot;),
+			ConversationStates.INFORMATION_4,
+			&quot;\&quot;I will be your friend.\&quot;&quot;, null);
+
+<span class="nc" id="L197">		ChatAction reward = new MultipleActions(new IncreaseKarmaAction(10), new IncreaseXPAction(25), new SetQuestToYearAction(&quot;susi&quot;));</span>
+<span class="nc" id="L198">		npc.add(ConversationStates.INFORMATION_4,</span>
+			&quot;&quot;,
+			new TriggerExactlyInListCondition(&quot;I will be your friend.&quot;, &quot;I will be your friend&quot;),
+			ConversationStates.ATTENDING,
+			&quot;Yay! We are friends now.&quot;,
+			reward);
+<span class="nc" id="L204">	}</span>
+
+	private void addSecondQuest() {
+<span class="nc" id="L207">		npc.add(ConversationStates.ATTENDING,</span>
+				Arrays.asList(&quot;friend&quot;, &quot;friends&quot;, &quot;friendship&quot;),
+				oldFriends,
+				ConversationStates.INFORMATION_5,
+				&quot;Please repeat:\r\n                        \&quot;Make new friends,\&quot;&quot;,
+				null);
+<span class="nc" id="L213">		npc.add(ConversationStates.INFORMATION_5,</span>
+				&quot;&quot;,
+				new TriggerExactlyInListCondition(&quot;Make new friends,&quot;, &quot;Make new friends&quot;),
+				ConversationStates.INFORMATION_6, &quot;\&quot;but keep the old.\&quot;&quot;,
+				null);
+<span class="nc" id="L218">		npc.add(ConversationStates.INFORMATION_6, &quot;&quot;,</span>
+				new TriggerExactlyInListCondition(&quot;but keep the old.&quot;, &quot;but keep the old&quot;),
+				ConversationStates.INFORMATION_7, &quot;\&quot;One is silver,\&quot;&quot;,
+				null);
+<span class="nc" id="L222">		npc.add(ConversationStates.INFORMATION_7, &quot;&quot;,</span>
+				new TriggerExactlyInListCondition(&quot;One is silver,&quot;, &quot;One is silver&quot;),
+				ConversationStates.INFORMATION_8, &quot;\&quot;And the other gold.\&quot;&quot;,
+				null);
+
+		// lowercase &quot;and&quot; is ignored, even in full match mode
+<span class="nc" id="L228">		ChatAction reward = new MultipleActions(new IncreaseKarmaAction(15), new IncreaseXPAction(50), new SetQuestToYearAction(&quot;susi&quot;));</span>
+<span class="nc" id="L229">		npc.add(ConversationStates.INFORMATION_8, &quot;&quot;,</span>
+				new TriggerExactlyInListCondition(&quot;And the other gold.&quot;, &quot;And the other gold&quot;, &quot;the other gold.&quot;, &quot;the other gold&quot;),
+				ConversationStates.ATTENDING,
+				&quot;Yay! We are even better friends now.&quot;,
+				reward);
+<span class="nc" id="L234">	}</span>
+
+	/**
+	 * removes an NPC from the world and NPC list
+	 *
+	 * @param name name of NPC
+	 */
+	private void removeNPC(String name) {
+<span class="fc" id="L242">		SpeakerNPC npc = NPCList.get().get(name);</span>
+<span class="pc bpc" id="L243" title="1 of 2 branches missed.">		if (npc == null) {</span>
+<span class="fc" id="L244">			return;</span>
+		}
+<span class="nc" id="L246">		npc.getZone().remove(npc);</span>
+<span class="nc" id="L247">	}</span>
+
+
+	/**
+	 * removes Susi from her home in Ados and adds her to the Mine Towns.
+	 */
+	@Override
+	public void addToWorld() {
+<span class="fc" id="L255">		removeNPC(&quot;Susi&quot;);</span>
+
+<span class="fc" id="L257">		buildConditions();</span>
+<span class="nc" id="L258">		createGirlNPC();</span>
+<span class="nc" id="L259">		addDialog();</span>
+<span class="nc" id="L260">	}</span>
+
+
+	/**
+	 * removes Susi from the Mine Town and places her back into her home in Ados.
+	 *
+	 * @return &lt;code&gt;true&lt;/code&gt;, if the content was removed, &lt;code&gt;false&lt;/code&gt; otherwise
+	 */
+	@Override
+	public boolean removeFromWorld() {
+<span class="nc" id="L270">		removeNPC(&quot;Susi&quot;);</span>
+
+<span class="nc" id="L272">		final StendhalRPZone zone = SingletonRepository.getRPWorld().getZone(&quot;int_ados_ross_house&quot;);</span>
+<span class="nc" id="L273">		new LittleGirlNPC().createGirlNPC(zone);</span>
+
+<span class="nc" id="L275">		return true;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

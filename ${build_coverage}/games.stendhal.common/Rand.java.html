@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Rand.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.common</a> &gt; <span class="el_source">Rand.java</span></div><h1>Rand.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                      (C) Copyright 2003 - Marauroa                      *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.common;
+
+import java.util.List;
+import java.util.Random;
+import java.util.Set;
+
+/**
+ * Helper functions to generate random numbers.
+ */
+<span class="nc" id="L22">public class Rand {</span>
+
+	private static Random rand;
+
+	static {
+<span class="fc" id="L27">		rand = new Random();</span>
+<span class="fc" id="L28">	}</span>
+
+	/**
+	 * Simulates flipping a coin.
+	 * 
+	 * @return Either 1 or 2, equally distributed.
+	 */
+	public static int throwCoin() {
+<span class="fc" id="L36">		return rand.nextInt(2) + 1;</span>
+	}
+
+	/**
+	 * Simulates rolling a dice with 6 sides.
+	 * 
+	 * @return A random number between 1 and 6, equally distributed.
+	 */
+	public static int roll1D6() {
+<span class="fc" id="L45">		return rand.nextInt(6) + 1;</span>
+	}
+
+	/**
+	 * Simulates rolling a dice with 20 sides.
+	 * 
+	 * @return A random number between 1 and 20, equally distributed.
+	 */
+	public static int roll1D20() {
+<span class="fc" id="L54">		return rand.nextInt(20) + 1;</span>
+	}
+
+	/**
+	 * Simulates rolling a dice with 100 sides.
+	 * 
+	 * @return A random number between 1 and 100, equally distributed.
+	 */
+	public static int roll1D100() {
+<span class="fc" id="L63">		return rand.nextInt(100) + 1;</span>
+	}
+
+
+	/**
+	 * Generates an equally distributed random number between &lt;i&gt;a&lt;/i&gt; and &lt;i&gt;b&lt;/i&gt; inclusive
+	 * It doesn't matter if a or b is bigger. 
+	 *
+	 * @param a
+	 *          the first boundary number (upper or lower) 
+	 * @param b 
+	 *          the second boundary number (upper or lower) 
+	 *
+	 * @return A random number between &lt;i&gt;a&lt;/i&gt; and &lt;i&gt;b&lt;/i&gt;, equally distributed.
+	 */
+	public static int randUniform(final int a, final int b) {
+<span class="fc" id="L79">		final int max = Math.max(a, b);</span>
+<span class="fc" id="L80">		final int min = Math.min(a, b);</span>
+		
+<span class="fc" id="L82">		return rand.nextInt(max - min + 1) + min;</span>
+	}
+
+	/**
+	 * Generates an equally distributed random number.
+	 * 
+	 * @param n
+	 *            the upper boundary
+	 * @return A random number between 0 and &lt;i&gt;n&lt;/i&gt; - 1, equally distributed.
+	 */
+	public static int rand(final int n) {
+<span class="fc" id="L93">		return rand.nextInt(n);</span>
+	}
+	
+	/**
+	 * Generates an equally distributed double precision random number.
+	 *            the upper boundary
+	 * @return A random number between 0 and 1, equally distributed.
+	 */
+	public static double rand() {
+<span class="fc" id="L102">		return rand.nextDouble();</span>
+	}
+
+	/**
+	 * Given a list of any type, returns an arbitrary element, using an equal
+	 * distribution. Generics are used so that the returned element will have
+	 * the same type as the list's elements have.
+	 * 
+	 * @param &lt;T&gt;
+	 *            Any type.
+	 * @param list
+	 *            The list from which an element should be chosen.
+	 * @return A random list element.
+	 */
+	public static &lt;T&gt; T rand(final List&lt;T&gt; list) {
+<span class="fc" id="L117">		return list.get(rand(list.size()));</span>
+	}
+
+	/**
+	 * Given a set of any type, returns an arbitrary element, using an equal
+	 * distribution. Generics are used so that the returned element will have
+	 * the same type as the set's elements have.
+	 * 
+	 * NOTE: This is not very efficient. If you need to do this on large sets
+	 * several times per second, consider copying the set contents to an array,
+	 * then call rand() on this array.
+	 * 
+	 * @param &lt;T&gt;
+	 *            Any type.
+	 * @param set
+	 *            The set from which an element should be chosen.
+	 * @return A random set element.
+	 */
+	public static &lt;T&gt; T rand(final Set&lt;T&gt; set) {
+<span class="fc" id="L136">		final int n = rand(set.size());</span>
+<span class="fc" id="L137">		int i = 0;</span>
+<span class="pc bpc" id="L138" title="2 of 4 branches missed.">		for (final T element : set) {</span>
+<span class="fc bfc" id="L139" title="All 4 branches covered.">			if (i == n) {</span>
+<span class="fc" id="L140">				return element;</span>
+			}
+<span class="fc" id="L142">			i++;</span>
+<span class="fc" id="L143">		}</span>
+		// can't happen
+<span class="nc" id="L145">		return null;</span>
+	}
+
+	/**
+	 * Given a array of any type, returns an arbitrary element, using an equal
+	 * distribution. Generics are used so that the returned element will have
+	 * the same type as the array's elements have.
+	 * 
+	 * @param &lt;T&gt;
+	 *            Any type.
+	 * @param array
+	 *            The array from which an element should be chosen.
+	 * @return A random array element.
+	 */
+	public static &lt;T&gt; T rand(final T[] array) {
+<span class="fc" id="L160">		return array[rand(array.length)];</span>
+	}
+
+	/**
+	 * Generates a normally distributed random number and rounds it.
+	 * 
+	 * @param mean
+	 *            The mean value
+	 * @param sd
+	 *            The standard deviation
+	 * @return An integer near &lt;i&gt;mean&lt;/i&gt;
+	 */
+	public static int randGaussian(final int mean, final int sd) {
+<span class="fc" id="L173">		return (int) (rand.nextGaussian() * sd + mean);</span>
+	}
+	
+	/**
+	 * Generates an exponentially distributed random number and rounds it.
+	 * 
+	 * @param mean
+	 *            The mean value
+	 * @return An integer exponential variate &lt;i&gt;mean&lt;/i&gt;
+	 */
+	public static int randExponential(final int mean) {
+<span class="fc" id="L184">		return (int) (-mean * Math.log(rand.nextDouble()));</span>
+	}
+	
+	/**
+	 * Calculate the probability for a given mean value in an exponential distribution
+	 * 
+	 * @param mean the desired mean value of the distribution
+	 * @return the probability to reach the given mean value (1 for mean == 0)
+	 */
+	public static double propabilityForMeanExp(final long mean) {
+<span class="nc bnc" id="L194" title="All 4 branches missed.">		if(mean == 0) {</span>
+<span class="nc" id="L195">			return 1;</span>
+		}
+<span class="nc" id="L197">		double meandouble = mean;</span>
+<span class="nc" id="L198">		return 1d/meandouble;</span>
+	}
+	
+	/**
+	 * Flip a coin to decide between true and false based on a probability
+	 * @param propability the probability to get true
+	 * @return true or false randomly
+	 */
+	public static boolean flipCoin(final double propability) {
+<span class="nc bnc" id="L207" title="All 4 branches missed.">		return rand.nextDouble() &lt;= propability;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

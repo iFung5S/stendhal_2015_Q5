@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>MithrilbourghEnemyArmyAchievementFactory.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.core.rp.achievement.factory</a> &gt; <span class="el_source">MithrilbourghEnemyArmyAchievementFactory.java</span></div><h1>MithrilbourghEnemyArmyAchievementFactory.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2013 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.core.rp.achievement.factory;
+
+import games.stendhal.server.core.rp.achievement.Achievement;
+import games.stendhal.server.core.rp.achievement.Category;
+
+import java.util.Collection;
+import java.util.LinkedList;
+
+/**
+ * Factory for MithrilbourghEnemyArmyAchievement
+ */
+<span class="nc" id="L23">public class MithrilbourghEnemyArmyAchievementFactory extends AbstractAchievementFactory {</span>
+
+	@Override
+	protected Category getCategory() {
+<span class="nc" id="L27">		return Category.QUEST_MITHRILBOURGH_ENEMY_ARMY;</span>
+	}
+
+	@Override
+	public Collection&lt;Achievement&gt; createAchievements() {
+<span class="nc" id="L32">		LinkedList&lt;Achievement&gt; achievements = new LinkedList&lt;Achievement&gt;();</span>
+		
+		// Index where number of completions is stored
+		// final int INDEX = 3;
+		
+		/* Disabled until ready to implement
+		achievements.add(createAchievement(&quot;quest.special.weekly_army.0005&quot;, &quot;Sergeant&quot;, &quot;Finish Kill Enemy Army quest 5 times&quot;,
+				Achievement.MEDIUM_BASE_SCORE, false,
+				new QuestStateGreaterThanCondition(&quot;kill_enemy_army&quot;, INDEX, 4)));*/
+		
+<span class="nc" id="L42">		return achievements;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

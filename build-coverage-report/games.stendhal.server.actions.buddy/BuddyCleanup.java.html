@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>BuddyCleanup.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.actions.buddy</a> &gt; <span class="el_source">BuddyCleanup.java</span></div><h1>BuddyCleanup.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2010-2013 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+
+package games.stendhal.server.actions.buddy;
+
+import games.stendhal.server.core.engine.GameEvent;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.engine.dbcommand.QueryCanonicalCharacterNamesCommand;
+import games.stendhal.server.core.events.TurnListener;
+import games.stendhal.server.core.events.TurnListenerDecorator;
+import games.stendhal.server.core.events.TurnNotifier;
+import games.stendhal.server.entity.player.Player;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Map;
+
+import marauroa.server.db.command.DBCommand;
+import marauroa.server.db.command.DBCommandQueue;
+import marauroa.server.db.command.ResultHandle;
+
+/**
+ * Clean up the buddy list from obsolete and duplicate entries
+ * using case insensitive matching.
+ */
+public class BuddyCleanup implements TurnListener {
+
+	private final Player player;
+<span class="nc" id="L39">	private final ResultHandle handle = new ResultHandle();</span>
+
+	/**
+	 * creates a BuddyCleanup
+	 *
+	 * @param player player object
+	 */
+<span class="nc" id="L46">	public BuddyCleanup(Player player) {</span>
+<span class="nc" id="L47">		this.player = player;</span>
+<span class="nc" id="L48">	}</span>
+
+	/**
+	 * cleans up the budy list of a player
+	 */
+	public void cleanup() {
+<span class="nc" id="L54">		Map&lt;String, String&gt; buddies = player.getMap(&quot;buddies&quot;);</span>
+
+<span class="nc bnc" id="L56" title="All 2 branches missed.">		if (buddies != null) {</span>
+<span class="nc" id="L57">			Collection&lt;String&gt; lowerBuddies = new HashSet&lt;String&gt;();</span>
+<span class="nc" id="L58">			Collection&lt;String&gt; duplicates = new ArrayList&lt;String&gt;();</span>
+
+			// collect all buddy names in lower case and detect duplicates
+<span class="nc bnc" id="L61" title="All 2 branches missed.">			for(String name : buddies.keySet()) {</span>
+<span class="nc bnc" id="L62" title="All 2 branches missed.">				if (!lowerBuddies.add(name.toLowerCase())) {</span>
+<span class="nc" id="L63">					duplicates.add(name);</span>
+				}
+<span class="nc" id="L65">			}</span>
+
+			// remove duplicate buddy names
+<span class="nc bnc" id="L68" title="All 2 branches missed.">			for(String duplicateName : duplicates) {</span>
+<span class="nc" id="L69">				player.removeBuddy(duplicateName);</span>
+<span class="nc" id="L70">				new GameEvent(player.getName(), &quot;buddy&quot;, &quot;remove&quot;, duplicateName).raise();</span>
+<span class="nc" id="L71">			}</span>
+
+			// invoke the check for valid character names
+<span class="nc" id="L74">			DBCommand command = new QueryCanonicalCharacterNamesCommand(player, player.getBuddies());</span>
+<span class="nc" id="L75">			DBCommandQueue.get().enqueueAndAwaitResult(command, handle);</span>
+<span class="nc" id="L76">			TurnNotifier.get().notifyInTurns(0, new TurnListenerDecorator(this));</span>
+		}
+<span class="nc" id="L78">	}</span>
+
+	@Override
+	public void onTurnReached(int currentTurn) {
+<span class="nc" id="L82">		QueryCanonicalCharacterNamesCommand checkCommand = DBCommandQueue.get().getOneResult(QueryCanonicalCharacterNamesCommand.class, handle);</span>
+
+<span class="nc bnc" id="L84" title="All 2 branches missed.">		if (checkCommand == null) {</span>
+<span class="nc" id="L85">			TurnNotifier.get().notifyInTurns(0, new TurnListenerDecorator(this));</span>
+<span class="nc" id="L86">			return;</span>
+		}
+
+<span class="nc" id="L89">		Collection&lt;String&gt; queriedNames = checkCommand.getQueriedNames();</span>
+<span class="nc" id="L90">		Collection&lt;String&gt; validNames = checkCommand.getValidNames();</span>
+
+		// compute the difference between the two name sets
+<span class="nc" id="L93">		Collection&lt;String&gt; oldNames = new HashSet&lt;String&gt;();</span>
+<span class="nc" id="L94">		oldNames.addAll(queriedNames);</span>
+<span class="nc bnc" id="L95" title="All 2 branches missed.">		for(String name : validNames) {</span>
+<span class="nc" id="L96">			oldNames.remove(name);</span>
+<span class="nc" id="L97">		}</span>
+
+<span class="nc" id="L99">		Collection&lt;String&gt; newNames = new HashSet&lt;String&gt;();</span>
+<span class="nc" id="L100">		newNames.addAll(validNames);</span>
+<span class="nc bnc" id="L101" title="All 2 branches missed.">		for(String name : queriedNames) {</span>
+<span class="nc" id="L102">			newNames.remove(name);</span>
+<span class="nc" id="L103">		}</span>
+
+		// remove invalid buddy names
+<span class="nc bnc" id="L106" title="All 2 branches missed.">		for(String invalidName : oldNames) {</span>
+<span class="nc bnc" id="L107" title="All 2 branches missed.">			if (player.removeBuddy(invalidName)) {</span>
+<span class="nc" id="L108">				new GameEvent(player.getName(), &quot;buddy&quot;, &quot;remove&quot;, invalidName).raise();</span>
+			}
+<span class="nc" id="L110">		}</span>
+
+		// add renamed buddy entries
+<span class="nc bnc" id="L113" title="All 2 branches missed.">		for(String newName : newNames) {</span>
+<span class="nc" id="L114">			final Player buddy = SingletonRepository.getRuleProcessor().getPlayer(newName);</span>
+
+<span class="nc bnc" id="L116" title="All 6 branches missed.">			if (player.addBuddy(newName, (buddy!=null) &amp;&amp; !buddy.isGhost())) {</span>
+<span class="nc" id="L117">				new GameEvent(player.getName(), &quot;buddy&quot;, &quot;add&quot;, newName).raise();</span>
+			}
+<span class="nc" id="L119">		}</span>
+<span class="nc" id="L120">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

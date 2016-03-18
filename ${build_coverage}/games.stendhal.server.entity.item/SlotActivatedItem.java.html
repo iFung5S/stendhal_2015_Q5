@@ -1,0 +1,275 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SlotActivatedItem.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.item</a> &gt; <span class="el_source">SlotActivatedItem.java</span></div><h1>SlotActivatedItem.java</h1><pre class="source lang-java linenums">package games.stendhal.server.entity.item;
+
+import games.stendhal.common.constants.Testing;
+import games.stendhal.server.entity.RPEntity;
+
+import java.util.List;
+import java.util.Map;
+
+import org.apache.log4j.Logger;
+
+/**
+ * An item that can be activated by being held in specific slots.
+ * 
+ * @author AntumDeluge
+ */
+public abstract class SlotActivatedItem extends Item {
+	
+	/* The logger instance */
+<span class="fc" id="L19">	private static final Logger logger = Logger.getLogger(SlotActivatedItem.class);</span>
+	
+	/* List of slots where this item is active when equipped. */
+	// XXX: Should java.util.Collection be used instead?
+<span class="fc" id="L23">	private List&lt;String&gt; activeSlotsList = null;</span>
+	
+	/* The active state of the item initialized as deactivated. */
+<span class="fc" id="L26">	protected boolean activated = false;</span>
+	
+	/* Slot to track previous equipped location. */
+	private String transitionSlot;
+	
+	/* Name of slot being transition to/from. Useful for checking previous
+	 * slot on un-equipping.
+	 * 
+	 * FIXME: This slot is not necessary. Can call
+	 *        this.getContainerSlot().getName() from onUnequipped().
+	 */
+	//private String transitionSlot;
+	
+	
+	/**
+	 * Default constructor.
+	 * 
+	 * @param name
+	 * 		Item's name
+	 * @param clazz
+	 * 		Item's class or type
+	 * @param subclass
+	 * 		Item's subclass
+	 * @param attributes
+	 * 		Attributes available to this item
+	 */
+	public SlotActivatedItem(String name, String clazz, String subclass,
+			Map&lt;String, String&gt; attributes) {
+<span class="fc" id="L54">		super(name, clazz, subclass, attributes);</span>
+<span class="fc" id="L55">	}</span>
+	
+	/**
+	 * Copy constructor
+	 * 
+	 * @param item
+	 * 		Item to be copied
+	 */
+	public SlotActivatedItem(Item item) {
+<span class="fc" id="L64">		super(item);</span>
+<span class="fc" id="L65">	}</span>
+	
+	
+/* XXX --- ITEM INITIALIZATION --- XXX */
+	
+	/**
+	 * Create a list of slots in which this item can be activated while
+	 * equipped.
+	 * 
+	 * @param list
+	 * 		List of slot active slot names
+	 */
+	@Override
+	public void initializeActiveSlotsList(final List&lt;String&gt; list) {
+<span class="fc" id="L79">		this.activeSlotsList = list;</span>
+		
+<span class="pc bpc" id="L81" title="2 of 4 branches missed.">		if (logger.isDebugEnabled() || Testing.DEBUG) {</span>
+<span class="nc" id="L82">			logger.info(&quot;SlotActivatedItem: Initializing active slots list&quot;);</span>
+<span class="nc bnc" id="L83" title="All 2 branches missed.">			if (this.activeSlotsList == null) {</span>
+<span class="nc" id="L84">				logger.error(&quot;Could not initialize active slots list&quot;);</span>
+			}
+		}
+<span class="fc" id="L87">	}</span>
+	
+	
+/* XXX --- ITEM MANIPULATION --- XXX */
+	
+	/**
+	 * Fill the list of active slots.
+	 * 
+	 * @param slotList
+	 * 		List of slots in which item can be activated
+	 */
+	public void initiateActiveSlotsList(final List&lt;String&gt; slotList) {
+<span class="nc" id="L99">		activeSlotsList = slotList;</span>
+<span class="nc" id="L100">	}</span>
+	
+	/**
+	 * Action to take when item is equipped. If successfully equipped item's
+	 * activation state is set to &lt;b&gt;true&lt;/b&gt;.
+	 */
+	@Override
+	public boolean onEquipped(final RPEntity owner, final String slot) {
+<span class="nc bnc" id="L108" title="All 4 branches missed.">		if (logger.isDebugEnabled() || Testing.DEBUG) {</span>
+<span class="nc" id="L109">			logger.info(this.getName() + &quot; moved to \&quot;&quot; + slot + &quot;\&quot;&quot;);</span>
+		}
+		
+		/* Begin tracking transition slot when the item is equipped. */
+<span class="nc" id="L113">		this.transitionSlot = slot;</span>
+		
+		/* Attempt to activate item's attributes if being transitioned to an
+		 * active slot from a non-active one.
+		 * 
+		 * FIXME: Should also check !this.activated.
+		 */
+<span class="nc bnc" id="L120" title="All 2 branches missed.">		if (this.isActiveSlot(slot)) {</span>
+			/* Check and activate item's attribute's for containing slot owner.
+			 * this.onActivate() should return &lt;b&gt;true&lt;/b&gt;.
+			 */
+<span class="nc" id="L124">			this.activated = this.onActivate();</span>
+			
+			/* Check if the item has been activated. */
+<span class="nc bnc" id="L127" title="All 2 branches missed.">			if (!this.activated) {</span>
+<span class="nc" id="L128">				logger.error(&quot;Did not activate when equipped to slot \&quot;&quot;</span>
+						+ slot + &quot;\&quot;&quot;);
+			}
+		}
+		
+<span class="nc" id="L133">		return super.onEquipped(owner, slot);</span>
+	}
+	
+	/**
+	 * Action to take when item is un-equipped. If successfully un-equipped
+	 * item's activation state is set to &lt;b&gt;false&lt;/b&gt;.
+	 */
+	@Override
+	public boolean onUnequipped() {
+		/* Use the transition slot to determine previous equipped location. */
+<span class="nc bnc" id="L143" title="All 2 branches missed.">		if (this.transitionSlot != null) {</span>
+//			if (logger.isDebugEnabled() || Testing.DEBUG) {
+//				logger.info(this.getName() + &quot; removed from \&quot;&quot; +
+//						this.transitionSlot + &quot;\&quot;&quot;);
+//			}
+			
+			/* Attempt to deactivate item's attributes if being transitioned from
+			 * an active slot to a non-active one.
+			 * 
+			 * FIXME: Should also check this.activated.
+			 */
+<span class="nc bnc" id="L154" title="All 2 branches missed.">			if (this.isActiveSlot(this.transitionSlot)) {</span>
+				/* Check and deactivate item's attribute's for containing slot
+				 * owner. this.onDeactivate() should return &lt;b&gt;false&lt;/b&gt;.
+				 */
+<span class="nc" id="L158">				this.activated = this.onDeactivate();</span>
+				
+				/* We need to clear transitionSlot in case the item is placed
+				 * on the ground.
+				 */
+<span class="nc" id="L163">				this.transitionSlot = null;</span>
+				
+				/* Check if the item is still activated. */
+<span class="nc bnc" id="L166" title="All 2 branches missed.">				if (this.activated) {</span>
+<span class="nc" id="L167">					logger.error(&quot;Did not deactivate when removed from slot \&quot;&quot;</span>
+							+ transitionSlot + &quot;\&quot;&quot;);
+				}
+			}
+		} else {
+			/* Item was picked up from ground or other unknown source. */
+<span class="nc bnc" id="L173" title="All 4 branches missed.">			if (logger.isDebugEnabled() || Testing.DEBUG) {</span>
+<span class="nc" id="L174">				logger.info(this.getName() + &quot; removed from \&quot;null\&quot;&quot;);</span>
+			}
+		}
+		
+<span class="nc" id="L178">		return super.onUnequipped();</span>
+	}
+	
+	
+/* XXX --- ITEM CHECKS --- XXX */
+	
+	/**
+	 * Checks the activation state of the item for activation.
+	 * 
+	 * @return
+	 * 		&lt;b&gt;true&lt;/b&gt; if item is not currently activated
+	 */
+	protected boolean canActivate() {
+<span class="nc bnc" id="L191" title="All 2 branches missed.">		if (this.activated) {</span>
+<span class="nc" id="L192">			return false;</span>
+		}
+<span class="nc" id="L194">		return true;</span>
+	}
+	
+	/**
+	 * Checks the activation state of the item for deactivation.
+	 * 
+	 * @return
+	 * 		&lt;b&gt;true&lt;/b&gt; if item is currently activated
+	 */
+	protected boolean canDeactivate() {
+<span class="nc bnc" id="L204" title="All 2 branches missed.">		if (!this.activated) {</span>
+<span class="nc" id="L205">			return false;</span>
+		}
+<span class="nc" id="L207">		return true;</span>
+	}
+	
+	/**
+	 * Tests whether the item is currently activated.
+	 * 
+	 * @return
+	 * 		Item's activation state
+	 */
+	public boolean isActivated() {
+<span class="nc" id="L217">		return this.activated;</span>
+	}
+	
+	/**
+	 * Tests whether the item can be activated in specified slot.
+	 * 
+	 * @param slot
+	 * 		Slot to be tested
+	 * @return
+	 * 		&lt;b&gt;true&lt;/b&gt; if slot name is found in active slot list
+	 */
+	protected boolean isActiveSlot(String slot) {
+<span class="nc bnc" id="L229" title="All 4 branches missed.">		if (logger.isDebugEnabled() || Testing.DEBUG) {</span>
+<span class="nc" id="L230">			String activeSlotListString = null;</span>
+<span class="nc bnc" id="L231" title="All 2 branches missed.">			for (String slotName: this.activeSlotsList) {</span>
+<span class="nc bnc" id="L232" title="All 2 branches missed.">				if (activeSlotListString == null) {</span>
+<span class="nc" id="L233">					activeSlotListString = slotName;</span>
+				} else {
+<span class="nc" id="L235">					activeSlotListString += &quot;, &quot; + slotName;</span>
+				}
+<span class="nc" id="L237">			}</span>
+<span class="nc" id="L238">			logger.info(&quot;Checking slot: &quot; + slot);</span>
+<span class="nc" id="L239">			logger.info(&quot;Active slots: &quot; + activeSlotListString);</span>
+		}
+		
+<span class="nc bnc" id="L242" title="All 6 branches missed.">		if ((activeSlotsList != null)</span>
+				&amp;&amp; !activeSlotsList.isEmpty() &amp;&amp; slot != null) {
+<span class="nc" id="L244">			return activeSlotsList.contains(slot);</span>
+		}
+		
+<span class="nc" id="L247">		return false;</span>
+	}
+	
+	
+/* XXX --- ITEM ACTIVATION --- XXX */
+	
+	/**
+	 * Actions to take when equipped. Should return &lt;b&gt;true&lt;/b&gt; on successful
+	 * activation.
+	 *
+	 * @return
+	 * 		Activated state
+	 */
+	protected boolean onActivate() {
+<span class="nc" id="L261">		return canActivate();</span>
+	}
+	
+	/**
+	 * Actions to take when Unequipped. Should return &lt;b&gt;false&lt;/b&gt; on
+	 * successful deactivation. 
+	 * 
+	 * @return
+	 * 		Non-activated state
+	 */
+	protected boolean onDeactivate() {
+<span class="nc bnc" id="L272" title="All 2 branches missed.">		return !canDeactivate();</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

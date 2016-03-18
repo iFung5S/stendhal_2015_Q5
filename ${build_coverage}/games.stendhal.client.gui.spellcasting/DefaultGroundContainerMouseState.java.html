@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>DefaultGroundContainerMouseState.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui.spellcasting</a> &gt; <span class="el_source">DefaultGroundContainerMouseState.java</span></div><h1>DefaultGroundContainerMouseState.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2013 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui.spellcasting;
+
+import games.stendhal.client.StaticGameLayers;
+import games.stendhal.client.entity.ActionType;
+import games.stendhal.client.entity.IEntity;
+import games.stendhal.client.gui.DragLayer;
+import games.stendhal.client.gui.GroundContainer;
+import games.stendhal.client.gui.j2d.RemovableSprite;
+import games.stendhal.client.gui.j2d.entity.EntityView;
+import games.stendhal.client.gui.styled.cursor.StendhalCursor;
+import games.stendhal.client.gui.wt.EntityViewCommandList;
+import games.stendhal.client.gui.wt.core.WtWindowManager;
+
+import java.awt.Point;
+import java.awt.geom.Point2D;
+
+import javax.swing.JPopupMenu;
+import javax.swing.SwingUtilities;
+import javax.swing.event.PopupMenuEvent;
+import javax.swing.event.PopupMenuListener;
+
+public class DefaultGroundContainerMouseState extends GroundContainerMouseState {
+
+	public DefaultGroundContainerMouseState(GroundContainer ground) {
+<span class="nc" id="L36">		super(ground);</span>
+<span class="nc" id="L37">	}</span>
+
+	@Override
+	protected boolean onMouseClick(Point point) {
+		// Context menu detection
+<span class="nc bnc" id="L42" title="All 2 branches missed.">		if (ignoreClick) {</span>
+<span class="nc" id="L43">			ignoreClick = false;</span>
+<span class="nc" id="L44">			return false;</span>
+		}
+		// on MS Windows releasing the mouse after a drag&amp;drop action is
+		// counted as mouse click: https://sourceforge.net/support/tracker.php?aid=2976895
+<span class="nc bnc" id="L48" title="All 4 branches missed.">		if ((Math.abs(point.getX() - xOnMousePressed) &gt; 10) </span>
+			|| (Math.abs(point.getY() - yOnMousePressed) &gt; 10)) {
+<span class="nc" id="L50">			return false;</span>
+		}
+		
+		// for the text pop up....
+<span class="nc" id="L54">		final RemovableSprite text = ground.getScreen().getTextAt(point.x, point.y);</span>
+<span class="nc bnc" id="L55" title="All 2 branches missed.">		if (text != null) {</span>
+<span class="nc" id="L56">			ground.getScreen().removeText(text);</span>
+<span class="nc" id="L57">			return true;</span>
+		}
+
+		// get clicked entity
+<span class="nc" id="L61">		final Point2D location = ground.getScreen().convertScreenViewToWorld(point);</span>
+
+		// for the clicked entity....
+<span class="nc" id="L64">		final EntityView&lt;?&gt; view = ground.getScreen().getEntityViewAt(location.getX(), location.getY());</span>
+<span class="nc" id="L65">		boolean doubleClick = Boolean.parseBoolean(WtWindowManager.getInstance().getProperty(&quot;ui.doubleclick&quot;, &quot;false&quot;));</span>
+<span class="nc bnc" id="L66" title="All 4 branches missed.">		if ((view != null) &amp;&amp; view.isInteractive()) {</span>
+<span class="nc bnc" id="L67" title="All 2 branches missed.">			if (isCtrlDown()) {</span>
+<span class="nc" id="L68">				view.onAction();</span>
+<span class="nc" id="L69">				return true;</span>
+<span class="nc bnc" id="L70" title="All 2 branches missed.">			} else if (isShiftDown()) {</span>
+<span class="nc" id="L71">				view.onAction(ActionType.LOOK);</span>
+<span class="nc" id="L72">				return true;</span>
+<span class="nc bnc" id="L73" title="All 2 branches missed.">			} else if (!doubleClick) {</span>
+<span class="nc" id="L74">				return view.onHarmlessAction();</span>
+			}
+<span class="nc bnc" id="L76" title="All 4 branches missed.">		} else if (windowWasActiveOnMousePressed &amp;&amp; !isCtrlDown()) {</span>
+<span class="nc bnc" id="L77" title="All 2 branches missed.">			if (!doubleClick) {</span>
+<span class="nc" id="L78">				ground.createAndSendMoveToAction(location, false);</span>
+				// let it pass &quot;unhandled&quot;, so that the possible double click
+				// move can be sent to server as well
+			}
+		}
+
+<span class="nc" id="L84">		return false;</span>
+	}
+
+	@Override
+	protected boolean onMouseDoubleClick(Point point) {
+<span class="nc" id="L89">		final Point2D location = ground.getScreen().convertScreenViewToWorld(point);</span>
+
+<span class="nc" id="L91">		final EntityView&lt;?&gt; view = ground.getScreen().getEntityViewAt(location.getX(), location.getY());</span>
+
+<span class="nc bnc" id="L93" title="All 4 branches missed.">		if ((view != null) &amp;&amp; view.isInteractive()) {</span>
+			// ... do the default action
+<span class="nc" id="L95">			view.onAction();</span>
+<span class="nc" id="L96">			return true;</span>
+		} else {
+<span class="nc" id="L98">			ground.createAndSendMoveToAction(location, true);</span>
+<span class="nc" id="L99">			return true;</span>
+		}
+	}
+
+	@Override
+	protected void onMouseRightClick(Point point) {
+<span class="nc" id="L105">		ignoreClick = false;</span>
+<span class="nc" id="L106">		final Point2D location = ground.getScreen().convertScreenViewToWorld(point);</span>
+<span class="nc" id="L107">		final EntityView&lt;?&gt; view = ground.getScreen().getEntityViewAt(location.getX(), location.getY());</span>
+
+<span class="nc bnc" id="L109" title="All 2 branches missed.">		if (view != null) {</span>
+			// ... show context menu (aka command list)
+<span class="nc" id="L111">			final String[] actions = view.getActions();</span>
+
+<span class="nc bnc" id="L113" title="All 2 branches missed.">			if (actions.length &gt; 0) {</span>
+<span class="nc" id="L114">				final IEntity entity = view.getEntity();</span>
+
+<span class="nc" id="L116">				JPopupMenu menu = new EntityViewCommandList(entity.getType(), actions, view);</span>
+<span class="nc" id="L117">				menu.show(ground.getCanvas(), point.x - MENU_OFFSET, point.y - MENU_OFFSET);</span>
+<span class="nc" id="L118">				contextMenuFlag = true;</span>
+				/*
+				 * Tricky way to detect recent popup menues. We need the
+				 * information to prevent walking when hiding the menu.
+				 */
+<span class="nc" id="L123">				menu.addPopupMenuListener(new PopupMenuListener() {</span>
+					@Override
+					public void popupMenuCanceled(PopupMenuEvent e) {
+						//ignore
+<span class="nc" id="L127">					}</span>
+					@Override
+					public void popupMenuWillBecomeInvisible(PopupMenuEvent arg0) {
+						/*
+						 *  Hidden. inform onMouseClick; unfortunately this gets
+						 *  called before onMousePressed, so we need to push it
+						 *  pack to the event queue
+						 */
+<span class="nc" id="L135">						SwingUtilities.invokeLater(new Runnable() {</span>
+							@Override
+							public void run() {
+<span class="nc" id="L138">								contextMenuFlag = false;	</span>
+<span class="nc" id="L139">							}</span>
+						});
+<span class="nc" id="L141">					}</span>
+					@Override
+					public void popupMenuWillBecomeVisible(PopupMenuEvent arg0) {
+						// ignore
+<span class="nc" id="L145">					}</span>
+				});
+			}
+		}
+<span class="nc" id="L149">	}</span>
+
+	@Override
+	protected void onDragStart(Point point) {
+<span class="nc" id="L153">		ignoreClick = false;</span>
+		// Find the entity under the starting point
+<span class="nc" id="L155">		final Point2D location = ground.getScreen().convertScreenViewToWorld(point);</span>
+<span class="nc" id="L156">		final EntityView&lt;?&gt; view = ground.getScreen().getMovableEntityViewAt(location.getX(),</span>
+				location.getY());
+
+<span class="nc bnc" id="L159" title="All 2 branches missed.">		if (view != null) {</span>
+			// Let the DragLayer handle the drawing and dropping.
+<span class="nc" id="L161">			DragLayer.get().startDrag(view.getEntity());</span>
+		}
+<span class="nc" id="L163">	}</span>
+
+	@Override
+	public void switchState() {
+<span class="nc" id="L167">		this.ground.setNewMouseHandlerState(new SpellCastingGroundContainerMouseState(this.ground));</span>
+<span class="nc" id="L168">	}</span>
+
+	@Override
+	public StendhalCursor getCursor(Point point) {
+<span class="nc" id="L172">		StendhalCursor cursor = null;</span>
+
+		// is the cursor aiming at a text box?
+<span class="nc" id="L175">		final RemovableSprite text = ground.getScreen().getTextAt(point.x, point.y);</span>
+<span class="nc bnc" id="L176" title="All 2 branches missed.">		if (text != null) {</span>
+<span class="nc" id="L177">			return StendhalCursor.NORMAL;</span>
+		}
+
+<span class="nc" id="L180">		Point2D point2 = ground.getScreen().convertScreenViewToWorld(point);</span>
+<span class="nc" id="L181">		final EntityView&lt;?&gt; view = ground.getScreen().getEntityViewAt(point2.getX(), point2.getY());</span>
+		// is the cursor aiming at an entity?
+<span class="nc bnc" id="L183" title="All 2 branches missed.">		if (view != null) {</span>
+<span class="nc" id="L184">			cursor = view.getCursor();</span>
+		}
+
+		// is the cursor pointing on the ground?
+<span class="nc bnc" id="L188" title="All 2 branches missed.">		if (cursor == null) {</span>
+<span class="nc" id="L189">			cursor = StendhalCursor.WALK;</span>
+<span class="nc" id="L190">			StaticGameLayers layers = ground.getClient().getStaticGameLayers();</span>
+<span class="nc bnc" id="L191" title="All 4 branches missed.">			if ((layers.getCollisionDetection() != null) &amp;&amp; layers.getCollisionDetection().collides((int) point2.getX(), (int) point2.getY())) {</span>
+<span class="nc" id="L192">				cursor = StendhalCursor.STOP;</span>
+<span class="nc bnc" id="L193" title="All 2 branches missed.">			} else if (ground.calculateZoneChangeDirection(point2) != null) {</span>
+<span class="nc" id="L194">				cursor = StendhalCursor.WALK_BORDER;					</span>
+			}
+		}
+<span class="nc" id="L197">		return cursor;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

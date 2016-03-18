@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>InspectAction.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.actions.admin</a> &gt; <span class="el_source">InspectAction.java</span></div><h1>InspectAction.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2016 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.actions.admin;
+
+import static games.stendhal.common.constants.Actions.INSPECT;
+import games.stendhal.server.actions.CommandCenter;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.entity.Entity;
+import games.stendhal.server.entity.RPEntity;
+import games.stendhal.server.entity.item.Item;
+import games.stendhal.server.entity.item.StackableItem;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.player.Player;
+import marauroa.common.game.RPAction;
+import marauroa.common.game.RPObject;
+import marauroa.common.game.RPSlot;
+
+<span class="fc" id="L27">public class InspectAction extends AdministrationAction {</span>
+
+	public static void register() {
+<span class="fc" id="L30">		CommandCenter.register(INSPECT, new InspectAction(), 600);</span>
+<span class="fc" id="L31">	}</span>
+
+	@Override
+	public void perform(final Player player, final RPAction action) {
+
+<span class="fc" id="L36">		final Entity target = getTargetAnyZone(player, action);</span>
+
+<span class="pc bpc" id="L38" title="1 of 2 branches missed.">		if (target == null) {</span>
+<span class="nc" id="L39">			final String text = &quot;Entity not found for action&quot; + action;</span>
+<span class="nc" id="L40">			player.sendPrivateText(text);</span>
+<span class="nc" id="L41">			return;</span>
+		}
+
+<span class="fc" id="L44">		final StringBuilder st = new StringBuilder();</span>
+
+<span class="pc bpc" id="L46" title="1 of 2 branches missed.">		if (target instanceof RPEntity) {</span>
+<span class="fc" id="L47">			final RPEntity inspected = (RPEntity) target;</span>
+
+			// display type and name/title of the entity if they are available
+
+<span class="fc" id="L51">			final String type = inspected.get(&quot;type&quot;);</span>
+<span class="fc" id="L52">			st.append(&quot;Inspected &quot;);</span>
+<span class="pc bpc" id="L53" title="1 of 2 branches missed.">			if (type != null) {</span>
+<span class="fc" id="L54">				st.append(type);</span>
+			} else {
+<span class="nc" id="L56">				st.append(&quot;entity&quot;);</span>
+			}
+<span class="fc" id="L58">			st.append(&quot; is &quot;);</span>
+
+<span class="fc" id="L60">			String name = inspected.getName();</span>
+<span class="pc bpc" id="L61" title="1 of 2 branches missed.">			if (name == null) {</span>
+<span class="nc" id="L62">				name = inspected.getTitle();</span>
+			}
+<span class="pc bpc" id="L64" title="2 of 4 branches missed.">			if (name != null &amp;&amp; !name.equals(&quot;&quot;)) {</span>
+<span class="fc" id="L65">				st.append(&quot;called \&quot;&quot;);</span>
+<span class="fc" id="L66">				st.append(name);</span>
+<span class="fc" id="L67">				st.append(&quot;\&quot;&quot;);</span>
+			} else {
+<span class="nc" id="L69">				st.append(&quot;unnamed&quot;);</span>
+			}
+<span class="fc" id="L71">			st.append(&quot; defined in &quot;);</span>
+<span class="fc" id="L72">			st.append(inspected.getClass().getName());</span>
+<span class="fc" id="L73">			st.append(&quot; and has the following attributes:&quot;);</span>
+
+			// st.append(target.toString());
+			// st.append(&quot;\n===========================\n&quot;);
+<span class="fc" id="L77">			st.append(&quot;\nID: &quot; + action.get(&quot;target&quot;) + &quot; in &quot; + inspected.getZone().getName() + &quot; at (&quot; + + inspected.getX() + &quot;, &quot; + + inspected.getY()+&quot;)&quot;);</span>
+<span class="fc" id="L78">			st.append(&quot;\nATK:    &quot; + inspected.getAtk() + &quot;(&quot;</span>
+					+ inspected.getAtkXP() + &quot;)&quot;);
+<span class="fc" id="L80">			st.append(&quot;\nDEF:    &quot; + inspected.getDef() + &quot;(&quot;</span>
+					+ inspected.getDefXP() + &quot;)&quot;);
+<span class="fc" id="L82">			st.append(&quot;\nHP:     &quot; + inspected.getHP() + &quot; / &quot;</span>
+					+ inspected.getBaseHP());
+<span class="fc" id="L84">			st.append(&quot;\nXP:     &quot; + inspected.getXP());</span>
+<span class="fc" id="L85">			st.append(&quot;\nLevel:  &quot; + inspected.getLevel());</span>
+<span class="fc" id="L86">			st.append(&quot;\nKarma:  &quot; + inspected.getKarma());</span>
+<span class="fc" id="L87">			st.append(&quot;\nMana:  &quot; + inspected.getMana() + &quot; / &quot;</span>
+					+ inspected.getBaseMana());
+<span class="fc" id="L89">			st.append(&quot;\nequips&quot;);</span>
+
+<span class="pc bpc" id="L91" title="1 of 2 branches missed.">			for (final RPSlot slot : inspected.slots()) {</span>
+				// showing these is either irrelevant, private, or spams too much
+<span class="nc bnc" id="L93" title="All 14 branches missed.">				if (slot.getName().equals(&quot;!buddy&quot;)</span>
+						|| slot.getName().equals(&quot;!ignore&quot;)
+						|| slot.getName().equals(&quot;!visited&quot;)
+						|| slot.getName().equals(&quot;!tutorial&quot;)
+						|| slot.getName().equals(&quot;skills&quot;)
+						|| slot.getName().equals(&quot;spells&quot;)
+						|| slot.getName().equals(&quot;!kills&quot;)) {
+<span class="nc" id="L100">					continue;</span>
+				}
+<span class="nc" id="L102">				st.append(&quot;\n    Slot &quot; + slot.getName() + &quot;: &quot;);</span>
+
+<span class="nc bnc" id="L104" title="All 2 branches missed.">				if (slot.getName().startsWith(&quot;!&quot;)) {</span>
+<span class="nc bnc" id="L105" title="All 2 branches missed.">					if(&quot;!quests&quot;.equals(slot.getName())) {</span>
+<span class="nc" id="L106">						st.append(SingletonRepository.getStendhalQuestSystem().listQuestsStates((Player) inspected));</span>
+					} else {
+<span class="nc bnc" id="L108" title="All 2 branches missed.">						for (final RPObject object : slot) {</span>
+<span class="nc" id="L109">							st.append(object);</span>
+<span class="nc" id="L110">						}</span>
+					}
+				} else {
+<span class="nc bnc" id="L113" title="All 2 branches missed.">					for (final RPObject object : slot) {</span>
+<span class="nc bnc" id="L114" title="All 2 branches missed.">						if (!(object instanceof Item)) {</span>
+<span class="nc" id="L115">							continue;</span>
+						}
+
+<span class="nc" id="L118">						String item = object.get(&quot;type&quot;);</span>
+
+<span class="nc bnc" id="L120" title="All 2 branches missed.">						if (object.has(&quot;name&quot;)) {</span>
+<span class="nc" id="L121">							item = object.get(&quot;name&quot;);</span>
+						}
+<span class="nc bnc" id="L123" title="All 2 branches missed.">						if (object instanceof StackableItem) {</span>
+<span class="nc" id="L124">							st.append(&quot;[&quot; + item + &quot; Q=&quot;</span>
+									+ object.get(&quot;quantity&quot;) + &quot;], &quot;);
+						} else {
+<span class="nc" id="L127">							st.append(&quot;[&quot; + item + &quot;], &quot;);</span>
+						}
+<span class="nc" id="L129">					}</span>
+				}
+<span class="nc" id="L131">			}</span>
+<span class="pc bpc" id="L132" title="1 of 2 branches missed.">			if (inspected instanceof SpeakerNPC) {</span>
+<span class="nc" id="L133">				st.append(&quot;\nCurrent state: &quot; + ((SpeakerNPC) inspected).getEngine().getCurrentState());</span>
+			}
+<span class="fc" id="L135">		} else {</span>
+<span class="nc" id="L136">			st.append(&quot;Inspected entity has id &quot; + action.get(&quot;target&quot;)</span>
+					+ &quot; and has attributes:\r\n&quot;);
+<span class="nc" id="L138">			st.append(target.toString());</span>
+		}
+
+<span class="fc" id="L141">		player.sendPrivateText(st.toString());</span>
+<span class="fc" id="L142">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

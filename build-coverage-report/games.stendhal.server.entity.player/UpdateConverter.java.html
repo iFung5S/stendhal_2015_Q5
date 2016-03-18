@@ -1,0 +1,612 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>UpdateConverter.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.player</a> &gt; <span class="el_source">UpdateConverter.java</span></div><h1>UpdateConverter.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *					(C) Copyright 2003-2011 - Stendhal					   *
+ ***************************************************************************
+ ***************************************************************************
+ *																		   *
+ *	 This program is free software; you can redistribute it and/or modify  *
+ *	 it under the terms of the GNU General Public License as published by  *
+ *	 the Free Software Foundation; either version 2 of the License, or	   *
+ *	 (at your option) any later version.								   *
+ *																		   *
+ ***************************************************************************/
+package games.stendhal.server.entity.player;
+
+import games.stendhal.common.ItemTools;
+import games.stendhal.common.KeyedSlotUtil;
+import games.stendhal.common.constants.Testing;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.rule.EntityManager;
+import games.stendhal.server.entity.Outfit;
+import games.stendhal.server.entity.item.HouseKey;
+import games.stendhal.server.entity.item.Item;
+import games.stendhal.server.entity.slot.EntitySlot;
+import games.stendhal.server.entity.slot.KeyedSlot;
+import games.stendhal.server.entity.slot.PlayerSlot;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+
+import marauroa.common.Pair;
+import marauroa.common.game.RPObject;
+import marauroa.common.game.RPSlot;
+
+import org.apache.log4j.Logger;
+
+/**
+ * converts player objects to the most recent version by adding attributes,
+ * transforming quest states and similar migrations.
+ */
+<span class="nc" id="L42">public abstract class UpdateConverter {</span>
+<span class="fc" id="L43">	private static Logger logger = Logger.getLogger(UpdateConverter.class);</span>
+
+<span class="fc" id="L45">	private static final List&lt;String&gt; ITEM_NAMES_OLD = Arrays.asList(</span>
+			&quot;flail_+2&quot;, &quot;leather_armor_+1&quot;, &quot;leather_cuirass_+1&quot;,
+			&quot;chain_armor_+1&quot;, &quot;scale_armor_+1&quot;, &quot;chain_armor_+3&quot;,
+			&quot;scale_armor_+2&quot;, &quot;twoside_axe_+3&quot;, &quot;elf_cloak_+2&quot;, &quot;mace_+1&quot;,
+			&quot;mace_+2&quot;, &quot;hammer_+3&quot;, &quot;chain_helmet_+2&quot;, &quot;golden_helmet_+3&quot;,
+			&quot;longbow_+1&quot;, &quot;lion_shield_+1&quot;
+	);
+<span class="fc" id="L52">	private static final List&lt;String&gt; ITEM_NAMES_NEW = Arrays.asList(</span>
+			&quot;morning star&quot;, &quot;leather scale armor&quot;, &quot;pauldroned leather cuirass&quot;,
+			&quot;enhanced chainmail&quot;, &quot;iron scale armor&quot;, &quot;golden chainmail&quot;,
+			&quot;pauldroned iron cuirass&quot;, &quot;golden twoside axe&quot;, &quot;blue elf cloak&quot;, &quot;enhanced mace&quot;,
+			&quot;golden mace&quot;, &quot;golden hammer&quot;, &quot;aventail&quot;, &quot;horned golden helmet&quot;,
+			&quot;composite bow&quot;, &quot;enhanced lion shield&quot;
+	);
+
+<span class="fc" id="L60">	private static final List&lt;String&gt; ITEM_NAMES_OLD_0_66 = Arrays.asList(</span>
+			&quot;key golden&quot;, &quot;key silver&quot;, &quot;book black&quot;, &quot;book blue&quot;,
+			&quot;duergar elder&quot;, &quot;duergar black&quot;, &quot;giant elder&quot;,
+			&quot;chaos sorceror&quot;
+	);
+<span class="fc" id="L65">	private static final List&lt;String&gt; ITEM_NAMES_NEW_0_66 = Arrays.asList(</span>
+			&quot;golden key&quot;, &quot;silver key&quot;, &quot;black book&quot;, &quot;blue book&quot;,
+			&quot;elder duergar&quot;, &quot;black duergar&quot;, &quot;elder giant&quot;,
+			&quot;chaos sorcerer&quot;
+	);
+	/**
+	 * quest name, quest index, creatures to kill.
+	 */
+	private static final HashMap&lt;String, Pair&lt;Integer, List&lt;String&gt;&gt;&gt; KILL_QUEST_NAMES;
+	static {
+<span class="fc" id="L75">		KILL_QUEST_NAMES = new HashMap&lt;String, Pair&lt;Integer, List&lt;String&gt;&gt;&gt;();</span>
+<span class="fc" id="L76">		KILL_QUEST_NAMES.put(&quot;meet_hayunn&quot;,</span>
+				new Pair&lt;Integer, List&lt;String&gt;&gt;(1, Arrays.asList(
+					&quot;rat&quot;)));
+
+<span class="fc" id="L80">		KILL_QUEST_NAMES.put(&quot;clean_storage&quot;,</span>
+				new Pair&lt;Integer, List&lt;String&gt;&gt;(1, Arrays.asList(
+					&quot;rat&quot;,
+					&quot;caverat&quot;,&quot;snake&quot;)));
+
+<span class="fc" id="L85">		KILL_QUEST_NAMES.put(&quot;club_thorns&quot;,</span>
+				new Pair&lt;Integer, List&lt;String&gt;&gt;(1, Arrays.asList(
+					&quot;mountain orc chief&quot;)));
+
+<span class="fc" id="L89">		KILL_QUEST_NAMES.put(&quot;kill_dhohr_nuggetcutter&quot;,</span>
+				new Pair&lt;Integer, List&lt;String&gt;&gt;(1, Arrays.asList(
+					&quot;Dhohr Nuggetcutter&quot;,
+					&quot;mountain dwarf&quot;,
+					&quot;mountain elder dwarf&quot;,
+					&quot;mountain hero dwarf&quot;,
+					&quot;mountain leader dwarf&quot;)));
+
+<span class="fc" id="L97">		KILL_QUEST_NAMES.put(&quot;kill_gnomes&quot;,</span>
+				new Pair&lt;Integer, List&lt;String&gt;&gt;(1, Arrays.asList(
+					&quot;gnome&quot;,
+					&quot;infantry gnome&quot;,
+					&quot;cavalryman gnome&quot;)));
+
+<span class="fc" id="L103">		KILL_QUEST_NAMES.put(&quot;sad_scientist&quot;,</span>
+				new Pair&lt;Integer, List&lt;String&gt;&gt;(1, Arrays.asList(
+					&quot;Sergej Elos&quot;)));
+<span class="fc" id="L106">	}</span>
+
+
+	/**
+	 * Update old item names to the current naming.
+	 *
+	 * @param name
+	 * @return the currentName of an Item
+	 */
+	public static String updateItemName(String name) {
+<span class="fc bfc" id="L116" title="All 2 branches covered.">		if (name != null) {</span>
+    		// handle renamed items
+<span class="fc" id="L118">    		int idx = ITEM_NAMES_OLD.indexOf(name);</span>
+<span class="fc bfc" id="L119" title="All 2 branches covered.">    		if (idx != -1) {</span>
+<span class="fc" id="L120">    			name = ITEM_NAMES_NEW.get(idx);</span>
+    		}
+
+    		// Remove underscore characters from old database item names - ConversationParser
+    		// is now capable to work with space separated item names.
+<span class="fc" id="L125">    		name = ItemTools.itemNameToDisplayName(name);</span>
+
+    		// rename some additional items to fix grammar in release 0.66
+<span class="fc" id="L128">    		idx = ITEM_NAMES_OLD_0_66.indexOf(name);</span>
+<span class="fc bfc" id="L129" title="All 2 branches covered.">    		if (idx != -1) {</span>
+<span class="fc" id="L130">    			name = ITEM_NAMES_NEW_0_66.get(idx);</span>
+    		}
+		}
+
+<span class="fc" id="L134">		return name;</span>
+	}
+
+	public static Item updateItem(String name) {
+		// process the old keys for houses, now that we have change locks implemented
+		Item item;
+<span class="pc bpc" id="L140" title="1 of 2 branches missed.">		if (name.startsWith(&quot;private key &quot;)) {</span>
+			// which zone the house is in
+			final String zoneName;
+			final String doorId;
+			// number tracks the lock changes
+			final int number = 0;
+<span class="nc" id="L146">			final String[] parts = name.split(&quot; &quot;);</span>
+<span class="nc bnc" id="L147" title="All 2 branches missed.">			if (parts.length &gt; 2) {</span>
+			   	try {
+					// house number
+					final int id;
+<span class="nc" id="L151">					id = Integer.parseInt(parts[2]);</span>
+<span class="nc bnc" id="L152" title="All 2 branches missed.">					if (id &lt; 26) {</span>
+<span class="nc" id="L153">						zoneName = &quot;kalavan&quot;;</span>
+<span class="nc bnc" id="L154" title="All 2 branches missed.">					} else if (id &lt; 50) {</span>
+<span class="nc" id="L155">						zoneName = &quot;kirdneh&quot;;</span>
+					} else {
+<span class="nc" id="L157">						zoneName = &quot;ados&quot;;</span>
+					}
+<span class="nc" id="L159">					doorId = zoneName + &quot; house &quot; + Integer.toString(id);</span>
+					// now set the infostring of the house key to doorId;number;
+<span class="nc" id="L161">					item = SingletonRepository.getEntityManager().getItem(&quot;house key&quot;);</span>
+<span class="nc" id="L162">					((HouseKey) item).setup(doorId, number, null);</span>
+<span class="nc" id="L163">				} catch (final NumberFormatException e) {</span>
+					// shouldn't happen - give up and this will generate a warning
+<span class="nc" id="L165">					item = SingletonRepository.getEntityManager().getItem(name);</span>
+<span class="nc" id="L166">				}</span>
+			} else {
+				// shouldn't happen - give up and this will generate a warning
+<span class="nc" id="L169">				item = SingletonRepository.getEntityManager().getItem(name);</span>
+			}
+<span class="nc" id="L171">		} else {</span>
+			// item wasn't private key, just make it as normal
+<span class="fc" id="L173">			item = SingletonRepository.getEntityManager().getItem(name);</span>
+		}
+<span class="fc" id="L175">		return item;</span>
+	}
+
+	/**
+     * Updates a player RPObject from an old version of Stendhal.
+     *
+     * @param object
+     *            RPObject representing a player
+     */
+    public static void updatePlayerRPObject(final RPObject object) {
+<span class="fc" id="L185">    	final String[] slotsNormal = { &quot;bag&quot;, &quot;rhand&quot;, &quot;lhand&quot;, &quot;head&quot;, &quot;armor&quot;,</span>
+    			&quot;legs&quot;, &quot;feet&quot;, &quot;finger&quot;, &quot;cloak&quot;, &quot;bank&quot;, &quot;bank_ados&quot;,
+    			&quot;zaras_chest_ados&quot;, &quot;bank_fado&quot;, &quot;bank_nalwor&quot;, &quot;spells&quot;,
+    			&quot;keyring&quot;, &quot;trade&quot; };
+
+<span class="fc" id="L190">    	final String[] slotsSpecial = { &quot;!quests&quot;, &quot;!kills&quot;, &quot;!buddy&quot;, &quot;!ignore&quot;,</span>
+    			&quot;!visited&quot;, &quot;skills&quot;, &quot;!tutorial&quot;};
+
+    	// Port from 0.03 to 0.10
+<span class="fc bfc" id="L194" title="All 2 branches covered.">    	if (!object.has(&quot;base_hp&quot;)) {</span>
+<span class="fc" id="L195">    		object.put(&quot;base_hp&quot;, &quot;100&quot;);</span>
+<span class="fc" id="L196">    		object.put(&quot;hp&quot;, &quot;100&quot;);</span>
+    	}
+
+    	// Port from 0.13 to 0.20
+<span class="fc" id="L200">    	final Outfit tempOutfit = new Outfit();</span>
+<span class="fc bfc" id="L201" title="All 2 branches covered.">    	if (!object.has(&quot;outfit&quot;)) {</span>
+<span class="fc" id="L202">    		object.put(&quot;outfit&quot;, tempOutfit.getCode());</span>
+    	}
+
+    	// create slots if they do not exist yet:
+
+    	// Port from 0.20 to 0.30: bag, rhand, lhand, armor, head, legs, feet
+    	// Port from 0.44 to 0.50: cloak, bank
+    	// Port from 0.57 to 0.58: bank_ados, bank_fado
+    	// Port from 0.58 to ?: bank_nalwor, keyring, finger
+<span class="fc bfc" id="L211" title="All 2 branches covered.">    	for (final String slotName : slotsNormal) {</span>
+<span class="fc bfc" id="L212" title="All 2 branches covered.">    		if (!object.hasSlot(slotName)) {</span>
+<span class="fc" id="L213">    			object.addSlot(new PlayerSlot(slotName));</span>
+    		}
+    	}
+
+    	// Port from 0.44 to 0.50: !buddy
+    	// Port from 0.56 to 0.56.1: !ignore
+    	// Port from 0.57 to 0.58: skills
+<span class="fc bfc" id="L220" title="All 2 branches covered.">    	for (final String slotName : slotsSpecial) {</span>
+<span class="fc bfc" id="L221" title="All 2 branches covered.">    		if (!object.hasSlot(slotName)) {</span>
+<span class="fc" id="L222">    			object.addSlot(new KeyedSlot(slotName));</span>
+    		}
+<span class="fc" id="L224">    		final RPSlot slot = object.getSlot(slotName);</span>
+<span class="fc bfc" id="L225" title="All 2 branches covered.">    		if (slot.size() == 0) {</span>
+<span class="fc" id="L226">    			final RPObject singleObject = new RPObject();</span>
+<span class="fc" id="L227">    			slot.add(singleObject);</span>
+    		}
+    	}
+
+    	// Port from 0.30 to 0.35
+<span class="fc bfc" id="L232" title="All 2 branches covered.">    	if (!object.has(&quot;atk_xp&quot;)) {</span>
+<span class="fc" id="L233">    		object.put(&quot;atk_xp&quot;, &quot;0&quot;);</span>
+<span class="fc" id="L234">    		object.put(&quot;def_xp&quot;, &quot;0&quot;);</span>
+    		/* TODO: Remove condition after ranged stat testing is finished. */
+<span class="pc bpc" id="L236" title="1 of 2 branches missed.">    		if (Testing.COMBAT) {</span>
+<span class="nc" id="L237">    			object.put(&quot;ratk_xp&quot;, &quot;0&quot;);</span>
+    		}
+    	}
+
+<span class="pc bpc" id="L241" title="1 of 2 branches missed.">    	if (object.has(&quot;devel&quot;)) {</span>
+<span class="nc" id="L242">    		object.remove(&quot;devel&quot;);</span>
+    	}
+
+    	// From 0.44 to 0.50
+<span class="fc bfc" id="L246" title="All 2 branches covered.">    	if (!object.has(&quot;release&quot;)) {</span>
+<span class="fc" id="L247">    		object.put(&quot;release&quot;, &quot;0.00&quot;);</span>
+<span class="fc" id="L248">    		object.put(&quot;atk&quot;, &quot;10&quot;);</span>
+<span class="fc" id="L249">    		object.put(&quot;def&quot;, &quot;10&quot;);</span>
+    		/* TODO: Remove condition after ranged stat testing is finished. */
+<span class="pc bpc" id="L251" title="1 of 2 branches missed.">    		if (Testing.COMBAT) {</span>
+<span class="nc" id="L252">    			object.put(&quot;ratk&quot;, &quot;10&quot;);</span>
+    		}
+    	}
+
+<span class="fc bfc" id="L256" title="All 2 branches covered.">    	if (!object.has(&quot;age&quot;)) {</span>
+<span class="fc" id="L257">    		object.put(&quot;age&quot;, &quot;0&quot;);</span>
+    	}
+
+<span class="fc bfc" id="L260" title="All 2 branches covered.">    	if (!object.has(&quot;karma&quot;)) {</span>
+    		// A little beginner's luck
+<span class="fc" id="L262">    		object.put(&quot;karma&quot;, 10);</span>
+    	}
+<span class="fc bfc" id="L264" title="All 2 branches covered.">    	if (!object.has(&quot;mana&quot;)) {</span>
+<span class="fc" id="L265">    		object.put(&quot;mana&quot;, 0);</span>
+    	}
+<span class="fc bfc" id="L267" title="All 2 branches covered.">    	if (!object.has(&quot;base_mana&quot;)) {</span>
+<span class="fc" id="L268">    		object.put(&quot;base_mana&quot;, 0);</span>
+    	}
+
+    	// Renamed to skills
+<span class="pc bpc" id="L272" title="1 of 2 branches missed.">    	if (object.has(&quot;!skills&quot;)) {</span>
+<span class="nc" id="L273">    		object.remove(&quot;!skills&quot;);</span>
+    	}
+
+<span class="fc bfc" id="L276" title="All 2 branches covered.">    	if (!object.has(&quot;height&quot;)) {</span>
+<span class="fc" id="L277">    		object.put(&quot;height&quot;, 2);</span>
+    	}
+<span class="fc bfc" id="L279" title="All 2 branches covered.">    	if (!object.has(&quot;width&quot;)) {</span>
+<span class="fc" id="L280">    		object.put(&quot;width&quot;, 1);</span>
+    	}
+
+    	// port to 0.66
+<span class="fc" id="L284">    	transformKillSlot(object);</span>
+
+    	// port to 0.81 because of a bug in 0.80 which allowed 0 hp by double killing on logout during dying
+<span class="pc bpc" id="L287" title="1 of 2 branches missed.">    	if (object.getInt(&quot;hp&quot;) &lt;= 0) {</span>
+<span class="nc" id="L288">    		logger.warn(&quot;Setting hp to 1 for player &quot; + object);</span>
+<span class="nc" id="L289">    		object.put(&quot;hp&quot;, 1);</span>
+    	}
+
+    	// port to 0.85 added buddy list as map - copy buddies to map
+<span class="pc bpc" id="L293" title="1 of 2 branches missed.">    	if (object.hasSlot(&quot;!buddy&quot;)) {</span>
+<span class="fc bfc" id="L294" title="All 2 branches covered.">    		for (RPObject buddy : object.getSlot(&quot;!buddy&quot;)) {</span>
+<span class="fc bfc" id="L295" title="All 2 branches covered.">    			for (final String buddyname : buddy) {</span>
+<span class="pc bpc" id="L296" title="1 of 2 branches missed.">    				if (buddyname.startsWith(&quot;_&quot;)) {</span>
+<span class="nc" id="L297">    					boolean online = false;</span>
+<span class="nc bnc" id="L298" title="All 2 branches missed.">    					if (buddy.get(buddyname).equals(&quot;1&quot;)) {</span>
+<span class="nc" id="L299">    						online = true;</span>
+    					}
+    					//strip out the _ in the beginning
+<span class="nc" id="L302">    					object.put(&quot;buddies&quot;, buddyname.substring(1), online);</span>
+    				}
+<span class="fc" id="L304">    			}</span>
+<span class="fc" id="L305">    			buddy.remove(&quot;_db_id&quot;);</span>
+<span class="fc" id="L306">    		}</span>
+    		// remove buddy slot for 0.87
+<span class="fc" id="L308">    		object.removeSlot(&quot;!buddy&quot;);</span>
+		}
+<span class="fc" id="L310">		object.remove(&quot;buddies&quot;, &quot;db_id&quot;);</span>
+
+		//port to 0.86: port keymap to feature map, karma_indicator as feature
+<span class="pc bpc" id="L313" title="1 of 2 branches missed.">		if (object.hasSlot(&quot;!features&quot;)) {</span>
+<span class="nc bnc" id="L314" title="All 2 branches missed.">			if (KeyedSlotUtil.getKeyedSlot(object, &quot;!features&quot;, &quot;keyring&quot;) != null) {</span>
+<span class="nc" id="L315">				object.put(&quot;features&quot;, &quot;keyring&quot;, &quot;&quot;);</span>
+			}
+<span class="nc" id="L317">			object.removeSlot(&quot;!features&quot;);</span>
+		}
+<span class="pc bpc" id="L319" title="1 of 2 branches missed.">		if (KeyedSlotUtil.getKeyedSlot(object, &quot;!quests&quot;, &quot;learn_karma&quot;) != null) {</span>
+<span class="nc" id="L320">			object.put(&quot;features&quot;, &quot;karma_indicator&quot;, &quot;&quot;);</span>
+		}
+
+		// port to 0.89: fix age
+<span class="pc bpc" id="L324" title="1 of 2 branches missed.">		if (object.has(&quot;age&quot;)) {</span>
+<span class="pc bpc" id="L325" title="2 of 4 branches missed.">			if (!object.has(&quot;release&quot;) || (object.get(&quot;release&quot;).compareTo(&quot;0.88&quot;) &lt;= 0)) {</span>
+<span class="fc" id="L326">				object.put(&quot;age&quot;, object.getInt(&quot;age&quot;) * 180 / 200);</span>
+			}
+		}
+
+		// port to 0.97: expire all temporary outfits
+<span class="pc bpc" id="L331" title="3 of 4 branches missed.">		if (object.has(&quot;outfit_org&quot;) &amp;&amp; !object.has(&quot;outfit_expire_age&quot;)) {</span>
+<span class="nc" id="L332">			object.put(&quot;outfit_expire_age&quot;, 0);</span>
+		}
+<span class="fc" id="L334">	}</span>
+
+	/**
+	 * Transform kill slot content to the new kill recording system.
+	 * @param object
+	 */
+	static void transformKillSlot(final RPObject object) {
+<span class="fc" id="L341">		final RPObject kills = KeyedSlotUtil.getKeyedSlotObject(object, &quot;!kills&quot;);</span>
+
+<span class="pc bpc" id="L343" title="1 of 2 branches missed.">		if (kills != null) {</span>
+<span class="fc" id="L344">    		final RPObject newKills = new RPObject();</span>
+<span class="fc bfc" id="L345" title="All 2 branches covered.">    		for (final String attr : kills) {</span>
+    			// skip &quot;id&quot; entries
+<span class="fc bfc" id="L347" title="All 2 branches covered.">    			if (!attr.equals(&quot;id&quot;)) {</span>
+<span class="fc" id="L348">        			String newAttr = attr;</span>
+<span class="fc" id="L349">        			String value = kills.get(attr);</span>
+
+        			// Is it stored using the old recording system without an dot?
+<span class="fc bfc" id="L352" title="All 2 branches covered.">        			if (attr.indexOf('.') &lt; 0) {</span>
+<span class="fc" id="L353">        				newAttr = updateItemName(newAttr);</span>
+<span class="fc" id="L354">        				newAttr = value + &quot;.&quot; + newAttr;</span>
+<span class="fc" id="L355">        				value = &quot;1&quot;;</span>
+        			}
+
+<span class="fc" id="L358">        			newKills.put(newAttr, value);</span>
+    			}
+<span class="fc" id="L360">    		}</span>
+
+<span class="fc" id="L362">    		final RPSlot slot = object.getSlot(&quot;!kills&quot;);</span>
+<span class="fc" id="L363">    		slot.remove(kills.getID());</span>
+<span class="fc" id="L364">    		slot.add(newKills);</span>
+		}
+<span class="fc" id="L366">	}</span>
+
+	/**
+	 * Update the quest slot to the current version.
+	 * @param player
+	 */
+	public static void updateQuests(final Player player) {
+<span class="fc" id="L373">		final EntityManager entityMgr = SingletonRepository.getEntityManager();</span>
+
+		// rename old quest slot &quot;Valo_concoct_potion&quot; to &quot;valo_concoct_potion&quot;
+		// We avoid to lose potion in case there is an entry with the old and the new name at the same
+		// time by combining them by calculating the minimum of the two times and the sum of the two amounts.
+<span class="fc" id="L378">		migrateSumTimedQuestSlot(player, &quot;Valo_concoct_potion&quot;, &quot;valo_concoct_potion&quot;);</span>
+
+		// From 0.66 to 0.67
+		// update quest slot content,
+		// replace &quot;_&quot; with &quot; &quot;, for item/creature names
+<span class="fc bfc" id="L383" title="All 2 branches covered.">		for (final String questSlot : player.getQuests()) {</span>
+
+<span class="pc bpc" id="L385" title="1 of 2 branches missed.">			if (player.hasQuest(questSlot)) {</span>
+<span class="fc" id="L386">				final String itemString = player.getQuest(questSlot);</span>
+
+<span class="fc" id="L388">				final String[] parts = itemString.split(&quot;;&quot;);</span>
+
+<span class="fc" id="L390">				final StringBuilder buffer = new StringBuilder();</span>
+<span class="fc" id="L391">				boolean first = true;</span>
+
+<span class="fc bfc" id="L393" title="All 2 branches covered.">				for (int i = 0; i &lt; parts.length; ++i) {</span>
+<span class="fc" id="L394">					final String oldName = parts[i];</span>
+
+					// Convert old item names to their new representation with correct grammar
+					// and without underscores.
+<span class="fc" id="L398">					String newName = UpdateConverter.updateItemName(oldName);</span>
+
+					// check for valid item and creature names if the update converter changed the name
+<span class="pc bpc" id="L401" title="1 of 2 branches missed.">					if (!newName.equals(oldName)) {</span>
+<span class="nc bnc" id="L402" title="All 4 branches missed.">						if (!entityMgr.isCreature(newName) &amp;&amp; !entityMgr.isItem(newName)) {</span>
+<span class="nc" id="L403">							newName = oldName;</span>
+						}
+					}
+
+<span class="fc bfc" id="L407" title="All 2 branches covered.">					if (first) {</span>
+<span class="fc" id="L408">						buffer.append(newName);</span>
+<span class="fc" id="L409">						first = false;</span>
+					} else {
+<span class="fc" id="L411">						buffer.append(';');</span>
+<span class="fc" id="L412">						buffer.append(newName);</span>
+					}
+				}
+
+<span class="fc" id="L416">				player.setQuest(questSlot, buffer.toString());</span>
+			}
+<span class="fc" id="L418">		}</span>
+
+		// fix quest slots for kills quests.
+<span class="fc" id="L421">		fixKillQuestsSlots(player);</span>
+
+		// fix DailyMonsterQuest slot
+<span class="fc" id="L424">		fixDailyMonsterQuestSlot(player);</span>
+
+		// fix Maze
+<span class="fc" id="L427">		fixMazeQuestSlot(player);</span>
+
+<span class="fc" id="L429">	}</span>
+
+	/**
+	 * Convert keyring feature to keyring item. Moves the contents of the
+	 * keyring to  the newly created item and removes the feature and the legacy
+	 * slot.
+	 *
+	 * @param player converted player
+	 */
+	public static void updateKeyring(Player player) {
+<span class="fc bfc" id="L439" title="All 2 branches covered.">		if (player.getFeature(&quot;keyring&quot;) != null) {</span>
+			/*
+			 * There are many things that could go wrong. Try to bail harmlessly
+			 * if that happens. The old keyrings still work.
+			 */
+<span class="fc" id="L444">			Item keyring = SingletonRepository.getEntityManager().getItem(&quot;keyring&quot;);</span>
+<span class="pc bpc" id="L445" title="1 of 2 branches missed.">			if (keyring == null) {</span>
+<span class="nc" id="L446">				logger.error(&quot;Failed to create keyring item&quot;);</span>
+<span class="nc" id="L447">				return;</span>
+			}
+<span class="fc" id="L449">			keyring.setBoundTo(player.getName());</span>
+<span class="pc bpc" id="L450" title="1 of 2 branches missed.">			if (!player.hasSlot(&quot;belt&quot;)) {</span>
+<span class="fc" id="L451">				player.addSlot(new PlayerSlot(&quot;belt&quot;));</span>
+			}
+<span class="pc bpc" id="L453" title="1 of 2 branches missed.">			if (!player.hasSlot(&quot;back&quot;)) {</span>
+<span class="fc" id="L454">				player.addSlot(new PlayerSlot(&quot;back&quot;));</span>
+			}
+			/*
+			 * Belt *should* be empty and working, as this code should not be
+			 * called unless belt is activated, and old keyring feature can no
+			 * longer be set on by the quest. It's best to check it anyway.
+			 */
+<span class="pc bpc" id="L461" title="1 of 2 branches missed.">			if (!player.equip(&quot;belt&quot;, keyring)) {</span>
+<span class="nc" id="L462">				logger.error(&quot;Failed to place keyring in belt: &quot; + player);</span>
+<span class="nc" id="L463">				return;</span>
+			}
+
+<span class="fc" id="L466">			RPSlot oldSlot = player.getSlot(&quot;keyring&quot;);</span>
+<span class="fc" id="L467">			EntitySlot newSlot = keyring.getEntitySlot(&quot;content&quot;);</span>
+<span class="pc bpc" id="L468" title="1 of 2 branches missed.">			if (!&quot;keyring&quot;.equals(newSlot.getContentSlotName())) {</span>
+<span class="nc" id="L469">				logger.error(&quot;Keyring has incorrect slot name: &quot;</span>
+						+ newSlot.getContentSlotName() + &quot;, item is: &quot; + keyring);
+<span class="nc" id="L471">				return;</span>
+			}
+<span class="fc" id="L473">			ArrayList&lt;RPObject&gt; contents = new ArrayList&lt;RPObject&gt;(oldSlot.size());</span>
+<span class="fc bfc" id="L474" title="All 2 branches covered.">			for (RPObject item : oldSlot) {</span>
+<span class="fc" id="L475">				contents.add(item);</span>
+<span class="fc" id="L476">			}</span>
+<span class="fc bfc" id="L477" title="All 2 branches covered.">			for (RPObject item : contents) {</span>
+<span class="fc" id="L478">				oldSlot.remove(item.getID());</span>
+<span class="fc" id="L479">				newSlot.add(item);</span>
+<span class="fc" id="L480">			}</span>
+<span class="fc" id="L481">			oldSlot.clear();</span>
+			// Remove the old feature. After this the player won't be able to
+			// use the old style keyring, so everything would better be OK now.
+<span class="fc" id="L484">			player.setFeature(&quot;keyring&quot;, false);</span>
+		}
+<span class="fc" id="L486">	}</span>
+
+	private static void fixMazeQuestSlot(Player player) {
+		final String QUEST_SLOT = &quot;maze&quot;;
+
+		// if player didnt started quest --&gt; exit
+<span class="pc bpc" id="L492" title="1 of 2 branches missed.">		if(!player.hasQuest(QUEST_SLOT)) {</span>
+<span class="fc" id="L493">			return;</span>
+		}
+
+<span class="nc" id="L496">		final String questSlot = player.getQuest(QUEST_SLOT);</span>
+
+		// if player's quest slot is already updated --&gt; exit
+<span class="nc bnc" id="L499" title="All 2 branches missed.">		if(Arrays.asList(questSlot.split(&quot;;&quot;)).size()&gt;1) {</span>
+<span class="nc" id="L500">			return;</span>
+		}
+
+<span class="nc" id="L503">		player.setQuest(QUEST_SLOT, 0, &quot;start&quot;);</span>
+<span class="nc" id="L504">		player.setQuest(QUEST_SLOT, 1, questSlot);</span>
+<span class="nc" id="L505">		player.setQuest(QUEST_SLOT, 2, &quot;0&quot;);</span>
+
+<span class="nc" id="L507">	}</span>
+
+	private static void fixDailyMonsterQuestSlot(final Player player) {
+		final String QUEST_SLOT = &quot;daily&quot;;
+
+		// if player didnt started quest, exiting
+<span class="pc bpc" id="L513" title="1 of 2 branches missed.">		if(!player.hasQuest(QUEST_SLOT)) {</span>
+<span class="fc" id="L514">			return;</span>
+		}
+
+<span class="nc" id="L517">		final String questInfo = player.getQuest(QUEST_SLOT, 0);</span>
+
+		// if player completed quest, exiting
+<span class="nc bnc" id="L520" title="All 2 branches missed.">		if(questInfo.equals(&quot;done&quot;)) {</span>
+<span class="nc" id="L521">			return;</span>
+		}
+		// if player already updated, exiting
+<span class="nc bnc" id="L524" title="All 2 branches missed.">		if(Arrays.asList(questInfo.split(&quot;,&quot;)).size()==5) {</span>
+<span class="nc" id="L525">			return;</span>
+		}
+
+		// now fix player's quest slot
+<span class="nc" id="L529">		player.setQuest(QUEST_SLOT, 0, player.getQuest(QUEST_SLOT, 0)+&quot;,0,1,0,0&quot;);</span>
+<span class="nc" id="L530">	}</span>
+
+	/**
+	 * fix old-style kill quests slots.
+	 * @param player - player which quest slots will fix.
+	 */
+	private static void fixKillQuestsSlots(final Player player) {
+<span class="fc bfc" id="L537" title="All 2 branches covered.">		for(String questSlot: KILL_QUEST_NAMES.keySet()) {</span>
+			// if player have no extra info in quest slot, we will add it :-)
+<span class="fc bfc" id="L539" title="All 2 branches covered.">			if(player.getQuest(questSlot)==null) {</span>
+<span class="fc" id="L540">				continue;</span>
+			}
+<span class="pc bpc" id="L542" title="1 of 2 branches missed.">			if(player.getQuest(questSlot).equals(&quot;start&quot;)) {</span>
+<span class="fc" id="L543">				final List&lt;String&gt; creatures = KILL_QUEST_NAMES.get(questSlot).second();</span>
+<span class="fc" id="L544">				StringBuilder sb=new StringBuilder(&quot;&quot;);</span>
+<span class="fc bfc" id="L545" title="All 2 branches covered.">				for(int i=0; i&lt;creatures.size(); i++) {</span>
+<span class="fc" id="L546">					sb.append(creatures.get(i)+&quot;,0,1,0,0,&quot;);</span>
+				}
+<span class="fc" id="L548">				final String result = sb.toString();</span>
+<span class="fc" id="L549">				player.setQuest(questSlot,</span>
+						KILL_QUEST_NAMES.get(questSlot).first(),
+						// will not record last semicolon.
+						result.substring(0, result.length()-1));
+			}
+<span class="fc" id="L554">		}</span>
+<span class="fc" id="L555">	}</span>
+	
+	// FIXME: Remove?
+	 // update the name of a quest to the new spelling
+//	private static void renameQuestSlot(Player player, String oldName, String newName) {
+//		String questState = player.getQuest(oldName);
+//
+//		if (questState != null) {
+//			player.setQuest(newName, questState);
+//			player.removeQuest(oldName);
+//		}
+//	}
+
+	 // update the name of a quest to the new spelling and accumulate the content
+	private static void migrateSumTimedQuestSlot(final Player player, final String oldName, final String newName) {
+<span class="fc" id="L570">		final String oldState = player.getQuest(oldName);</span>
+
+<span class="fc bfc" id="L572" title="All 2 branches covered.">		if (oldState != null) {</span>
+<span class="fc" id="L573">			String questState = oldState;</span>
+<span class="fc" id="L574">			final String newState = player.getQuest(newName);</span>
+
+<span class="fc bfc" id="L576" title="All 2 branches covered.">			if (newState != null) {</span>
+<span class="fc" id="L577">				final String[] oldParts = oldState.split(&quot;;&quot;);</span>
+<span class="fc" id="L578">				final String[] newParts = newState.split(&quot;;&quot;);</span>
+
+<span class="pc bpc" id="L580" title="2 of 4 branches missed.">				if ((oldParts.length == 3) &amp;&amp; (newParts.length == 3)) {</span>
+					try {
+<span class="fc" id="L582">        				final int oldAmount = Integer.parseInt(oldParts[0]);</span>
+<span class="fc" id="L583">        				int newAmount = Integer.parseInt(newParts[0]);</span>
+<span class="fc" id="L584">        				final String oldItem = oldParts[1];</span>
+<span class="fc" id="L585">        				final String newItem = newParts[1];</span>
+<span class="fc" id="L586">        				final long oldTime = Long.parseLong(oldParts[2]);</span>
+<span class="fc" id="L587">        				long newTime = Long.parseLong(newParts[2]);</span>
+
+<span class="pc bpc" id="L589" title="1 of 2 branches missed.">        				if (oldItem.equals(newItem)) {</span>
+<span class="fc" id="L590">        					newAmount += oldAmount;</span>
+
+<span class="pc bpc" id="L592" title="1 of 2 branches missed.">        					if (oldTime &lt; newTime) {</span>
+<span class="nc" id="L593">        						newTime = oldTime;</span>
+        					}
+
+<span class="fc" id="L596">        					questState = Integer.toString(newAmount) + ';' + newItem + ';' + Long.toString(newTime);</span>
+        				}
+<span class="nc" id="L598">        			} catch (final NumberFormatException e) {</span>
+<span class="nc" id="L599">        				e.printStackTrace();</span>
+<span class="fc" id="L600">        			}</span>
+				}
+			}
+
+<span class="fc" id="L604">			player.setQuest(newName, questState);</span>
+<span class="fc" id="L605">			player.removeQuest(oldName);</span>
+		}
+<span class="fc" id="L607">	}</span>
+
+
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

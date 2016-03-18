@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>MathHelper.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.common</a> &gt; <span class="el_source">MathHelper.java</span></div><h1>MathHelper.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.common;
+
+/**
+ * Helper functions for various mathematical tasks.
+ */
+<span class="nc" id="L18">public class MathHelper {</span>
+	public static final long MILLISECONDS_IN_ONE_MINUTE = 60 * 1000; 
+	public static final long MILLISECONDS_IN_ONE_HOUR = 60 * MILLISECONDS_IN_ONE_MINUTE; 
+	public static final long MILLISECONDS_IN_ONE_DAY = 24 * MILLISECONDS_IN_ONE_HOUR;
+	public static final long MILLISECONDS_IN_ONE_WEEK = 7 * MILLISECONDS_IN_ONE_DAY;
+	public static final int SECONDS_IN_ONE_MINUTE = 60; 
+	public static final int SECONDS_IN_ONE_HOUR = 60 * SECONDS_IN_ONE_MINUTE; 
+	public static final int SECONDS_IN_ONE_DAY = 24 * SECONDS_IN_ONE_HOUR;
+	public static final int SECONDS_IN_ONE_WEEK = 7 * SECONDS_IN_ONE_DAY;
+	public static final int MINUTES_IN_ONE_HOUR = 60;
+	public static final int MINUTES_IN_ONE_DAY = MINUTES_IN_ONE_HOUR * 24;
+	public static final int MINUTES_IN_ONE_WEEK = MINUTES_IN_ONE_DAY * 7;
+	
+	/**
+	 * Parses a double safely, returning a default if nothing can be sanely
+	 * parsed from it.
+	 *
+	 * @param s the string to parse
+	 * @param def the default value
+	 * 
+	 * @return double corresponding to s, or def if s can not be parsed to a
+	 * 	double 
+	 */
+	public static double parseDoubleDefault(String s, double def) {
+<span class="pc bpc" id="L42" title="2 of 4 branches missed.">		if (s == null) {</span>
+<span class="nc" id="L43">			return def;</span>
+		}
+		try {
+<span class="fc" id="L46">			return Double.parseDouble(s);</span>
+<span class="nc" id="L47">		} catch (NumberFormatException e) {</span>
+<span class="nc" id="L48">			return def;</span>
+		}
+	}
+	
+	/**
+	 * Parses a double safely, returning 0 if nothing can be sanely parsed from
+	 * it.
+	 *
+	 * @param s the string to parse
+	 * 
+	 * @return double corresponding to s, or 0 if s can not be parsed to a
+	 * 	double 
+	 */
+	public static double parseDouble(String s) {
+<span class="fc" id="L62">		return parseDoubleDefault(s, 0.0);</span>
+	}
+
+	/**
+	 * parses an integer safely. returning a default if nothing can be sanely
+	 * parsed from it
+	 *
+	 * @param s the string to parse
+	 * @param def the default to set
+	 * 
+	 * @return An integer
+	 */
+	public static int parseIntDefault(final String s, final int def) {
+<span class="fc bfc" id="L75" title="All 4 branches covered.">		if (s == null) {</span>
+<span class="fc" id="L76">			return def;</span>
+		}
+
+		int r;
+		try {
+<span class="fc" id="L81">			r = Integer.parseInt(s);</span>
+<span class="fc" id="L82">		} catch (final NumberFormatException e) {</span>
+<span class="fc" id="L83">			r = def;</span>
+<span class="fc" id="L84">		}</span>
+<span class="fc" id="L85">		return r;</span>
+	}
+
+	/**
+	 * parses an integer safely, returning 0 if nothing can be sanely parsed.
+	 * from it
+	 * @param s to parse
+	 * 
+	 * @return An integer
+	 */
+	public static int parseInt(final String s) {
+<span class="fc" id="L96">		return parseIntDefault(s, 0);</span>
+	}
+
+
+	/**
+	 * parses a long safely. returning a default if nothing can be sanely
+	 * parsed from it
+	 *
+	 * @param s the string to parse
+	 * @param def the default to set
+	 * 
+	 * @return An integer
+	 */
+	public static long parseLongDefault(final String s, final long def) {
+<span class="pc bpc" id="L110" title="2 of 4 branches missed.">		if (s == null) {</span>
+<span class="nc" id="L111">			return def;</span>
+		}
+
+		long r;
+		try {
+<span class="fc" id="L116">			r = Long.parseLong(s);</span>
+<span class="nc" id="L117">		} catch (final NumberFormatException e) {</span>
+<span class="nc" id="L118">			r = def;</span>
+<span class="fc" id="L119">		}</span>
+<span class="fc" id="L120">		return r;</span>
+	}
+
+	/**
+	 * parses a long safely, returning 0 if nothing can be sanely parsed.
+	 * from it
+	 * @param s to parse
+	 * 
+	 * @return An integer
+	 */
+	public static long parseLong(final String s) {
+<span class="fc" id="L131">		return parseLongDefault(s, 0);</span>
+	}
+
+	/**
+	 * Limit an integer value to a specific range.
+	 * 
+	 * @param value value to be limited
+	 * @param minValue minimum value. Should be &lt;= maxValue.
+	 * @param maxValue maximum value. Should be &gt;= minValue.
+	 * @return if value is in range [minValue, maxValue], value is returned.
+	 * 	Otherwise if value &gt; maxValue, maxValue is returned, if value &lt; minValue,
+	 * 	minValue is returned.
+	 */
+	public static int clamp(int value, int minValue, int maxValue) {
+<span class="fc" id="L145">		return Math.max(minValue, Math.min(value, maxValue));</span>
+	}
+	
+	/**
+	 * Limit a float value to a specific range.
+	 * 
+	 * @param value value to be limited
+	 * @param minValue minimum value. Should be &lt;= maxValue.
+	 * @param maxValue maximum value. Should be &gt;= minValue.
+	 * @return if value is in range [minValue, maxValue], value is returned.
+	 * 	Otherwise if value &gt; maxValue, maxValue is returned, if value &lt; minValue,
+	 * 	minValue is returned.
+	 */
+	public static float clamp(float value, float minValue, float maxValue) {
+<span class="nc" id="L159">		return Math.max(minValue, Math.min(value, maxValue));</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

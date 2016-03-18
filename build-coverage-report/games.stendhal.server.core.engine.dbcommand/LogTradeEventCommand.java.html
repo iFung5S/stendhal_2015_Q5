@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>LogTradeEventCommand.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.core.engine.dbcommand</a> &gt; <span class="el_source">LogTradeEventCommand.java</span></div><h1>LogTradeEventCommand.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                 (C) Copyright 2013-2013 - Faiumoni e. V.                *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.core.engine.dbcommand;
+
+import games.stendhal.server.core.engine.db.StendhalItemDAO;
+import games.stendhal.server.core.engine.db.StendhalWebsiteDAO;
+import games.stendhal.server.entity.item.Item;
+import games.stendhal.server.entity.player.Player;
+
+import java.io.IOException;
+import java.sql.SQLException;
+
+import marauroa.server.db.DBTransaction;
+import marauroa.server.db.command.AbstractDBCommand;
+import marauroa.server.game.db.DAORegister;
+
+/**
+ * Logs a Harold trade event
+ *
+ * @author hendrik 
+ */
+public class LogTradeEventCommand extends AbstractDBCommand {
+	private String charname;
+	private Item item;
+	private int quantity;
+	private int price;
+
+	/**
+	 * logs a trade event
+	 *
+	 * @param player Player
+	 * @param item   Item
+	 * @param quantity quantity
+	 * @param price price
+	 */
+<span class="fc" id="L45">	public LogTradeEventCommand(Player player, Item item, int quantity, int price) {</span>
+<span class="fc" id="L46">		this.charname = player.getName();</span>
+<span class="fc" id="L47">		this.item = item;</span>
+<span class="fc" id="L48">		this.quantity = quantity;</span>
+<span class="fc" id="L49">		this.price = price;</span>
+<span class="fc" id="L50">	}</span>
+
+	@Override
+	public void execute(DBTransaction transaction) throws SQLException, IOException {
+<span class="fc" id="L54">		StendhalItemDAO stendhalItemDao = DAORegister.get().get(StendhalItemDAO.class);</span>
+<span class="fc" id="L55">		stendhalItemDao.itemLogAssignIDIfNotPresent(transaction, item);</span>
+
+<span class="fc" id="L57">		StendhalWebsiteDAO stendhalWebsiteDao = DAORegister.get().get(StendhalWebsiteDAO.class);</span>
+<span class="fc" id="L58">		String description = item.describe();</span>
+<span class="fc" id="L59">		String stats = &quot;&quot;;</span>
+<span class="fc" id="L60">		int start = description.indexOf(&quot;Stats are (&quot;);</span>
+<span class="fc bfc" id="L61" title="All 2 branches covered.">		if(start &gt; -1) {</span>
+<span class="fc" id="L62">			stats = description.substring(start);</span>
+		}
+<span class="fc" id="L64">		stendhalWebsiteDao.logTradeEvent(transaction, charname, item.getName(), item.getInt(StendhalItemDAO.ATTR_ITEM_LOGID), quantity, price, stats);</span>
+<span class="fc" id="L65">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

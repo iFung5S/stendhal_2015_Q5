@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>TicTacToeGame.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests.revivalweeks</a> &gt; <span class="el_source">TicTacToeGame.java</span></div><h1>TicTacToeGame.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests.revivalweeks;
+
+import games.stendhal.common.Direction;
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.entity.mapstuff.game.TicTacToeBoard;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.npc.NPCList;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.action.NPCSetDirection;
+import games.stendhal.server.entity.npc.condition.GreetingMatchesNameCondition;
+import games.stendhal.server.entity.player.Player;
+
+import java.util.Arrays;
+
+/**
+ * A Tic Tac Toe game for two players
+ *
+ * @author hendrik
+ */
+<span class="fc" id="L37">public class TicTacToeGame implements LoadableContent {</span>
+<span class="fc" id="L38">	private StendhalRPZone zone = null;</span>
+	private TicTacToeBoard board;
+	private SpeakerNPC paul;
+
+	/**
+	 * creates TicTacToeBoard and adds it to the world.
+	 */
+	private void addBoard() {
+<span class="fc" id="L46">		board = new TicTacToeBoard();</span>
+<span class="fc" id="L47">		board.setPosition(83, 114);</span>
+<span class="fc" id="L48">		zone.add(board);</span>
+<span class="fc" id="L49">		board.addToWorld();</span>
+<span class="fc" id="L50">	}</span>
+
+	/**
+	 * adds the NPC which moderates the game to the world.
+	 */
+	private void addNPC() {
+<span class="fc" id="L56">		paul = new SpeakerNPC(&quot;Paul Sheriff&quot;) {</span>
+			@Override
+			protected void createPath() {
+				// NPC doesn't move
+<span class="fc" id="L60">				setPath(null);</span>
+<span class="fc" id="L61">			}</span>
+
+			@Override
+			protected void createDialog() {
+<span class="fc" id="L65">				add(ConversationStates.IDLE, </span>
+						ConversationPhrases.GREETING_MESSAGES,
+						new GreetingMatchesNameCondition(getName()), true,
+						ConversationStates.IDLE,
+						&quot;Hi, welcome to our small game of Tic Tac Toe. Your task is to fill a row &quot;
+						+ &quot;(vertical, horizontal, diagonal) with the same type of tokens. &quot;
+						+ &quot;You need an opponent to #play against.&quot;,
+						null);
+
+<span class="fc" id="L74">				add(ConversationStates.IDLE, </span>
+						ConversationPhrases.HELP_MESSAGES, 
+						ConversationStates.IDLE,
+						&quot;You have to stand next to a token in order to move it.&quot;,
+						null);
+<span class="fc" id="L79">				add(ConversationStates.IDLE, </span>
+						ConversationPhrases.JOB_MESSAGES, 
+						ConversationStates.IDLE,
+						&quot;I am the supervisor of this game.&quot;,
+						null);
+<span class="fc" id="L84">				add(ConversationStates.IDLE, </span>
+						ConversationPhrases.GOODBYE_MESSAGES, 
+						ConversationStates.IDLE,
+						&quot;It was nice to meet you.&quot;,
+						new NPCSetDirection(Direction.DOWN));
+<span class="fc" id="L89">				add(ConversationStates.IDLE,</span>
+						Arrays.asList(&quot;play&quot;, &quot;game&quot;, &quot;yes&quot;),
+						ConversationStates.IDLE,
+						null,
+						new PlayAction(board));
+<span class="fc" id="L94">			}</span>
+		};
+<span class="fc" id="L96">		paul.setEntityClass(&quot;paulnpc&quot;); </span>
+<span class="fc" id="L97">		paul.setPosition(84, 112);</span>
+<span class="fc" id="L98">		paul.setDirection(Direction.DOWN);</span>
+<span class="fc" id="L99">		zone.add(paul);</span>
+<span class="fc" id="L100">	}</span>
+
+	/**
+	 * handles a play chat action
+	 */
+<span class="fc" id="L105">	private static class PlayAction implements ChatAction {</span>
+		private TicTacToeBoard board;
+		private long lastPlayerAdded;
+
+		/**
+		 * creates a new PlayAction.
+		 *
+		 * @param board
+		 */
+<span class="fc" id="L114">		public PlayAction(TicTacToeBoard board) {</span>
+<span class="fc" id="L115">			this.board = board;</span>
+<span class="fc" id="L116">		}</span>
+
+		@Override
+		public void fire(Player player, Sentence sentence, EventRaiser npc) {
+<span class="nc bnc" id="L120" title="All 2 branches missed.">			if (board.isGameActive()) {</span>
+<span class="nc" id="L121">				npc.say(&quot;Sorry, &quot; + player.getName() + &quot; there is already a game in progress. Please wait a little.&quot;);</span>
+<span class="nc" id="L122">				return;</span>
+			}
+
+<span class="nc bnc" id="L125" title="All 2 branches missed.">			if (lastPlayerAdded + 60000 &lt; System.currentTimeMillis()) {</span>
+<span class="nc" id="L126">				board.getPlayers().clear();</span>
+			}
+
+<span class="nc bnc" id="L129" title="All 2 branches missed.">			if (board.getPlayers().isEmpty()) {</span>
+<span class="nc" id="L130">				lastPlayerAdded = System.currentTimeMillis();</span>
+<span class="nc" id="L131">				npc.say(&quot;Okay, &quot; + player.getName() + &quot; you are registered for the next game. Does anyone want to #play against &quot; + player.getName() + &quot;?&quot;); </span>
+<span class="nc" id="L132">				board.getPlayers().add(player.getName());</span>
+			} else {
+<span class="nc bnc" id="L134" title="All 2 branches missed.">				if (board.getPlayers().get(0).equals(player.getName())) {</span>
+<span class="nc" id="L135">					npc.say(&quot;Okay &quot; + player.getName() + &quot;, you are registered for the next game. Does anyone want to #play against &quot; + player.getName() + &quot;?&quot;);</span>
+<span class="nc" id="L136">					return;</span>
+				}
+
+<span class="nc" id="L139">				npc.say(board.getPlayers().get(0) + &quot;, you are playing the blue X and you will go first. &quot; + player.getName() + &quot;, you are playing the red O. May the best man win!&quot;);</span>
+<span class="nc" id="L140">				board.startGame();</span>
+<span class="nc" id="L141">				board.getPlayers().add(player.getName());</span>
+			}
+<span class="nc" id="L143">		}</span>
+	}
+
+	@Override
+	public void addToWorld() {
+<span class="fc" id="L148">		zone = SingletonRepository.getRPWorld().getZone(&quot;0_semos_mountain_n2&quot;);</span>
+
+<span class="fc" id="L150">		addBoard();</span>
+<span class="fc" id="L151">		addNPC();</span>
+<span class="fc" id="L152">		board.setNPC(paul);</span>
+<span class="fc" id="L153">	}</span>
+
+	/**
+	 * try to remove the content from the world-
+	 *
+	 * @return &lt;code&gt;true&lt;/code&gt;
+	 */
+	@Override
+	public boolean removeFromWorld() {
+<span class="nc" id="L162">		NPCList.get().remove(&quot;Paul Sheriff&quot;);</span>
+<span class="nc" id="L163">		zone.remove(paul);</span>
+<span class="nc" id="L164">		zone.remove(board);</span>
+<span class="nc" id="L165">		return true;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

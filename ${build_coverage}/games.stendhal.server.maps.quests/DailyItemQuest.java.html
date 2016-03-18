@@ -1,0 +1,493 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>DailyItemQuest.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests</a> &gt; <span class="el_source">DailyItemQuest.java</span></div><h1>DailyItemQuest.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2011 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests;
+
+import games.stendhal.common.MathHelper;
+import games.stendhal.common.grammar.Grammar;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.action.DropRecordedItemAction;
+import games.stendhal.server.entity.npc.action.IncreaseKarmaAction;
+import games.stendhal.server.entity.npc.action.IncreaseXPDependentOnLevelAction;
+import games.stendhal.server.entity.npc.action.IncrementQuestAction;
+import games.stendhal.server.entity.npc.action.MultipleActions;
+import games.stendhal.server.entity.npc.action.SayRequiredItemAction;
+import games.stendhal.server.entity.npc.action.SayTimeRemainingAction;
+import games.stendhal.server.entity.npc.action.SetQuestAction;
+import games.stendhal.server.entity.npc.action.SetQuestToTimeStampAction;
+import games.stendhal.server.entity.npc.action.StartRecordingRandomItemCollectionAction;
+import games.stendhal.server.entity.npc.condition.AndCondition;
+import games.stendhal.server.entity.npc.condition.NotCondition;
+import games.stendhal.server.entity.npc.condition.OrCondition;
+import games.stendhal.server.entity.npc.condition.PlayerHasRecordedItemWithHimCondition;
+import games.stendhal.server.entity.npc.condition.QuestActiveCondition;
+import games.stendhal.server.entity.npc.condition.QuestCompletedCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotActiveCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotStartedCondition;
+import games.stendhal.server.entity.npc.condition.TimePassedCondition;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.maps.Region;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * QUEST: Daily Item Fetch Quest.
+ * &lt;p&gt;
+ * PARTICIPANTS:
+ * &lt;li&gt; Mayor of Ados
+ * &lt;li&gt; some items
+ * &lt;p&gt;
+ * STEPS:
+ * &lt;li&gt; talk to Mayor of Ados to get a quest to fetch an item
+ * &lt;li&gt; bring the item to the mayor
+ * &lt;li&gt; if you cannot bring it in one week he offers you the chance to fetch
+ * another instead
+ * &lt;p&gt;
+ * REWARD:
+ * &lt;li&gt; xp 
+ * &lt;li&gt; 10 Karma
+ * &lt;p&gt;
+ * REPETITIONS:
+ * &lt;li&gt; once a day
+ */
+<span class="fc" id="L69">public class DailyItemQuest extends AbstractQuest {</span>
+
+	private static final String QUEST_SLOT = &quot;daily_item&quot;;
+	
+	/** How long until the player can give up and start another quest */
+	private static final int expireDelay = MathHelper.MINUTES_IN_ONE_WEEK; 
+	
+	/** How often the quest may be repeated */
+	private static final int delay = MathHelper.MINUTES_IN_ONE_DAY; 
+	
+	/**
+	 * All items which are possible/easy enough to find. If you want to do
+	 * it better, go ahead. *
+	 */
+	private static Map&lt;String,Integer&gt; items;
+
+	private static void buildItemsMap() {
+<span class="fc" id="L86">		items = new HashMap&lt;String, Integer&gt;();</span>
+
+		// ammunition
+<span class="fc" id="L89">		items.put(&quot;golden arrow&quot;,5);</span>
+<span class="fc" id="L90">		items.put(&quot;power arrow&quot;,5);</span>
+<span class="fc" id="L91">		items.put(&quot;steel arrow&quot;,7);</span>
+<span class="fc" id="L92">		items.put(&quot;wooden arrow&quot;,10);</span>
+		
+		// armor
+<span class="fc" id="L95">        items.put(&quot;blue armor&quot;,1);</span>
+<span class="fc" id="L96">		items.put(&quot;chain armor&quot;,1);</span>
+<span class="fc" id="L97">		items.put(&quot;dress&quot;,1);</span>
+<span class="fc" id="L98">		items.put(&quot;enhanced chainmail&quot;,1);</span>
+<span class="fc" id="L99">		items.put(&quot;golden chainmail&quot;,1);</span>
+<span class="fc" id="L100">		items.put(&quot;iron scale armor&quot;,1);</span>
+<span class="fc" id="L101">		items.put(&quot;leather armor&quot;,1);</span>
+<span class="fc" id="L102">		items.put(&quot;leather cuirass&quot;,1);</span>
+<span class="fc" id="L103">		items.put(&quot;leather scale armor&quot;,1);</span>
+<span class="fc" id="L104">		items.put(&quot;pauldroned iron cuirass&quot;,1);</span>
+<span class="fc" id="L105">		items.put(&quot;pauldroned leather cuirass&quot;,1);</span>
+<span class="fc" id="L106">		items.put(&quot;plate armor&quot;,1);</span>
+<span class="fc" id="L107">		items.put(&quot;scale armor&quot;,1);</span>
+<span class="fc" id="L108">		items.put(&quot;studded armor&quot;,1);</span>
+
+		// axe
+<span class="fc" id="L111">		items.put(&quot;axe&quot;,1);</span>
+<span class="fc" id="L112">		items.put(&quot;bardiche&quot;,1);</span>
+<span class="fc" id="L113">		items.put(&quot;battle axe&quot;,1);</span>
+<span class="fc" id="L114">		items.put(&quot;halberd&quot;,1);</span>
+<span class="fc" id="L115">		items.put(&quot;hand axe&quot;,1);</span>
+<span class="fc" id="L116">		items.put(&quot;old scythe&quot;,1);</span>
+<span class="fc" id="L117">		items.put(&quot;scythe&quot;,1);</span>
+<span class="fc" id="L118">		items.put(&quot;sickle&quot;,1);</span>
+<span class="fc" id="L119">		items.put(&quot;small axe&quot;,1);</span>
+<span class="fc" id="L120">		items.put(&quot;twoside axe&quot;,1);</span>
+		
+		// boots
+<span class="fc" id="L123">        items.put(&quot;blue boots&quot;,1);</span>
+<span class="fc" id="L124">		items.put(&quot;chain boots&quot;,1);</span>
+<span class="fc" id="L125">		items.put(&quot;leather boots&quot;,1);</span>
+<span class="fc" id="L126">		items.put(&quot;studded boots&quot;,1);</span>
+		
+		// cloaks
+<span class="fc" id="L129">		items.put(&quot;blue elf cloak&quot;,1);</span>
+<span class="fc" id="L130">		items.put(&quot;cloak&quot;,1);</span>
+<span class="fc" id="L131">		items.put(&quot;dwarf cloak&quot;,1);</span>
+<span class="fc" id="L132">		items.put(&quot;elf cloak&quot;,1);</span>
+<span class="fc" id="L133">		items.put(&quot;green dragon cloak&quot;,1);</span>
+		
+		// club
+<span class="fc" id="L136">		items.put(&quot;club&quot;,1);</span>
+<span class="fc" id="L137">		items.put(&quot;enhanced mace&quot;,1);</span>
+<span class="fc" id="L138">		items.put(&quot;flail&quot;,1);</span>
+<span class="fc" id="L139">		items.put(&quot;golden hammer&quot;,1);</span>
+<span class="fc" id="L140">		items.put(&quot;golden mace&quot;,1);</span>
+<span class="fc" id="L141">		items.put(&quot;hammer&quot;,1);</span>
+<span class="fc" id="L142">		items.put(&quot;mace&quot;,1);</span>
+<span class="fc" id="L143">		items.put(&quot;morning star&quot;,1);</span>
+<span class="fc" id="L144">		items.put(&quot;staff&quot;,1);</span>
+<span class="fc" id="L145">		items.put(&quot;war hammer&quot;,1);</span>
+		
+		// container
+<span class="fc" id="L148">		items.put(&quot;eared bottle&quot;,3);</span>
+<span class="fc" id="L149">		items.put(&quot;flask&quot;,5);</span>
+<span class="fc" id="L150">		items.put(&quot;slim bottle&quot;,5);</span>
+		
+		// drinks
+<span class="fc" id="L153">		items.put(&quot;antidote&quot;,5);</span>
+<span class="fc" id="L154">		items.put(&quot;beer&quot;,10);</span>
+<span class="fc" id="L155">		items.put(&quot;greater antidote&quot;,5);</span>
+<span class="fc" id="L156">		items.put(&quot;greater potion&quot;,5);</span>
+<span class="fc" id="L157">		items.put(&quot;milk&quot;,5);</span>
+<span class="fc" id="L158">		items.put(&quot;minor potion&quot;,5);</span>
+<span class="fc" id="L159">		items.put(&quot;poison&quot;,5);</span>
+<span class="fc" id="L160">		items.put(&quot;potion&quot;,5);</span>
+<span class="fc" id="L161">		items.put(&quot;tea&quot;,3);</span>
+<span class="fc" id="L162">		items.put(&quot;water&quot;,5);</span>
+<span class="fc" id="L163">		items.put(&quot;wine&quot;,10);</span>
+		
+		// flower
+<span class="fc" id="L166">		items.put(&quot;daisies&quot;,5);</span>
+<span class="fc" id="L167">		items.put(&quot;lilia&quot;,5);</span>
+<span class="fc" id="L168">		items.put(&quot;rose&quot;,10);</span>
+		
+		// food
+<span class="fc" id="L171">		items.put(&quot;apple&quot;,5);</span>
+<span class="fc" id="L172">		items.put(&quot;apple pie&quot;,2);</span>
+<span class="fc" id="L173">		items.put(&quot;artichoke&quot;,10);</span>
+<span class="fc" id="L174">		items.put(&quot;bread&quot;,5);</span>
+<span class="fc" id="L175">		items.put(&quot;broccoli&quot;,5);</span>
+<span class="fc" id="L176">		items.put(&quot;button mushroom&quot;,10);</span>
+<span class="fc" id="L177">		items.put(&quot;carrot&quot;,10);</span>
+<span class="fc" id="L178">		items.put(&quot;cauliflower&quot;,5);</span>
+<span class="fc" id="L179">		items.put(&quot;char&quot;,5);</span>
+<span class="fc" id="L180">		items.put(&quot;cheese&quot;,10);</span>
+<span class="fc" id="L181">		items.put(&quot;cherry&quot;,10);</span>
+<span class="fc" id="L182">		items.put(&quot;cherry pie&quot;,2);</span>
+<span class="fc" id="L183">		items.put(&quot;chicken&quot;,10);</span>
+<span class="fc" id="L184">		items.put(&quot;chocolate bar&quot;,5);</span>
+<span class="fc" id="L185">		items.put(&quot;clownfish&quot;,5);</span>
+<span class="fc" id="L186">		items.put(&quot;collard&quot;,5);</span>
+<span class="fc" id="L187">		items.put(&quot;courgette&quot;,5);</span>
+<span class="fc" id="L188">		items.put(&quot;egg&quot;,1);</span>
+<span class="fc" id="L189">		items.put(&quot;fairy cake&quot;, 5);</span>
+<span class="fc" id="L190">		items.put(&quot;fish pie&quot;,1);</span>
+<span class="fc" id="L191">		items.put(&quot;garlic&quot;,5);</span>
+<span class="fc" id="L192">		items.put(&quot;grapes&quot;,5);</span>
+<span class="fc" id="L193">		items.put(&quot;grilled steak&quot;,1);</span>
+<span class="fc" id="L194">		items.put(&quot;ham&quot;,10);</span>
+<span class="fc" id="L195">		items.put(&quot;honey&quot;,2);</span>
+<span class="fc" id="L196">		items.put(&quot;leek&quot;,5);</span>
+<span class="fc" id="L197">		items.put(&quot;meat&quot;,10);</span>
+<span class="fc" id="L198">		items.put(&quot;onion&quot;,5);</span>
+<span class="fc" id="L199">		items.put(&quot;pear&quot;,5);</span>
+<span class="fc" id="L200">		items.put(&quot;perch&quot;,5);</span>
+<span class="fc" id="L201">		items.put(&quot;pie&quot;,5);</span>
+<span class="fc" id="L202">		items.put(&quot;pomegranate&quot;,5);</span>
+<span class="fc" id="L203">		items.put(&quot;porcini&quot;,10);</span>
+<span class="fc" id="L204">		items.put(&quot;red lionfish&quot;,5);</span>
+<span class="fc" id="L205">		items.put(&quot;roach&quot;,5);</span>
+<span class="fc" id="L206">		items.put(&quot;salad&quot;,10);</span>
+<span class="fc" id="L207">		items.put(&quot;sandwich&quot;,5);</span>
+<span class="fc" id="L208">		items.put(&quot;spinach&quot;,5);</span>
+<span class="fc" id="L209">		items.put(&quot;surgeonfish&quot;,5);</span>
+<span class="fc" id="L210">		items.put(&quot;toadstool&quot;,15);</span>
+<span class="fc" id="L211">		items.put(&quot;tomato&quot;,5);</span>
+<span class="fc" id="L212">		items.put(&quot;trout&quot;,5);</span>
+<span class="fc" id="L213">		items.put(&quot;olive&quot;,5);</span>
+		
+		// helmet
+<span class="fc" id="L216">        items.put(&quot;blue helmet&quot;,1);</span>
+<span class="fc" id="L217">		items.put(&quot;aventail&quot;,1);</span>
+<span class="fc" id="L218">		items.put(&quot;chain helmet&quot;,1);</span>
+<span class="fc" id="L219">		items.put(&quot;leather helmet&quot;,1);</span>
+<span class="fc" id="L220">		items.put(&quot;robins hat&quot;,1);</span>
+<span class="fc" id="L221">		items.put(&quot;studded helmet&quot;,1);</span>
+<span class="fc" id="L222">		items.put(&quot;viking helmet&quot;,1);</span>
+	
+		// herb
+<span class="fc" id="L225">		items.put(&quot;arandula&quot;,5);</span>
+<span class="fc" id="L226">		items.put(&quot;sclaria&quot;,5);</span>
+<span class="fc" id="L227">		items.put(&quot;mandragora&quot;,3);</span>
+<span class="fc" id="L228">		items.put(&quot;kekik&quot;,5);</span>
+		
+		// legs
+<span class="fc" id="L231">        items.put(&quot;blue legs&quot;,1);</span>
+<span class="fc" id="L232">		items.put(&quot;chain legs&quot;,1);</span>
+<span class="fc" id="L233">		items.put(&quot;leather legs&quot;,1);</span>
+<span class="fc" id="L234">		items.put(&quot;studded legs&quot;,1);</span>
+		
+		// misc
+<span class="fc" id="L237">		items.put(&quot;dice&quot;,1);</span>
+<span class="fc" id="L238">		items.put(&quot;marbles&quot;, 2);</span>
+<span class="fc" id="L239">		items.put(&quot;rodent trap&quot;,5);</span>
+<span class="fc" id="L240">		items.put(&quot;teddy&quot;,1);</span>
+		
+		// money
+<span class="fc" id="L243">		items.put(&quot;money&quot;,100);</span>
+		
+		// ranged
+<span class="fc" id="L246">		items.put(&quot;composite bow&quot;,1);</span>
+<span class="fc" id="L247">		items.put(&quot;longbow&quot;,1);</span>
+<span class="fc" id="L248">		items.put(&quot;wooden bow&quot;,1);</span>
+		
+		// resource
+<span class="fc" id="L251">		items.put(&quot;coal&quot;,10);</span>
+<span class="fc" id="L252">		items.put(&quot;flour&quot;,5);</span>
+<span class="fc" id="L253">		items.put(&quot;grain&quot;,20);</span>
+<span class="fc" id="L254">		items.put(&quot;gold bar&quot;,5);</span>
+<span class="fc" id="L255">		items.put(&quot;gold nugget&quot;,10);</span>
+<span class="fc" id="L256">		items.put(&quot;iron&quot;,5);</span>
+<span class="fc" id="L257">		items.put(&quot;iron ore&quot;,10);</span>
+<span class="fc" id="L258">		items.put(&quot;wood&quot;,10);</span>
+		
+		// shield
+<span class="fc" id="L261">        items.put(&quot;blue shield&quot;,1);</span>
+<span class="fc" id="L262">		items.put(&quot;buckler&quot;,1);</span>
+<span class="fc" id="L263">		items.put(&quot;crown shield&quot;,1);</span>
+<span class="fc" id="L264">		items.put(&quot;enhanced lion shield&quot;,1);</span>
+<span class="fc" id="L265">		items.put(&quot;lion shield&quot;,1);</span>
+<span class="fc" id="L266">		items.put(&quot;plate shield&quot;,1);</span>
+<span class="fc" id="L267">		items.put(&quot;skull shield&quot;,1);</span>
+<span class="fc" id="L268">		items.put(&quot;studded shield&quot;,1);</span>
+<span class="fc" id="L269">		items.put(&quot;unicorn shield&quot;,1);</span>
+<span class="fc" id="L270">		items.put(&quot;wooden shield&quot;,1);</span>
+		
+		// sword
+<span class="fc" id="L273">		items.put(&quot;biting sword&quot;,1);</span>
+<span class="fc" id="L274">		items.put(&quot;broadsword&quot;,1);</span>
+<span class="fc" id="L275">		items.put(&quot;claymore&quot;,1);</span>
+<span class="fc" id="L276">		items.put(&quot;dagger&quot;,1);</span>
+<span class="fc" id="L277">		items.put(&quot;elvish sword&quot;,1);</span>
+<span class="fc" id="L278">		items.put(&quot;katana&quot;,1);</span>
+<span class="fc" id="L279">		items.put(&quot;knife&quot;,1);</span>
+<span class="fc" id="L280">		items.put(&quot;scimitar&quot;,1);</span>
+<span class="fc" id="L281">		items.put(&quot;short sword&quot;,1);</span>
+<span class="fc" id="L282">		items.put(&quot;sword&quot;,1);</span>
+		
+		// tool
+<span class="fc" id="L285">		items.put(&quot;pick&quot;,1);</span>
+<span class="fc" id="L286">		items.put(&quot;gold pan&quot;,1);</span>
+<span class="fc" id="L287">	}</span>
+	
+	private ChatAction startQuestAction() {
+		// common place to get the start quest actions as we can both starts it and abort and start again
+		
+<span class="fc" id="L292">		final List&lt;ChatAction&gt; actions = new LinkedList&lt;ChatAction&gt;();</span>
+<span class="fc" id="L293">		actions.add(new StartRecordingRandomItemCollectionAction(QUEST_SLOT,0,items,&quot;Ados is in need of supplies. Go fetch [item]&quot;</span>
+				+ &quot; and say #complete, once you've brought it.&quot;));	
+<span class="fc" id="L295">		actions.add(new SetQuestToTimeStampAction(QUEST_SLOT, 1));</span>
+		
+<span class="fc" id="L297">		return new MultipleActions(actions);</span>
+	}
+	
+	private void getQuest() {
+<span class="fc" id="L301">		final SpeakerNPC npc = npcs.get(&quot;Mayor Chalmers&quot;);</span>
+<span class="fc" id="L302">		npc.add(ConversationStates.ATTENDING, ConversationPhrases.QUEST_MESSAGES,</span>
+				new AndCondition(new QuestActiveCondition(QUEST_SLOT),
+								 new NotCondition(new TimePassedCondition(QUEST_SLOT,1,expireDelay))), 
+				ConversationStates.ATTENDING,
+				null,
+				new SayRequiredItemAction(QUEST_SLOT,0,&quot;You're already on a quest to fetch [item]&quot;
+						+ &quot;. Say #complete if you brought it!&quot;));
+		
+<span class="fc" id="L310">		npc.add(ConversationStates.ATTENDING, ConversationPhrases.QUEST_MESSAGES,</span>
+				new AndCondition(new QuestActiveCondition(QUEST_SLOT),
+								 new TimePassedCondition(QUEST_SLOT,1,expireDelay)), 
+				ConversationStates.ATTENDING,
+				null,
+				new SayRequiredItemAction(QUEST_SLOT,0,&quot;You're already on a quest to fetch [item]&quot;
+						+ &quot;. Say #complete if you brought it! Perhaps there are no supplies of that left at all! You could fetch #another item if you like, or return with what I first asked you.&quot;));
+	
+<span class="fc" id="L318">		npc.add(ConversationStates.ATTENDING, ConversationPhrases.QUEST_MESSAGES,</span>
+				new AndCondition(new QuestCompletedCondition(QUEST_SLOT),
+								 new NotCondition(new TimePassedCondition(QUEST_SLOT,1,delay))), 
+				ConversationStates.ATTENDING,
+				null,
+				new SayTimeRemainingAction(QUEST_SLOT,1, delay, &quot;I can only give you a new quest once a day. Please check back in&quot;));
+		
+		
+
+		
+<span class="fc" id="L328">		npc.add(ConversationStates.ATTENDING, ConversationPhrases.QUEST_MESSAGES,</span>
+				new OrCondition(new QuestNotStartedCondition(QUEST_SLOT),
+								new AndCondition(new QuestCompletedCondition(QUEST_SLOT),
+												 new TimePassedCondition(QUEST_SLOT,1,delay))), 
+				ConversationStates.ATTENDING,
+				null,
+				startQuestAction());
+<span class="fc" id="L335">	}</span>
+	
+	private void completeQuest() {
+<span class="fc" id="L338">		final SpeakerNPC npc = npcs.get(&quot;Mayor Chalmers&quot;);</span>
+		
+<span class="fc" id="L340">		npc.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.FINISH_MESSAGES, 
+				new QuestNotStartedCondition(QUEST_SLOT),
+				ConversationStates.ATTENDING, 
+				&quot;I'm afraid I didn't send you on a #quest yet.&quot;,
+				null);
+		
+<span class="fc" id="L347">		npc.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.FINISH_MESSAGES, 
+				new QuestCompletedCondition(QUEST_SLOT),
+				ConversationStates.ATTENDING, 
+				&quot;You already completed the last quest I had given to you.&quot;,
+				null);
+		
+<span class="fc" id="L354">		final List&lt;ChatAction&gt; actions = new LinkedList&lt;ChatAction&gt;();</span>
+<span class="fc" id="L355">		actions.add(new DropRecordedItemAction(QUEST_SLOT,0));</span>
+<span class="fc" id="L356">		actions.add(new SetQuestToTimeStampAction(QUEST_SLOT, 1));</span>
+<span class="fc" id="L357">		actions.add(new IncrementQuestAction(QUEST_SLOT, 2, 1));</span>
+<span class="fc" id="L358">		actions.add(new SetQuestAction(QUEST_SLOT, 0, &quot;done&quot;));</span>
+<span class="fc" id="L359">		actions.add(new IncreaseXPDependentOnLevelAction(8, 90.0));</span>
+<span class="fc" id="L360">		actions.add(new IncreaseKarmaAction(10.0));</span>
+		
+<span class="fc" id="L362">		npc.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.FINISH_MESSAGES,
+				new AndCondition(new QuestActiveCondition(QUEST_SLOT),
+								 new PlayerHasRecordedItemWithHimCondition(QUEST_SLOT,0)),
+				ConversationStates.ATTENDING, 
+				&quot;Good work! Let me thank you on behalf of the people of Ados!&quot;,
+				new MultipleActions(actions));
+		
+<span class="fc" id="L370">		npc.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.FINISH_MESSAGES,
+				new AndCondition(new QuestActiveCondition(QUEST_SLOT),
+								 new NotCondition(new PlayerHasRecordedItemWithHimCondition(QUEST_SLOT,0))),
+				ConversationStates.ATTENDING, 
+				null,
+				new SayRequiredItemAction(QUEST_SLOT,0,&quot;You didn't fetch [item]&quot;
+						+ &quot; yet. Go and get it and say #complete only once you're done.&quot;));
+		
+<span class="fc" id="L379">	}</span>
+	
+	private void abortQuest() {
+<span class="fc" id="L382">		final SpeakerNPC npc = npcs.get(&quot;Mayor Chalmers&quot;);</span>
+		
+<span class="fc" id="L384">		npc.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.ABORT_MESSAGES,
+				new AndCondition(new QuestActiveCondition(QUEST_SLOT),
+						 		 new TimePassedCondition(QUEST_SLOT,1,expireDelay)), 
+				ConversationStates.ATTENDING, 
+				null, 
+				// start quest again immediately
+				startQuestAction());
+		
+<span class="fc" id="L393">		npc.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.ABORT_MESSAGES,
+				new AndCondition(new QuestActiveCondition(QUEST_SLOT),
+						 		 new NotCondition(new TimePassedCondition(QUEST_SLOT,1,expireDelay))), 
+				ConversationStates.ATTENDING, 
+				&quot;It hasn't been long since you've started your quest, I won't let you give up so soon.&quot;, 
+				null);
+		
+<span class="fc" id="L401">		npc.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.ABORT_MESSAGES,
+				new QuestNotActiveCondition(QUEST_SLOT),
+				ConversationStates.ATTENDING, 
+				&quot;I'm afraid I didn't send you on a #quest yet.&quot;, 
+				null);
+		
+<span class="fc" id="L408">	}</span>
+
+	@Override
+	public String getSlotName() {
+<span class="nc" id="L412">		return QUEST_SLOT;</span>
+	}
+	
+	@Override
+	public List&lt;String&gt; getHistory(final Player player) {
+<span class="nc" id="L417">		final List&lt;String&gt; res = new ArrayList&lt;String&gt;();</span>
+<span class="nc bnc" id="L418" title="All 2 branches missed.">		if (!player.hasQuest(QUEST_SLOT)) {</span>
+<span class="nc" id="L419">			return res;</span>
+		}
+<span class="nc" id="L421">		res.add(&quot;I have met Mayor Chalmers in Ados Townhall.&quot;);</span>
+<span class="nc" id="L422">		final String questState = player.getQuest(QUEST_SLOT);</span>
+<span class="nc bnc" id="L423" title="All 2 branches missed.">		if (&quot;rejected&quot;.equals(questState)) {</span>
+<span class="nc" id="L424">			res.add(&quot;I do not want to help Ados.&quot;);</span>
+<span class="nc" id="L425">			return res;</span>
+		}
+
+<span class="nc" id="L428">		res.add(&quot;I want to help Ados.&quot;);</span>
+<span class="nc bnc" id="L429" title="All 4 branches missed.">		if (player.hasQuest(QUEST_SLOT) &amp;&amp; !player.isQuestCompleted(QUEST_SLOT)) {</span>
+<span class="nc" id="L430">			String questItem = player.getRequiredItemName(QUEST_SLOT,0);</span>
+<span class="nc" id="L431">			int amount = player.getRequiredItemQuantity(QUEST_SLOT,0);</span>
+<span class="nc bnc" id="L432" title="All 2 branches missed.">			if (!player.isEquipped(questItem, amount)) {</span>
+<span class="nc" id="L433">				res.add(&quot;I have been asked to fetch &quot;</span>
+						+ Grammar.quantityplnoun(amount, questItem, &quot;a&quot;) + &quot; to help Ados. I haven't got it yet.&quot;);
+			} else {
+<span class="nc" id="L436">				res.add(&quot;I have found &quot;</span>
+						+ Grammar.quantityplnoun(amount, questItem, &quot;a&quot;) + &quot; to help Ados and need to take it.&quot;);
+			}
+		}
+<span class="nc" id="L440">		int repetitions = player.getNumberOfRepetitions(getSlotName(), 2);</span>
+<span class="nc bnc" id="L441" title="All 2 branches missed.">		if (repetitions &gt; 0) {</span>
+<span class="nc" id="L442">			res.add(&quot;I helped Ados with supplies &quot;</span>
+					+ Grammar.quantityplnoun(repetitions, &quot;time&quot;) + &quot; so far.&quot;);
+		}
+<span class="nc bnc" id="L445" title="All 2 branches missed.">		if (isRepeatable(player)) {</span>
+<span class="nc" id="L446">			res.add(&quot;I fetched the last item the mayor asked me to find and now Ados needs supplies again.&quot;);</span>
+<span class="nc bnc" id="L447" title="All 2 branches missed.">		} else if (isCompleted(player)){</span>
+<span class="nc" id="L448">			res.add(&quot;I fetched the last item the mayor asked me to find and claimed my reward within the last 24 hours.&quot;);</span>
+		}
+<span class="nc" id="L450">		return res;</span>
+	}
+
+	@Override
+	public void addToWorld() {
+<span class="fc" id="L455">		fillQuestInfo(</span>
+				&quot;Daily Item Quest&quot;,
+				&quot;Mayor Chalmers needs supplies for Ados City.&quot;,
+				true);
+		
+<span class="fc" id="L460">		buildItemsMap();</span>
+		
+<span class="fc" id="L462">		getQuest();</span>
+<span class="fc" id="L463">		completeQuest();</span>
+<span class="fc" id="L464">		abortQuest();</span>
+<span class="fc" id="L465">	}</span>
+
+	@Override
+	public String getName() {
+<span class="nc" id="L469">		return &quot;DailyItemQuest&quot;;</span>
+	}
+
+	@Override
+	public int getMinLevel() {
+<span class="fc" id="L474">		return 0;</span>
+	}
+	
+	@Override
+	public boolean isRepeatable(final Player player) {
+<span class="nc" id="L479">		return	new AndCondition(new QuestCompletedCondition(QUEST_SLOT),</span>
+						 new TimePassedCondition(QUEST_SLOT,1,delay)).fire(player, null, null);
+	}
+	
+	@Override
+	public String getRegion() {
+<span class="nc" id="L485">		return Region.ADOS_CITY;</span>
+	}
+
+	@Override
+	public String getNPCName() {
+<span class="nc" id="L490">		return &quot;Mayor Chalmers&quot;;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

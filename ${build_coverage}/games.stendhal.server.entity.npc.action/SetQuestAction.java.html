@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SetQuestAction.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.npc.action</a> &gt; <span class="el_source">SetQuestAction.java</span></div><h1>SetQuestAction.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.npc.action;
+
+import static com.google.common.base.Preconditions.checkNotNull;
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.core.config.annotations.Dev;
+import games.stendhal.server.core.config.annotations.Dev.Category;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.player.Player;
+
+import com.google.common.base.Objects;
+
+/**
+ * Sets the current state of a quest.
+ */
+@Dev(category=Category.QUEST_SLOT, label=&quot;State&quot;)
+public class SetQuestAction implements ChatAction {
+
+	private final String questname;
+	private final int index;
+	private final String state;
+
+	/**
+	 * Creates a new SetQuestAction.
+	 *
+	 * @param questname
+	 *            name of quest-slot to change
+	 * @param state
+	 *            new value
+	 */
+<span class="fc" id="L43">	public SetQuestAction(final String questname, final String state) {</span>
+<span class="fc" id="L44">		this.questname = checkNotNull(questname);</span>
+<span class="fc" id="L45">		this.index = -1;</span>
+<span class="fc" id="L46">		this.state = state;</span>
+<span class="fc" id="L47">	}</span>
+
+	/**
+	 * Creates a new SetQuestAction.
+	 *
+	 * @param questname
+	 *            name of quest-slot to change
+	 * @param index
+	 *            index of sub state
+	 * @param state
+	 *            new value
+	 */
+	@Dev
+<span class="fc" id="L60">	public SetQuestAction(final String questname, final int index, final String state) {</span>
+<span class="fc" id="L61">		this.questname = checkNotNull(questname);</span>
+<span class="fc" id="L62">		this.index = index;</span>
+<span class="fc" id="L63">		this.state = state;</span>
+<span class="fc" id="L64">	}</span>
+
+	@Override
+	public void fire(final Player player, final Sentence sentence, final EventRaiser raiser) {
+<span class="fc bfc" id="L68" title="All 2 branches covered.">		if (index &gt; -1) {</span>
+<span class="fc" id="L69">			player.setQuest(questname, index, state);</span>
+		} else {
+<span class="fc" id="L71">			player.setQuest(questname, state);</span>
+		}
+<span class="fc" id="L73">	}</span>
+
+	@Override
+	public String toString() {
+<span class="fc" id="L77">		return &quot;SetQuest&lt;&quot; + questname + &quot;[&quot; + index + &quot;] = &quot; + state + &quot;&gt;&quot;;</span>
+	}
+
+	@Override
+	public int hashCode() {
+<span class="nc" id="L82">		return 5501 * (questname.hashCode() + 5503 * index);</span>
+	}
+
+	@Override
+	public boolean equals(final Object obj) {
+<span class="pc bpc" id="L87" title="1 of 2 branches missed.">		if (!(obj instanceof SetQuestAction)) {</span>
+<span class="nc" id="L88">			return false;</span>
+		}
+<span class="fc" id="L90">		SetQuestAction other = (SetQuestAction) obj;</span>
+<span class="pc bpc" id="L91" title="3 of 6 branches missed.">		return (index == other.index)</span>
+			&amp;&amp; questname.equals(other.questname)
+			&amp;&amp; Objects.equal(state, other.state);
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

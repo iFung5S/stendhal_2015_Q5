@@ -1,0 +1,891 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>StendhalClient.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client</a> &gt; <span class="el_source">StendhalClient.java</span></div><h1>StendhalClient.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                      (C) Copyright 2003 - Marauroa                      *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client;
+
+import games.stendhal.client.entity.User;
+import games.stendhal.client.gui.chatlog.HeaderLessEventLine;
+import games.stendhal.client.gui.login.CharacterDialog;
+import games.stendhal.client.sprite.DataLoader;
+import games.stendhal.client.update.ClientGameConfiguration;
+import games.stendhal.client.update.HttpClient;
+import games.stendhal.common.Direction;
+import games.stendhal.common.NotificationType;
+import games.stendhal.common.Version;
+
+import java.awt.event.KeyEvent;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.locks.ReentrantLock;
+
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
+
+import marauroa.client.BannedAddressException;
+import marauroa.client.ClientFramework;
+import marauroa.client.TimeoutException;
+import marauroa.client.net.PerceptionHandler;
+import marauroa.common.game.CharacterResult;
+import marauroa.common.game.Perception;
+import marauroa.common.game.RPAction;
+import marauroa.common.game.RPClass;
+import marauroa.common.game.RPObject;
+import marauroa.common.net.InvalidVersionException;
+import marauroa.common.net.message.MessageS2CPerception;
+import marauroa.common.net.message.TransferContent;
+
+import org.apache.log4j.Logger;
+
+/**
+ * This class is the glue to Marauroa, it extends ClientFramework and allows us
+ * to easily connect to an marauroa server and operate it easily.
+ */
+public class StendhalClient extends ClientFramework {
+
+	/** the logger instance. */
+<span class="fc" id="L65">	private static final Logger logger = Logger.getLogger(StendhalClient.class);</span>
+
+	private final Map&lt;RPObject.ID, RPObject&gt; worldObjects;
+
+	private final PerceptionHandler handler;
+
+	private final RPObjectChangeDispatcher rpobjDispatcher;
+
+	private final StaticGameLayers staticLayers;
+
+	private final GameObjects gameObjects;
+
+	protected static StendhalClient client;
+
+	private final Cache cache;
+
+	private final List&lt;Direction&gt; directions;
+
+	/** List of keys that are currently in the &quot;pressed&quot; state. */
+<span class="fc" id="L84">	private static List&lt;Integer&gt; pressedStateKeys = new ArrayList&lt;Integer&gt;();</span>
+
+	private static final String LOG4J_PROPERTIES = &quot;data/conf/log4j.properties&quot;;
+
+<span class="fc" id="L88">	private String userName = &quot;&quot;;</span>
+
+	private String character;
+
+	private final UserContext userContext;
+
+	/** Listeners to be called when zone changes. */
+<span class="fc" id="L95">	private final List&lt;ZoneChangeListener&gt; zoneChangeListeners = new ArrayList&lt;ZoneChangeListener&gt;();</span>
+
+	/**
+	 * The amount of content yet to be transfered.
+	 */
+	private int contentToLoad;
+
+	/**
+	 * Whether the client is in a batch update.
+	 */
+	private boolean inBatchUpdate;
+<span class="fc" id="L106">	private final ReentrantLock drawingSemaphore = new ReentrantLock();</span>
+	
+	/** The zone currently under loading. */
+	private Zone currentZone;
+	
+	private JFrame splashScreen;
+
+	/**
+	 * Get the client instance.
+	 * 
+	 * @return client instance
+	 */
+	public static StendhalClient get() {
+<span class="fc" id="L119">		return client;</span>
+	}
+
+	/**
+	 * Set the client instance to &lt;code&gt;null&lt;/code&gt;.
+	 */
+	public static void resetClient() {
+<span class="fc" id="L126">		client = null;</span>
+<span class="fc" id="L127">	}</span>
+
+	/**
+	 * Create a new StendhalClient.
+	 *  
+	 * @param userContext
+	 * @param perceptionDispatcher
+	 */
+	StendhalClient(final UserContext userContext, final PerceptionDispatcher perceptionDispatcher) {
+<span class="fc" id="L136">		super(LOG4J_PROPERTIES);</span>
+<span class="fc" id="L137">		client = this;</span>
+<span class="fc" id="L138">		ClientSingletonRepository.setClientFramework(this);</span>
+
+<span class="fc" id="L140">		worldObjects = new HashMap&lt;RPObject.ID, RPObject&gt;();</span>
+<span class="fc" id="L141">		staticLayers = new StaticGameLayers();</span>
+<span class="fc" id="L142">		gameObjects = GameObjects.createInstance(staticLayers);</span>
+<span class="fc" id="L143">		this.userContext = userContext;</span>
+
+<span class="fc" id="L145">		rpobjDispatcher = new RPObjectChangeDispatcher(gameObjects, userContext);</span>
+<span class="fc" id="L146">		final PerceptionToObject po = new PerceptionToObject();</span>
+<span class="fc" id="L147">		perceptionDispatcher.register(po);</span>
+<span class="fc" id="L148">		StendhalPerceptionListener perceptionListener = new StendhalPerceptionListener(perceptionDispatcher, rpobjDispatcher, userContext, worldObjects);</span>
+<span class="fc" id="L149">		handler = new PerceptionHandler(perceptionListener);</span>
+
+<span class="fc" id="L151">		cache = new Cache();</span>
+<span class="fc" id="L152">		cache.init();</span>
+
+<span class="fc" id="L154">		directions = new ArrayList&lt;Direction&gt;(2);</span>
+<span class="fc" id="L155">	}</span>
+
+	@Override
+	protected String getGameName() {
+<span class="nc" id="L159">		return stendhal.GAME_NAME.toLowerCase(Locale.ENGLISH);</span>
+	}
+
+	@Override
+	protected String getVersionNumber() {
+<span class="nc" id="L164">		return stendhal.VERSION;</span>
+	}
+
+	/**
+	 * Get the map layers.
+	 * 
+	 * @return map layers
+	 */
+	public StaticGameLayers getStaticGameLayers() {
+<span class="nc" id="L173">		return staticLayers;</span>
+	}
+
+	/**
+	 * Get the game objects container.
+	 * 
+	 * @return game objects
+	 */
+	public GameObjects getGameObjects() {
+<span class="nc" id="L182">		return gameObjects;</span>
+	}
+
+	/**
+	 * Handle sync events before they are dispatched.
+	 */
+	private void onBeforeSync() {
+		/*
+		 * Simulate object disassembly
+		 */
+<span class="nc bnc" id="L192" title="All 2 branches missed.">		for (final RPObject object : worldObjects.values()) {</span>
+<span class="nc bnc" id="L193" title="All 2 branches missed.">			if (object != userContext.getPlayer()) {</span>
+<span class="nc" id="L194">				rpobjDispatcher.dispatchRemoved(object);</span>
+			}
+<span class="nc" id="L196">		}</span>
+
+<span class="nc bnc" id="L198" title="All 2 branches missed.">		if (userContext.getPlayer() != null) {</span>
+<span class="nc" id="L199">			rpobjDispatcher.dispatchRemoved(userContext.getPlayer());</span>
+		}
+
+<span class="nc" id="L202">		gameObjects.clear();</span>
+<span class="nc" id="L203">	}</span>
+
+	@Override
+	protected void onPerception(final MessageS2CPerception message) {
+		try {
+<span class="nc bnc" id="L208" title="All 2 branches missed.">			if (logger.isDebugEnabled()) {</span>
+<span class="nc" id="L209">				logger.debug(&quot;message: &quot; + message);</span>
+			}
+
+<span class="nc bnc" id="L212" title="All 2 branches missed.">			if (message.getPerceptionType() == Perception.SYNC) {</span>
+<span class="nc" id="L213">				onBeforeSync();</span>
+			}
+
+<span class="nc" id="L216">			handler.apply(message, worldObjects);</span>
+<span class="nc" id="L217">		} catch (final Exception e) {</span>
+<span class="nc" id="L218">			logger.error(&quot;error processing message &quot; + message, e);</span>
+<span class="nc" id="L219">		}</span>
+
+<span class="nc bnc" id="L221" title="All 4 branches missed.">		if (inBatchUpdate &amp;&amp; (contentToLoad == 0)) {</span>
+<span class="nc" id="L222">			validateAndUpdateZone(currentZone);</span>
+<span class="nc" id="L223">			inBatchUpdate = false;</span>
+			/*
+			 * Rapid zone change can cause two content transfers in a row.
+			 * Similarly a zone update that happens when the player changes
+			 * zones. Only the latter will ever get a perception, so we need to
+			 * release any locks we are holding, or the game screen will be
+			 * permanently frozen.
+			 */
+<span class="nc bnc" id="L231" title="All 2 branches missed.">			while (drawingSemaphore.getHoldCount() &gt; 0) {</span>
+<span class="nc" id="L232">				drawingSemaphore.unlock();</span>
+			}
+		}
+<span class="nc" id="L235">	}</span>
+
+	@Override
+	protected List&lt;TransferContent&gt; onTransferREQ(final List&lt;TransferContent&gt; items) {
+		// A batch update has begun
+<span class="nc" id="L240">		inBatchUpdate = true;</span>
+<span class="nc" id="L241">		logger.debug(&quot;Batch update started&quot;);</span>
+
+<span class="nc bnc" id="L243" title="All 2 branches missed.">		String oldZone = (currentZone != null) ? currentZone.getName() : null;</span>
+
+		// Set the new area name
+<span class="nc bnc" id="L246" title="All 2 branches missed.">		for (TransferContent item : items) {</span>
+<span class="nc" id="L247">			final String name = item.name;</span>
+<span class="nc" id="L248">			final int i = name.indexOf(&quot;.0_floor&quot;);</span>
+<span class="nc bnc" id="L249" title="All 2 branches missed.">			if (i &gt; -1) {</span>
+<span class="nc" id="L250">				currentZone = new Zone(name.substring(0, i));</span>
+<span class="nc" id="L251">				break;</span>
+			}
+<span class="nc" id="L253">		}</span>
+
+		// Is it just a reload for new coloring?
+<span class="nc bnc" id="L256" title="All 2 branches missed.">		if (currentZone != null) {</span>
+<span class="nc bnc" id="L257" title="All 2 branches missed.">			boolean isZoneChange = !currentZone.getName().equals(oldZone);</span>
+<span class="nc bnc" id="L258" title="All 2 branches missed.">			currentZone.setUpdate(!isZoneChange);</span>
+<span class="nc bnc" id="L259" title="All 2 branches missed.">			if (isZoneChange) {</span>
+<span class="nc" id="L260">				logger.debug(&quot;Preparing for zone change&quot;);</span>
+				// Only true zone changes need to lock drawing
+<span class="nc" id="L262">				drawingSemaphore.lock();</span>
+<span class="nc" id="L263">				staticLayers.clear();</span>
+<span class="nc bnc" id="L264" title="All 2 branches missed.">				for (ZoneChangeListener listener : zoneChangeListeners) {</span>
+<span class="nc" id="L265">					listener.onZoneChange(currentZone);</span>
+<span class="nc" id="L266">				}</span>
+			}
+		}
+
+<span class="nc" id="L270">		contentToLoad = 0;</span>
+
+<span class="nc bnc" id="L272" title="All 2 branches missed.">		for (final TransferContent item : items) {</span>
+<span class="nc bnc" id="L273" title="All 4 branches missed.">			if ((item.name != null) &amp;&amp; item.name.endsWith(&quot;.data_map&quot;)) {</span>
+				// Tell the zone to be invalid until the data layer has been
+				// added
+<span class="nc" id="L276">				currentZone.requireDataLayer();</span>
+			}
+<span class="nc" id="L278">			final InputStream is = cache.getItem(item);</span>
+
+<span class="nc bnc" id="L280" title="All 2 branches missed.">			if (is != null) {</span>
+<span class="nc" id="L281">				item.ack = false;</span>
+
+				try {
+<span class="nc" id="L284">					contentHandling(item.name, is);</span>
+<span class="nc" id="L285">					is.close();</span>
+<span class="nc" id="L286">				} catch (final Exception e) {</span>
+<span class="nc" id="L287">					logger.error(e, e);</span>
+
+					// request retransmission
+<span class="nc" id="L290">					item.ack = true;</span>
+<span class="nc" id="L291">				}</span>
+			} else {
+<span class="nc" id="L293">				logger.debug(&quot;Content &quot; + item.name + &quot; is NOT on cache. We have to transfer&quot;);</span>
+<span class="nc" id="L294">				item.ack = true;</span>
+			}
+
+<span class="nc bnc" id="L297" title="All 2 branches missed.">			if (item.ack) {</span>
+<span class="nc" id="L298">				contentToLoad++;</span>
+			}
+<span class="nc" id="L300">		}</span>
+
+<span class="nc" id="L302">		return items;</span>
+	}
+
+	/**
+	 * Add a listener to be called when the player changes zone.
+	 *
+	 * @param listener added listener
+	 */
+	public void addZoneChangeListener(ZoneChangeListener listener) {
+<span class="nc" id="L311">		zoneChangeListeners.add(listener);</span>
+<span class="nc" id="L312">	}</span>
+
+	/**
+	 * Determine if we are in the middle of transferring new content that should
+	 * suppress drawing during the transfer.
+	 *
+	 * @return &lt;code&gt;true&lt;/code&gt; if more content is to be transfered.
+	 */
+	public boolean isInTransfer() {
+		// Keep drawing normally during coloring update transfers.
+<span class="nc bnc" id="L322" title="All 6 branches missed.">		return ((contentToLoad != 0) &amp;&amp; (currentZone != null) &amp;&amp; !currentZone.isUpdate());</span>
+	}
+
+	/**
+	 * Load layer data.
+	 *
+	 * @param name name of the layer
+	 * @param in data source
+	 * @throws IOException
+	 * @throws ClassNotFoundException
+	 */
+	private void contentHandling(final String name, final InputStream in) throws IOException, ClassNotFoundException {
+<span class="nc" id="L334">		final int i = name.indexOf('.');</span>
+
+<span class="nc bnc" id="L336" title="All 2 branches missed.">		if (name.endsWith(&quot;.jar&quot;)) {</span>
+<span class="nc" id="L337">			in.close();</span>
+<span class="nc" id="L338">			DataLoader.addJarFile(cache.getFilename(name));</span>
+		} else {
+<span class="nc bnc" id="L340" title="All 2 branches missed.">			if (i &gt; -1) {</span>
+<span class="nc" id="L341">				final String layer = name.substring(i + 1);</span>
+<span class="nc" id="L342">				currentZone.addLayer(layer, in);</span>
+			}
+		}
+<span class="nc" id="L345">	}</span>
+
+	@Override
+	protected void onTransfer(final List&lt;TransferContent&gt; items) {
+<span class="nc bnc" id="L349" title="All 2 branches missed.">		for (final TransferContent item : items) {</span>
+			try {
+<span class="nc bnc" id="L351" title="All 2 branches missed.">				if (item.cacheable) {</span>
+<span class="nc" id="L352">					cache.store(item, item.data);</span>
+				}
+				/*
+				 * For laggy connections: in two fast consecutive zone changes
+				 * it can happen that the data for the first zone arrives only
+				 * after the data for the second has been already offered. Ie.
+				 * the zone has changed but the client receives data for the
+				 * previous zone. Discard that and keep waiting for the real
+				 * data.
+				 */
+<span class="nc bnc" id="L362" title="All 2 branches missed.">				if (item.name.startsWith(currentZone.getName() + &quot;.&quot;)) {</span>
+<span class="nc" id="L363">					contentHandling(item.name, new ByteArrayInputStream(item.data));</span>
+				} else {
+					// Still waiting for the real data
+<span class="nc" id="L366">					contentToLoad++;</span>
+				}
+<span class="nc" id="L368">			} catch (final Exception e) {</span>
+<span class="nc" id="L369">				logger.error(&quot;onTransfer&quot;, e);</span>
+<span class="nc" id="L370">			}</span>
+<span class="nc" id="L371">		}</span>
+
+<span class="nc" id="L373">		contentToLoad -= items.size();</span>
+
+		/*
+		 * Sanity check
+		 */
+<span class="nc bnc" id="L378" title="All 2 branches missed.">		if (contentToLoad &lt; 0) {</span>
+<span class="nc" id="L379">			logger.warn(&quot;More data transfer than expected&quot;);</span>
+<span class="nc" id="L380">			contentToLoad = 0;</span>
+		}
+<span class="nc" id="L382">	}</span>
+
+	@Override
+	protected void onAvailableCharacters(final String[] characters) {
+		// see onAvailableCharacterDetails
+<span class="nc" id="L387">	}</span>
+
+	@Override
+	protected void onAvailableCharacterDetails(final Map&lt;String, RPObject&gt; characters) {
+
+		// if there are no characters, create one with the specified name automatically
+<span class="nc bnc" id="L393" title="All 2 branches missed.">		if (characters.isEmpty()) {</span>
+<span class="nc bnc" id="L394" title="All 2 branches missed.">			if (character == null) {</span>
+<span class="nc" id="L395">				character = getAccountUsername();</span>
+			}
+<span class="nc" id="L397">			logger.warn(&quot;The requested character is not available, trying to create character &quot; + character);</span>
+<span class="nc" id="L398">			final RPObject template = new RPObject();</span>
+			try {
+<span class="nc" id="L400">				final CharacterResult result = createCharacter(character, template);</span>
+<span class="nc bnc" id="L401" title="All 2 branches missed.">				if (result.getResult().failed()) {</span>
+<span class="nc" id="L402">					logger.error(result.getResult().getText());</span>
+<span class="nc" id="L403">					JOptionPane.showMessageDialog(splashScreen, result.getResult().getText());</span>
+				}
+<span class="nc" id="L405">			} catch (final Exception e) {</span>
+<span class="nc" id="L406">				logger.error(e, e);</span>
+<span class="nc" id="L407">			}</span>
+<span class="nc" id="L408">			return;</span>
+		}
+
+		// autologin if a valid character was specified.
+<span class="nc bnc" id="L412" title="All 4 branches missed.">		if ((character != null) &amp;&amp; (characters.containsKey(character))) {</span>
+			try {
+<span class="nc" id="L414">				chooseCharacter(character);</span>
+<span class="nc" id="L415">				stendhal.setDoLogin();</span>
+<span class="nc bnc" id="L416" title="All 2 branches missed.">				if (splashScreen != null) {</span>
+<span class="nc" id="L417">					splashScreen.dispose();</span>
+				}
+<span class="nc" id="L419">			} catch (final Exception e) {</span>
+<span class="nc" id="L420">				logger.error(&quot;StendhalClient::onAvailableCharacters&quot;, e);</span>
+<span class="nc" id="L421">			}</span>
+<span class="nc" id="L422">			return;</span>
+		}
+
+		// show character dialog
+<span class="nc" id="L426">		SwingUtilities.invokeLater(new Runnable() {</span>
+			@Override
+			public void run() {
+<span class="nc" id="L429">				new CharacterDialog(characters, splashScreen);</span>
+<span class="nc" id="L430">			}</span>
+		});
+<span class="nc" id="L432">	}</span>
+
+	@Override
+	protected void onServerInfo(final String[] info) {
+		// ignore server response
+<span class="nc" id="L437">	}</span>
+
+	@Override
+	protected void onPreviousLogins(final List&lt;String&gt; previousLogins) {
+<span class="nc" id="L441">		GameLoop.get().runOnce(new Runnable() {</span>
+			@Override
+			public void run() {
+<span class="nc bnc" id="L444" title="All 2 branches missed.">				for (String login : previousLogins) {</span>
+<span class="nc bnc" id="L445" title="All 2 branches missed.">					NotificationType type = (login.indexOf(&quot;FAILED&quot;) != -1) ? NotificationType.WARNING : NotificationType.SERVER;</span>
+<span class="nc" id="L446">					ClientSingletonRepository.getUserInterface().addEventLine(new HeaderLessEventLine(&quot;Previous &quot; + login, type));</span>
+<span class="nc" id="L447">				}</span>
+<span class="nc" id="L448">			}</span>
+		});
+<span class="nc" id="L450">	}</span>
+
+	/**
+	 * Add an active player movement direction.
+	 *
+	 * @param dir
+	 *            The direction.
+	 * @param face If to face direction only.
+	 *         
+	 * @return &lt;code&gt;true&lt;/code&gt; if an action was sent, otherwise &lt;code&gt;false&lt;/code&gt;
+	 */
+	public boolean addDirection(final Direction dir, final boolean face) {
+		RPAction action;
+		Direction odir;
+		int idx;
+
+		/*
+		 * Cancel existing opposite directions
+		 */
+<span class="nc" id="L469">		odir = dir.oppositeDirection();</span>
+
+<span class="nc bnc" id="L471" title="All 2 branches missed.">		if (directions.remove(odir)) {</span>
+			/*
+			 * Send direction release
+			 */
+<span class="nc" id="L475">			action = new RPAction();</span>
+<span class="nc" id="L476">			action.put(&quot;type&quot;, &quot;move&quot;);</span>
+<span class="nc" id="L477">			action.put(&quot;dir&quot;, -odir.get());</span>
+
+<span class="nc" id="L479">			send(action);</span>
+		}
+
+		/*
+		 * Handle existing
+		 */
+<span class="nc" id="L485">		idx = directions.indexOf(dir);</span>
+<span class="nc bnc" id="L486" title="All 2 branches missed.">		if (idx != -1) {</span>
+			/*
+			 * Already highest priority? Don't send to server.
+			 */
+
+<span class="nc bnc" id="L491" title="All 2 branches missed.">			if (idx == (directions.size() - 1)) {</span>
+<span class="nc" id="L492">				logger.debug(&quot;Ignoring same direction: &quot; + dir);</span>
+<span class="nc" id="L493">				return false;</span>
+			}
+
+			/*
+			 * Move to end
+			 */
+<span class="nc" id="L499">			directions.remove(idx);</span>
+		}
+
+<span class="nc" id="L502">		directions.add(dir);</span>
+
+<span class="nc bnc" id="L504" title="All 2 branches missed.">		if (face) {</span>
+<span class="nc" id="L505">			action = new FaceRPAction(dir);</span>
+		} else {
+<span class="nc" id="L507">			action = new MoveRPAction(dir);</span>
+		}
+
+<span class="nc" id="L510">		send(action);</span>
+
+<span class="nc" id="L512">		return true;</span>
+	}
+
+
+/**
+	 * Remove a player movement direction.
+	 *
+	 * @param dir
+	 *            The direction.
+	 * @param face
+	 *            If to face direction only.
+	 */
+	public void removeDirection(final Direction dir, final boolean face) {
+		RPAction action;
+		int size;
+
+		/*
+		 * Send direction release
+		 */
+<span class="nc" id="L531">		action = new RPAction();</span>
+<span class="nc" id="L532">		action.put(&quot;type&quot;, &quot;move&quot;);</span>
+<span class="nc" id="L533">		action.put(&quot;dir&quot;, -dir.get());</span>
+
+<span class="nc" id="L535">		send(action);</span>
+
+		/*
+		 * Client side direction tracking (for now)
+		 */
+<span class="nc" id="L540">		directions.remove(dir);</span>
+
+		// Existing one reusable???
+<span class="nc" id="L543">		size = directions.size();</span>
+<span class="nc bnc" id="L544" title="All 2 branches missed.">		if (size == 0) {</span>
+<span class="nc" id="L545">			action = new RPAction();</span>
+<span class="nc" id="L546">			action.put(&quot;type&quot;, &quot;stop&quot;);</span>
+		} else {
+<span class="nc bnc" id="L548" title="All 2 branches missed.">			if (face) {</span>
+<span class="nc" id="L549">				action = new FaceRPAction(directions.get(size - 1));</span>
+			} else {
+<span class="nc" id="L551">				action = new MoveRPAction(directions.get(size - 1));</span>
+			}
+		}
+
+<span class="nc" id="L555">		send(action);</span>
+<span class="nc" id="L556">	}</span>
+
+	/**
+	 * Stop the player.
+	 */
+	public void stop() {
+<span class="nc" id="L562">		directions.clear();</span>
+
+<span class="nc" id="L564">		final RPAction rpaction = new RPAction();</span>
+
+<span class="nc" id="L566">		rpaction.put(&quot;type&quot;, &quot;stop&quot;);</span>
+<span class="nc" id="L567">		rpaction.put(&quot;attack&quot;, &quot;&quot;);</span>
+
+<span class="nc" id="L569">		send(rpaction);</span>
+<span class="nc" id="L570">	}</span>
+
+	/**
+	 * Set the account name.
+	 * 
+	 * @param username account name
+	 */
+	public void setAccountUsername(final String username) {
+<span class="nc" id="L578">		userContext.setName(username);</span>
+<span class="nc" id="L579">		userName = username;</span>
+<span class="nc" id="L580">	}</span>
+
+	/**
+	 * Get the character name.
+	 * 
+	 * @return character name
+	 */
+	public String getCharacter() {
+<span class="nc" id="L588">		return character;</span>
+	}
+
+	/**
+	 * Set the character name.
+	 * 
+	 * @param character name
+	 */
+	public void setCharacter(String character) {
+<span class="nc" id="L597">		this.character = character;</span>
+<span class="nc" id="L598">	}</span>
+	
+	/**
+	 * Set the splash screen window. Used for transient windows.
+	 * 
+	 * @param splash first screen window
+	 */
+	public void setSplashScreen(JFrame splash) {
+<span class="nc" id="L606">		splashScreen = splash;</span>
+<span class="nc" id="L607">	}</span>
+
+	/**
+	 * Get the account name.
+	 * 
+	 * @return account name
+	 */
+	public String getAccountUsername() {
+<span class="nc" id="L615">		return userName;</span>
+	}
+
+	/**
+	 * Check to see if the object is the connected user. This is an ugly hack
+	 * needed because the perception protocol distinguishes between normal and
+	 * private (my) object changes, but not full add/removes.
+	 *
+	 * @param object
+	 *            An object.
+	 *
+	 * @return &lt;code&gt;true&lt;/code&gt; if it is the user object.
+	 */
+	boolean isUser(final RPObject object) {
+<span class="nc bnc" id="L629" title="All 2 branches missed.">		if (object.getRPClass().subclassOf(&quot;player&quot;)) {</span>
+<span class="nc" id="L630">			return getCharacter().equalsIgnoreCase(object.get(&quot;name&quot;));</span>
+		} else {
+<span class="nc" id="L632">			return false;</span>
+		}
+	}
+
+	/**
+	 * Return the Cache instance.
+	 *
+	 * @return cache
+	 */
+	public Cache getCache() {
+<span class="nc" id="L642">		return cache;</span>
+	}
+	
+	/**
+	 * Action for moving by direction.
+	 */
+	private static final class MoveRPAction extends RPAction {
+		/**
+		 * Create a MoveRPAction.
+		 * 
+		 * @param dir movement direction
+		 */
+<span class="nc" id="L654">		private MoveRPAction(final Direction dir) {</span>
+<span class="nc" id="L655">			put(&quot;type&quot;, &quot;move&quot;);</span>
+<span class="nc" id="L656">			put(&quot;dir&quot;, dir.get());</span>
+<span class="nc" id="L657">		}</span>
+	}
+
+	/**
+	 * Action for turning the player.
+	 */
+	private static final class FaceRPAction extends RPAction {
+		/**
+		 * Create a FaceRPAction.
+		 * 
+		 * @param dir looking direction
+		 */
+<span class="nc" id="L669">		private FaceRPAction(final Direction dir) {</span>
+<span class="nc" id="L670">			put(&quot;type&quot;, &quot;face&quot;);</span>
+<span class="nc" id="L671">			put(&quot;dir&quot;, dir.get());</span>
+<span class="nc" id="L672">		}</span>
+	}
+
+	/**
+	 * Get the RPObject of the user.
+	 * 
+	 * @return player object
+	 */
+	public RPObject getPlayer() {
+<span class="nc" id="L681">		return userContext.getPlayer();</span>
+	}
+
+	@Override
+	public synchronized boolean chooseCharacter(String character)
+			throws TimeoutException, InvalidVersionException,
+			BannedAddressException {
+<span class="nc" id="L688">		boolean res = super.chooseCharacter(character);</span>
+<span class="nc bnc" id="L689" title="All 2 branches missed.">		if (res) {</span>
+<span class="nc" id="L690">			this.character = character;</span>
+		}
+<span class="nc" id="L692">		return res;</span>
+	}
+
+	/**
+	 * Release the drawing semaphore.
+	 */
+	public void releaseDrawingSemaphore() {
+<span class="nc" id="L699">		drawingSemaphore.unlock();</span>
+<span class="nc" id="L700">	}</span>
+
+	/**
+	 * Try to acquire the drawing semaphore.
+	 * 
+	 * @return &lt;code&gt;true&lt;/code&gt; if the semaphore was acquired, otherwise
+	 * 	&lt;code&gt;false&lt;/code&gt;
+	 */
+	public boolean tryAcquireDrawingSemaphore() {
+<span class="nc" id="L709">		return drawingSemaphore.tryLock();</span>
+	}
+
+	/**
+	 * Interface for listeners that need to be informed when the user is
+	 * changing zone.
+	 */
+	public interface ZoneChangeListener {
+		/**
+		 * Called when the user is changing zone.
+		 * 
+		 * @param zone the new zone to be changed to. &lt;b&gt;This is not guaranteed
+		 * 	to have complete zone data at this stage.&lt;/b&gt;
+		 */
+		void onZoneChange(Zone zone);
+		/**
+		 * Called when the user has changed zone.
+		 * 
+		 * @param zone the new zone
+		 */
+		void onZoneChangeCompleted(Zone zone);
+		/**
+		 * Called when the zone is updated, such as when the coloring changes.
+		 * 
+		 * @param zone the updated zone
+		 */
+		void onZoneUpdate(Zone zone);
+	}
+
+	/**
+	 * Validate a zone (prepare the tilesets), and set it as the current zone.
+	 * Zones that are just updates (changed colors, for example), get validated
+	 * in a background thread.
+	 *
+	 * @param zone zone to be validated
+	 */
+	private void validateAndUpdateZone(final Zone zone) {
+		// Build the tileset data in a background thread for updates, so that
+		// the client does not pause when zone colors change.
+<span class="nc bnc" id="L748" title="All 2 branches missed.">		if (zone.isUpdate()) {</span>
+<span class="nc" id="L749">			Thread worker = new Thread() {</span>
+				@Override
+				public void run() {
+<span class="nc" id="L752">					zone.validate();</span>
+					// Push &quot;zone change&quot; back to the game loop, so that zone
+					// name checking works correctly, and that there aren't two
+					// zone changes happening from two different threads.
+<span class="nc" id="L756">					GameLoop.get().runOnce(new Runnable() {</span>
+						@Override
+						public void run() {
+<span class="nc bnc" id="L759" title="All 2 branches missed.">							if (!zone.getName().equals(staticLayers.getAreaName())) {</span>
+								/*
+								 * The player has changed zones while the zone,
+								 * update was running. Just throw the zone away
+								 * as outdated.
+								 */
+<span class="nc" id="L765">								return;</span>
+							}
+<span class="nc" id="L767">							staticLayers.setZone(zone);</span>
+<span class="nc bnc" id="L768" title="All 2 branches missed.">							for (ZoneChangeListener listener : zoneChangeListeners) {</span>
+<span class="nc" id="L769">								listener.onZoneUpdate(zone);</span>
+<span class="nc" id="L770">							}</span>
+<span class="nc" id="L771">						}</span>
+					});
+<span class="nc" id="L773">				}</span>
+			};
+<span class="nc" id="L775">			worker.start();</span>
+<span class="nc" id="L776">		} else {</span>
+<span class="nc" id="L777">			zone.validate();</span>
+<span class="nc" id="L778">			staticLayers.setZone(zone);</span>
+<span class="nc bnc" id="L779" title="All 2 branches missed.">			for (ZoneChangeListener listener : zoneChangeListeners) {</span>
+<span class="nc" id="L780">				listener.onZoneChangeCompleted(zone);</span>
+<span class="nc" id="L781">			}</span>
+		}
+<span class="nc" id="L783">	}</span>
+
+	/**
+	 * Connect to the server, and if our version is too outdated, display a message.
+	 *
+	 * @param host host name
+	 * @param port host port
+	 * @throws IOException in case of an input/output error
+	 */
+	@Override
+	public void connect(final String host, final int port) throws IOException {
+<span class="nc" id="L794">		String gameName = ClientGameConfiguration.get(&quot;GAME_NAME&quot;).toLowerCase(Locale.ENGLISH);</span>
+
+		// include gamename, so that arianne.sf.net can ignore non stendhal games
+		// include server name and port because we want to support different versions for
+		// the main server and the test server
+<span class="nc" id="L799">		String url = &quot;http://arianne.sourceforge.net/versioncheck/&quot;</span>
+				+ URLEncoder.encode(gameName, &quot;UTF-8&quot;) + &quot;/&quot;
+				+ URLEncoder.encode(host, &quot;UTF-8&quot;) + &quot;/&quot;
+				+ URLEncoder.encode(Integer.toString(port), &quot;UTF-8&quot;) + &quot;/&quot;
+				+ URLEncoder.encode(Version.getVersion(), &quot;UTF-8&quot;);
+<span class="nc" id="L804">		HttpClient httpClient = new HttpClient(url);</span>
+<span class="nc" id="L805">		String message = httpClient.fetchFirstLine();</span>
+<span class="nc bnc" id="L806" title="All 4 branches missed.">		if ((message != null) &amp;&amp; (message.trim().length() &gt; 0)) {</span>
+<span class="nc" id="L807">			JOptionPane.showMessageDialog(splashScreen,</span>
+				new JLabel(message), &quot;Version Check&quot;,
+				JOptionPane.WARNING_MESSAGE);
+		}
+
+<span class="nc" id="L812">		super.connect(host, port);</span>
+<span class="nc" id="L813">	}</span>
+
+	@Override
+	public void send(RPAction action) {
+
+		// work around a bug in the chat-action definition in 0.98 and below
+<span class="nc" id="L819">		String type = action.get(&quot;type&quot;);</span>
+<span class="nc" id="L820">		String serverVersion = User.getServerRelease();</span>
+<span class="nc bnc" id="L821" title="All 6 branches missed.">		if (((serverVersion == null) || (serverVersion.compareTo(&quot;0.99&quot;)) &gt;= 0) &amp;&amp; (RPClass.getRPClass(type) != null)) {</span>
+<span class="nc" id="L822">			action.setRPClass(type);</span>
+<span class="nc" id="L823">			action.remove(&quot;type&quot;);</span>
+		}
+<span class="nc" id="L825">		super.send(action);</span>
+<span class="nc" id="L826">	}</span>
+
+	/**
+	 * Check if a keyboard key is in the &quot;pressed&quot; state.
+	 * 
+	 * @param keyCode
+	 *        The integer code for the key
+	 * @return
+	 *         &lt;b&gt;true&lt;/b&gt; if code is found in pressedStateKeys list
+	 */
+	public boolean keyIsPressed(final int keyCode) {
+<span class="nc" id="L837">		return pressedStateKeys.contains(keyCode);</span>
+	}
+
+	/**
+	 * Check if any direction key is in &quot;pressed&quot; state.
+	 * 
+	 * @return
+	 *         Direction key found in pressedStateKeys list
+	 */
+	public boolean directionKeyIsPressed() {
+<span class="nc bnc" id="L847" title="All 8 branches missed.">		return pressedStateKeys.contains(KeyEvent.VK_UP)</span>
+				|| pressedStateKeys.contains(KeyEvent.VK_DOWN)
+				|| pressedStateKeys.contains(KeyEvent.VK_LEFT)
+				|| pressedStateKeys.contains(KeyEvent.VK_RIGHT);
+	}
+
+	/**
+	 * Add a keypress to pressedStateKeys list.
+	 * 
+	 * @param keyCode
+	 *        Key to add
+	 */
+	public void onKeyPressed(final int keyCode) {
+<span class="nc bnc" id="L860" title="All 2 branches missed.">		if (!pressedStateKeys.contains(keyCode)) {</span>
+<span class="nc" id="L861">			pressedStateKeys.add(keyCode);</span>
+		}
+<span class="nc" id="L863">	}</span>
+
+	/**
+	 * Remove a keypress from pressedStateKeys list.
+	 * 
+	 * @param keyCode
+	 *        Key to remove
+	 */
+	public void onKeyReleased(final int keyCode) {
+<span class="nc bnc" id="L872" title="All 2 branches missed.">		if (pressedStateKeys.contains(keyCode)) {</span>
+<span class="nc" id="L873">			pressedStateKeys.removeAll(Collections.singleton(keyCode));</span>
+		} else {
+<span class="nc" id="L875">			logger.warn(&quot;Released key &quot; + Integer.toString(keyCode)</span>
+					+ &quot; was not found in pressedStateKeys list&quot;);
+		}
+<span class="nc" id="L878">	}</span>
+
+	/**
+	 * Clears all saved pressed state keys.
+	 */
+	public void clearPressedKeys() {
+<span class="nc" id="L884">		pressedStateKeys.clear();</span>
+
+<span class="nc bnc" id="L886" title="All 2 branches missed.">		if (!pressedStateKeys.isEmpty()) {</span>
+<span class="nc" id="L887">			logger.error(&quot;Could not flush pressedStateKeys list&quot;);</span>
+		}
+<span class="nc" id="L889">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

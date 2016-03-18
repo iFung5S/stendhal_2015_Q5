@@ -1,0 +1,305 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SoundSettings.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui.settings</a> &gt; <span class="el_source">SoundSettings.java</span></div><h1>SoundSettings.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui.settings;
+
+import games.stendhal.client.ClientSingletonRepository;
+import games.stendhal.client.gui.chatlog.EventLine;
+import games.stendhal.client.gui.layout.SBoxLayout;
+import games.stendhal.client.gui.layout.SLayout;
+import games.stendhal.client.gui.wt.core.WtWindowManager;
+import games.stendhal.client.sound.facade.SoundGroup;
+import games.stendhal.client.sound.facade.Time;
+import games.stendhal.common.NotificationType;
+import games.stendhal.common.math.Numeric;
+
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.swing.BorderFactory;
+import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.JSlider;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
+
+/**
+ * Page for the sound settings.
+ */
+class SoundSettings {
+	/** Name of the master property for playing/mute. */
+	private static final String SOUND_PROPERTY = &quot;sound.play&quot;;
+	/** Prefix for the volume properties. */
+	private static final String VOLUME_PROPERTY = &quot;sound.volume.&quot;;
+	/** Name of the sound device property. */
+	private static final String DEVICE_PROPERTY = &quot;sound.device&quot;;
+	/** Default value of the sound device property. */
+	private static final String DEFAULT_DEVICE = &quot;auto - recommended&quot;;
+	
+	/** Container for the setting components. */
+	private final JComponent page;
+	
+	/** Toggle for mute. */
+	private final JCheckBox muteToggle;
+	/**
+	 * Container for the volume sliders. Exist to help turning them all,
+	 * and their labels easily on or off.
+	 */
+<span class="nc" id="L62">	private List&lt;JComponent&gt; sliderComponents = new ArrayList&lt;JComponent&gt;(14);</span>
+	/** Volume adjuster for master channel. */
+	private final JSlider masterVolume;
+	/** Volume adjuster for GUI channel. */
+	private final JSlider guiVolume;
+	/** Volume adjuster for effects channel. */
+	private final JSlider effectsVolume;
+	/** Volume adjuster for creatures channel. */
+	private final JSlider creaturesVolume;
+	/** Volume adjuster for ambient channel. */
+	private final JSlider ambientVolume;
+	/** Volume adjuster for music channel. */
+	private final JSlider musicVolume;
+
+	/**
+	 * Create sound settings page.
+	 */
+<span class="nc" id="L79">	SoundSettings() {</span>
+<span class="nc" id="L80">		int pad = SBoxLayout.COMMON_PADDING;</span>
+<span class="nc" id="L81">		page = SBoxLayout.createContainer(SBoxLayout.VERTICAL, pad);</span>
+<span class="nc" id="L82">		page.setBorder(BorderFactory.createEmptyBorder(pad, pad, pad, pad));</span>
+
+		// click mode
+<span class="nc" id="L85">		muteToggle = new JCheckBox(&quot;Play Sounds&quot;);</span>
+<span class="nc" id="L86">		boolean soundOn = Boolean.parseBoolean(WtWindowManager.getInstance().getProperty(SOUND_PROPERTY, &quot;true&quot;));</span>
+<span class="nc" id="L87">		muteToggle.setSelected(soundOn);</span>
+<span class="nc" id="L88">		muteToggle.addItemListener(new MuteListener());</span>
+<span class="nc" id="L89">		page.add(muteToggle);</span>
+		
+		// Device selector
+<span class="nc" id="L92">		JComponent hbox = SBoxLayout.createContainer(SBoxLayout.HORIZONTAL, pad);</span>
+<span class="nc" id="L93">		JComponent selectorLabel = new JLabel(&quot;Sound device:&quot;);</span>
+<span class="nc" id="L94">		hbox.add(selectorLabel);</span>
+<span class="nc" id="L95">		JComponent selector = createDeviceSelector();</span>
+<span class="nc" id="L96">		hbox.add(selector);</span>
+<span class="nc" id="L97">		selector.setToolTipText(&quot;&lt;html&gt;Sound output device. &lt;b&gt;auto&lt;/b&gt; should&quot;</span>
+				+ &quot; work for most people,&lt;br&gt;but try others if you can not get&quot;
+				+ &quot; sound to work otherwise&lt;/html&gt;&quot;);
+<span class="nc" id="L100">		sliderComponents.add(selectorLabel);</span>
+<span class="nc" id="L101">		sliderComponents.add(selector);</span>
+<span class="nc" id="L102">		page.add(hbox);</span>
+
+		// Sliders for the sound channels
+<span class="nc" id="L105">		JComponent row = SBoxLayout.createContainer(SBoxLayout.HORIZONTAL, pad);</span>
+<span class="nc" id="L106">		page.add(row, SLayout.EXPAND_X);</span>
+<span class="nc" id="L107">		JLabel label = new JLabel(&quot;Master&quot;);</span>
+<span class="nc" id="L108">		row.add(label);</span>
+<span class="nc" id="L109">		SBoxLayout.addSpring(row);</span>
+<span class="nc" id="L110">		masterVolume = createMasterVolumeSlider();</span>
+<span class="nc" id="L111">		masterVolume.setToolTipText(&quot;Volume of all sound channels&quot;);</span>
+<span class="nc" id="L112">		row.add(masterVolume);</span>
+<span class="nc" id="L113">		sliderComponents.add(label);</span>
+<span class="nc" id="L114">		sliderComponents.add(masterVolume);</span>
+
+<span class="nc" id="L116">		row = SBoxLayout.createContainer(SBoxLayout.HORIZONTAL, pad);</span>
+<span class="nc" id="L117">		page.add(row, SLayout.EXPAND_X);</span>
+<span class="nc" id="L118">		label = new JLabel(&quot;GUI&quot;);</span>
+<span class="nc" id="L119">		row.add(label);</span>
+<span class="nc" id="L120">		SBoxLayout.addSpring(row);</span>
+<span class="nc" id="L121">		guiVolume = createVolumeSlider(&quot;gui&quot;);</span>
+<span class="nc" id="L122">		guiVolume.setToolTipText(&quot;Volume of interactive operations, such as closing windows&quot;);</span>
+<span class="nc" id="L123">		row.add(guiVolume);</span>
+<span class="nc" id="L124">		sliderComponents.add(label);</span>
+<span class="nc" id="L125">		sliderComponents.add(guiVolume);</span>
+
+<span class="nc" id="L127">		row = SBoxLayout.createContainer(SBoxLayout.HORIZONTAL, pad);</span>
+<span class="nc" id="L128">		page.add(row, SLayout.EXPAND_X);</span>
+<span class="nc" id="L129">		label = new JLabel(&quot;Effects&quot;);</span>
+<span class="nc" id="L130">		row.add(label);</span>
+<span class="nc" id="L131">		SBoxLayout.addSpring(row);</span>
+<span class="nc" id="L132">		effectsVolume = createVolumeSlider(&quot;sfx&quot;);</span>
+<span class="nc" id="L133">		effectsVolume.setToolTipText(&quot;Volume of fighting, and other effects&quot;);</span>
+<span class="nc" id="L134">		row.add(effectsVolume);</span>
+<span class="nc" id="L135">		sliderComponents.add(label);</span>
+<span class="nc" id="L136">		sliderComponents.add(effectsVolume);</span>
+
+<span class="nc" id="L138">		row = SBoxLayout.createContainer(SBoxLayout.HORIZONTAL, pad);</span>
+<span class="nc" id="L139">		page.add(row, SLayout.EXPAND_X);</span>
+<span class="nc" id="L140">		label =new JLabel(&quot;Creatures&quot;);</span>
+<span class="nc" id="L141">		row.add(label);</span>
+<span class="nc" id="L142">		SBoxLayout.addSpring(row);</span>
+<span class="nc" id="L143">		creaturesVolume = createVolumeSlider(&quot;creature&quot;);</span>
+<span class="nc" id="L144">		creaturesVolume.setToolTipText(&quot;Volume of creature noises&quot;);</span>
+<span class="nc" id="L145">		row.add(creaturesVolume);</span>
+<span class="nc" id="L146">		sliderComponents.add(label);</span>
+<span class="nc" id="L147">		sliderComponents.add(creaturesVolume);</span>
+
+<span class="nc" id="L149">		row = SBoxLayout.createContainer(SBoxLayout.HORIZONTAL, pad);</span>
+<span class="nc" id="L150">		page.add(row, SLayout.EXPAND_X);</span>
+<span class="nc" id="L151">		label = new JLabel(&quot;Ambient&quot;);</span>
+<span class="nc" id="L152">		row.add(label);</span>
+<span class="nc" id="L153">		SBoxLayout.addSpring(row);</span>
+<span class="nc" id="L154">		ambientVolume = createVolumeSlider(&quot;ambient&quot;);</span>
+<span class="nc" id="L155">		row.add(ambientVolume);</span>
+<span class="nc" id="L156">		sliderComponents.add(label);</span>
+<span class="nc" id="L157">		sliderComponents.add(ambientVolume);</span>
+
+<span class="nc" id="L159">		row = SBoxLayout.createContainer(SBoxLayout.HORIZONTAL, pad);</span>
+<span class="nc" id="L160">		page.add(row, SLayout.EXPAND_X);</span>
+<span class="nc" id="L161">		label = new JLabel(&quot;Music&quot;);</span>
+<span class="nc" id="L162">		row.add(label);</span>
+<span class="nc" id="L163">		SBoxLayout.addSpring(row);</span>
+<span class="nc" id="L164">		musicVolume = createVolumeSlider(&quot;music&quot;);</span>
+<span class="nc" id="L165">		musicVolume.setToolTipText(&quot;Music volume&quot;);</span>
+<span class="nc" id="L166">		row.add(musicVolume);</span>
+<span class="nc" id="L167">		sliderComponents.add(label);</span>
+<span class="nc" id="L168">		sliderComponents.add(musicVolume);</span>
+		
+		// Disable the sliders if the sound is off
+<span class="nc bnc" id="L171" title="All 2 branches missed.">		for (JComponent comp : sliderComponents) {</span>
+<span class="nc" id="L172">			comp.setEnabled(soundOn);</span>
+<span class="nc" id="L173">		}</span>
+<span class="nc" id="L174">	}</span>
+	
+	/**
+	 * Get the component containing the sound settings.
+	 * 
+	 * @return sound settings page
+	 */
+	JComponent getComponent() {
+<span class="nc" id="L182">		return page;</span>
+	}
+	
+	/**
+	 * Create a selector for sound devices.
+	 * 
+	 * @return combo box with device options
+	 */
+	private JComponent createDeviceSelector() {
+<span class="nc" id="L191">		final JComboBox&lt;String&gt; selector = new JComboBox&lt;&gt;();</span>
+		
+		// Fill with available device names
+<span class="nc" id="L194">		selector.addItem(DEFAULT_DEVICE);</span>
+<span class="nc bnc" id="L195" title="All 2 branches missed.">		for (String name : ClientSingletonRepository.getSound().getDeviceNames()) {</span>
+<span class="nc" id="L196">			selector.addItem(name);</span>
+<span class="nc" id="L197">		}</span>
+		
+<span class="nc" id="L199">		final WtWindowManager wm = WtWindowManager.getInstance();</span>
+<span class="nc" id="L200">		String current = wm.getProperty(DEVICE_PROPERTY, DEFAULT_DEVICE);</span>
+<span class="nc" id="L201">		selector.setSelectedItem(current);</span>
+		 
+<span class="nc" id="L203">		selector.addActionListener(new ActionListener() {</span>
+			@Override
+			public void actionPerformed(ActionEvent e) {
+<span class="nc" id="L206">				Object selected = selector.getSelectedItem();</span>
+<span class="nc bnc" id="L207" title="All 2 branches missed.">				wm.setProperty(DEVICE_PROPERTY, (selected != null) ? selected.toString() : DEFAULT_DEVICE);</span>
+<span class="nc" id="L208">				wm.save();</span>
+				// Warn the user about the delayed effect
+<span class="nc" id="L210">				String msg = &quot;Changing the sound device will take effect when you next time restart the game.&quot;;</span>
+<span class="nc" id="L211">				ClientSingletonRepository.getUserInterface().addEventLine(new EventLine(&quot;&quot;, msg, NotificationType.CLIENT));</span>
+<span class="nc" id="L212">			}</span>
+		});
+		
+<span class="nc" id="L215">		return selector;</span>
+	}
+	
+	/**
+	 * Create a volume slider for the master channel.
+	 * 
+	 * @return master volume slider slider
+	 */
+	private JSlider createMasterVolumeSlider() {
+<span class="nc" id="L224">		JSlider slider = new JSlider(0, 100);</span>
+<span class="nc" id="L225">		float volume = ClientSingletonRepository.getSound().getVolume();</span>
+<span class="nc" id="L226">		slider.setValue(Numeric.floatToInt(volume, 100f));</span>
+<span class="nc" id="L227">		slider.addChangeListener(new MasterVolumeListener());</span>
+		
+<span class="nc" id="L229">		return slider;</span>
+	}
+	
+	/**
+	 * Create a volume slider, and initialize its value from the volume of a
+	 * channel.
+	 * 
+	 * @param channel channel corresponding to the slider
+	 * @return volume slider for the channel
+	 */
+	private JSlider createVolumeSlider(String channel) {
+<span class="nc" id="L240">		JSlider slider = new JSlider(0, 100);</span>
+<span class="nc" id="L241">		SoundGroup group = ClientSingletonRepository.getSound().getGroup(channel);</span>
+<span class="nc" id="L242">		slider.setValue(Numeric.floatToInt(group.getVolume(), 100f));</span>
+<span class="nc" id="L243">		slider.addChangeListener(new ChannelChangeListener(channel, group));</span>
+		
+<span class="nc" id="L245">		return slider;</span>
+	}
+	
+	/**
+	 * Listener for toggling the sound on or off. Disables and enables the
+	 * volume sliders as needed.
+	 */
+<span class="nc" id="L252">	private class MuteListener implements ItemListener {</span>
+		@Override
+		public void itemStateChanged(ItemEvent e) {
+<span class="nc bnc" id="L255" title="All 2 branches missed.">			boolean soundOn = (e.getStateChange() == ItemEvent.SELECTED);</span>
+<span class="nc" id="L256">			WtWindowManager.getInstance().setProperty(SOUND_PROPERTY, Boolean.toString(soundOn));</span>
+<span class="nc bnc" id="L257" title="All 2 branches missed.">			ClientSingletonRepository.getSound().mute(!soundOn, true, new Time(2, Time.Unit.SEC));</span>
+<span class="nc bnc" id="L258" title="All 2 branches missed.">			for (JComponent comp : sliderComponents) {</span>
+<span class="nc" id="L259">				comp.setEnabled(soundOn);</span>
+<span class="nc" id="L260">			}</span>
+<span class="nc" id="L261">		}</span>
+	}
+	
+	/**
+	 * Listener for adjusting the master volume slider.
+	 */
+<span class="nc" id="L267">	private static class MasterVolumeListener implements ChangeListener {</span>
+		@Override
+		public void stateChanged(ChangeEvent e) {
+<span class="nc" id="L270">			JSlider source = (JSlider) e.getSource();</span>
+<span class="nc" id="L271">			int value = source.getValue();</span>
+<span class="nc" id="L272">			ClientSingletonRepository.getSound().changeVolume(Numeric.intToFloat(value, 100.0f));</span>
+<span class="nc" id="L273">			WtWindowManager.getInstance().setProperty(VOLUME_PROPERTY + &quot;master&quot;, Integer.toString(value));</span>
+<span class="nc" id="L274">		}</span>
+	}
+	
+	/**
+	 * Listener for adjusting the sound channel sliders. Adjusts the volume of
+	 * the sound group corresponding to the slider appropriately.
+	 */
+	private static class ChannelChangeListener implements ChangeListener {
+		private final SoundGroup group;
+		private final String groupName; 
+		
+		/**
+		 * Create a ChannelChangeListener for a sound group.
+		 * 
+		 * @param groupName name of the sound group
+		 * @param group group
+		 */
+<span class="nc" id="L291">		public ChannelChangeListener(String groupName, SoundGroup group) {</span>
+<span class="nc" id="L292">			this.group = group;</span>
+<span class="nc" id="L293">			this.groupName = groupName;</span>
+<span class="nc" id="L294">		}</span>
+		
+		@Override
+		public void stateChanged(ChangeEvent e) {
+<span class="nc" id="L298">			JSlider source = (JSlider) e.getSource();</span>
+<span class="nc" id="L299">			int value = source.getValue();</span>
+<span class="nc" id="L300">			group.changeVolume(Numeric.intToFloat(value, 100f));</span>
+<span class="nc" id="L301">			WtWindowManager.getInstance().setProperty(VOLUME_PROPERTY + groupName, Integer.toString(value));</span>
+<span class="nc" id="L302">		}</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

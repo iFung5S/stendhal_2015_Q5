@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>PublicChatAction.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.actions.chat</a> &gt; <span class="el_source">PublicChatAction.java</span></div><h1>PublicChatAction.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2016 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.actions.chat;
+
+import static games.stendhal.common.constants.Actions.TEXT;
+import games.stendhal.common.Rand;
+import games.stendhal.server.actions.ActionListener;
+import games.stendhal.server.actions.validator.StandardActionValidations;
+import games.stendhal.server.core.engine.GameEvent;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.entity.status.StatusType;
+import marauroa.common.game.RPAction;
+
+/**
+ * handles publicly said text .
+ */
+<span class="fc" id="L27">public class PublicChatAction implements ActionListener {</span>
+
+	@Override
+	public void onAction(final Player player, final RPAction action) {
+<span class="nc bnc" id="L31" title="All 2 branches missed.">		if (!StandardActionValidations.CHAT.validateAndInformPlayer(player, action)) {</span>
+<span class="nc" id="L32">			return;</span>
+		}
+
+<span class="nc" id="L35">		String text = QuoteSpecials.quote(action.get(TEXT));</span>
+<span class="nc" id="L36">		new GameEvent(player.getName(), &quot;chat&quot;,  null, Integer.toString(text.length()), text.substring(0, Math.min(text.length(), 1000))).raise();</span>
+
+<span class="nc bnc" id="L38" title="All 2 branches missed.">		if (player.getStatusList().countStatusByType(StatusType.DRUNK) &gt;= 2) {</span>
+<span class="nc" id="L39">			text = applyDrunkEffect(text, player.getStatusList().countStatusByType(StatusType.DRUNK) - 1);</span>
+		}
+<span class="nc" id="L41">		player.put(&quot;text&quot;, text);</span>
+
+<span class="nc" id="L43">		player.notifyWorldAboutChanges();</span>
+<span class="nc" id="L44">		SingletonRepository.getRuleProcessor().removePlayerText(player);</span>
+<span class="nc" id="L45">	}</span>
+
+	/**
+	 * Apply random mutating effects to the text for slurry drunken speech.
+	 * 
+	 * @param text original text
+	 * @param amount amount of modifications
+	 * @return modified text.
+	 */
+	private String applyDrunkEffect(String text, int amount) {
+		// Make the effect relatively constant for different length sentences
+<span class="nc" id="L56">		amount = Math.max(amount / 2 + 1, amount * (20 + text.length()) / 40);</span>
+<span class="nc" id="L57">		StringBuilder b = new StringBuilder(text);</span>
+<span class="nc bnc" id="L58" title="All 2 branches missed.">		while (amount &gt; 1) {</span>
+<span class="nc bnc" id="L59" title="All 4 branches missed.">			switch (Rand.rand(3)) {</span>
+			case 0:
+<span class="nc" id="L61">				swapLetters(b);</span>
+<span class="nc" id="L62">				break;</span>
+			case 1:
+<span class="nc" id="L64">				removeLetter(b);</span>
+<span class="nc" id="L65">				break;</span>
+			case 2:
+<span class="nc" id="L67">				duplicateLetter(b);</span>
+			}
+<span class="nc" id="L69">			amount--;</span>
+		}
+		/*
+		 * Place *hicks* always last, so that it does not get mangled. It is
+		 * also always included, so that players notice the slurred speech
+		 * is intentional.
+		 */
+<span class="nc" id="L76">		b.append(&quot; *hicks*&quot;);</span>
+<span class="nc" id="L77">		return b.toString();</span>
+	}
+	
+	/**
+	 * Swap two adjacent letters at a random position.
+	 * 
+	 * @param text original text
+	 */
+	private void swapLetters(StringBuilder text) {
+<span class="nc" id="L86">		int length = text.codePointCount(0, text.length());</span>
+<span class="nc bnc" id="L87" title="All 2 branches missed.">		if (length &lt; 2) {</span>
+<span class="nc" id="L88">			return;</span>
+		}
+<span class="nc" id="L90">		int index = Rand.rand(length - 1);</span>
+<span class="nc" id="L91">		int chrIndex = text.offsetByCodePoints(0, index);</span>
+<span class="nc" id="L92">		int chr = text.codePointAt(chrIndex);</span>
+<span class="nc" id="L93">		int toRemove = Character.charCount(chr);</span>
+<span class="nc bnc" id="L94" title="All 2 branches missed.">		for (int i = 0; i &lt; toRemove; i++) {</span>
+<span class="nc" id="L95">			text.deleteCharAt(chrIndex);</span>
+		}
+		// There's no insertCodePointAt()
+<span class="nc" id="L98">		text.insert(chrIndex + Character.charCount(text.codePointAt(chrIndex)),</span>
+				new StringBuilder().appendCodePoint(chr));
+<span class="nc" id="L100">	}</span>
+	
+	/**
+	 * Remove random letter from a StringBuilder, if it has at least length 2.
+	 * 
+	 * @param text original text
+	 */
+	private void removeLetter(StringBuilder text) {
+<span class="nc" id="L108">		int length = text.codePointCount(0, text.length());</span>
+<span class="nc bnc" id="L109" title="All 2 branches missed.">		if (length &lt; 2) {</span>
+<span class="nc" id="L110">			return;</span>
+		}
+<span class="nc" id="L112">		int index = Rand.rand(length);</span>
+<span class="nc" id="L113">		int chrIndex = text.offsetByCodePoints(0, index);</span>
+<span class="nc" id="L114">		int chr = text.codePointAt(chrIndex);</span>
+<span class="nc" id="L115">		int toRemove = Character.charCount(chr);</span>
+<span class="nc bnc" id="L116" title="All 2 branches missed.">		for (int i = 0; i &lt; toRemove; i++) {</span>
+<span class="nc" id="L117">			text.deleteCharAt(chrIndex);</span>
+		}
+<span class="nc" id="L119">	}</span>
+	
+	/**
+	 * Duplicate a random letter in a StringBuilder.
+	 * 
+	 * @param text original text
+	 */
+	private void duplicateLetter(StringBuilder text) {
+<span class="nc" id="L127">		int length = text.codePointCount(0, text.length());</span>
+<span class="nc bnc" id="L128" title="All 2 branches missed.">		if (length &lt; 1) {</span>
+<span class="nc" id="L129">			return;</span>
+		}
+<span class="nc" id="L131">		int index = Rand.rand(length);</span>
+<span class="nc" id="L132">		int chrIndex = text.offsetByCodePoints(0, index);</span>
+<span class="nc" id="L133">		int chr = text.codePointAt(chrIndex);</span>
+		// There's no insertCodePointAt()
+<span class="nc" id="L135">		text.insert(chrIndex + Character.charCount(chr),</span>
+				new StringBuilder().appendCodePoint(chr));
+<span class="nc" id="L137">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

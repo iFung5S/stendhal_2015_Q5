@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ItemAchievementFactory.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.core.rp.achievement.factory</a> &gt; <span class="el_source">ItemAchievementFactory.java</span></div><h1>ItemAchievementFactory.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2011 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.core.rp.achievement.factory;
+
+import games.stendhal.server.core.rp.achievement.Achievement;
+import games.stendhal.server.core.rp.achievement.Category;
+import games.stendhal.server.entity.npc.condition.PlayerLootedNumberOfItemsCondition;
+
+import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
+
+/**
+ * Factory for item related achievements.
+ *
+ * @author madmetzger
+ */
+<span class="nc" id="L27">public class ItemAchievementFactory extends AbstractAchievementFactory {</span>
+
+	@Override
+	protected Category getCategory() {
+<span class="nc" id="L31">		return Category.ITEM;</span>
+	}
+
+	@Override
+	public Collection&lt;Achievement&gt; createAchievements() {
+<span class="nc" id="L36">		List&lt;Achievement&gt; itemAchievements = new LinkedList&lt;Achievement&gt;();</span>
+		
+<span class="nc" id="L38">		itemAchievements.add(createAchievement(&quot;item.money.100&quot;, &quot;First pocket money&quot;, &quot;Loot 100 money from creatures&quot;,</span>
+				Achievement.EASY_BASE_SCORE, true,
+				new PlayerLootedNumberOfItemsCondition(100, &quot;money&quot;)));
+		
+<span class="nc" id="L42">		itemAchievements.add(createAchievement(&quot;item.money.1000000&quot;, &quot;You don't need it anymore&quot;, &quot;Loot 1000000 money from creatures&quot;,</span>
+				Achievement.HARD_BASE_SCORE, true,
+				new PlayerLootedNumberOfItemsCondition(1000000, &quot;money&quot;)));
+		
+<span class="nc" id="L46">		itemAchievements.add(createAchievement(&quot;item.set.red&quot;, &quot;Amazon's Menace&quot;, &quot;Loot a complete red equipment set&quot;,</span>
+				Achievement.MEDIUM_BASE_SCORE, true,
+				new PlayerLootedNumberOfItemsCondition(1, &quot;red armor&quot;, &quot;red helmet&quot;, &quot;red cloak&quot;, &quot;red legs&quot;, &quot;red boots&quot;,
+						&quot;red shield&quot;)));
+		
+<span class="nc" id="L51">		itemAchievements.add(createAchievement(&quot;item.set.blue&quot;, &quot;Feeling Blue&quot;, &quot;Loot a complete blue equipment set&quot;,</span>
+				Achievement.MEDIUM_BASE_SCORE, true,
+				new PlayerLootedNumberOfItemsCondition(1, &quot;blue armor&quot;, &quot;blue helmet&quot;, &quot;blue striped cloak&quot;, &quot;blue legs&quot;,
+						&quot;blue boots&quot;, &quot;blue shield&quot;)));
+		
+<span class="nc" id="L56">		itemAchievements.add(createAchievement(&quot;item.set.elvish&quot;, &quot;Nalwor's Bane&quot;, &quot;Loot a complete elvish equipment set&quot;,</span>
+				Achievement.MEDIUM_BASE_SCORE, true,
+				new PlayerLootedNumberOfItemsCondition(1, &quot;elvish armor&quot;, &quot;elvish hat&quot;, &quot;elvish cloak&quot;, &quot;elvish legs&quot;,
+						&quot;elvish boots&quot;, &quot;elvish shield&quot;)));
+		
+<span class="nc" id="L61">		itemAchievements.add(createAchievement(&quot;item.set.shadow&quot;, &quot;Shadow Dweller&quot;, &quot;Loot a complete shadow equipment set&quot;,</span>
+				Achievement.MEDIUM_BASE_SCORE, true,
+				new PlayerLootedNumberOfItemsCondition(1, &quot;shadow armor&quot;, &quot;shadow helmet&quot;, &quot;shadow cloak&quot;, &quot;shadow legs&quot;,
+						&quot;shadow boots&quot;, &quot;shadow shield&quot;)));
+		
+<span class="nc" id="L66">		itemAchievements.add(createAchievement(&quot;item.set.chaos&quot;, &quot;Chaotic Looter&quot;, &quot;Loot a complete chaos equipment set&quot;,</span>
+				Achievement.HARD_BASE_SCORE, true,
+				new PlayerLootedNumberOfItemsCondition(1, &quot;chaos armor&quot;, &quot;chaos helmet&quot;, &quot;chaos cloak&quot;, &quot;chaos legs&quot;,
+						&quot;chaos boots&quot;, &quot;chaos shield&quot;)));
+		
+<span class="nc" id="L71">		itemAchievements.add(createAchievement(&quot;item.set.golden&quot;, &quot;Golden Boy&quot;, &quot;Loot a complete golden equipment set&quot;,</span>
+				Achievement.MEDIUM_BASE_SCORE, true,
+				new PlayerLootedNumberOfItemsCondition(1, &quot;golden armor&quot;, &quot;golden helmet&quot;, &quot;golden cloak&quot;, &quot;golden legs&quot;,
+						&quot;golden boots&quot;, &quot;golden shield&quot;)));
+		
+<span class="nc" id="L76">		itemAchievements.add(createAchievement(&quot;item.set.black&quot;, &quot;Come to the dark side&quot;, &quot;Loot a complete black equipment set&quot;,</span>
+				Achievement.HARD_BASE_SCORE, true,
+				new PlayerLootedNumberOfItemsCondition(1, &quot;black armor&quot;, &quot;black helmet&quot;, &quot;black cloak&quot;, &quot;black legs&quot;,
+						&quot;black boots&quot;, &quot;black shield&quot;)));
+		
+<span class="nc" id="L81">		itemAchievements.add(createAchievement(&quot;item.set.mainio&quot;, &quot;Excellent Stuff&quot;, &quot;Loot a complete mainio equipment set&quot;,</span>
+				Achievement.HARD_BASE_SCORE, true,
+				new PlayerLootedNumberOfItemsCondition(1, &quot;mainio armor&quot;, &quot;mainio helmet&quot;, &quot;mainio cloak&quot;, &quot;mainio legs&quot;,
+						&quot;mainio boots&quot;, &quot;mainio shield&quot;)));
+		
+<span class="nc" id="L86">		itemAchievements.add(createAchievement(&quot;item.set.xeno&quot;, &quot;A Bit Xenophobic?&quot;, &quot;Loot a complete xeno equipment set&quot;,</span>
+				Achievement.HARD_BASE_SCORE, true,
+				new PlayerLootedNumberOfItemsCondition(1, &quot;xeno armor&quot;, &quot;xeno helmet&quot;, &quot;xeno cloak&quot;, &quot;xeno legs&quot;,
+						&quot;xeno boots&quot;, &quot;xeno shield&quot;)));
+		
+<span class="nc" id="L91">		itemAchievements.add(createAchievement(&quot;item.cloak.dragon&quot;, &quot;Dragon Slayer&quot;, &quot;Loot all dragon cloaks&quot;,</span>
+				Achievement.MEDIUM_BASE_SCORE, true,
+				new PlayerLootedNumberOfItemsCondition(1, &quot;black dragon cloak&quot;, &quot;blue dragon cloak&quot;, &quot;bone dragon cloak&quot;,
+						&quot;green dragon cloak&quot;, &quot;red dragon cloak&quot;)));
+		
+<span class="nc" id="L96">		return itemAchievements;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

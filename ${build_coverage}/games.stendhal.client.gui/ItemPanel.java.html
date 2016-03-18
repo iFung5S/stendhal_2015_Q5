@@ -1,0 +1,509 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ItemPanel.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui</a> &gt; <span class="el_source">ItemPanel.java</span></div><h1>ItemPanel.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui;
+
+import games.stendhal.client.GameLoop;
+import games.stendhal.client.IGameScreen;
+import games.stendhal.client.StendhalClient;
+import games.stendhal.client.entity.IEntity;
+import games.stendhal.client.entity.Inspector;
+import games.stendhal.client.entity.User;
+import games.stendhal.client.gui.j2d.entity.EntityView;
+import games.stendhal.client.gui.j2d.entity.EntityViewFactory;
+import games.stendhal.client.gui.styled.cursor.CursorRepository;
+import games.stendhal.client.gui.styled.cursor.StendhalCursor;
+import games.stendhal.client.gui.wt.EntityViewCommandList;
+import games.stendhal.client.gui.wt.core.WtWindowManager;
+import games.stendhal.client.sprite.ImageSprite;
+import games.stendhal.client.sprite.Sprite;
+import games.stendhal.client.sprite.SpriteStore;
+import games.stendhal.common.EquipActionConsts;
+import games.stendhal.common.constants.Actions;
+
+import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Point;
+import java.awt.Transparency;
+import java.awt.image.BufferedImage;
+import java.awt.image.RescaleOp;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import javax.swing.JComponent;
+import javax.swing.JPopupMenu;
+
+import marauroa.common.game.RPAction;
+import marauroa.common.game.RPObject;
+import marauroa.common.game.RPSlot;
+
+/**
+ * A component representing space in a slot. 
+ */
+class ItemPanel extends JComponent implements DropTarget, Inspectable {
+	/** serial version uid. */
+	private static final long serialVersionUID = 3409932623156446910L;
+
+	/** 
+	 * Amount in pixels to shift the popup menu under the mouse, compared to
+	 * the left up corner.
+	 */
+	private static final int POPUP_MENU_OFFSET = 10;
+<span class="fc" id="L63">	private static final CursorRepository cursorRepository = new CursorRepository();</span>
+	
+	/**
+	 * The background surface sprite.
+	 */
+<span class="fc" id="L68">	private static final Sprite background = SpriteStore.get().getSprite(&quot;data/gui/slot.png&quot;);</span>
+	
+	/** The placeholder sprite, or &lt;code&gt;null&lt;/code&gt;. */
+	private final Sprite placeholder;
+	
+	/**
+	 * The entity view being held.
+	 */
+	private EntityView&lt;?&gt; view;
+	/** The entity to whom the displayed slot belongs to. */
+	private IEntity parent;
+	/**
+	 * Current associated popup menu. Using
+	 * {@link #setComponentPopupMenu(JPopupMenu)} is
+	 * &lt;b&gt;not&lt;/b&gt; safe because of a swing bug that can under some conditions
+	 * display the menu at the location of the mouse click and prevent the
+	 * correct menu displaying code (which does the offset adjustments) from
+	 * being called.&lt;p&gt;
+	 * Fix for bug #3069835.
+	 */
+	private JPopupMenu popupMenu;
+	/** The inspector the included entity should use. */
+	private Inspector inspector;
+	private int itemNumber;
+	
+	/** Object types the panel can accept. */
+<span class="fc" id="L94">	private List&lt;Class&lt;? extends IEntity&gt;&gt; acceptedTypes = new ArrayList&lt;Class&lt;? extends IEntity&gt;&gt;();</span>
+	
+	/**
+	 * Create a new ItemPanel.
+	 * 
+	 * @param slotName name of the slot this refers to 
+	 * @param placeholder image used in an empty panel, or &lt;code&gt;null&lt;/code&gt;
+	 */
+<span class="fc" id="L102">	ItemPanel(final String slotName, final Sprite placeholder) {</span>
+<span class="fc" id="L103">		this.placeholder = preparePlaceholder(placeholder);</span>
+<span class="fc" id="L104">		setName(slotName);</span>
+		
+<span class="fc" id="L106">		Dimension size = new Dimension(background.getWidth(), background.getHeight()); </span>
+<span class="fc" id="L107">		setPreferredSize(size);</span>
+<span class="fc" id="L108">		setMinimumSize(size);</span>
+<span class="fc" id="L109">		setMaximumSize(size);</span>
+<span class="fc" id="L110">		setOpaque(false);</span>
+		
+		// DnD handling
+<span class="fc" id="L113">		ItemPanelMouseHandler drag = new ItemPanelMouseHandler();</span>
+<span class="fc" id="L114">		addMouseMotionListener(drag);</span>
+<span class="fc" id="L115">		addMouseListener(drag);</span>
+<span class="fc" id="L116">	}</span>
+	
+	/**
+	 * Prepare a version of the place holder Sprite, that is suitable for the
+	 * transparency mode of the client.
+	 * 
+	 * @param original original placeholder Sprite
+	 * @return an adjusted Sprite, or the original if no adjusting is needed
+	 */
+	private Sprite preparePlaceholder(Sprite original) {
+<span class="pc bpc" id="L126" title="3 of 4 branches missed.">		if ((original == null) || (TransparencyMode.TRANSPARENCY == Transparency.BITMASK)) {</span>
+<span class="fc" id="L127">			return original;</span>
+		}
+		/*
+		 * Using full alpha in the client.
+		 * 
+		 * Create a black and white, but translucent version of the same image.
+		 * The filtering has been chosen so that the slot images we use become
+		 * suitably B&amp;W, not for any general rule.
+		 * 
+		 * What we'd really want is drawing an opaque B&amp;W image in soft light
+		 * mode, but swing back buffer does not actually support Composites
+		 * despite being accessed via Graphics2D.
+		 */
+<span class="nc" id="L140">		BufferedImage img = new BufferedImage(original.getWidth(), original.getHeight(), BufferedImage.TYPE_INT_ARGB);</span>
+<span class="nc" id="L141">		Graphics g = img.createGraphics();</span>
+<span class="nc" id="L142">		original.draw(g, 0, 0);</span>
+<span class="nc" id="L143">		RescaleOp rescaleOp = new RescaleOp(new float[] {3.0f, 3.0f, 3.0f, 0.5f }, new float[] {-450f, -450f, -450f, 0f}, null);</span>
+<span class="nc" id="L144">		rescaleOp.filter(img, img);</span>
+<span class="nc" id="L145">		g.dispose();</span>
+		
+<span class="nc" id="L147">		return new ImageSprite(img);</span>
+	}
+	
+	/**
+	 * Set item number for purposes of reordering slot contents.
+	 * 
+	 * @param itemNumber the index, corresponding to this panel, of the space
+	 * in the slot
+	 */
+	void setItemNumber(int itemNumber) {
+<span class="nc" id="L157">		this.itemNumber = itemNumber;</span>
+<span class="nc" id="L158">	}</span>
+	
+	/**
+	 * Set the inspector the contained entity should use.
+	 * 
+	 * @param inspector used inspector
+	 */
+	@Override
+	public void setInspector(Inspector inspector) {
+<span class="nc" id="L167">		this.inspector = inspector;</span>
+<span class="nc" id="L168">	}</span>
+	
+	/**
+	 * Set the slot entity.
+	 * 
+	 * @param entity The new entity, or &lt;code&gt;null&lt;/code&gt;.
+	 */
+	protected void setEntity(final IEntity entity) {
+<span class="fc bfc" id="L176" title="All 2 branches covered.">		if (view != null) {</span>
+			/*
+			 * Don't replace the same object
+			 */
+<span class="pc bpc" id="L180" title="1 of 2 branches missed.">			if (view.getEntity() == entity) {</span>
+<span class="nc" id="L181">				return;</span>
+			}
+
+<span class="fc" id="L184">			view.release();</span>
+		}
+
+<span class="fc bfc" id="L187" title="All 2 branches covered.">		if (entity != null) {</span>
+<span class="fc" id="L188">			setEntityView(EntityViewFactory.create(entity));</span>
+		} else {
+<span class="fc" id="L190">			setEntityView(null);</span>
+		}
+		
+		// The old popup menu is no longer valid
+<span class="fc" id="L194">		popupMenu = null;</span>
+<span class="fc" id="L195">		repaint();</span>
+<span class="fc" id="L196">	}</span>
+	
+	/**
+	 * Set the entity view.
+	 * 
+	 * @param view new view, or &lt;code&gt;null&lt;/code&gt;
+	 */
+	private void setEntityView(EntityView&lt;?&gt; view) {
+<span class="fc" id="L204">		this.view = view;</span>
+<span class="fc bfc" id="L205" title="All 2 branches covered.">		if (view != null) {</span>
+<span class="fc" id="L206">			view.setContained(true);</span>
+<span class="fc" id="L207">			view.setInspector(inspector);</span>
+<span class="fc bfc" id="L208" title="All 2 branches covered.">			if (parent.isUser()) {</span>
+<span class="fc" id="L209">				setCursor(cursorRepository.get(view.getCursor()));</span>
+			} else {
+<span class="fc" id="L211">				setCursor(cursorRepository.get(StendhalCursor.ITEM_PICK_UP_FROM_SLOT));</span>
+			}
+		} else {
+<span class="fc" id="L214">			setCursor(null);</span>
+		}
+<span class="fc" id="L216">		popupMenu = null;</span>
+<span class="fc" id="L217">	}</span>
+	
+	/**
+	 * Get the shown entity.
+	 * 
+	 * @return entity, or &lt;code&gt;null&lt;/code&gt; if the panel contains no entity
+	 */
+	IEntity getEntity() {
+<span class="nc bnc" id="L225" title="All 2 branches missed.">		if (view != null) {</span>
+<span class="nc" id="L226">			return view.getEntity();</span>
+		}
+<span class="nc" id="L228">		return null;</span>
+	}
+	
+	/**
+	 * Move the contents of the panel to another ItemPanel.
+	 * 
+	 * @param other the panel to move the contents
+	 */
+	void moveViewTo(ItemPanel other) {
+<span class="nc" id="L237">		other.setEntityView(view);</span>
+<span class="nc" id="L238">		setEntityView(null);</span>
+<span class="nc" id="L239">	}</span>
+	
+	/**
+	 * Set the containing entity.
+	 * 
+	 * @param parent entity owning the slot to which this panel belongs to
+	 */
+	protected void setParent(IEntity parent) {
+<span class="fc" id="L247">		this.parent = parent;</span>
+<span class="fc" id="L248">	}</span>
+
+	@Override
+	public void paintComponent(Graphics g) {
+		// draw the background image
+<span class="nc" id="L253">		background.draw(g, 0, 0);</span>
+		
+		// Take a temporary copy in case the game loop destroys the view under
+		// us.
+<span class="nc" id="L257">		EntityView&lt;?&gt; entityView = view;</span>
+<span class="nc bnc" id="L258" title="All 2 branches missed.">		if (entityView != null) {</span>
+			// Center the entity view (assume 1x1 tile)
+<span class="nc" id="L260">			final int x = (getWidth() - IGameScreen.SIZE_UNIT_PIXELS) / 2;</span>
+<span class="nc" id="L261">			final int y = (getHeight() - IGameScreen.SIZE_UNIT_PIXELS) / 2;</span>
+
+<span class="nc" id="L263">			final Graphics2D vg = (Graphics2D) g.create(0, 0, getWidth(),</span>
+					getHeight());
+<span class="nc" id="L265">			vg.translate(x, y);</span>
+<span class="nc" id="L266">			entityView.draw(vg);</span>
+<span class="nc" id="L267">			vg.dispose();</span>
+<span class="nc bnc" id="L268" title="All 2 branches missed.">		} else if (placeholder != null) {</span>
+<span class="nc" id="L269">			placeholder.draw(g, (getWidth() - placeholder.getWidth()) / 2, </span>
+					(getHeight() - placeholder.getHeight()) / 2);
+		}
+<span class="nc" id="L272">	}</span>
+
+	@Override
+	public void dropEntity(IEntity entity, int amount, Point point) {
+		// Don't drag an item into the same slot
+<span class="nc bnc" id="L277" title="All 4 branches missed.">		if ((view != null) &amp;&amp; (entity == view.getEntity())) {</span>
+<span class="nc" id="L278">			return;</span>
+		}
+		
+		// Reorder, instead of a move
+<span class="nc bnc" id="L282" title="All 2 branches missed.">		if (entity.getRPObject().getContainerSlot() == parent.getSlot(getName())) {</span>
+			// Don't reorder, if the user has chosen a non-standard amount
+<span class="nc bnc" id="L284" title="All 2 branches missed.">			if (amount != -1) {</span>
+<span class="nc" id="L285">				return;</span>
+			}
+<span class="nc" id="L287">			reorder(entity);</span>
+<span class="nc" id="L288">			return;</span>
+		}
+		
+		// Fill in appropriate action data
+<span class="nc" id="L292">		RPAction action = new RPAction();</span>
+<span class="nc" id="L293">		action.put(EquipActionConsts.TYPE, &quot;equip&quot;);</span>
+<span class="nc" id="L294">		action.put(EquipActionConsts.SOURCE_PATH, entity.getPath());</span>
+<span class="nc" id="L295">		List&lt;String&gt; targetPath = parent.getPath();</span>
+<span class="nc" id="L296">		targetPath.add(getName());</span>
+<span class="nc" id="L297">		action.put(Actions.TARGET_PATH, targetPath);</span>
+		
+<span class="nc bnc" id="L299" title="All 2 branches missed.">		if (amount &gt;= 1) {</span>
+<span class="nc" id="L300">			action.put(EquipActionConsts.QUANTITY, amount);</span>
+		}
+<span class="nc" id="L302">		action.put(&quot;zone&quot;, entity.getRPObject().getBaseContainer().get(&quot;zoneid&quot;));</span>
+
+		// ** Compatibility. Fill old style object address data **
+		// fill 'moved from' parameters
+<span class="nc" id="L306">		final RPObject rpObject = entity.getRPObject();</span>
+<span class="nc bnc" id="L307" title="All 2 branches missed.">		if (rpObject.isContained()) {</span>
+			// the item is inside a container
+<span class="nc" id="L309">			action.put(EquipActionConsts.BASE_OBJECT, rpObject.getContainer().getID().getObjectID());</span>
+<span class="nc" id="L310">			action.put(EquipActionConsts.BASE_SLOT, rpObject.getContainerSlot().getName());</span>
+		}
+<span class="nc" id="L312">		action.put(EquipActionConsts.BASE_ITEM, rpObject.getID().getObjectID());</span>
+
+		// 'move to'
+<span class="nc" id="L315">		action.put(EquipActionConsts.TARGET_OBJECT, parent.getID().getObjectID());</span>
+<span class="nc" id="L316">		action.put(EquipActionConsts.TARGET_SLOT, getName());</span>
+		
+<span class="nc" id="L318">		StendhalClient.get().send(action);</span>
+<span class="nc" id="L319">	}</span>
+	
+	/**
+	 * Generate a reordering action for an entity in the slot.
+	 * 
+	 * @param entity moved entity
+	 */
+	private void reorder(final IEntity entity) {
+		// Don't needlessly send reordering commands to servers that do not
+		// understand them
+<span class="nc bnc" id="L329" title="All 2 branches missed.">		if (User.getServerRelease().compareTo(&quot;1.00.5&quot;) &lt; 0) {</span>
+<span class="nc" id="L330">			return;</span>
+		}
+		// GameLoop may modify slot contents, so we need to scan the contents in
+		// the same thread.
+<span class="nc" id="L334">		GameLoop.get().runOnce(new Runnable() {</span>
+			@Override
+			public void run() {
+<span class="nc" id="L337">				RPObject rpobject = entity.getRPObject();</span>
+<span class="nc" id="L338">				RPSlot slot = rpobject.getContainerSlot();</span>
+<span class="nc" id="L339">				int i = 0;</span>
+<span class="nc bnc" id="L340" title="All 2 branches missed.">				for (RPObject content : slot) {</span>
+<span class="nc bnc" id="L341" title="All 2 branches missed.">					if (content == rpobject) {</span>
+<span class="nc bnc" id="L342" title="All 2 branches missed.">						if (itemNumber != i) {</span>
+<span class="nc" id="L343">							RPAction action = new RPAction();</span>
+<span class="nc" id="L344">							action.put(EquipActionConsts.TYPE, &quot;reorder&quot;);</span>
+<span class="nc" id="L345">							action.put(EquipActionConsts.SOURCE_PATH, entity.getPath());</span>
+<span class="nc" id="L346">							action.put(&quot;new_position&quot;, itemNumber);</span>
+							
+<span class="nc" id="L348">							StendhalClient.get().send(action);</span>
+<span class="nc" id="L349">							return;</span>
+						}
+					}
+<span class="nc" id="L352">					i++;</span>
+<span class="nc" id="L353">				}</span>
+<span class="nc" id="L354">			}</span>
+		});
+<span class="nc" id="L356">	}</span>
+	
+	/**
+	 * Handler for mouse use. Takes care of both drags and clicks. 
+	 */
+<span class="fc" id="L361">	private class ItemPanelMouseHandler extends MouseHandler {</span>
+		@Override
+		protected void onDragStart(Point point) {
+<span class="nc bnc" id="L364" title="All 2 branches missed.">			if (view != null) {</span>
+<span class="nc bnc" id="L365" title="All 2 branches missed.">				if (view.isMovable()) {</span>
+<span class="nc" id="L366">					DragLayer.get().startDrag(view.getEntity());</span>
+				}
+			}
+<span class="nc" id="L369">		}</span>
+
+		@Override
+		protected boolean onMouseClick(Point point) {
+			// ignore empty slots
+<span class="nc bnc" id="L374" title="All 2 branches missed.">			if (view == null) {</span>
+<span class="nc" id="L375">				return true;</span>
+			}
+			
+<span class="nc" id="L378">			boolean doubleClick = Boolean.parseBoolean(WtWindowManager.getInstance().getProperty(&quot;ui.doubleclick&quot;, &quot;false&quot;));</span>
+<span class="nc bnc" id="L379" title="All 2 branches missed.">			if (doubleClick) {</span>
+<span class="nc" id="L380">				return false;</span>
+			}
+
+			// Click on entity. Decide on action
+<span class="nc bnc" id="L384" title="All 2 branches missed.">			if (isUserSlot()) {</span>
+<span class="nc" id="L385">				return view.onHarmlessAction();</span>
+<span class="nc bnc" id="L386" title="All 2 branches missed.">			} else if (isCtrlDown()) {</span>
+<span class="nc" id="L387">				return false;</span>
+			} else {
+<span class="nc" id="L389">				moveItemToBag();</span>
+<span class="nc" id="L390">				return true;</span>
+			}
+		}
+
+		@Override
+		protected boolean onMouseDoubleClick(Point point) {
+			// ignore empty slots
+<span class="nc bnc" id="L397" title="All 2 branches missed.">			if (view == null) {</span>
+<span class="nc" id="L398">				return false;</span>
+			}
+
+			/*
+			 * moveto events are not the default for items the player is
+			 * carrying along
+			 */
+<span class="nc bnc" id="L405" title="All 2 branches missed.">			if (isUserSlot()) {</span>
+<span class="nc" id="L406">				view.onAction();</span>
+<span class="nc" id="L407">				return true;</span>
+			}
+
+			// otherwise try to grab the item
+<span class="nc" id="L411">			moveItemToBag();</span>
+<span class="nc" id="L412">			return true;</span>
+		}
+		
+		/**
+		 * Check if the slot is carried by the user.
+		 * 
+		 * @return &lt;code&gt;true&lt;/code&gt; if the slot belongs to the user, or to an
+		 * 	item carried by the user, otherwise &lt;code&gt;false&lt;/code&gt;
+		 */
+		private boolean isUserSlot() {
+<span class="nc" id="L422">			return parent.getRPObject().getContainerBaseOwner().equals(User.get().getRPObject());</span>
+		}
+
+		@Override
+		@SuppressWarnings(&quot;serial&quot;)
+		protected void onMouseRightClick(Point point) {
+<span class="nc bnc" id="L428" title="All 2 branches missed.">			if (view != null) {</span>
+<span class="nc bnc" id="L429" title="All 2 branches missed.">				if (popupMenu == null) {</span>
+					// create the context menu
+<span class="nc" id="L431">					popupMenu = new EntityViewCommandList(getName(), view.getActions(), view) {</span>
+						@Override
+						protected void doAction(final String command) {
+<span class="nc" id="L434">							super.doAction(command);</span>
+<span class="nc" id="L435">							setVisible(false);</span>
+<span class="nc" id="L436">						}</span>
+					};
+				}
+				/*
+				 * Relocate under the cursor. Offset a bit so that the first
+				 * entry is under the mouse.
+				 */
+<span class="nc" id="L443">				popupMenu.show(ItemPanel.this, point.x - POPUP_MENU_OFFSET,</span>
+						point.y - POPUP_MENU_OFFSET);
+			}
+<span class="nc" id="L446">		}</span>
+		
+		/**
+		 * Send an action for grabbing the item to the bag.
+		 */
+		private void moveItemToBag() {
+<span class="nc" id="L452">			final RPAction action = new RPAction();</span>
+			
+			// Views and entities can be destroyed by game loop. Grab copies
+<span class="nc" id="L455">			EntityView&lt;?&gt; entityView = view;</span>
+<span class="nc" id="L456">			IEntity parentEntity = parent;</span>
+<span class="nc bnc" id="L457" title="All 4 branches missed.">			if ((entityView == null) || (parentEntity == null)) {</span>
+<span class="nc" id="L458">				return;</span>
+			}
+			
+<span class="nc" id="L461">			action.put(EquipActionConsts.TYPE, &quot;equip&quot;);</span>
+<span class="nc" id="L462">			action.put(EquipActionConsts.SOURCE_PATH, entityView.getEntity().getPath());</span>
+<span class="nc" id="L463">			action.put(Actions.TARGET_PATH, </span>
+					Arrays.asList(Integer.toString(User.get().getID().getObjectID()), &quot;bag&quot;));
+			
+			// Compatibility item identification data
+			// source object and content from THIS container
+<span class="nc" id="L468">			final RPObject content = entityView.getEntity().getRPObject();</span>
+<span class="nc" id="L469">			action.put(EquipActionConsts.BASE_OBJECT, parentEntity.getID().getObjectID());</span>
+<span class="nc" id="L470">			action.put(EquipActionConsts.BASE_SLOT, getName());</span>
+<span class="nc" id="L471">			action.put(EquipActionConsts.BASE_ITEM, content.getID().getObjectID());</span>
+			// target is player's bag
+<span class="nc" id="L473">			action.put(EquipActionConsts.TARGET_OBJECT, User.get().getID().getObjectID());</span>
+<span class="nc" id="L474">			action.put(EquipActionConsts.TARGET_SLOT, &quot;bag&quot;);</span>
+			
+<span class="nc" id="L476">			StendhalClient.get().send(action);</span>
+<span class="nc" id="L477">		}</span>
+	}
+	
+	/**
+	 * Set the types the panel can accept.
+	 * 
+	 * @param types accepted types
+	 */
+	@SafeVarargs
+	final void setAcceptedTypes(Class&lt;? extends IEntity&gt; ... types) {
+<span class="nc" id="L487">		acceptedTypes = Arrays.asList(types);</span>
+<span class="nc" id="L488">	}</span>
+	
+	/**
+	 * Set the types the panel can accept.
+	 * 
+	 * @param types list of accepted types
+	 */
+	void setAcceptedTypes(List&lt;Class&lt;? extends IEntity&gt;&gt; types) {
+<span class="nc" id="L496">		acceptedTypes = types;</span>
+<span class="nc" id="L497">	}</span>
+
+	@Override
+	public boolean canAccept(IEntity entity) {
+<span class="nc bnc" id="L501" title="All 2 branches missed.">		for (Class&lt;?&gt; c : acceptedTypes) {</span>
+<span class="nc bnc" id="L502" title="All 2 branches missed.">			if (c.isAssignableFrom(entity.getClass())) {</span>
+<span class="nc" id="L503">				return true;</span>
+			}
+<span class="nc" id="L505">		}</span>
+<span class="nc" id="L506">		return false;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

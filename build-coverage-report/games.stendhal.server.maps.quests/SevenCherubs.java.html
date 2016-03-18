@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SevenCherubs.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests</a> &gt; <span class="el_source">SevenCherubs.java</span></div><h1>SevenCherubs.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests;
+
+import games.stendhal.common.Rand;
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.engine.StendhalRPWorld;
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.core.pathfinder.FixedPath;
+import games.stendhal.server.core.pathfinder.Node;
+import games.stendhal.server.entity.item.Item;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.condition.GreetingMatchesNameCondition;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.entity.status.PoisonStatus;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+
+/**
+ * QUEST: Find the seven cherubs that are all around the world.
+ * 
+ * PARTICIPANTS:
+ * &lt;ul&gt;
+ * &lt;li&gt; Cherubiel &lt;/li&gt;
+ * &lt;li&gt; Gabriel &lt;/li&gt;
+ * &lt;li&gt; Ophaniel &lt;/li&gt;
+ * &lt;li&gt; Raphael &lt;/li&gt;
+ * &lt;li&gt; Uriel &lt;/li&gt;
+ * &lt;li&gt; Zophiel &lt;/li&gt;
+ * &lt;li&gt; Azazel &lt;/li&gt;
+ * 
+ * STEPS:
+ * &lt;ul&gt;
+ * &lt;li&gt; Find them and they will reward you. &lt;/li&gt;
+ * &lt;/ul&gt;
+ *
+ * REWARD:
+ * &lt;ul&gt;
+ * &lt;li&gt; 2,000 XP &lt;/li&gt;
+ * &lt;li&gt; some karma (35) &lt;/li&gt;
+ * &lt;li&gt; either fire sword, golden boots, golden armor, or golden helmet &lt;/li&gt;
+ * &lt;/ul&gt;
+ * 
+ * REPETITIONS: - Just once.
+ */
+<span class="fc" id="L65">public class SevenCherubs extends AbstractQuest {</span>
+	private static final String QUEST_SLOT = &quot;seven_cherubs&quot;;
+	
+<span class="fc" id="L68">	private final HashMap&lt;String, String&gt; cherubsHistory = new HashMap&lt;String,String&gt;();</span>
+	
+	private void fillHistoryMap() {
+<span class="fc" id="L71">		cherubsHistory.put(&quot;Cherubiel&quot;, &quot;I met Cherubiel in Semos Village.&quot;);</span>
+<span class="fc" id="L72">		cherubsHistory.put(&quot;Ophaniel&quot;,  &quot;I met Ophaniel by Orril River.&quot;);</span>
+<span class="fc" id="L73">		cherubsHistory.put(&quot;Gabriel&quot;,   &quot;I met Gabriel in Nalwor City.&quot;);</span>
+<span class="fc" id="L74">		cherubsHistory.put(&quot;Raphael&quot;,   &quot;I met Raphael between Orril River and the bridge to Fado.&quot;);</span>
+<span class="fc" id="L75">		cherubsHistory.put(&quot;Zophiel&quot;,   &quot;I met Zophiel on Semos Mountain.&quot;);</span>
+<span class="fc" id="L76">		cherubsHistory.put(&quot;Azazel&quot;,    &quot;I met Azazel by Ados Rock.&quot;);</span>
+<span class="fc" id="L77">		cherubsHistory.put(&quot;Uriel&quot;,     &quot;I met Uriel on Orril Mountain.&quot;);		</span>
+<span class="fc" id="L78">	}</span>
+
+	@Override
+	public String getSlotName() {
+<span class="nc" id="L82">		return QUEST_SLOT;</span>
+	}
+	
+	@Override
+	public boolean isCompleted(final Player player) {
+<span class="nc bnc" id="L87" title="All 2 branches missed.">		if (!player.hasQuest(QUEST_SLOT)) {</span>
+<span class="nc" id="L88">			return false;</span>
+		}
+<span class="nc" id="L90">		final String npcDoneText = player.getQuest(QUEST_SLOT);</span>
+<span class="nc" id="L91">		final String[] done = npcDoneText.split(&quot;;&quot;);</span>
+<span class="nc" id="L92">		final int left = 7 - done.length;</span>
+<span class="nc bnc" id="L93" title="All 2 branches missed.">		return left &lt; 0;</span>
+	}
+
+	@Override
+	public List&lt;String&gt; getHistory(final Player player) {
+<span class="nc" id="L98">		final List&lt;String&gt; res = new ArrayList&lt;String&gt;();</span>
+<span class="nc bnc" id="L99" title="All 2 branches missed.">		if (player.hasQuest(QUEST_SLOT)) {</span>
+<span class="nc" id="L100">			final String npcDoneText = player.getQuest(QUEST_SLOT);</span>
+<span class="nc" id="L101">			final String[] done = npcDoneText.split(&quot;;&quot;);</span>
+<span class="nc" id="L102">			boolean first = true;</span>
+<span class="nc bnc" id="L103" title="All 2 branches missed.">			for (final String cherub : done) {</span>
+<span class="nc bnc" id="L104" title="All 2 branches missed.">				if (!cherub.trim().equals(&quot;&quot;)) {</span>
+<span class="nc bnc" id="L105" title="All 2 branches missed.">					if (first) {</span>
+<span class="nc" id="L106">						first = false;</span>
+<span class="nc" id="L107">						res.add(&quot;I have started finding the seven cherubs&quot;);</span>
+					}
+<span class="nc" id="L109">					res.add(cherubsHistory.get(cherub));</span>
+				}
+			}
+<span class="nc bnc" id="L112" title="All 2 branches missed.">			if (isCompleted(player)) {</span>
+<span class="nc" id="L113">				res.add(&quot;Done! I have found every one!&quot;);</span>
+			}
+		}
+<span class="nc" id="L116">		return res;</span>
+	}
+
+<span class="fc" id="L119">	static class CherubNPC extends SpeakerNPC {</span>
+		public CherubNPC(final String name, final int x, final int y) {
+<span class="fc" id="L121">			super(name);</span>
+
+<span class="fc" id="L123">			setEntityClass(&quot;angelnpc&quot;);</span>
+<span class="fc" id="L124">			setPosition(x, y);</span>
+<span class="fc" id="L125">			initHP(100);</span>
+
+<span class="fc" id="L127">			final List&lt;Node&gt; nodes = new LinkedList&lt;Node&gt;();</span>
+<span class="fc" id="L128">			nodes.add(new Node(x, y));</span>
+<span class="fc" id="L129">			nodes.add(new Node(x - 2, y));</span>
+<span class="fc" id="L130">			nodes.add(new Node(x - 2, y - 2));</span>
+<span class="fc" id="L131">			nodes.add(new Node(x, y - 2));</span>
+<span class="fc" id="L132">			setPath(new FixedPath(nodes, true));</span>
+<span class="fc" id="L133">		}</span>
+
+		@Override
+		protected void createPath() {
+			// do nothing
+<span class="fc" id="L138">		}</span>
+
+		@Override
+		protected void createDialog() {
+<span class="fc" id="L142">			add(ConversationStates.IDLE, ConversationPhrases.GREETING_MESSAGES,</span>
+				new GreetingMatchesNameCondition(getName()), true,
+				ConversationStates.IDLE, null,
+<span class="fc" id="L145">				new ChatAction() {</span>
+					@Override
+					public void fire(final Player player, final Sentence sentence, final EventRaiser raiser) {
+<span class="fc bfc" id="L148" title="All 2 branches covered.">						if (!player.hasQuest(QUEST_SLOT)) {</span>
+<span class="fc" id="L149">							player.setQuest(QUEST_SLOT, &quot;&quot;);</span>
+						}
+
+						// Visited cherubs are store in the quest-name
+						// QUEST_SLOT.
+						// Please note that there is an additional empty
+						// entry in the beginning.
+<span class="fc" id="L156">						final String npcDoneText = player.getQuest(QUEST_SLOT);</span>
+<span class="fc" id="L157">						final String[] done = npcDoneText.split(&quot;;&quot;);</span>
+<span class="fc" id="L158">						final List&lt;String&gt; list = Arrays.asList(done);</span>
+<span class="fc" id="L159">						final int left = 7 - list.size();</span>
+
+<span class="fc bfc" id="L161" title="All 2 branches covered.">						if (list.contains(raiser.getName())) {</span>
+<span class="fc bfc" id="L162" title="All 2 branches covered.">							if (left &gt; -1) {</span>
+<span class="fc" id="L163">								raiser.say(&quot;Seek out the other cherubim to get thy reward!&quot;);</span>
+							} else {
+<span class="fc" id="L165">								raiser.say(&quot;Thou hast sought and found each of the seven cherubim! Now, mighty art thou with the rewards so earn'd.&quot;);</span>
+							}
+						} else {
+<span class="fc" id="L168">							player.setQuest(QUEST_SLOT, npcDoneText + &quot;;&quot;</span>
+									+ raiser.getName());
+
+<span class="fc" id="L171">							player.heal();</span>
+<span class="fc" id="L172">							player.getStatusList().removeAll(PoisonStatus.class);</span>
+
+<span class="fc bfc" id="L174" title="All 2 branches covered.">							if (left &gt; 0) {</span>
+<span class="fc" id="L175">								raiser.say(&quot;Well done! You only need to find &quot;</span>
+												+ (7 - list.size())
+												+ &quot; more. Fare thee well!&quot;);
+<span class="fc bfc" id="L178" title="All 2 branches covered.">								if (raiser.getZone().getName().equals(&quot;0_semos_village_w&quot;)) {</span>
+<span class="fc" id="L179">									player.addXP(20);</span>
+								} else {
+<span class="fc" id="L181">									player.addXP((7 - left + 1) * 200);</span>
+								}
+							} else {
+<span class="fc" id="L184">								raiser.say(&quot;Thou hast proven thyself brave enough to bear this mighty relic!&quot;);</span>
+
+								/*
+								 * Proposal by Daniel Herding (mort): once
+								 * we have enough quests, we shouldn't have
+								 * this randomization anymore. There should
+								 * be one hard quest for each of the golden
+								 * items.
+								 *
+								 * I commented out the golden shield here
+								 * because you already get that from the
+								 * CloaksForBario quest.
+								 *
+								 * Golden legs was disabled because it can
+								 * be won in DiceGambling.
+								 *
+								 * Fire sword was disabled because it can be
+								 * earned by fighting, and because the
+								 * stronger ice sword is available through
+								 * other quest and through fighting.
+								 *
+								 * Once enough quests exist, this quest
+								 * should always give you golden boots
+								 * (because you have to walk much to fulfil
+								 * it).
+								 *
+								 */
+<span class="fc" id="L211">								final String[] items = { &quot;golden boots&quot;, &quot;golden armor&quot;, &quot;golden helmet&quot; };</span>
+<span class="fc" id="L212">								final Item item = SingletonRepository.getEntityManager()</span>
+									.getItem(items[Rand.rand(items.length)]);
+<span class="fc" id="L214">								item.setBoundTo(player.getName());</span>
+<span class="fc" id="L215">								player.equipOrPutOnGround(item);</span>
+<span class="fc" id="L216">								player.addXP(2000);</span>
+<span class="fc" id="L217">								player.addKarma(35);</span>
+							}
+						}
+<span class="fc" id="L220">						player.notifyWorldAboutChanges();</span>
+<span class="fc" id="L221">					}</span>
+				});
+<span class="fc" id="L223">			addGoodbye();</span>
+<span class="fc" id="L224">		}</span>
+	}
+
+	@Override
+	public void addToWorld() {
+<span class="fc" id="L229">		final StendhalRPWorld world = SingletonRepository.getRPWorld();</span>
+<span class="fc" id="L230">		fillHistoryMap();</span>
+<span class="fc" id="L231">		fillQuestInfo(</span>
+				&quot;Seven Cherubs&quot;,
+				&quot;Seven cherubs stay on this world, and finding them all is rewarded with a prize.&quot;,
+				false);
+		StendhalRPZone zone;
+		SpeakerNPC npc;
+
+<span class="fc" id="L238">		zone = world.getZone(&quot;0_semos_village_w&quot;);</span>
+<span class="fc" id="L239">		npc = new CherubNPC(&quot;Cherubiel&quot;, 32, 60);</span>
+<span class="fc" id="L240">		zone.add(npc);</span>
+
+<span class="fc" id="L242">		zone = world.getZone(&quot;0_nalwor_city&quot;);</span>
+<span class="fc" id="L243">		npc = new CherubNPC(&quot;Gabriel&quot;, 105, 17);</span>
+<span class="fc" id="L244">		zone.add(npc);</span>
+
+<span class="fc" id="L246">		zone = world.getZone(&quot;0_orril_river_s&quot;);</span>
+<span class="fc" id="L247">		npc = new CherubNPC(&quot;Ophaniel&quot;, 105, 79);</span>
+<span class="fc" id="L248">		zone.add(npc);</span>
+
+<span class="fc" id="L250">		zone = world.getZone(&quot;0_orril_river_s_w2&quot;);</span>
+<span class="fc" id="L251">		npc = new CherubNPC(&quot;Raphael&quot;, 95, 30);</span>
+<span class="fc" id="L252">		zone.add(npc);</span>
+
+<span class="fc" id="L254">		zone = world.getZone(&quot;0_orril_mountain_w2&quot;);</span>
+<span class="fc" id="L255">		npc = new CherubNPC(&quot;Uriel&quot;, 47, 27);</span>
+<span class="fc" id="L256">		zone.add(npc);</span>
+
+<span class="fc" id="L258">		zone = world.getZone(&quot;0_semos_mountain_n2_w2&quot;);</span>
+<span class="fc" id="L259">		npc = new CherubNPC(&quot;Zophiel&quot;, 16, 3);</span>
+<span class="fc" id="L260">		zone.add(npc);</span>
+
+<span class="fc" id="L262">		zone = world.getZone(&quot;0_ados_rock&quot;);</span>
+<span class="fc" id="L263">		npc = new CherubNPC(&quot;Azazel&quot;, 67, 24);</span>
+<span class="fc" id="L264">		zone.add(npc);</span>
+<span class="fc" id="L265">	}</span>
+
+	@Override
+	public String getName() {
+<span class="nc" id="L269">		return &quot;SevenCherubs&quot;;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

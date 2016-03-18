@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>CompoundAttackStrategy.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.creature.impl.attack</a> &gt; <span class="el_source">CompoundAttackStrategy.java</span></div><h1>CompoundAttackStrategy.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2012 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.creature.impl.attack;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import marauroa.common.Pair;
+
+import games.stendhal.server.entity.RPEntity;
+import games.stendhal.server.entity.creature.Creature;
+
+/**
+ * Strategy that combines different sub-strategies for attacking, targeting and
+ * positioning to a complete fighting strategy.
+ */
+class CompoundAttackStrategy implements AttackStrategy {
+	private final TargetSelectionStrategy targeter;
+	private final PositioningStrategy positioner;
+	private final AttackStrategy base;
+	
+	/**
+	 * Create a new strategy.
+	 * 
+	 * @param params String describing the sub-strategies. It should be a comma
+	 *	separated list of strategy names of the form &quot;attack,target,position&quot;.
+	 *	Parameters to the sub-strategies can be passed in parentheses. Example:
+	 *	&quot;archer(5),attack weakest,dual attack&quot;, will create a strategy of using
+	 *	range 5 archer for attacking, preferring the weakest opponent next to
+	 *	the creature, and using &quot;dual attack&quot; profile for positioning.
+	 * 
+	 * @return compound strategy
+	 */
+	static AttackStrategy create(String params) {
+<span class="fc" id="L44">		String[] arg = params.split(&quot;,&quot;, -1);</span>
+<span class="pc bpc" id="L45" title="1 of 2 branches missed.">		if (arg.length != 3) {</span>
+<span class="nc" id="L46">			throw new IllegalArgumentException(&quot;Invalid compound description: '&quot;</span>
+					+ params + &quot;'&quot;);
+		}
+<span class="fc" id="L49">		Pair&lt;String, String&gt; desc = parseStrategy(arg[1]);</span>
+<span class="fc" id="L50">		TargetSelectionStrategy targeter = TargetSelectionStrategyFactory.get(desc.first(), desc.second());</span>
+<span class="fc" id="L51">		desc = parseStrategy(arg[2]);</span>
+<span class="fc" id="L52">		PositioningStrategy positioner = PositioningStrategyFactory.get(desc.first(), desc.second());</span>
+<span class="fc" id="L53">		return new CompoundAttackStrategy(getSubStrategy(arg[0]),</span>
+				targeter, positioner);
+	}
+	
+	/**
+	 * Extract strategy name and an optional parameter from a strategy
+	 * description.
+	 * 
+	 * @param desc strategy description
+	 * 
+	 * @return a pair where the first object is the strategy name, and second is
+	 * 	the parameter to that strategy, or empty string if none is provided.
+	 */
+	private static Pair&lt;String, String&gt; parseStrategy(String desc) {
+<span class="fc" id="L67">		String[] arg = desc.split(&quot;\\(|\\)&quot;);</span>
+<span class="fc" id="L68">		Pair&lt;String, String&gt; rval = new Pair&lt;String, String&gt;(arg[0], &quot;&quot;);</span>
+<span class="fc bfc" id="L69" title="All 2 branches covered.">		if (arg.length &gt; 1) {</span>
+<span class="fc" id="L70">			rval.setSecond(arg[1]);</span>
+		}
+<span class="fc" id="L72">		return rval;</span>
+	}
+	
+	/**
+	 * Get a sub-strategy corresponding to a strategy description string.
+	 * 
+	 * @param desc description
+	 * @return strategy
+	 */
+	private static AttackStrategy getSubStrategy(String desc) {
+<span class="fc" id="L82">		Pair&lt;String, String&gt; args = parseStrategy(desc);</span>
+<span class="fc" id="L83">		Map&lt;String, String&gt; map = new HashMap&lt;String, String&gt;();</span>
+<span class="fc" id="L84">		map.put(args.first(), args.second());</span>
+		
+<span class="fc" id="L86">		return AttackStrategyFactory.get(map);</span>
+	}
+	
+	/**
+	 * Create a new CompoundAttackStrategy.
+	 * 
+	 * @param base strategy used for attacking
+	 * @param targeter strategy used for choosing the target
+	 * @param positioner strategy used for choosing the attacking position
+	 */
+<span class="fc" id="L96">	private CompoundAttackStrategy(AttackStrategy base, TargetSelectionStrategy targeter, PositioningStrategy positioner) {</span>
+<span class="fc" id="L97">		this.base = base;</span>
+<span class="fc" id="L98">		this.targeter = targeter;</span>
+<span class="fc" id="L99">		this.positioner = positioner;</span>
+<span class="fc" id="L100">	}</span>
+
+	@Override
+	public void attack(Creature creature) {
+<span class="nc" id="L104">		base.attack(creature);</span>
+<span class="nc" id="L105">	}</span>
+
+	@Override
+	public boolean canAttackNow(Creature creature) {
+<span class="nc" id="L109">		return base.canAttackNow(creature);</span>
+	}
+
+	@Override
+	public void findNewTarget(Creature creature) {
+<span class="nc" id="L114">		targeter.findNewTarget(creature);</span>
+<span class="nc" id="L115">	}</span>
+
+	@Override
+	public void getBetterAttackPosition(Creature creature) {
+<span class="nc" id="L119">		positioner.getBetterAttackPosition(creature);</span>
+<span class="nc" id="L120">	}</span>
+
+	@Override
+	public int getRange() {
+<span class="nc" id="L124">		return base.getRange();</span>
+	}
+
+	@Override
+	public boolean hasValidTarget(Creature creature) {
+<span class="nc" id="L129">		return targeter.hasValidTarget(creature);</span>
+	}
+
+	@Override
+	public boolean canAttackNow(Creature attacker, RPEntity target) {
+<span class="nc" id="L134">		return base.canAttackNow(attacker, target);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

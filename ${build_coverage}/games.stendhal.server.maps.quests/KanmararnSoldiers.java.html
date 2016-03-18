@@ -1,0 +1,503 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>KanmararnSoldiers.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests</a> &gt; <span class="el_source">KanmararnSoldiers.java</span></div><h1>KanmararnSoldiers.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests;
+
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.core.events.TurnListener;
+import games.stendhal.server.entity.Entity;
+import games.stendhal.server.entity.item.Corpse;
+import games.stendhal.server.entity.item.Item;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ChatCondition;
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.action.DropInfostringItemAction;
+import games.stendhal.server.entity.npc.action.EquipItemAction;
+import games.stendhal.server.entity.npc.action.IncreaseKarmaAction;
+import games.stendhal.server.entity.npc.action.IncreaseXPAction;
+import games.stendhal.server.entity.npc.action.MultipleActions;
+import games.stendhal.server.entity.npc.action.SetQuestAction;
+import games.stendhal.server.entity.npc.action.SetQuestAndModifyKarmaAction;
+import games.stendhal.server.entity.npc.condition.AndCondition;
+import games.stendhal.server.entity.npc.condition.GreetingMatchesNameCondition;
+import games.stendhal.server.entity.npc.condition.NotCondition;
+import games.stendhal.server.entity.npc.condition.OrCondition;
+import games.stendhal.server.entity.npc.condition.PlayerHasInfostringItemWithHimCondition;
+import games.stendhal.server.entity.npc.condition.PlayerOwnsItemIncludingBankCondition;
+import games.stendhal.server.entity.npc.condition.QuestCompletedCondition;
+import games.stendhal.server.entity.npc.condition.QuestInStateCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotCompletedCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotInStateCondition;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.maps.Region;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
+
+import marauroa.common.game.RPObject;
+import marauroa.common.game.SlotIsFullException;
+
+import org.apache.log4j.Logger;
+
+/**
+ * QUEST:
+ * &lt;p&gt;
+ * Soldiers in Kanmararn.
+ *
+ * NOTE:
+ * &lt;p&gt;
+ * It also starts a quest that needs NPC McPegleg that is created. It doesn't
+ * harm if that script is missing, just that the IOU cannot be delivered and
+ * hence the player can't get cash
+ *
+ * PARTICIPANTS:
+ * &lt;li&gt; Henry
+ * &lt;li&gt; Sergeant James
+ * &lt;li&gt; corpse of Tom
+ * &lt;li&gt; corpse of Charles
+ * &lt;li&gt; corpse of Peter
+ *
+ * STEPS:
+ * &lt;li&gt; optional: speak to Sergeant James to get the task to find the map
+ * &lt;li&gt; talk to Henry to get the task to find some proof that the other 3
+ * soldiers are dead.
+ * &lt;li&gt; collect the item in each of the corpses of the three other soldiers
+ * &lt;li&gt; bring them back to Henry to get the map - bring the map to Sergeant
+ * James
+ *
+ * REWARD:
+ * &lt;p&gt;
+ * from Henry:
+ * &lt;li&gt; you can keep the IOU paper (for quest MCPeglegIOU)
+ * &lt;li&gt; 2,500 XP
+ * &lt;li&gt; some karma (15)
+ * &lt;p&gt;
+ * from Sergeant James
+ * &lt;li&gt; mainio boots
+ * &lt;li&gt; some karma (15)
+ *
+ * REPETITIONS:
+ * &lt;li&gt; None.
+ *
+ * @see McPeglegIOU
+ */
+<span class="fc" id="L100">public class KanmararnSoldiers extends AbstractQuest {</span>
+
+<span class="fc" id="L102">	private static final Logger logger = Logger.getLogger(KanmararnSoldiers.class);</span>
+
+	private static final String QUEST_SLOT = &quot;soldier_henry&quot;;
+
+	/**
+	 * The maximum time (in seconds) until plundered corpses will be filled
+	 * again, so that other players can do the quest as well.
+	 */
+	private static final int CORPSE_REFILL_SECONDS = 60;
+
+
+
+	@Override
+	public String getSlotName() {
+<span class="fc" id="L116">		return QUEST_SLOT;</span>
+	}
+	
+	/**
+	 * A CorpseRefiller checks, in regular intervals, if the given corpse.
+	 *
+	 * @author daniel
+	 *
+	 */
+	static class CorpseRefiller implements TurnListener {
+		private final Corpse corpse;
+
+		private final String itemName;
+
+		private final String description;
+
+<span class="fc" id="L132">		public CorpseRefiller(final Corpse corpse, final String itemName, final String description) {</span>
+<span class="fc" id="L133">			this.corpse = corpse;</span>
+<span class="fc" id="L134">			this.itemName = itemName;</span>
+<span class="fc" id="L135">			this.description = description;</span>
+<span class="fc" id="L136">		}</span>
+
+		public void start() {
+<span class="fc" id="L139">			SingletonRepository.getTurnNotifier().notifyInTurns(1, this);</span>
+<span class="fc" id="L140">		}</span>
+
+		private boolean equalsExpectedItem(final Item item) {
+<span class="nc bnc" id="L143" title="All 2 branches missed.">			if (!item.getName().equals(itemName)) {</span>
+<span class="nc" id="L144">				return false;</span>
+			}
+
+<span class="nc bnc" id="L147" title="All 2 branches missed.">			if (!item.getDescription().equals(description)) {</span>
+<span class="nc" id="L148">				return false;</span>
+			}
+
+<span class="nc" id="L151">			return corpse.getName().equals(item.getInfoString());</span>
+		}
+
+		@Override
+		public void onTurnReached(final int currentTurn) {
+<span class="nc" id="L156">			boolean isStillFilled = false;</span>
+			// Check if the item is still in the corpse. Note that somebody
+			// might have put other stuff into the corpse.
+<span class="nc bnc" id="L159" title="All 2 branches missed.">			for (final RPObject object : corpse.getSlot(&quot;content&quot;)) {</span>
+<span class="nc bnc" id="L160" title="All 2 branches missed.">				if (object instanceof Item) {</span>
+<span class="nc" id="L161">					final Item item = (Item) object;</span>
+<span class="nc bnc" id="L162" title="All 2 branches missed.">					if (equalsExpectedItem(item)) {</span>
+<span class="nc" id="L163">						isStillFilled = true;</span>
+					}
+				}
+<span class="nc" id="L166">			}</span>
+			try {
+<span class="nc bnc" id="L168" title="All 2 branches missed.">				if (!isStillFilled) {</span>
+					// recreate the item and fill the corpse
+<span class="nc" id="L170">					final Item item = SingletonRepository.getEntityManager().getItem(</span>
+							itemName);
+<span class="nc" id="L172">					item.setInfoString(corpse.getName());</span>
+<span class="nc" id="L173">					item.setDescription(description);</span>
+<span class="nc" id="L174">					corpse.add(item);</span>
+<span class="nc" id="L175">					corpse.notifyWorldAboutChanges();</span>
+				}
+<span class="nc" id="L177">			} catch (final SlotIsFullException e) {</span>
+				// ignore, just don't refill the corpse until someone removes
+				// the other items from the corpse
+<span class="nc" id="L180">				logger.warn(&quot;Quest corpse is full: &quot; + corpse.getName());</span>
+<span class="nc" id="L181">			}</span>
+			// continue the checking cycle
+<span class="nc" id="L183">			SingletonRepository.getTurnNotifier().notifyInSeconds(CORPSE_REFILL_SECONDS, this);</span>
+<span class="nc" id="L184">		}</span>
+	}
+
+
+
+<span class="fc" id="L189">	static class HenryQuestNotCompletedCondition implements ChatCondition {</span>
+		@Override
+		public boolean fire(final Player player, final Sentence sentence, final Entity npc) {
+<span class="pc bpc" id="L192" title="2 of 4 branches missed.">			return !player.hasQuest(QUEST_SLOT) || player.getQuest(QUEST_SLOT).equals(&quot;start&quot;);</span>
+		}
+	}
+
+<span class="fc" id="L196">	static class HenryQuestCompletedCondition implements ChatCondition {</span>
+		@Override
+		public boolean fire(final Player player, final Sentence sentence, final Entity npc) {
+<span class="pc bpc" id="L199" title="1 of 4 branches missed.">			return player.hasQuest(QUEST_SLOT) &amp;&amp; !player.getQuest(QUEST_SLOT).equals(&quot;start&quot;);</span>
+		}
+	}
+
+<span class="fc" id="L203">	static class GiveMapAction implements ChatAction {</span>
+<span class="fc" id="L204">		private boolean bind = false;</span>
+
+<span class="fc" id="L206">		public GiveMapAction(boolean bind) {</span>
+<span class="fc" id="L207">			this.bind = bind;</span>
+<span class="fc" id="L208">		}</span>
+
+		@Override
+		public void fire(final Player player, final Sentence sentence, final EventRaiser npc) {
+<span class="fc" id="L212">			final Item map = SingletonRepository.getEntityManager().getItem(&quot;map&quot;);</span>
+<span class="fc" id="L213">			map.setInfoString(npc.getName());</span>
+<span class="fc" id="L214">			map.setDescription(&quot;You see a hand drawn map, but no matter how you look at it, nothing on it looks familiar.&quot;);</span>
+<span class="pc bpc" id="L215" title="1 of 2 branches missed.">			if (bind) {</span>
+<span class="nc" id="L216">				map.setBoundTo(player.getName());</span>
+			}
+<span class="fc" id="L218">			player.equipOrPutOnGround(map);</span>
+<span class="fc" id="L219">			player.setQuest(QUEST_SLOT, &quot;map&quot;);</span>
+<span class="fc" id="L220">		}</span>
+	}
+
+
+	/**
+	 * We add text for NPC Henry who will get us on the quest.
+	 */
+	private void prepareCowardSoldier() {
+<span class="fc" id="L228">		final SpeakerNPC henry = npcs.get(&quot;Henry&quot;);</span>
+
+<span class="fc" id="L230">		henry.add(ConversationStates.ATTENDING,</span>
+			ConversationPhrases.QUEST_MESSAGES, 
+			new AndCondition(new QuestNotCompletedCondition(QUEST_SLOT),
+							 new QuestNotInStateCondition(QUEST_SLOT,&quot;map&quot;)),
+			ConversationStates.QUEST_OFFERED, 
+			&quot;Find my #group, Peter, Tom, and Charles, prove it and I will reward you. Will you do it?&quot;, 
+			null);
+		
+<span class="fc" id="L238">		henry.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.QUEST_MESSAGES, 
+				new OrCondition(new QuestCompletedCondition(QUEST_SLOT),
+								 new QuestInStateCondition(QUEST_SLOT,&quot;map&quot;)),
+				ConversationStates.ATTENDING, 
+				&quot;I'm so sad that most of my friends are dead.&quot;, 
+				null);
+		
+<span class="fc" id="L246">		henry.add(ConversationStates.QUEST_OFFERED,</span>
+			ConversationPhrases.YES_MESSAGES, null,
+			ConversationStates.ATTENDING,
+			&quot;Thank you! I'll be waiting for your return.&quot;,
+			new SetQuestAction(QUEST_SLOT, &quot;start&quot;));
+
+<span class="fc" id="L252">		henry.add(</span>
+			ConversationStates.QUEST_OFFERED,
+			&quot;group&quot;,
+			null,
+			ConversationStates.QUEST_OFFERED,
+			&quot;The General sent five of us to explore this area in search for #treasure. So, will you help me find them?&quot;,
+			null);
+
+<span class="fc" id="L260">        henry.add(</span>
+				ConversationStates.QUEST_OFFERED,
+				&quot;treasure&quot;,
+				null,
+				ConversationStates.QUEST_OFFERED,
+				&quot;A big treasure is rumored to be #somewhere in this dungeon. Will you help me find my group?&quot;,
+				null);
+
+<span class="fc" id="L268">		henry.add(ConversationStates.QUEST_OFFERED,</span>
+				ConversationPhrases.NO_MESSAGES, null,
+				ConversationStates.ATTENDING,
+				&quot;OK. I understand. I'm scared of the #dwarves myself.&quot;, 
+				new SetQuestAndModifyKarmaAction(QUEST_SLOT, &quot;rejected&quot;, -5.0));
+		
+<span class="fc" id="L274">		final List&lt;ChatAction&gt; actions = new LinkedList&lt;ChatAction&gt;();</span>
+<span class="fc" id="L275">		actions.add(new IncreaseXPAction(2500));</span>
+<span class="fc" id="L276">		actions.add(new DropInfostringItemAction(&quot;leather legs&quot;,&quot;tom&quot;));</span>
+<span class="fc" id="L277">		actions.add(new DropInfostringItemAction(&quot;scale armor&quot;,&quot;peter&quot;));</span>
+<span class="fc" id="L278">		actions.add(new IncreaseKarmaAction(15.0));	</span>
+<span class="fc" id="L279">		actions.add(new GiveMapAction(false));</span>
+		
+<span class="fc" id="L281">		henry.add(ConversationStates.IDLE,</span>
+				ConversationPhrases.GREETING_MESSAGES,
+				new AndCondition(new GreetingMatchesNameCondition(henry.getName()),
+						new QuestInStateCondition(QUEST_SLOT, &quot;start&quot;),
+						new PlayerHasInfostringItemWithHimCondition(&quot;leather legs&quot;, &quot;tom&quot;),
+						new PlayerHasInfostringItemWithHimCondition(&quot;note&quot;, &quot;charles&quot;),
+						new PlayerHasInfostringItemWithHimCondition(&quot;scale armor&quot;, &quot;peter&quot;)),
+				ConversationStates.ATTENDING,
+				&quot;Oh my! Peter, Tom, and Charles are all dead? *cries*. Anyway, here is your reward. And keep the IOU.&quot;, 
+				new MultipleActions(actions));
+
+<span class="fc" id="L292">		henry.add(ConversationStates.IDLE,</span>
+				ConversationPhrases.GREETING_MESSAGES,
+				new AndCondition(new GreetingMatchesNameCondition(henry.getName()),
+						new QuestInStateCondition(QUEST_SLOT, &quot;start&quot;),
+						new NotCondition(
+								new AndCondition(
+										new PlayerHasInfostringItemWithHimCondition(&quot;leather legs&quot;, &quot;tom&quot;),
+										new PlayerHasInfostringItemWithHimCondition(&quot;note&quot;, &quot;charles&quot;),
+										new PlayerHasInfostringItemWithHimCondition(&quot;scale armor&quot;, &quot;peter&quot;)))),
+				ConversationStates.ATTENDING,
+				&quot;You didn't prove that you have found them all!&quot;, 
+				null);
+
+<span class="fc" id="L305">		henry.add(ConversationStates.ATTENDING, Arrays.asList(&quot;map&quot;, &quot;group&quot;, &quot;help&quot;), </span>
+				new OrCondition(
+					new	QuestCompletedCondition(QUEST_SLOT), 
+					new AndCondition(new HenryQuestCompletedCondition(),
+					new PlayerOwnsItemIncludingBankCondition(&quot;map&quot;))),
+				ConversationStates.ATTENDING,
+				&quot;I'm so sad that most of my friends are dead.&quot;, null);
+
+<span class="fc" id="L313">		henry.add(ConversationStates.ATTENDING, Arrays.asList(&quot;map&quot;), </span>
+				new AndCondition(
+					new	QuestNotCompletedCondition(QUEST_SLOT), 
+					new HenryQuestCompletedCondition(),
+					new NotCondition(new PlayerOwnsItemIncludingBankCondition(&quot;map&quot;))),
+				ConversationStates.ATTENDING,
+				&quot;Luckily I drew a copy of the map, but please don't lose this one.&quot;, 
+				new GiveMapAction(true));
+
+<span class="fc" id="L322">		henry.add(ConversationStates.ATTENDING, Arrays.asList(&quot;map&quot;),</span>
+				new HenryQuestNotCompletedCondition(),
+				ConversationStates.ATTENDING,
+				&quot;If you find my friends, I will give you the map.&quot;, null);
+<span class="fc" id="L326">	}</span>
+
+	/**
+	 * add corpses of ex-NPCs.
+	 */
+	private void prepareCorpses() {
+<span class="fc" id="L332">		final StendhalRPZone zone = SingletonRepository.getRPWorld().getZone(&quot;-6_kanmararn_city&quot;);</span>
+
+		// Now we create the corpse of the second NPC
+<span class="fc" id="L335">		final Corpse tom = new Corpse(&quot;youngsoldiernpc&quot;, 5, 47);</span>
+		// he died first
+<span class="fc" id="L337">		tom.setStage(4); </span>
+<span class="fc" id="L338">		tom.setName(&quot;Tom&quot;);</span>
+<span class="fc" id="L339">		tom.setKiller(&quot;a Dwarven patrol&quot;);</span>
+		// Add our new Ex-NPC to the game world
+<span class="fc" id="L341">		zone.add(tom);</span>
+
+		// Add a refiller to automatically fill the corpse of unlucky Tom
+<span class="fc" id="L344">		final CorpseRefiller tomRefiller = new CorpseRefiller(tom, &quot;leather legs&quot;,</span>
+				&quot;You see torn leather legs that are heavily covered with blood.&quot;);
+<span class="fc" id="L346">		tomRefiller.start();</span>
+
+		// Now we create the corpse of the third NPC
+<span class="fc" id="L349">		final Corpse charles = new Corpse(&quot;youngsoldiernpc&quot;, 94, 5);</span>
+		// he died second
+<span class="fc" id="L351">		charles.setStage(3); </span>
+<span class="fc" id="L352">		charles.setName(&quot;Charles&quot;);</span>
+<span class="fc" id="L353">		charles.setKiller(&quot;a Dwarven patrol&quot;);</span>
+		// Add our new Ex-NPC to the game world
+<span class="fc" id="L355">		zone.add(charles);</span>
+		// Add a refiller to automatically fill the corpse of unlucky Charles
+<span class="fc" id="L357">		final CorpseRefiller charlesRefiller = new CorpseRefiller(charles, &quot;note&quot;,</span>
+				&quot;You read: \&quot;IOU 250 money. (signed) McPegleg\&quot;&quot;);
+<span class="fc" id="L359">		charlesRefiller.start();</span>
+
+		// Now we create the corpse of the fourth NPC
+<span class="fc" id="L362">		final Corpse peter = new Corpse(&quot;youngsoldiernpc&quot;, 11, 63);</span>
+		// he died recently
+<span class="fc" id="L364">		peter.setStage(2); </span>
+<span class="fc" id="L365">		peter.setName(&quot;Peter&quot;);</span>
+<span class="fc" id="L366">		peter.setKiller(&quot;a Dwarven patrol&quot;);</span>
+		// Add our new Ex-NPC to the game world
+<span class="fc" id="L368">		zone.add(peter);</span>
+		// Add a refiller to automatically fill the corpse of unlucky Peter
+<span class="fc" id="L370">		final CorpseRefiller peterRefiller = new CorpseRefiller(</span>
+				peter,
+				&quot;scale armor&quot;,
+				&quot;You see a slightly rusty scale armor. It is heavily deformed by several strong hammer blows.&quot;);
+<span class="fc" id="L374">		peterRefiller.start();</span>
+<span class="fc" id="L375">	}</span>
+
+	/**
+	 * add James.
+	 */
+	private void prepareSergeant() {
+<span class="fc" id="L381">		final SpeakerNPC james = npcs.get(&quot;Sergeant James&quot;);</span>
+
+		// quest related stuff
+<span class="fc" id="L384">		james.addHelp(&quot;Think I need a little help myself. My #group got killed and #one of my men ran away. Too bad he had the #map.&quot;);</span>
+<span class="fc" id="L385">		james.addQuest(&quot;Find my fugitive soldier and bring him to me ... or at least the #map he's carrying.&quot;);</span>
+<span class="fc" id="L386">		james.addReply(&quot;group&quot;,</span>
+			&quot;We were five, three of us died. You probably passed their corpses.&quot;);
+<span class="fc" id="L388">		james.addReply(Arrays.asList(&quot;one&quot;, &quot;henry&quot;),</span>
+			&quot;Yes, my youngest soldier. He ran away.&quot;);
+<span class="fc" id="L390">		james.addReply(&quot;map&quot;,</span>
+			&quot;The #treasure map that leads into the heart of the #dwarven #kingdom.&quot;);
+<span class="fc" id="L392">		james.addReply(&quot;treasure&quot;,</span>
+			&quot;A big treasure is rumored to be somewhere in this dungeon.&quot;);
+<span class="fc" id="L394">		james.addReply(Arrays.asList(&quot;dwarf&quot;, &quot;dwarves&quot;, &quot;dwarven&quot;, &quot;dwarven kingdom&quot;),</span>
+			&quot;They are strong enemies! We're in their #kingdom.&quot;);
+<span class="fc" id="L396">		james.addReply(Arrays.asList(&quot;peter&quot;, &quot;tom&quot;, &quot;charles&quot;),</span>
+			&quot;He was a good soldier and fought bravely.&quot;);
+<span class="fc" id="L398">		james.addReply(Arrays.asList(&quot;kingdom&quot;, &quot;kanmararn&quot;),</span>
+			&quot;Kanmararn, the legendary kingdom of the #dwarves.&quot;);
+<span class="fc" id="L400">		james.addReply(&quot;dreamscape&quot;,</span>
+			&quot;There's a man east of town. He knows the way.&quot;);
+
+<span class="fc" id="L403">		final List&lt;ChatAction&gt; actions = new LinkedList&lt;ChatAction&gt;();</span>
+<span class="fc" id="L404">		actions.add(new IncreaseXPAction(5000));</span>
+<span class="fc" id="L405">		actions.add(new DropInfostringItemAction(&quot;map&quot;,&quot;Henry&quot;));</span>
+<span class="fc" id="L406">		actions.add(new SetQuestAndModifyKarmaAction(QUEST_SLOT, &quot;done&quot;, 15.0));	</span>
+<span class="fc" id="L407">		actions.add(new EquipItemAction(&quot;mainio boots&quot;, 1, true));</span>
+		
+<span class="fc" id="L409">		james.add(ConversationStates.ATTENDING, </span>
+				Arrays.asList(&quot;map&quot;, &quot;henry&quot;),
+				new AndCondition(new QuestInStateCondition(QUEST_SLOT, &quot;map&quot;),
+								new PlayerHasInfostringItemWithHimCondition(&quot;map&quot;, &quot;henry&quot;)),
+				ConversationStates.ATTENDING, 
+				&quot;The map! Wonderful! Thank you. And here is your reward. I got these boots while on the #dreamscape.&quot;,
+				new MultipleActions(actions));
+		
+<span class="fc" id="L417">		james.add(ConversationStates.ATTENDING, </span>
+				Arrays.asList(&quot;map&quot;, &quot;henry&quot;),
+				new AndCondition(new QuestInStateCondition(QUEST_SLOT, &quot;map&quot;),
+								new NotCondition(new PlayerHasInfostringItemWithHimCondition(&quot;map&quot;, &quot;henry&quot;))),
+				ConversationStates.ATTENDING, 
+				&quot;Well, where is the map?&quot;,
+				null);
+		
+<span class="fc" id="L425">		james.add(ConversationStates.ATTENDING, ConversationPhrases.QUEST_MESSAGES, </span>
+				new QuestCompletedCondition(QUEST_SLOT),
+				ConversationStates.ATTENDING,
+				&quot;Thanks again for bringing me the map!&quot;, null);
+		
+<span class="fc" id="L430">		james.add(ConversationStates.ATTENDING, ConversationPhrases.HELP_MESSAGES, </span>
+				new QuestCompletedCondition(QUEST_SLOT),
+				ConversationStates.ATTENDING,
+				&quot;Thanks again for bringing me the map!&quot;, null);
+		
+<span class="fc" id="L435">		james.add(ConversationStates.ATTENDING, Arrays.asList(&quot;map&quot;, &quot;henry&quot;,</span>
+			 &quot;group&quot;, &quot;one&quot;),
+			new QuestCompletedCondition(QUEST_SLOT),
+			ConversationStates.ATTENDING,
+			&quot;Thanks again for bringing me the map!&quot;, null);
+<span class="fc" id="L440">	}</span>
+
+	@Override
+	public void addToWorld() {
+<span class="fc" id="L444">		fillQuestInfo(</span>
+				&quot;Kanmararn Soldiers&quot;,
+				&quot;Some time ago, Sergeant James started with his crew of four brave soldiers to their adventure of finding a treasure in Kanmararn, the city of dwarves. They didn't return yet.&quot;,
+				true);
+<span class="fc" id="L448">		prepareCowardSoldier();</span>
+<span class="fc" id="L449">		prepareCorpses();</span>
+<span class="fc" id="L450">		prepareSergeant();</span>
+<span class="fc" id="L451">	}</span>
+	
+	@Override
+	public List&lt;String&gt; getHistory(final Player player) {
+<span class="nc" id="L455">			final List&lt;String&gt; res = new ArrayList&lt;String&gt;();</span>
+<span class="nc bnc" id="L456" title="All 2 branches missed.">			if (!player.hasQuest(QUEST_SLOT)) {</span>
+<span class="nc" id="L457">				return res;</span>
+			}
+<span class="nc" id="L459">			final String questState = player.getQuest(QUEST_SLOT);</span>
+<span class="nc" id="L460">			res.add(&quot;I met a scared soldier in Kanmararn City. He asked me to find his friends, Peter, Charles, and Tom.&quot;);</span>
+<span class="nc bnc" id="L461" title="All 2 branches missed.">			if (&quot;rejected&quot;.equals(questState)) {</span>
+<span class="nc" id="L462">				res.add(&quot;I don't want to help Henry.&quot;);</span>
+<span class="nc" id="L463">				return res;</span>
+			} 
+<span class="nc bnc" id="L465" title="All 2 branches missed.">			if (&quot;start&quot;.equals(questState)) {</span>
+<span class="nc" id="L466">				return res;</span>
+			} 
+<span class="nc" id="L468">			res.add(&quot;Sadly I only found corpses of Peter, Charles, and Tom. Henry was aghast. He gave me a map and an IOU, but didn't say what I should do with them now.&quot;);</span>
+<span class="nc bnc" id="L469" title="All 2 branches missed.">			if (&quot;map&quot;.equals(questState)) {</span>
+<span class="nc" id="L470">				return res;</span>
+			} 
+<span class="nc" id="L472">			res.add(&quot;I met Sergeant James and gave him the treasure map. He gave me an excellent pair of mainio boots in return.&quot;);</span>
+<span class="nc bnc" id="L473" title="All 2 branches missed.">			if (isCompleted(player)) {</span>
+<span class="nc" id="L474">				return res;</span>
+			}
+			// if things have gone wrong and the quest state didn't match any of the above, debug a bit:
+<span class="nc" id="L477">			final List&lt;String&gt; debug = new ArrayList&lt;String&gt;();</span>
+<span class="nc" id="L478">			debug.add(&quot;Quest state is: &quot; + questState);</span>
+<span class="nc" id="L479">			logger.error(&quot;History doesn't have a matching quest state for &quot; + questState);</span>
+<span class="nc" id="L480">			return debug;</span>
+	}
+
+	@Override
+	public String getName() {
+<span class="nc" id="L485">		return &quot;KanmararnSoldiers&quot;;</span>
+	}
+	
+	@Override
+	public int getMinLevel() {
+<span class="fc" id="L490">		return 40;</span>
+	}
+
+	@Override
+	public String getNPCName() {
+<span class="nc" id="L495">		return &quot;Henry&quot;;</span>
+	}
+	
+	@Override
+	public String getRegion() {
+<span class="nc" id="L500">		return Region.SEMOS_DUNGEONS;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

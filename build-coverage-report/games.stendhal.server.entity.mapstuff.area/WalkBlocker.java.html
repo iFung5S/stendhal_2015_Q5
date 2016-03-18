@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>WalkBlocker.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.mapstuff.area</a> &gt; <span class="el_source">WalkBlocker.java</span></div><h1>WalkBlocker.java</h1><pre class="source lang-java linenums">/*
+ * @(#) src/games/stendhal/server/entity/WalkBlocker.java
+ *
+ * $Id$
+ */
+
+package games.stendhal.server.entity.mapstuff.area;
+
+//
+//
+
+import games.stendhal.server.entity.Entity;
+import games.stendhal.server.entity.RPEntity;
+import marauroa.common.game.RPClass;
+import marauroa.common.game.Definition.Type;
+
+/**
+ * An entity that just acts as an obstacle. This is a temporary workaround to
+ * allow items to be placed, but not players/entities, until multi-level
+ * collisions can be added.
+ */
+public class WalkBlocker extends AreaEntity {
+	/**
+	 * Create a walk blocker.
+	 */
+	public WalkBlocker() {
+<span class="nc" id="L27">		super(1, 1);</span>
+
+<span class="nc" id="L29">		setRPClass(&quot;walkblocker&quot;);</span>
+<span class="nc" id="L30">		put(&quot;type&quot;, &quot;walkblocker&quot;);</span>
+		// Count as collision for the client and pathfinder
+<span class="nc" id="L32">		setResistance(100);</span>
+<span class="nc" id="L33">	}</span>
+
+
+	public static void generateRPClass() {
+<span class="fc" id="L37">		final RPClass blocker = new RPClass(&quot;walkblocker&quot;);</span>
+<span class="fc" id="L38">		blocker.isA(&quot;area&quot;);</span>
+<span class="fc" id="L39">		blocker.addAttribute(&quot;class&quot;, Type.STRING);</span>
+<span class="fc" id="L40">	}</span>
+
+	/**
+	 * Determine if this is an obstacle for another entity.
+	 * 
+	 * @param entity
+	 *            The entity to check against.
+	 * 
+	 * @return &lt;code&gt;true&lt;/code&gt; if the other entity is an RPEntity, otherwise
+	 *         the default.
+	 */
+	@Override
+	public boolean isObstacle(final Entity entity) {
+<span class="nc bnc" id="L53" title="All 2 branches missed.">		if (entity instanceof RPEntity) {</span>
+<span class="nc" id="L54">			return true;</span>
+		}
+
+<span class="nc" id="L57">		return super.isObstacle(entity);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>HealingEffect.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.spell.effect</a> &gt; <span class="el_source">HealingEffect.java</span></div><h1>HealingEffect.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.spell.effect;
+
+import games.stendhal.common.constants.Nature;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.events.TurnListener;
+import games.stendhal.server.core.events.TurnListenerDecorator;
+import games.stendhal.server.entity.Entity;
+import games.stendhal.server.entity.player.Player;
+
+import org.apache.log4j.Logger;
+
+/**
+ * Effect for healing a player
+ * 
+ * @author madmetzger
+ */
+public class HealingEffect extends AbstractEffect implements TurnListener {
+
+<span class="fc" id="L31">	private static final Logger LOGGER = Logger.getLogger(HealingEffect.class);</span>
+	
+	private int restAmount;
+	
+	private Player playerToHeal;
+	
+	/**
+	 * Creates a new {@link HealingEffect}.
+	 * 
+	 * @param nature
+	 * @param amount
+	 * @param atk
+	 * @param def
+	 * @param lifesteal
+	 * @param rate
+	 * @param regen
+	 * @param modifier 
+	 */
+	public HealingEffect(Nature nature, int amount, int atk, int def, double lifesteal, int rate,
+			int regen, double modifier) {
+<span class="fc" id="L51">		super(nature, amount, atk, def, lifesteal, rate, regen, modifier);</span>
+<span class="fc" id="L52">		this.restAmount = amount;</span>
+<span class="fc" id="L53">	}</span>
+
+	@Override
+	public void act(Player caster, Entity target) {
+<span class="pc bpc" id="L57" title="1 of 2 branches missed.">		if (target instanceof Player) {</span>
+<span class="fc" id="L58">			actInternal(caster, (Player) target);</span>
+		} else {
+<span class="nc" id="L60">			LOGGER.error(&quot;target is no instance of Player but: &quot; + target, new Throwable());</span>
+		}
+<span class="fc" id="L62">	}</span>
+
+	private void actInternal(Player caster, Player target) {
+<span class="fc" id="L65">		playerToHeal = target;</span>
+<span class="fc" id="L66">		SingletonRepository.getTurnNotifier().notifyInTurns(0, new TurnListenerDecorator(this));</span>
+<span class="fc" id="L67">	}</span>
+
+	@Override
+	public void onTurnReached(int currentTurn) {
+<span class="fc bfc" id="L71" title="All 2 branches covered.">		if(restAmount &gt; 0) {</span>
+<span class="fc" id="L72">			int toHeal = Math.min(restAmount, getRegen());</span>
+<span class="fc" id="L73">			playerToHeal.heal(toHeal);</span>
+<span class="fc" id="L74">			restAmount = restAmount - toHeal;</span>
+<span class="fc" id="L75">			SingletonRepository.getTurnNotifier().notifyInTurns(getRate(), new TurnListenerDecorator(this));</span>
+		}
+<span class="fc" id="L77">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

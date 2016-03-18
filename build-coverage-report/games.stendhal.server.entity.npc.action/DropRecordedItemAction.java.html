@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>DropRecordedItemAction.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.npc.action</a> &gt; <span class="el_source">DropRecordedItemAction.java</span></div><h1>DropRecordedItemAction.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.npc.action;
+
+import static com.google.common.base.Preconditions.checkNotNull;
+import games.stendhal.common.MathHelper;
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.core.config.annotations.Dev;
+import games.stendhal.server.core.config.annotations.Dev.Category;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.player.Player;
+
+import org.apache.log4j.Logger;
+
+/**
+ * Drops the specified item.
+ *
+ * @see games.stendhal.server.entity.npc.action.StartRecordingRandomItemCollectionAction
+ * @see games.stendhal.server.entity.npc.action.SayRequiredItemAction
+ * @see games.stendhal.server.entity.npc.condition.PlayerHasRecordedItemWithHimCondition
+ *
+ */
+@Dev(category=Category.ITEMS_OWNED, label=&quot;Item-&quot;)
+public class DropRecordedItemAction implements ChatAction {
+<span class="fc" id="L36">	private static Logger logger = Logger.getLogger(DropRecordedItemAction.class);</span>
+
+	private final String questname;
+	private final int index;
+
+	/**
+	 * Creates a new DropRecordedItemAction.
+	 *
+	 * @param questname
+	 *            name of quest to get the item and quantity from
+	 */
+<span class="fc" id="L47">	public DropRecordedItemAction(final String questname) {</span>
+<span class="fc" id="L48">		this.questname = checkNotNull(questname);</span>
+<span class="fc" id="L49">		this.index = -1;</span>
+<span class="fc" id="L50">	}</span>
+
+	/**
+	 * Creates a new DropRecordedItemAction.
+	 *
+	 * @param questname
+	 *            name of quest to get the item and quantity from
+	 * @param index
+	 *            index of sub state
+	 */
+	@Dev
+<span class="fc" id="L61">	public DropRecordedItemAction(final String questname, final int index) {</span>
+<span class="fc" id="L62">		this.questname = checkNotNull(questname);</span>
+<span class="fc" id="L63">		this.index = index;</span>
+<span class="fc" id="L64">	}</span>
+
+
+	@Override
+	public void fire(final Player player, final Sentence sentence, final EventRaiser npc) {
+<span class="pc bpc" id="L69" title="1 of 2 branches missed.">		if (!player.hasQuest(questname)) {</span>
+<span class="nc" id="L70">			logger.error(player.getName() + &quot; does not have quest &quot; + questname);</span>
+<span class="nc" id="L71">			return;</span>
+		}
+<span class="fc" id="L73">		final String questSubString = player.getQuest(questname, index);</span>
+<span class="fc" id="L74">		final String[] elements = questSubString.split(&quot;=&quot;);</span>
+<span class="fc" id="L75">		String itemname = elements[0];</span>
+<span class="fc" id="L76">		int amount = 1;</span>
+
+		// some older quests may have stored an item name but not the amount
+		// so we use the initial value of 1 if the string can't be split
+<span class="fc bfc" id="L80" title="All 2 branches covered.">		if(elements.length &gt; 1) {</span>
+<span class="fc" id="L81">			amount=MathHelper.parseIntDefault(elements[1], 1);</span>
+		}
+<span class="fc" id="L83">		final boolean res = player.drop(itemname, amount);</span>
+<span class="pc bpc" id="L84" title="1 of 2 branches missed.">		if (!res) {</span>
+<span class="nc" id="L85">			logger.error(&quot;Cannot drop &quot; + amount + &quot; &quot; + itemname, new Throwable());</span>
+		}
+<span class="fc" id="L87">		player.notifyWorldAboutChanges();</span>
+<span class="fc" id="L88">	}</span>
+
+	@Override
+	public String toString() {
+<span class="nc" id="L92">		return &quot;drop recorded item from questslot &lt;&quot; + questname + &quot;&gt;&quot;;</span>
+	}
+
+
+	@Override
+	public int hashCode() {
+<span class="nc" id="L98">		return 5153 * (questname.hashCode() + 5167 * index);</span>
+	}
+
+	@Override
+	public boolean equals(final Object obj) {
+<span class="nc bnc" id="L103" title="All 2 branches missed.">		if (!(obj instanceof DropRecordedItemAction)) {</span>
+<span class="nc" id="L104">			return false;</span>
+		}
+<span class="nc" id="L106">		DropRecordedItemAction other = (DropRecordedItemAction) obj;</span>
+<span class="nc bnc" id="L107" title="All 4 branches missed.">		return (index == other.index)</span>
+			&amp;&amp; questname.equals(other.questname);
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

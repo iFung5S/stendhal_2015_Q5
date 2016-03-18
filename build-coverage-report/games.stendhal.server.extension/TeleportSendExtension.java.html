@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>TeleportSendExtension.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.extension</a> &gt; <span class="el_source">TeleportSendExtension.java</span></div><h1>TeleportSendExtension.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.extension;
+
+import games.stendhal.server.actions.ActionListener;
+import games.stendhal.server.actions.CommandCenter;
+import games.stendhal.server.actions.admin.AdministrationAction;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.entity.RPEntity;
+import games.stendhal.server.entity.player.Player;
+import marauroa.common.game.RPAction;
+
+import org.apache.log4j.Logger;
+
+/**
+ * Stendhal TeleportSend Extenstion
+ * 
+ * This extension adds teleportsend to the game world. there is 1 command:
+ * /teleportsend [Player] [Player|NPC_Destination] which will teleport the first
+ * player to the second player/npc This command is an admin command of the same
+ * access level as /teleport To enable this extension, add it to the
+ * server.ini file: # load StendhalServerExtension(s)
+ * teleportsend=games.stendhal.server.extension.TeleportSendExtension
+ * server_extension=...,teleportsend
+ * 
+ * @author Seather
+ */
+public class TeleportSendExtension extends StendhalServerExtension implements
+		ActionListener {
+
+<span class="nc" id="L42">	private final String CMD_NAME = &quot;teleportsend&quot;;</span>
+
+<span class="nc" id="L44">	private final String CMD_USAGE = &quot;Usage: #/&quot; + CMD_NAME</span>
+			+ &quot; #&lt;Player&gt; #&lt;Player|NPC_Destination&gt;&quot;;
+
+<span class="nc" id="L47">	private static final Logger logger = Logger.getLogger(TeleportSendExtension.class);</span>
+
+	public TeleportSendExtension() {
+<span class="nc" id="L50">		super();</span>
+<span class="nc" id="L51">		logger.info(&quot;TeleportSendExtension starting...&quot;);</span>
+<span class="nc" id="L52">		CommandCenter.register(CMD_NAME, this, 400);</span>
+
+<span class="nc" id="L54">	}</span>
+
+	@Override
+	public void init() {
+		// this extension has no specific init code, everything is
+		// implemented as /commands that are handled onAction
+<span class="nc" id="L60">	}</span>
+
+	@Override
+	public void onAction(final Player player, final RPAction action) {
+<span class="nc" id="L64">		final String type = action.get(&quot;type&quot;);</span>
+
+<span class="nc bnc" id="L66" title="All 2 branches missed.">		if (type.equals(CMD_NAME)) {</span>
+<span class="nc" id="L67">			onTeleportSend(player, action);</span>
+		}
+<span class="nc" id="L69">	}</span>
+
+	private void onTeleportSend(final Player admin, final RPAction action) {
+
+<span class="nc bnc" id="L73" title="All 2 branches missed.">		if (!AdministrationAction.isPlayerAllowedToExecuteAdminCommand(admin,</span>
+				CMD_NAME, true)) {
+<span class="nc" id="L75">			return;</span>
+		}
+
+<span class="nc bnc" id="L78" title="All 4 branches missed.">		if (action.has(&quot;target&quot;) &amp;&amp; action.has(&quot;args&quot;)) {</span>
+			// Parse Player1
+<span class="nc" id="L80">			final String name1 = action.get(&quot;target&quot;);</span>
+<span class="nc" id="L81">			final Player player1 = SingletonRepository.getRuleProcessor().getPlayer(name1);</span>
+<span class="nc bnc" id="L82" title="All 2 branches missed.">			if (player1 == null) {</span>
+<span class="nc" id="L83">				final String text = &quot;Player \&quot;&quot; + name1 + &quot;\&quot; not found&quot;;</span>
+<span class="nc" id="L84">				admin.sendPrivateText(text);</span>
+<span class="nc" id="L85">				logger.debug(text);</span>
+<span class="nc" id="L86">				return;</span>
+			}
+
+			// Parse Player2 (player/npc)
+<span class="nc" id="L90">			final String name2 = action.get(&quot;args&quot;);</span>
+<span class="nc" id="L91">			RPEntity player2 = SingletonRepository.getRuleProcessor().getPlayer(name2);</span>
+<span class="nc bnc" id="L92" title="All 2 branches missed.">			if (player2 == null) {</span>
+<span class="nc" id="L93">				player2 = SingletonRepository.getNPCList().get(name2);</span>
+<span class="nc bnc" id="L94" title="All 2 branches missed.">				if (player2 == null) {</span>
+
+<span class="nc" id="L96">					final String text = &quot;Player \&quot;&quot; + name2 + &quot;\&quot; not found&quot;;</span>
+<span class="nc" id="L97">					admin.sendPrivateText(text);</span>
+<span class="nc" id="L98">					logger.debug(text);</span>
+<span class="nc" id="L99">					return;</span>
+				}
+			}
+
+<span class="nc" id="L103">			final StendhalRPZone zone = player2.getZone();</span>
+<span class="nc" id="L104">			final int x = player2.getX();</span>
+<span class="nc" id="L105">			final int y = player2.getY();</span>
+
+<span class="nc" id="L107">			player1.teleport(zone, x, y, null, admin);</span>
+
+			/*
+			 * StendhalRPRuleProcessor.get().addGameEvent(admin.getName(),
+			 * &quot;teleportsend&quot;, action.get(&quot;target&quot;) + &quot; -&gt; &quot; +
+			 * action.get(&quot;args&quot;), zone.getName(), Integer.toString(x),
+			 * Integer.toString(y));
+			 */
+<span class="nc" id="L115">		} else {</span>
+<span class="nc" id="L116">			admin.sendPrivateText(CMD_USAGE);</span>
+		}
+<span class="nc" id="L118">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

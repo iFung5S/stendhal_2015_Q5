@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>MemberListModel.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui.group</a> &gt; <span class="el_source">MemberListModel.java</span></div><h1>MemberListModel.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui.group;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+
+import javax.swing.AbstractListModel;
+import javax.swing.SwingUtilities;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
+
+/**
+ * A &lt;code&gt;ListModel&lt;/code&gt; for group members. The group leader is always kept
+ * first.
+ */
+<span class="nc" id="L30">class MemberListModel extends AbstractListModel&lt;Member&gt; implements Iterable&lt;Member&gt; {</span>
+<span class="nc" id="L31">	private List&lt;Member&gt; memberList = new ArrayList&lt;Member&gt;();</span>
+<span class="nc" id="L32">	private Map&lt;String, Member&gt; memberMap = new HashMap&lt;String, Member&gt;();</span>
+<span class="nc" id="L33">	private final MemberListHealthListener healthListener = new MemberListHealthListener();</span>
+
+	@Override
+	public Member getElementAt(int index) {
+<span class="nc" id="L37">		return memberList.get(index);</span>
+	}
+
+	@Override
+	public int getSize() {
+<span class="nc" id="L42">		return memberList.size();</span>
+	}
+	
+	/**
+	 * Set the current leader. The leader must be a member of the group, thus
+	 * this method must not be called before setting the members.
+	 * 
+	 * @param name name of the leader 
+	 */
+	void setLeader(String name) {
+<span class="nc" id="L52">		Member leader = memberMap.get(name);</span>
+<span class="nc" id="L53">		int index1 = memberList.indexOf(leader);</span>
+<span class="nc" id="L54">		boolean changed = leader.setLeader(true);</span>
+<span class="nc bnc" id="L55" title="All 2 branches missed.">		if (changed) {</span>
+			// find the old leader and demote her
+<span class="nc bnc" id="L57" title="All 2 branches missed.">			for (Member member : memberList) {</span>
+<span class="nc bnc" id="L58" title="All 4 branches missed.">				if (member.isLeader() &amp;&amp; !member.getName().equals(leader.getName())) {</span>
+<span class="nc" id="L59">					member.setLeader(false);</span>
+<span class="nc" id="L60">					break;</span>
+				}
+<span class="nc" id="L62">			}</span>
+			
+<span class="nc" id="L64">			Collections.sort(memberList);</span>
+<span class="nc" id="L65">			int index2 = memberList.indexOf(leader);</span>
+<span class="nc" id="L66">			fireContentsChanged(this, index1, index2);</span>
+		}
+<span class="nc" id="L68">	}</span>
+	
+	/**
+	 * Set the list of current group members.
+	 * 
+	 * @param members list of members
+	 */
+	void setMembers(List&lt;String&gt; members) {
+<span class="nc bnc" id="L76" title="All 2 branches missed.">		if (members == null) {</span>
+<span class="nc" id="L77">			int size = memberList.size();</span>
+<span class="nc" id="L78">			memberMap.clear();</span>
+<span class="nc" id="L79">			memberList.clear();</span>
+<span class="nc bnc" id="L80" title="All 2 branches missed.">			if (size &gt; 0) {</span>
+<span class="nc" id="L81">				this.fireIntervalRemoved(this, 0, size - 1);</span>
+			}
+			
+<span class="nc" id="L84">			return;</span>
+		}
+		// Find out the added members
+<span class="nc" id="L87">		List&lt;String&gt; newMembers = new ArrayList&lt;String&gt;(members);</span>
+<span class="nc" id="L88">		newMembers.removeAll(memberMap.keySet());</span>
+<span class="nc" id="L89">		addMembers(newMembers);</span>
+		// Then the removed members
+<span class="nc" id="L91">		List&lt;String&gt; removedMembers = new ArrayList&lt;String&gt;(memberMap.keySet());</span>
+<span class="nc" id="L92">		removedMembers.removeAll(members);</span>
+<span class="nc" id="L93">		removeMembers(removedMembers);</span>
+<span class="nc" id="L94">	}</span>
+	
+	/**
+	 * Add a group of new members.
+	 * 
+	 * @param newMembers list of new members
+	 */
+	private void addMembers(List&lt;String&gt; newMembers) {
+<span class="nc bnc" id="L102" title="All 2 branches missed.">		if (newMembers.isEmpty()) {</span>
+<span class="nc" id="L103">			return;</span>
+		}
+<span class="nc" id="L105">		int startIndex = -1;</span>
+<span class="nc" id="L106">		int endIndex = -1;</span>
+<span class="nc bnc" id="L107" title="All 2 branches missed.">		for (String name : newMembers) {</span>
+<span class="nc" id="L108">			Member member = new Member(name);</span>
+<span class="nc" id="L109">			member.setChangeListener(healthListener);</span>
+<span class="nc" id="L110">			memberMap.put(name, member);</span>
+<span class="nc" id="L111">			memberList.add(member);</span>
+<span class="nc" id="L112">			int index = memberList.indexOf(member);</span>
+<span class="nc bnc" id="L113" title="All 2 branches missed.">			if (startIndex == -1) {</span>
+<span class="nc" id="L114">				startIndex = index;</span>
+<span class="nc" id="L115">				endIndex = index;</span>
+			} else {
+<span class="nc" id="L117">				startIndex = Math.min(startIndex, index);</span>
+<span class="nc" id="L118">				endIndex = Math.max(endIndex, index);</span>
+			}
+<span class="nc" id="L120">		}</span>
+<span class="nc" id="L121">		fireIntervalAdded(this, startIndex, endIndex);</span>
+<span class="nc" id="L122">	}</span>
+	
+	/**
+	 * Remove a group of members.
+	 * 
+	 * @param members removed members
+	 */
+	private void removeMembers(List&lt;String&gt; members) {
+<span class="nc bnc" id="L130" title="All 2 branches missed.">		if (members.isEmpty()) {</span>
+<span class="nc" id="L131">			return;</span>
+		}
+<span class="nc" id="L133">		int startIndex = -1;</span>
+<span class="nc" id="L134">		int endIndex = -1;</span>
+<span class="nc bnc" id="L135" title="All 2 branches missed.">		for (String name : members) {</span>
+<span class="nc" id="L136">			Member member = memberMap.remove(name);</span>
+<span class="nc" id="L137">			int index = memberList.indexOf(member);</span>
+<span class="nc" id="L138">			memberList.remove(index);</span>
+<span class="nc bnc" id="L139" title="All 2 branches missed.">			if (startIndex == -1) {</span>
+<span class="nc" id="L140">				startIndex = index;</span>
+<span class="nc" id="L141">				endIndex = index;</span>
+			} else {
+<span class="nc" id="L143">				startIndex = Math.min(startIndex, index);</span>
+<span class="nc" id="L144">				endIndex = Math.max(endIndex, index);</span>
+			}
+<span class="nc" id="L146">		}</span>
+<span class="nc" id="L147">		fireIntervalRemoved(this, startIndex, endIndex);</span>
+<span class="nc" id="L148">	}</span>
+	
+	/**
+	 * To be called when a member changes a value that makes a difference in
+	 * drawing it.
+	 * 
+	 * @param member member whose attributes changed
+	 */
+	void memberChanged(Member member) {
+<span class="nc" id="L157">		int index = memberList.indexOf(member);</span>
+<span class="nc bnc" id="L158" title="All 2 branches missed.">		if (index != -1) {</span>
+<span class="nc" id="L159">			this.fireContentsChanged(this, index, index);</span>
+		}
+<span class="nc" id="L161">	}</span>
+	
+	/**
+	 * Get data of a specified group member.
+	 *  
+	 * @param name member name
+	 * @return member data, or &lt;code&gt;null&lt;/code&gt; if there's no such player in
+	 * 	the group
+	 */
+	Member getMember(String name) {
+<span class="nc" id="L171">		return memberMap.get(name);</span>
+	}
+
+	@Override
+	public Iterator&lt;Member&gt; iterator() {
+<span class="nc" id="L176">		return memberList.iterator();</span>
+	}
+	
+	/**
+	 * Listener significant HP ratio changes that happen in any of the members.
+	 */
+<span class="nc" id="L182">	private class MemberListHealthListener implements ChangeListener {</span>
+		@Override
+		public void stateChanged(ChangeEvent e) {
+<span class="nc" id="L185">			final Object source = e.getSource();</span>
+<span class="nc bnc" id="L186" title="All 2 branches missed.">			if (source instanceof Member) {</span>
+				/*
+				 * HP changes can come from the game loop. Resizes also result
+				 * in ratio changes, and they come from EDT, but we can ignore
+				 * those as they result in redraws anyway.
+				 */
+<span class="nc bnc" id="L192" title="All 2 branches missed.">				if (!SwingUtilities.isEventDispatchThread()) {</span>
+<span class="nc" id="L193">					memberChanged((Member) source);</span>
+<span class="nc" id="L194">					SwingUtilities.invokeLater(new Runnable() {</span>
+						@Override
+						public void run() {
+<span class="nc" id="L197">							memberChanged((Member) source);						</span>
+<span class="nc" id="L198">						}</span>
+					});
+				}
+			}
+<span class="nc" id="L202">		}</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

@@ -1,0 +1,551 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Market.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.trade</a> &gt; <span class="el_source">Market.java</span></div><h1>Market.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.trade;
+
+import games.stendhal.server.core.engine.GameEvent;
+import games.stendhal.server.core.engine.ItemLogger;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.engine.dbcommand.LogSimpleItemEventCommand;
+import games.stendhal.server.entity.PassiveEntity;
+import games.stendhal.server.entity.item.Item;
+import games.stendhal.server.entity.item.StackableItem;
+import games.stendhal.server.entity.player.Player;
+
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Set;
+
+import marauroa.common.game.Definition;
+import marauroa.common.game.RPClass;
+import marauroa.common.game.RPObject;
+import marauroa.common.game.RPSlot;
+
+import org.apache.log4j.Logger;
+
+/**
+ * A Market handles sales offers of players. Players can place offers or accept
+ * offers to buy a desired item. Offers last only for a certain amount of time
+ * before they expire and can be prolonged. Expired Offers get removed
+ * permanently from the market after another period of time. When an offer has
+ * been accepted, the offering Player can come and fetch his earnings for that
+ * sale.
+ * 
+ * @author madmetzger, kiheru
+ */
+public class Market extends PassiveEntity {
+<span class="fc" id="L47">	private static Logger logger = Logger.getLogger(Market.class);</span>
+
+	/**
+	 * the RPClass name for the market
+	 */
+	public static final String MARKET_RPCLASS_NAME = &quot;market&quot;;
+	/**
+	 * the name of the slot where the earnings are stored
+	 */
+	public static final String EARNINGS_SLOT_NAME = &quot;earnings&quot;;
+	/**
+	 * the name of the slot where the offers are stored
+	 */
+	public static final String OFFERS_SLOT_NAME = &quot;offers&quot;;
+	/**
+	 * the name of the slot where the expired offers are stored
+	 */
+	public static final String EXPIRED_OFFERS_SLOT_NAME = &quot;expired_offers&quot;;
+
+	/**
+	 * Generate the RPClass for the Market
+	 */
+	public static void generateRPClass() {
+<span class="fc" id="L70">		final RPClass shop = new RPClass(MARKET_RPCLASS_NAME);</span>
+<span class="fc" id="L71">		shop.isA(&quot;entity&quot;);</span>
+<span class="fc" id="L72">		shop.addRPSlot(OFFERS_SLOT_NAME, -1, Definition.HIDDEN);</span>
+<span class="fc" id="L73">		shop.addRPSlot(EARNINGS_SLOT_NAME, -1, Definition.HIDDEN);</span>
+<span class="fc" id="L74">		shop.addRPSlot(EXPIRED_OFFERS_SLOT_NAME, -1, Definition.HIDDEN);</span>
+<span class="fc" id="L75">	}</span>
+
+	/**
+	 * Creates a new Market from an RPObject
+	 * 
+	 * @param object
+	 */
+	public Market(final RPObject object) {
+<span class="fc" id="L83">		super(object);</span>
+<span class="fc" id="L84">		this.setRPClass(MARKET_RPCLASS_NAME);</span>
+<span class="fc" id="L85">		hide();</span>
+
+		// delete the slots whose contents get wrong types
+		// when loaded from the db
+<span class="pc bpc" id="L89" title="1 of 2 branches missed.">		if (hasSlot(OFFERS_SLOT_NAME)) {</span>
+<span class="fc" id="L90">			removeSlot(OFFERS_SLOT_NAME);</span>
+		}
+<span class="fc" id="L92">		addSlot(OFFERS_SLOT_NAME);</span>
+
+<span class="pc bpc" id="L94" title="1 of 2 branches missed.">		if (hasSlot(EARNINGS_SLOT_NAME)) {</span>
+<span class="fc" id="L95">			removeSlot(EARNINGS_SLOT_NAME);</span>
+		}
+<span class="fc" id="L97">		addSlot(EARNINGS_SLOT_NAME);</span>
+
+<span class="pc bpc" id="L99" title="1 of 2 branches missed.">		if (hasSlot(EXPIRED_OFFERS_SLOT_NAME)) {</span>
+<span class="fc" id="L100">			removeSlot(EXPIRED_OFFERS_SLOT_NAME);</span>
+		}
+<span class="fc" id="L102">		addSlot(EXPIRED_OFFERS_SLOT_NAME);</span>
+
+		// copy the contents from the old slots
+<span class="pc bpc" id="L105" title="1 of 2 branches missed.">		if (object.hasSlot(OFFERS_SLOT_NAME)) {</span>
+<span class="fc bfc" id="L106" title="All 2 branches covered.">			for (final RPObject rpo : object.getSlot(OFFERS_SLOT_NAME)) {</span>
+<span class="fc" id="L107">				Offer offer = new Offer(rpo);</span>
+
+				// an offer might have become obsolete, when items are removed
+<span class="pc bpc" id="L110" title="1 of 2 branches missed.">				if (offer.getItem() == null) {</span>
+<span class="nc" id="L111">					logger.warn(&quot;Cannot restore an offer by &quot;</span>
+							+ offer.getOfferer() + &quot; because this item&quot;
+							+ &quot; was removed from items.xml&quot;);
+<span class="nc" id="L114">					continue;</span>
+				}
+
+<span class="fc" id="L117">				this.getSlot(OFFERS_SLOT_NAME).add(offer);</span>
+<span class="fc" id="L118">			}</span>
+		}
+<span class="pc bpc" id="L120" title="1 of 2 branches missed.">		if (object.hasSlot(EARNINGS_SLOT_NAME)) {</span>
+<span class="pc bpc" id="L121" title="1 of 2 branches missed.">			for (final RPObject rpo : object.getSlot(EARNINGS_SLOT_NAME)) {</span>
+<span class="nc" id="L122">				final Earning earning = new Earning(rpo);</span>
+<span class="nc" id="L123">				this.getSlot(EARNINGS_SLOT_NAME).add(earning);</span>
+<span class="nc" id="L124">			}</span>
+		}
+<span class="pc bpc" id="L126" title="1 of 2 branches missed.">		if (object.hasSlot(EXPIRED_OFFERS_SLOT_NAME)) {</span>
+<span class="pc bpc" id="L127" title="1 of 2 branches missed.">			for (final RPObject rpo : object.getSlot(EXPIRED_OFFERS_SLOT_NAME)) {</span>
+<span class="nc" id="L128">				Offer offer = new Offer(rpo);</span>
+
+				// an offer might have become obsolete, when items are removed
+<span class="nc bnc" id="L131" title="All 2 branches missed.">				if (offer.getItem() == null) {</span>
+<span class="nc" id="L132">					logger.warn(&quot;Cannot restore an offer by &quot;</span>
+							+ offer.getOfferer() + &quot; because this item&quot;
+							+ &quot; was removed from items.xml&quot;);
+<span class="nc" id="L135">					continue;</span>
+				}
+
+<span class="nc" id="L138">				this.getSlot(EXPIRED_OFFERS_SLOT_NAME).add(offer);</span>
+<span class="nc" id="L139">			}</span>
+		}
+<span class="fc" id="L141">		store();</span>
+<span class="fc" id="L142">	}</span>
+
+	/**
+	 * Factory method for the market
+	 * 
+	 * @return a new Market
+	 */
+	public static Market createShop() {
+<span class="fc" id="L150">		Market shop = new Market();</span>
+<span class="fc" id="L151">		return shop;</span>
+	}
+
+	private Market() {
+<span class="fc" id="L155">		super();</span>
+<span class="fc" id="L156">		setRPClass(MARKET_RPCLASS_NAME);</span>
+<span class="fc" id="L157">		hide();</span>
+<span class="pc bpc" id="L158" title="1 of 2 branches missed.">		if (!this.hasSlot(OFFERS_SLOT_NAME)) {</span>
+<span class="fc" id="L159">			addSlot(OFFERS_SLOT_NAME);</span>
+		}
+<span class="pc bpc" id="L161" title="1 of 2 branches missed.">		if (!this.hasSlot(EARNINGS_SLOT_NAME)) {</span>
+<span class="fc" id="L162">			addSlot(EARNINGS_SLOT_NAME);</span>
+		}
+<span class="pc bpc" id="L164" title="1 of 2 branches missed.">		if (!this.hasSlot(EXPIRED_OFFERS_SLOT_NAME)) {</span>
+<span class="fc" id="L165">			addSlot(EXPIRED_OFFERS_SLOT_NAME);</span>
+		}
+<span class="fc" id="L167">		store();</span>
+<span class="fc" id="L168">	}</span>
+
+	/**
+	 * creates a new offer at the market
+	 * 
+	 * @param offerer
+	 *            offering player
+	 * @param item
+	 *            item to sell
+	 * @param money
+	 *            price for the item
+	 * @param number
+	 *            number of items to sell
+	 * @return the new created offer
+	 */
+	public Offer createOffer(final Player offerer, Item item,
+			final Integer money, final Integer number) {
+<span class="fc bfc" id="L185" title="All 4 branches covered.">		if (item == null || item.isBound()) {</span>
+<span class="fc" id="L186">			return null;</span>
+		}
+
+<span class="fc bfc" id="L189" title="All 2 branches covered.">		if (item instanceof StackableItem) {</span>
+<span class="fc bfc" id="L190" title="All 2 branches covered.">			if (!offerer.equals(item.getBaseContainer())) {</span>
+<span class="fc" id="L191">				return null;</span>
+			}
+<span class="fc" id="L193">			item = ((StackableItem) item).splitOff(number);</span>
+<span class="pc bpc" id="L194" title="1 of 2 branches missed.">			if (item == null) {</span>
+<span class="nc" id="L195">				return null;</span>
+			}
+<span class="pc bpc" id="L197" title="1 of 2 branches missed.">		} else if (!offerer.drop(item)) {</span>
+<span class="nc" id="L198">			return null;</span>
+		}
+
+<span class="fc" id="L201">		Offer offer = new Offer(item, money, offerer);</span>
+<span class="fc" id="L202">		RPSlot slot = this.getSlot(OFFERS_SLOT_NAME);</span>
+<span class="fc" id="L203">		slot.add(offer);</span>
+<span class="fc" id="L204">		getZone().storeToDatabase();</span>
+
+<span class="fc" id="L206">		new ItemLogger().addLogItemEventCommand(new LogSimpleItemEventCommand(</span>
+				item, offerer, &quot;slot-to-market&quot;, item.get(&quot;name&quot;), Integer
+						.toString(getQuantity(item)), &quot;new offer&quot;,
+				OFFERS_SLOT_NAME));
+
+<span class="fc" id="L211">		return offer;</span>
+	}
+
+	/**
+	 * Completes a trade of an offer by transferring item to accepting player
+	 * and taking the money from him
+	 * 
+	 * @param offer
+	 * @param acceptingPlayer
+	 * @return &lt;code&gt;true&lt;/code&gt; if the trade was done, &lt;code&gt;false&lt;/code&gt; on
+	 * 	failure
+	 */
+	public boolean acceptOffer(final Offer offer, final Player acceptingPlayer) {
+<span class="pc bpc" id="L224" title="1 of 4 branches missed.">		if (getSlot(OFFERS_SLOT_NAME).has(offer.getID()) &amp;&amp; offer.hasItem()) {</span>
+<span class="fc" id="L225">			int price = offer.getPrice().intValue();</span>
+			// Take the money; free items should always succeed
+<span class="fc bfc" id="L227" title="All 4 branches covered.">			if ((price == 0) || acceptingPlayer.drop(&quot;money&quot;, price)) {</span>
+<span class="fc" id="L228">				Item item = offer.getItem();</span>
+<span class="fc" id="L229">				offer.getSlot(Offer.OFFER_ITEM_SLOT_NAME).remove(item.getID());</span>
+<span class="fc" id="L230">				acceptingPlayer.equipOrPutOnGround(item);</span>
+				// Do not give trading bonus for accepting free items
+<span class="pc bpc" id="L232" title="1 of 4 branches missed.">				boolean reward = offer.shouldReward(acceptingPlayer)</span>
+						&amp;&amp; price &gt; 0;
+<span class="fc" id="L234">				final Earning earning = new Earning(offer.getPrice(),</span>
+						offer.getOfferer(), reward);
+<span class="fc" id="L236">				this.getSlot(EARNINGS_SLOT_NAME).add(earning);</span>
+<span class="fc" id="L237">				this.getSlot(OFFERS_SLOT_NAME).remove(offer.getID());</span>
+<span class="fc bfc" id="L238" title="All 2 branches covered.">				if (reward) {</span>
+<span class="fc" id="L239">					applyTradingBonus(acceptingPlayer);</span>
+				}
+
+				// log the item movement
+<span class="fc" id="L243">				String slotName = null;</span>
+<span class="fc" id="L244">				String target = &quot;ground&quot;;</span>
+<span class="pc bpc" id="L245" title="1 of 2 branches missed.">				if (item.getContainerSlot() != null) {</span>
+<span class="fc" id="L246">					slotName = item.getContainerSlot().getName();</span>
+<span class="fc" id="L247">					target = &quot;slot&quot;;</span>
+				}
+<span class="fc" id="L249">				new ItemLogger()</span>
+						.addLogItemEventCommand(new LogSimpleItemEventCommand(
+								item, acceptingPlayer, &quot;market-to-&quot; + target,
+								item.get(&quot;name&quot;), Integer
+										.toString(getQuantity(item)),
+								&quot;accept offer&quot;, slotName));
+
+<span class="fc" id="L256">				this.getZone().storeToDatabase();</span>
+<span class="fc" id="L257">				return true;</span>
+			}
+		}
+
+<span class="fc" id="L261">		return false;</span>
+	}
+
+	/**
+	 * rewards player for a successfull trade
+	 * 
+	 * @param player
+	 *            the player to reward
+	 */
+	private void applyTradingBonus(Player player) {
+<span class="fc" id="L271">		player.incrementTradescore();</span>
+<span class="fc" id="L272">	}</span>
+
+	/**
+	 * The earnings for complete trades are paid to the player.
+	 * 
+	 * @param earner
+	 *            the player fetching his earnings
+	 * @return the fetched earnings
+	 */
+	public Set&lt;Earning&gt; fetchEarnings(final Player earner) {
+<span class="fc" id="L282">		Set&lt;Earning&gt; earningsToRemove = new HashSet&lt;Earning&gt;();</span>
+<span class="fc bfc" id="L283" title="All 2 branches covered.">		for (RPObject earningRPObject : this.getSlot(EARNINGS_SLOT_NAME)) {</span>
+<span class="fc" id="L284">			Earning earning = (Earning) earningRPObject;</span>
+<span class="pc bpc" id="L285" title="1 of 2 branches missed.">			if (earning.getSeller().equals(earner.getName())) {</span>
+<span class="fc" id="L286">				earningsToRemove.add(earning);</span>
+			}
+<span class="fc" id="L288">		}</span>
+		
+<span class="fc bfc" id="L290" title="All 2 branches covered.">		if(!earningsToRemove.isEmpty()) {</span>
+<span class="fc" id="L291">			int summedUpEarnings = 0;</span>
+			//sum up
+<span class="fc bfc" id="L293" title="All 2 branches covered.">			for (Earning earningToSumUp : earningsToRemove) {</span>
+<span class="fc" id="L294">				summedUpEarnings = summedUpEarnings + earningToSumUp.getValue();</span>
+<span class="fc" id="L295">			}</span>
+<span class="fc" id="L296">			final StackableItem item = (StackableItem) SingletonRepository.getEntityManager().getItem(&quot;money&quot;);</span>
+<span class="fc" id="L297">			item.setQuantity(summedUpEarnings);</span>
+<span class="pc bpc" id="L298" title="1 of 2 branches missed.">			if(earner.equipToInventoryOnly(item)) {</span>
+				//reward only if equipping was done
+<span class="fc bfc" id="L300" title="All 2 branches covered.">				for(Earning earningToReward : earningsToRemove) {</span>
+<span class="fc bfc" id="L301" title="All 2 branches covered.">					if (earningToReward.shouldReward()) {</span>
+<span class="fc" id="L302">						applyTradingBonus(earner);</span>
+					}
+<span class="fc" id="L304">				}</span>
+<span class="fc" id="L305">				removeEarnings(earningsToRemove);</span>
+			} else {
+				//signal that no earnings were collected at all
+				//a caller can only distinguish if anything was collected
+<span class="nc" id="L309">				earningsToRemove.clear();</span>
+			}
+		}
+
+<span class="fc" id="L313">		return earningsToRemove;</span>
+	}
+
+	/**
+	 * Remove a set of earnings.
+	 * 
+	 * @param earningsToRemove
+	 *            The earnings to be removed
+	 */
+	public void removeEarnings(Iterable&lt;Earning&gt; earningsToRemove) {
+<span class="fc bfc" id="L323" title="All 2 branches covered.">		for (Earning earning : earningsToRemove) {</span>
+<span class="fc" id="L324">			this.getSlot(EARNINGS_SLOT_NAME).remove(earning.getID());</span>
+<span class="fc" id="L325">		}</span>
+<span class="fc" id="L326">		this.getZone().storeToDatabase();</span>
+<span class="fc" id="L327">	}</span>
+
+	/**
+	 * counts the number of offers, a player has placed
+	 * 
+	 * @param offerer
+	 * @return the number of offers
+	 */
+	public int countOffersOfPlayer(Player offerer) {
+<span class="fc" id="L336">		int count = 0;</span>
+<span class="fc bfc" id="L337" title="All 2 branches covered.">		for (RPObject object : this.getSlot(OFFERS_SLOT_NAME)) {</span>
+<span class="fc" id="L338">			Offer offer = (Offer) object;</span>
+<span class="pc bpc" id="L339" title="1 of 2 branches missed.">			if (offer.getOfferer().equals(offerer.getName())) {</span>
+<span class="fc" id="L340">				count = count + 1;</span>
+			}
+<span class="fc" id="L342">		}</span>
+<span class="fc" id="L343">		return count;</span>
+	}
+
+	/**
+	 * removes an offer from the market and returns the item to the user
+	 * 
+	 * @param o
+	 *            the offer to remove
+	 * @param p
+	 *            the removing player
+	 */
+	public void removeOffer(Offer o, Player p) {
+<span class="fc" id="L355">		Item item = o.getItem();</span>
+<span class="fc" id="L356">		String itemName = item.getName();</span>
+		
+<span class="fc" id="L358">		o.getSlot(Offer.OFFER_ITEM_SLOT_NAME).remove(item.getID());</span>
+<span class="fc" id="L359">		p.equipOrPutOnGround(item);</span>
+
+<span class="fc" id="L361">		getSlot(OFFERS_SLOT_NAME).remove(o.getID());</span>
+
+<span class="fc" id="L363">		getExpiredOffers().remove(o);</span>
+<span class="fc" id="L364">		getSlot(EXPIRED_OFFERS_SLOT_NAME).remove(o.getID());</span>
+
+<span class="fc" id="L366">		getZone().storeToDatabase();</span>
+
+		// log the item movement
+<span class="fc" id="L369">		String slotName = null;</span>
+<span class="fc" id="L370">		String target = &quot;ground&quot;;</span>
+<span class="pc bpc" id="L371" title="1 of 2 branches missed.">		if (item.getContainerSlot() != null) {</span>
+<span class="fc" id="L372">			slotName = item.getContainerSlot().getName();</span>
+<span class="fc" id="L373">			target = &quot;slot&quot;;</span>
+		}
+<span class="fc" id="L375">		new ItemLogger().addLogItemEventCommand(new LogSimpleItemEventCommand(item, p,</span>
+						&quot;market-to-&quot; + target, itemName, Integer
+								.toString(getQuantity(item)), &quot;remove offer&quot;,
+						slotName));
+<span class="fc" id="L379">	}</span>
+
+	/**
+	 * expires an offer and removes it from the available offers
+	 * 
+	 * @param o
+	 *            the offer to expire
+	 */
+	public void expireOffer(Offer o) {
+<span class="fc" id="L388">		this.getSlot(OFFERS_SLOT_NAME).remove(o.getID());</span>
+<span class="fc" id="L389">		this.getSlot(EXPIRED_OFFERS_SLOT_NAME).add(o);</span>
+<span class="fc" id="L390">		this.getZone().storeToDatabase();</span>
+<span class="fc" id="L391">		String itemname = &quot;null&quot;;</span>
+<span class="pc bpc" id="L392" title="1 of 2 branches missed.">		if (o.hasItem()) {</span>
+<span class="fc" id="L393">			itemname = o.getItem().getName();</span>
+		}
+<span class="fc" id="L395">		new GameEvent(&quot;market&quot;, &quot;expire-offer&quot;, o.getOfferer(), itemname, o.getPrice().toString()).raise();</span>
+<span class="fc" id="L396">	}</span>
+
+	/**
+	 * @return all currently expired offers in the market
+	 */
+	public List&lt;Offer&gt; getExpiredOffers() {
+<span class="fc" id="L402">		List&lt;Offer&gt; expiredOffers = new LinkedList&lt;Offer&gt;();</span>
+<span class="fc bfc" id="L403" title="All 2 branches covered.">		for(RPObject o : getSlot(EXPIRED_OFFERS_SLOT_NAME)) {</span>
+<span class="fc" id="L404">			expiredOffers.add((Offer) o);</span>
+<span class="fc" id="L405">		}</span>
+<span class="fc" id="L406">		return expiredOffers;</span>
+	}
+
+	/**
+	 * removes an expired offer permanently from the market
+	 * 
+	 * @param offerToRemove
+	 */
+	public void removeExpiredOffer(Offer offerToRemove) {
+<span class="fc" id="L415">		this.getSlot(EXPIRED_OFFERS_SLOT_NAME).remove(offerToRemove.getID());</span>
+
+<span class="fc" id="L417">		Item item = offerToRemove.getItem();</span>
+<span class="pc bpc" id="L418" title="1 of 2 branches missed.">		if (item != null) {</span>
+<span class="fc" id="L419">			new ItemLogger().destroy(null, this.getSlot(EXPIRED_OFFERS_SLOT_NAME),</span>
+					item, &quot;timeout&quot;);
+		}
+
+<span class="fc" id="L423">		this.getZone().storeToDatabase();</span>
+<span class="fc" id="L424">	}</span>
+
+	/**
+	 * prolongs an offer in the market to make it available again
+	 * 
+	 * @param offer
+	 *            the offer to prolong
+	 * @return the prolonged offer
+	 */
+	public Offer prolongOffer(Offer offer) {
+<span class="fc" id="L434">		offer.updateTimestamp();</span>
+<span class="fc bfc" id="L435" title="All 2 branches covered.">		if (getSlot(EXPIRED_OFFERS_SLOT_NAME).has(offer.getID())) {</span>
+			// It had expired. Move to active offers slot.
+<span class="fc" id="L437">			this.getSlot(EXPIRED_OFFERS_SLOT_NAME).remove(offer.getID());</span>
+<span class="fc" id="L438">			RPSlot slot = this.getSlot(OFFERS_SLOT_NAME);</span>
+<span class="fc" id="L439">			slot.add(offer);</span>
+<span class="fc bfc" id="L440" title="All 2 branches covered.">		} else if (!getSlot(OFFERS_SLOT_NAME).has(offer.getID())) {</span>
+			// Such an offer does not exist anymore
+<span class="fc" id="L442">			return null;</span>
+		}
+
+<span class="fc" id="L445">		this.getZone().storeToDatabase();</span>
+<span class="fc" id="L446">		return offer;</span>
+	}
+
+	/**
+	 * Get a list of offers whose timestamp is older than specified.
+	 * 
+	 * @param seconds
+	 *            age of offers in seconds
+	 * @return list of offers that are older than the specified time
+	 */
+	public List&lt;Offer&gt; getOffersOlderThan(int seconds) {
+<span class="fc" id="L457">		List&lt;Offer&gt; offers = new LinkedList&lt;Offer&gt;();</span>
+<span class="fc bfc" id="L458" title="All 2 branches covered.">		for (RPObject o : getSlot(OFFERS_SLOT_NAME)) {</span>
+<span class="fc" id="L459">			offers.add((Offer) o);</span>
+<span class="fc" id="L460">		}</span>
+<span class="fc" id="L461">		return getOlderThan(offers, seconds);</span>
+	}
+
+	/**
+	 * Get a list of expired offers whose timestamp is older than specified.
+	 * 
+	 * @param seconds
+	 *            age of offers in seconds
+	 * @return list of expired offers that are older than the specified time
+	 */
+	public List&lt;Offer&gt; getExpiredOffersOlderThan(int seconds) {
+<span class="fc" id="L472">		return getOlderThan(getExpiredOffers(), seconds);</span>
+	}
+
+	/**
+	 * Get a list of earnings whose timestamp is older than specified.
+	 * 
+	 * @param seconds
+	 *            age of offers in seconds
+	 * @return list of earnings that are older than the specified time
+	 */
+	public List&lt;Earning&gt; getEarningsOlderThan(int seconds) {
+<span class="fc" id="L483">		RPSlot slot = this.getSlot(EARNINGS_SLOT_NAME);</span>
+<span class="fc" id="L484">		List&lt;Earning&gt; earnings = new LinkedList&lt;Earning&gt;();</span>
+<span class="fc bfc" id="L485" title="All 2 branches covered.">		for (RPObject o : slot) {</span>
+<span class="fc" id="L486">			earnings.add((Earning) o);</span>
+<span class="fc" id="L487">		}</span>
+<span class="fc" id="L488">		return getOlderThan(earnings, seconds);</span>
+	}
+
+	/**
+	 * retrieves Dateable objects older than seconds from a given Iterable
+	 * 
+	 * @param &lt;T&gt;
+	 * @param set
+	 *            the set to search in
+	 * @param seconds
+	 *            the maximum age
+	 * @return the filtered list
+	 */
+	private &lt;T extends Dateable&gt; List&lt;T&gt; getOlderThan(Iterable&lt;T&gt; set,
+			int seconds) {
+<span class="fc" id="L503">		List&lt;T&gt; old = new LinkedList&lt;T&gt;();</span>
+<span class="fc bfc" id="L504" title="All 2 branches covered.">		for (T obj : set) {</span>
+<span class="fc bfc" id="L505" title="All 2 branches covered.">			if (System.currentTimeMillis() &gt; obj.getTimestamp() + 1000L</span>
+					* seconds) {
+<span class="fc" id="L507">				old.add(obj);</span>
+			}
+<span class="fc" id="L509">		}</span>
+
+<span class="fc" id="L511">		return old;</span>
+	}
+
+	/**
+	 * gets the quantity of an item
+	 * 
+	 * @param item
+	 * @return the quantity
+	 */
+	private int getQuantity(Item item) {
+<span class="fc" id="L521">		int quantity = 1;</span>
+<span class="fc bfc" id="L522" title="All 2 branches covered.">		if (item instanceof StackableItem) {</span>
+<span class="fc" id="L523">			quantity = ((StackableItem) item).getQuantity();</span>
+		}
+
+<span class="fc" id="L526">		return quantity;</span>
+	}
+
+	/**
+	 * @param o
+	 * @return true iff the Offer o is in this market's offers
+	 */
+	public boolean contains(Offer o) {
+<span class="fc" id="L534">		return getSlot(OFFERS_SLOT_NAME).has(o.getID());</span>
+	}
+
+	/**
+	 * @param player
+	 * @return true iff there are earnings for this player in the market
+	 */
+	public boolean hasEarningsFor(Player player) {
+<span class="fc bfc" id="L542" title="All 2 branches covered.">		for(RPObject o : this.getSlot(EARNINGS_SLOT_NAME)) {</span>
+<span class="fc" id="L543">			Earning e = (Earning) o;</span>
+<span class="pc bpc" id="L544" title="1 of 2 branches missed.">			if(e.getSeller().equals(player.getName())) {</span>
+<span class="fc" id="L545">				return true;</span>
+			}
+<span class="nc" id="L547">		}</span>
+<span class="fc" id="L548">		return false;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

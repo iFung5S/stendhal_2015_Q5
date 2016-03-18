@@ -1,0 +1,458 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SpriteStore.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.sprite</a> &gt; <span class="el_source">SpriteStore.java</span></div><h1>SpriteStore.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.sprite;
+
+
+import games.stendhal.client.IGameScreen;
+import games.stendhal.client.gui.TransparencyMode;
+import games.stendhal.client.gui.j2d.Blend;
+import games.stendhal.client.sprite.TileSprite.TSRef;
+
+import java.awt.Color;
+import java.awt.Composite;
+import java.awt.Graphics2D;
+import java.awt.GraphicsConfiguration;
+import java.awt.GraphicsEnvironment;
+import java.awt.HeadlessException;
+import java.awt.Image;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.net.URL;
+
+import javax.imageio.ImageIO;
+
+import org.apache.log4j.Logger;
+
+/**
+ * A resource manager for sprites in the game. Its often quite important how and
+ * where you get your game resources from. In most cases it makes sense to have
+ * a central resource loader that goes away, gets your resources and caches them
+ * for future use.
+ * &lt;p&gt;
+ * [singleton]
+ * &lt;p&gt;
+ */
+public class SpriteStore {
+	/** the logger instance. */
+<span class="fc" id="L47">	private static final Logger logger = Logger.getLogger(SpriteStore.class);</span>
+
+	/** The single instance of this class. */
+<span class="fc" id="L50">	private static SpriteStore single = new SpriteStore();</span>
+
+	/**
+	 * Screen graphics configuration.
+	 */
+	private GraphicsConfiguration gc;
+
+<span class="fc" id="L57">	protected SpriteStore() {</span>
+		try {
+<span class="fc" id="L59">			gc = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration();</span>
+<span class="nc" id="L60">		} catch (HeadlessException e) {</span>
+<span class="nc" id="L61">			logger.warn(&quot;Cannot initialize graphic user interface: &quot; + e);</span>
+<span class="fc" id="L62">		}</span>
+<span class="fc" id="L63">	}</span>
+
+	/**
+	 * Get the single instance of this class.
+	 * 
+	 * @return The single instance of this class
+	 */
+	public static SpriteStore get() {
+<span class="fc" id="L71">		return single;</span>
+	}
+
+	/**
+	 * Create an animated sprite from a tile sprite using pixel units.
+	 * 
+	 * @param sprite
+	 *            The image which contains the different frames.
+	 * @param x
+	 *            The base X coordinate (in pixels).
+	 * @param y
+	 *            The base Y coordinate (in pixels).
+	 * @param frameCount
+	 *            The number of frames in this animation.
+	 * @param width
+	 *            The tile width (in pixels).
+	 * @param height
+	 *            The tile height (in pixels).
+	 * @param delay
+	 *            The minimum delay between frames.
+	 * 
+	 * @return An animated sprite.
+	 */
+	public AnimatedSprite getAnimatedSprite(final Sprite sprite, final int x,
+			final int y, final int frameCount, final int width,
+			final int height, final int delay) {
+<span class="nc" id="L97">		return new AnimatedSprite(getTiles(sprite, x, y, frameCount, width,</span>
+				height), delay, true);
+	}
+	
+	/**
+	 * Get an animated sprite from a sprite. The frames are calculated
+	 * automatically from the dimensions of the origin sprite. The intended
+	 * frames should be in a row. Each frame will have height of the origin
+	 * sprite and the specified width. The number of frames will depend on
+	 * the width of the origin sprite.
+	 *  
+	 * @param sprite Origin sprite
+	 * @param width frame width
+	 * @param delay delay between the frames
+	 * @return animated sprite
+	 */
+	public AnimatedSprite getAnimatedSprite(Sprite sprite, int width, int delay) {
+<span class="nc" id="L114">		int height = sprite.getHeight();</span>
+<span class="nc" id="L115">		int frames = sprite.getWidth() / width;</span>
+<span class="nc" id="L116">		return getAnimatedSprite(sprite, 0, 0, frames, width, height, delay);</span>
+	}
+	
+	/**
+	 * Get an animated sprite from a sprite. The frames are calculated
+	 * automatically from the dimensions of the origin sprite. The intended
+	 * frames should be in a row. Each frame will be a square with the height of
+	 * the origin. The number of frames will depend on the width of the origin
+	 * sprite.
+	 *  
+	 * @param sprite Origin sprite
+	 * @param delay delay between the frames
+	 * @return animated sprite
+	 */
+	public AnimatedSprite getAnimatedSprite(Sprite sprite, int delay) {
+<span class="nc" id="L131">		return getAnimatedSprite(sprite, sprite.getHeight(), delay);</span>
+	}
+
+	/**
+	 * Get sprite tiles from a sprite using pixel units.
+	 * 
+	 * @param sprite
+	 *            The base image.
+	 * @param x
+	 *            The base X coordinate (in pixels).
+	 * @param y
+	 *            The base Y coordinate (in pixels).
+	 * @param count
+	 *            The number of tiles.
+	 * @param width
+	 *            The tile width (in pixels).
+	 * @param height
+	 *            The tile height (in pixels).
+	 * 
+	 * @return An array of sprites.
+	 */
+	public Sprite[] getTiles(final Sprite sprite, final int x, final int y,
+			final int count, final int width, final int height) {
+<span class="nc bnc" id="L154" title="All 2 branches missed.">		if (sprite == null) {</span>
+<span class="nc" id="L155">			return new Sprite[0];</span>
+		}
+
+<span class="nc" id="L158">		final Sprite[] sprites = new Sprite[count];</span>
+
+<span class="nc" id="L160">		int tx = x;</span>
+
+<span class="nc bnc" id="L162" title="All 2 branches missed.">		for (int i = 0; i &lt; count; i++) {</span>
+<span class="nc" id="L163">			sprites[i] = getTile(sprite, tx, y, width, height);</span>
+<span class="nc" id="L164">			tx += width;</span>
+		}
+
+<span class="nc" id="L167">		return sprites;</span>
+	}
+
+	private static final String FAILSAFE_ICON_REF = &quot;data/sprites/failsafe.png&quot;;
+
+	/**
+	 * Get the failsafe sprite. 
+	 * The failsafe sprite is needed in case there are newer graphic requested in server than in client.
+	 * 
+	 * It is ok not to return a handmade one. 
+	 * If we cannot reach the failsafe icon,
+	 * we have bigger problems then just the need to show anything.
+	 * 
+	 * @return The failsafe sprite.
+	 */
+	public Sprite getFailsafe() {
+<span class="nc" id="L183">		return getSprite(FAILSAFE_ICON_REF);</span>
+	}
+
+	/**
+	 * Retrieve a sprite from the store.
+	 * 
+	 * @param ref
+	 *            The reference to the image to use for the sprite
+	 * @return A sprite instance containing an accelerate image of the request
+	 *         reference
+	 */
+	public Sprite getSprite(final String ref) {
+<span class="fc" id="L195">		final SpriteCache cache = SpriteCache.get();</span>
+
+<span class="fc" id="L197">		Sprite sprite = cache.get(ref);</span>
+
+<span class="pc bpc" id="L199" title="1 of 2 branches missed.">		if (sprite == null) {</span>
+
+<span class="fc" id="L201">			sprite = loadSprite(ref);</span>
+<span class="pc bpc" id="L202" title="1 of 2 branches missed.">			if (sprite != null) {</span>
+<span class="fc" id="L203">				cache.add(ref, sprite);</span>
+			}
+		}
+
+<span class="fc" id="L207">		return sprite;</span>
+	}
+	
+	/**
+	 * Retrieve a sprite from the &quot;combat&quot; folder
+	 * 
+	 * @param icon
+	 * 		Name of pixmaps without full path
+	 * @return
+	 * 		A sprite instance containing an accelerate
+	 * 		image of the request reference
+	 */
+	public Sprite getCombatSprite(final String icon) {
+<span class="nc" id="L220">		return getSprite(&quot;data/sprites/combat/&quot; + icon);</span>
+	}
+	 
+	/**
+	 * Retrieve a sprite from the &quot;status&quot; folder
+	 * 
+	 * @param icon
+	 * 		Name of pixmaps without full path
+	 * @return
+	 * 		A sprite instance containing an accelerate
+	 * 		image of the request reference
+	 */
+	public Sprite getStatusSprite(final String icon) {
+<span class="nc" id="L233">		return getSprite(&quot;data/sprites/status/&quot; + icon);</span>
+	}
+	 
+	/**
+	 * Get a colored version of a sprite.
+	 * 
+	 * @param ref base sprite reference
+	 * @param color painting color
+	 * @return base sprite colored with color
+	 */
+	public Sprite getColoredSprite(final String ref, final Color color) {
+<span class="nc bnc" id="L244" title="All 2 branches missed.">		if (color == null) {</span>
+<span class="nc" id="L245">			return getSprite(ref);</span>
+		} else {
+<span class="nc" id="L247">			return getModifiedSprite(ref, color, Blend.TrueColor);</span>
+		}
+	}
+	
+	/**
+	 * Get a modified version of a sprite.
+	 * 
+	 * @param baseRef base sprite reference
+	 * @param color modifying color
+	 * @param blend composite mode to paint color over the original sprite
+	 * @return base sprite colored with color
+	 */
+	public Sprite getModifiedSprite(final String baseRef, final Color color, 
+			final Composite blend) {
+<span class="nc bnc" id="L261" title="All 4 branches missed.">		if ((color == null) || (blend == null)) {</span>
+<span class="nc" id="L262">			return getSprite(baseRef);</span>
+		}
+		
+<span class="nc" id="L265">		final SpriteCache cache = SpriteCache.get();</span>
+
+<span class="nc" id="L267">		String realRef = createModifiedRef(baseRef, color, blend);</span>
+<span class="nc" id="L268">		Sprite sprite = cache.get(realRef);</span>
+<span class="nc bnc" id="L269" title="All 2 branches missed.">		if (sprite == null) {</span>
+<span class="nc" id="L270">			sprite = modifySprite(getSprite(baseRef), color, blend, realRef);</span>
+		}
+
+<span class="nc" id="L273">		return sprite;</span>
+	}
+	
+	/**
+	 * Get a reference string for a modified sprite.
+	 * 
+	 * @param baseRef reference for the base sprite
+	 * @param color
+	 * @param blend
+	 * @return reference string
+	 */
+	public String createModifiedRef(String baseRef, Color color, Composite blend) {
+<span class="nc" id="L285">		String colorName = Integer.toHexString(color.getRGB());</span>
+<span class="nc" id="L286">		return baseRef + &quot;@&quot; + blend.toString() + &quot;#&quot; + colorName;</span>
+	}
+	
+	/**
+	 * Get a modified variant of a sprite. The existence of a previous instance
+	 * is &lt;b&gt;not&lt;/b&gt; checked, so this should not be called unless retrieving
+	 * an existing modified sprite has failed.
+	 * 
+	 * @param base original sprite
+	 * @param color adjustment color
+	 * @param blend blend mode for applying the adjustment color
+	 * @param ref reference for the new sprite
+	 * @return modified sprite
+	 */
+	public Sprite modifySprite(Sprite base, Color color, Composite blend, Object ref) {
+<span class="nc" id="L301">		int width = base.getWidth();</span>
+<span class="nc" id="L302">		int height = base.getHeight();</span>
+<span class="nc" id="L303">		BufferedImage image = gc.createCompatibleImage(width, height,</span>
+				TransparencyMode.TRANSPARENCY);
+<span class="nc" id="L305">		Graphics2D g = image.createGraphics();</span>
+<span class="nc" id="L306">		base.draw(g, 0, 0);</span>
+<span class="nc" id="L307">		g.setColor(color);</span>
+<span class="nc" id="L308">		g.setComposite(blend);</span>
+<span class="nc" id="L309">		g.fillRect(0, 0, width, height);</span>
+<span class="nc" id="L310">		g.dispose();</span>
+		
+<span class="nc" id="L312">		Sprite sprite = new ImageSprite(image, ref);</span>
+<span class="nc" id="L313">		SpriteCache cache = SpriteCache.get();</span>
+<span class="nc" id="L314">		cache.add(ref, sprite);</span>
+		
+<span class="nc" id="L316">		return sprite;</span>
+	}
+
+	/**
+	 * Checks if a file exists.
+	 * 
+	 * @param ref
+	 *            the file name
+	 * @return if sprite exists in store false otherwise
+	 */
+	public boolean existsSprite(final String ref) {
+<span class="nc" id="L327">		final URL url = DataLoader.getResource(ref);</span>
+<span class="nc bnc" id="L328" title="All 2 branches missed.">		return url != null;</span>
+	}
+
+	/**
+	 * Load a sprite from a resource reference.
+	 * 
+	 * @param ref
+	 *            The image resource name.
+	 * 
+	 * @return A sprite, or &lt;code&gt;null&lt;/code&gt; if missing/on error.
+	 */
+	private Sprite loadSprite(final String ref) {
+<span class="fc" id="L340">		BufferedImage sourceImage = null;</span>
+
+		try {
+			URL url;
+<span class="pc bpc" id="L344" title="1 of 2 branches missed.">			if (ref.startsWith(&quot;http://&quot;)) {</span>
+<span class="nc" id="L345">				logger.info(&quot;Loading sprite from a URL...&quot;);</span>
+<span class="nc" id="L346">				url = new URL(ref);</span>
+			} else {
+<span class="fc" id="L348">				url = DataLoader.getResource(ref);</span>
+			}
+<span class="pc bpc" id="L350" title="1 of 2 branches missed.">			if (url == null) {</span>
+<span class="nc" id="L351">				logger.error(&quot;Can't find ref: &quot; + ref);</span>
+
+				// avoid infinite loop and stack overflow in case of missing
+				// failsafe icon
+<span class="nc bnc" id="L355" title="All 2 branches missed.">				if (ref.equals(FAILSAFE_ICON_REF)) {</span>
+<span class="nc" id="L356">					logger.error(&quot;Cannot find FAILSAFE_ICON_REF: &quot; + FAILSAFE_ICON_REF);</span>
+<span class="nc" id="L357">					return null;</span>
+				} else {
+<span class="nc" id="L359">					return getFailsafe();</span>
+				}
+			}
+
+			// use ImageIO to read the image in
+<span class="fc" id="L364">			sourceImage = ImageIO.read(url);</span>
+<span class="nc" id="L365">		} catch (final IOException e) {</span>
+<span class="nc" id="L366">			logger.error(&quot;Failed to read: &quot; + ref, e);</span>
+
+<span class="nc bnc" id="L368" title="All 2 branches missed.">			if (ref.equals(FAILSAFE_ICON_REF)) {</span>
+<span class="nc" id="L369">				logger.error(&quot;Cannot read FAILSAFE_ICON_REF: &quot; + FAILSAFE_ICON_REF);</span>
+<span class="nc" id="L370">				return null;</span>
+			} else {
+<span class="nc" id="L372">				return getFailsafe();</span>
+			}
+<span class="fc" id="L374">		}</span>
+
+<span class="fc" id="L376">		final Image image = gc.createCompatibleImage(sourceImage.getWidth(),</span>
+				sourceImage.getHeight(), TransparencyMode.TRANSPARENCY);
+
+		// draw our source image into the accelerated image
+<span class="fc" id="L380">		image.getGraphics().drawImage(sourceImage, 0, 0, null);</span>
+
+		// create a sprite, add it the cache then return it
+<span class="fc" id="L383">		final Sprite sprite = new ImageSprite(image, ref);</span>
+
+<span class="fc" id="L385">		return sprite;</span>
+	}
+
+	/**
+	 * Get an empty sprite with the size of a single tile.
+	 * 
+	 * @return An empty sprite.
+	 */
+	public Sprite getEmptySprite() {
+<span class="nc" id="L394">		return getEmptySprite(IGameScreen.SIZE_UNIT_PIXELS,</span>
+				IGameScreen.SIZE_UNIT_PIXELS);
+	}
+
+	/**
+	 * Get an empty sprite.
+	 * 
+	 * @param width
+	 *            The width.
+	 * @param height
+	 *            The height.
+	 * 
+	 * @return An empty sprite.
+	 */
+	public Sprite getEmptySprite(final int width, final int height) {
+<span class="nc" id="L409">		final SpriteCache cache = SpriteCache.get();</span>
+
+<span class="nc" id="L411">		final Object reference = EmptySprite.createReference(width, height);</span>
+
+<span class="nc" id="L413">		Sprite sprite = cache.get(reference);</span>
+
+<span class="nc bnc" id="L415" title="All 2 branches missed.">		if (sprite == null) {</span>
+<span class="nc" id="L416">			sprite = new EmptySprite(width, height, reference);</span>
+<span class="nc" id="L417">			cache.add(reference, sprite);</span>
+		}
+
+<span class="nc" id="L420">		return sprite;</span>
+	}
+
+	/**
+	 * Create a sprite tile (sub-region).
+	 * @param sprite 
+	 * @param x 
+	 * @param y 
+	 * 
+	 * 
+	 * 
+	 * @param width
+	 *            The width.
+	 * @param height
+	 *            The height.
+	 * @return tile found in cache or new one created from sprite
+	 */
+	public Sprite getTile(final Sprite sprite, final int x, final int y, final int width, final int height) {
+<span class="fc" id="L438">		final SpriteCache cache = SpriteCache.get();</span>
+
+<span class="fc" id="L440">		final TSRef reference = TileSprite.createReference(sprite, x, y, width,</span>
+				height);
+
+<span class="fc" id="L443">		Sprite tile = cache.get(reference);</span>
+
+<span class="fc bfc" id="L445" title="All 2 branches covered.">		if (tile == null) {</span>
+<span class="fc" id="L446">			tile = sprite.createRegion(x, y, width, height, reference);</span>
+			// tile = new TileSprite(sprite, x, y, width, height, reference);
+
+<span class="pc bpc" id="L449" title="1 of 2 branches missed.">			if (reference != null) {</span>
+<span class="fc" id="L450">				cache.add(reference, tile);</span>
+			}
+		}
+
+<span class="fc" id="L454">		return tile;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

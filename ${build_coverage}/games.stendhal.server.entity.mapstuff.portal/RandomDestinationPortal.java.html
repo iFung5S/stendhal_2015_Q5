@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>RandomDestinationPortal.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.mapstuff.portal</a> &gt; <span class="el_source">RandomDestinationPortal.java</span></div><h1>RandomDestinationPortal.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                      (C) Copyright 2010 - Marauroa                      *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.mapstuff.portal;
+
+import games.stendhal.common.Rand;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.engine.Spot;
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.entity.player.Player;
+
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+
+import org.apache.log4j.Logger;
+
+import marauroa.common.game.IRPZone;
+
+/**
+ * A portal that sends the using player to a randomly
+ * chosen destination. Valid destinations are filtered
+ * based on the player's level from a pre-defined list
+ * of interesting places.
+ */
+public class RandomDestinationPortal extends QuestCompletedPortal {
+	private static final String questslot = &quot;learn_scrying&quot;;
+<span class="nc" id="L36">	private static Logger logger = Logger.getLogger(RandomDestinationPortal.class);</span>
+
+	/**
+	 * A class to store the location and suggested minimum level
+	 * for a place.
+	 */
+	private static class Location {
+		String zoneName;
+		int level, x, y;
+		Spot spot;
+
+		/**
+		 * Create a new &lt;code&gt;Location&lt;/code&gt;.
+		 * 
+		 * @param zoneName name of the zone of the teleportation destination
+		 * @param level minimum level of a player to consider the location possible
+		 * @param x x coordinate of the destination
+		 * @param y y coordinate of the destination
+		 */
+<span class="nc" id="L55">		public Location(String zoneName, int level, int x, int y) {</span>
+<span class="nc" id="L56">			this.zoneName = zoneName;</span>
+<span class="nc" id="L57">			this.level = level;</span>
+<span class="nc" id="L58">			this.x = x;</span>
+<span class="nc" id="L59">			this.y = y;</span>
+<span class="nc" id="L60">		}</span>
+
+		/**
+		 * Get the minimum level needed for the location
+		 * 
+		 * @return minimum level
+		 */
+		public int getLevel() {
+<span class="nc" id="L68">			return level;</span>
+		}
+
+		/**
+		 * Get the spot represented by this location
+		 *  
+		 * @return a teleport destination
+		 */
+		public Spot getSpot() {
+			/*
+			 * The spots need to be initialized lazily, instead
+			 * of doing it in the constructor, because not all
+			 * zones have been loaded by the time this portal is
+			 * created.
+			 */
+<span class="nc bnc" id="L83" title="All 2 branches missed.">			if (spot == null) {</span>
+<span class="nc" id="L84">				IRPZone zone = SingletonRepository.getRPWorld().getRPZone(zoneName);</span>
+				// All locations should be valid, but do not crash in case not all maps
+				// are not loaded.
+<span class="nc bnc" id="L87" title="All 2 branches missed.">				if (zone != null) {</span>
+<span class="nc" id="L88">					spot = new Spot((StendhalRPZone) zone, x, y);</span>
+				} else {
+<span class="nc" id="L90">					logger.error(&quot;Can not find zone: &quot; + zoneName);</span>
+				}
+			}
+			
+<span class="nc" id="L94">			return spot;</span>
+		}
+	}
+
+	/**
+	 * A list of interesting locations
+	 */
+<span class="nc" id="L101">	private final List&lt;Location&gt; locations = new ArrayList&lt;Location&gt;();</span>
+
+	/**
+	 * Create a new &lt;code&gt;RandomDestinationPortal&lt;/code&gt;
+	 */
+	public RandomDestinationPortal() {
+<span class="nc" id="L107">		super(questslot);</span>
+<span class="nc" id="L108">		initLocations();</span>
+<span class="nc" id="L109">	}</span>
+	
+	@Override
+	public void onAdded(StendhalRPZone zone) {
+<span class="nc" id="L113">		super.onAdded(zone);</span>
+		/*
+		 * A hack to silence StendhalRPWorld's pedantic portal checking. Point
+		 * to the portal itself so that it has a valid destination
+		 */
+<span class="nc" id="L118">		setIdentifier(this);</span>
+<span class="nc" id="L119">		setDestination(zone.getName(), this);</span>
+<span class="nc" id="L120">	}</span>
+
+	/**
+	 * Initialize the locations set
+	 */
+	private void initLocations() {
+<span class="nc" id="L126">		locations.add(new Location(&quot;0_semos_mountain_n_w2&quot;, 10, 65, 116));	// gnome village</span>
+<span class="nc" id="L127">		locations.add(new Location(&quot;0_ados_outside_nw&quot;, 10, 52, 39)); 		// ados zoo </span>
+<span class="nc" id="L128">		locations.add(new Location(&quot;0_kirdneh_city&quot;, 15, 63, 26));			// kirdneh city</span>
+<span class="nc" id="L129">		locations.add(new Location(&quot;0_fado_forest&quot;, 20, 66, 35));			// fairy ring</span>
+<span class="nc" id="L130">		locations.add(new Location(&quot;0_orril_castle&quot;, 20, 62, 75));          // orril castle</span>
+<span class="nc" id="L131">		locations.add(new Location(&quot;int_ados_haunted_house&quot;, 25, 4, 27));	// haunted house</span>
+<span class="nc" id="L132">		locations.add(new Location(&quot;-2_orril_dungeon&quot;, 25, 106, 21));		// rat dungeon</span>
+<span class="nc" id="L133">		locations.add(new Location(&quot;-1_semos_mine_nw&quot;, 30, 22, 75));		// kobold city</span>
+<span class="nc" id="L134">		locations.add(new Location(&quot;0_athor_island&quot;, 30, 77, 73));          // athor island</span>
+<span class="nc" id="L135">        locations.add(new Location(&quot;-1_ados_wall&quot;, 30, 91, 62));			// ados sewers    	</span>
+<span class="nc" id="L136">        locations.add(new Location(&quot;-2_kotoch_entrance&quot;, 30, 20, 111));     // orc dungeons</span>
+<span class="nc" id="L137">        locations.add(new Location(&quot;0_nalwor_city&quot;, 60, 88, 85));           // nalwor city</span>
+<span class="nc" id="L138">        locations.add(new Location(&quot;-1_semos_yeti_cave&quot;, 60, 13, 39));		// yeti cave		</span>
+<span class="nc" id="L139">        locations.add(new Location(&quot;-2_ados_outside_nw&quot;, 70, 28, 5));       // dwarfs/bario</span>
+<span class="nc" id="L140">        locations.add(new Location(&quot;0_ados_mountain_n2&quot;, 70,  52, 28));		// barbarian camp</span>
+<span class="nc" id="L141">        locations.add(new Location(&quot;1_kikareukin_cave&quot;, 70, 18, 97));		// 1 kika</span>
+<span class="nc" id="L142">        locations.add(new Location(&quot;-6_kanmararn_city&quot;, 70, 33, 52));       // kanmararn </span>
+<span class="nc" id="L143">		locations.add(new Location(&quot;-2_orril_lich_palace&quot;, 70, 67, 118));   // lich palace</span>
+<span class="nc" id="L144">		locations.add(new Location(&quot;-2_orril_dwarf_mine&quot;, 70, 50, 40));     // dwarf mine</span>
+<span class="nc" id="L145">		locations.add(new Location(&quot;0_amazon_island_nw&quot;, 90, 30, 30));      // amazon island</span>
+<span class="nc" id="L146">		locations.add(new Location(&quot;-1_ados_abandoned_keep&quot;, 90, 3, 103));  // abandoned keep</span>
+<span class="nc" id="L147">		locations.add(new Location(&quot;-1_fado_great_cave_n_e2&quot;, 120, 113, 19)); // magic city</span>
+<span class="nc" id="L148">		locations.add(new Location(&quot;int_kalavan_castle_basement&quot;, 150, 30,103)); // kalavan castle</span>
+<span class="nc" id="L149">		locations.add(new Location(&quot;int_oni_palace_1&quot;, 150, 28, 28));		// oni palace</span>
+<span class="nc" id="L150">		locations.add(new Location(&quot;-4_ados_abandoned_keep&quot;, 150, 11, 27));	// -4 abandoned keep</span>
+<span class="nc" id="L151">		locations.add(new Location(&quot;-2_semos_mine_w2&quot;, 150, 22, 39));		// balrog semos mines</span>
+<span class="nc" id="L152">		locations.add(new Location(&quot;-1_nalwor_drows_tunnel_n&quot;, 170, 58, 44)); // nalwor drow tunnel (main)</span>
+<span class="nc" id="L153">		locations.add(new Location(&quot;-6_ados_abandoned_keep&quot;, 170, 15, 19));	// -6 ados abandoned keep</span>
+<span class="nc" id="L154">		locations.add(new Location(&quot;int_mithrilbourgh_stores&quot;, 170, 6, 5));	// mithrilbourgh stores</span>
+<span class="nc" id="L155">		locations.add(new Location(&quot;hell&quot;, 200, 66, 77));					// hell</span>
+<span class="nc" id="L156">		locations.add(new Location(&quot;-1_fado_great_cave_w2&quot;, 200, 90, 57));  // sedah</span>
+<span class="nc" id="L157">		locations.add(new Location(&quot;4_kikareukin_cave&quot;, 200, 10, 10)); 		// 4 kika</span>
+<span class="nc" id="L158">		locations.add(new Location(&quot;5_kikareukin_cave&quot;, 200, 31, 100)); 	// 5 kika</span>
+<span class="nc" id="L159">		locations.add(new Location(&quot;-2_semos_mine_e2&quot;, 200, 4, 5));			// chaos mines</span>
+<span class="nc" id="L160">		locations.add(new Location(&quot;-1_ados_outside_w&quot;, 200, 33, 30)); 		// -1 ados wall</span>
+<span class="nc" id="L161">		locations.add(new Location(&quot;6_kikareukin_islands&quot;, 200, 10, 10));	// 6 kika</span>
+<span class="nc" id="L162">	}</span>
+
+	/**
+	 * Get a random location to teleport a player.
+	 * 
+	 * @param player the player using the portal
+	 * @return a location the player is allowed to go to,
+	 * or &lt;code&gt;null&lt;/code&gt; if there are no appropriate places 
+	 */
+	private Location getRandomLocation(Player player) {
+<span class="nc" id="L172">		List&lt;Location&gt; allowed = getAllowedLocations(player);</span>
+<span class="nc bnc" id="L173" title="All 2 branches missed.">		if (allowed.size() &gt; 0) {</span>
+<span class="nc" id="L174">			return Rand.rand(getAllowedLocations(player));</span>
+		} else {
+<span class="nc" id="L176">			return null;</span>
+		}
+	}
+	
+	/**
+	 * Get a list of locations appropriate for a player
+	 * 
+	 * @param player the player using the portal
+	 * @return list of locations
+	 */
+	private List&lt;Location&gt; getAllowedLocations(Player player) {
+<span class="nc" id="L187">		List&lt;Location&gt; allowed = new LinkedList&lt;Location&gt;();</span>
+<span class="nc" id="L188">		int level = player.getLevel();</span>
+<span class="nc bnc" id="L189" title="All 2 branches missed.">		for (Location l : locations) {</span>
+<span class="nc bnc" id="L190" title="All 2 branches missed.">			if (level &gt;= l.getLevel()) {</span>
+<span class="nc" id="L191">				allowed.add(l);</span>
+			}
+<span class="nc" id="L193">		}</span>
+		
+<span class="nc" id="L195">		return allowed;</span>
+	}
+
+	/**
+	 * Use the portal.
+	 * 
+	 * @param player
+	 *            the Player who wants to use this portal
+	 * @return &lt;code&gt;true&lt;/code&gt; if the portal worked, &lt;code&gt;false&lt;/code&gt;
+	 *         otherwise.
+	 */
+	@Override
+	protected boolean usePortal(final Player player) {
+<span class="nc bnc" id="L208" title="All 2 branches missed.">		if (!nextTo(player)) {</span>
+			// Too far to use the portal
+<span class="nc" id="L210">			player.sendPrivateText(&quot;You must stand nearer to use the orb.&quot;);</span>
+<span class="nc" id="L211">			return false;</span>
+		}
+
+<span class="nc" id="L214">		Location location = getRandomLocation(player);</span>
+		
+		// Would happen if the player was below the minimum level for any location
+<span class="nc bnc" id="L217" title="All 2 branches missed.">		if (location == null) {</span>
+<span class="nc" id="L218">			player.sendPrivateText(&quot;You can not concentrate well enough to use this orb.&quot;);</span>
+<span class="nc" id="L219">			return false;</span>
+		}
+		
+<span class="nc" id="L222">		Spot spot = getRandomLocation(player).getSpot();</span>
+		
+<span class="nc bnc" id="L224" title="All 2 branches missed.">		if (spot == null) {</span>
+<span class="nc" id="L225">			logger.error(&quot;Failed to determine destination spot.&quot;);</span>
+<span class="nc" id="L226">			return false;</span>
+		}
+
+<span class="nc bnc" id="L229" title="All 2 branches missed.">		if (player.teleport(spot.getZone(), spot.getX(), spot.getY(), null, null)) {</span>
+<span class="nc" id="L230">			player.stop();</span>
+		}
+
+<span class="nc" id="L233">		return true;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

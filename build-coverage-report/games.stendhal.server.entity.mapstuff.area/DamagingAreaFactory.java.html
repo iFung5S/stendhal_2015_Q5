@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>DamagingAreaFactory.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.mapstuff.area</a> &gt; <span class="el_source">DamagingAreaFactory.java</span></div><h1>DamagingAreaFactory.java</h1><pre class="source lang-java linenums">/*
+ * @(#) src/games/stendhal/server/entity/area/DamagingAreaFactory.java
+ *
+ * $Id$
+ */
+
+package games.stendhal.server.entity.mapstuff.area;
+
+import games.stendhal.server.core.config.factory.ConfigurableFactoryContext;
+
+/**
+ * A base factory for &lt;code&gt;DamagingArea&lt;/code&gt; objects.
+ */
+<span class="nc" id="L14">public class DamagingAreaFactory extends OccupantAreaFactory {</span>
+
+	/**
+	 * Extract the damage amount from a context.
+	 * 
+	 * @param ctx
+	 *            The configuration context.
+	 * @return The damage amount.
+	 * @throws IllegalArgumentException
+	 *             If the attribute is missing.
+	 */
+	protected int getDamage(final ConfigurableFactoryContext ctx) {
+<span class="nc" id="L26">		return ctx.getRequiredInt(&quot;damage&quot;);</span>
+	}
+
+	/**
+	 * Extract the moving damage probability (as percent) from a context.
+	 * 
+	 * @param ctx
+	 *            The configuration context.
+	 * 
+	 * @return The damage probability (0.0 - 1.0).
+	 * 
+	 * @throws IllegalArgumentException
+	 *             If the attribute is invalid.
+	 */
+	protected double getProbability(final ConfigurableFactoryContext ctx) {
+<span class="nc" id="L41">		return ctx.getInt(&quot;probability&quot;, 0) / 100.0;</span>
+	}
+
+	//
+	// OccupantAreaFactory
+	//
+
+	/**
+	 * Creates the OccupantArea.
+	 * 
+	 * @param ctx
+	 *            The configuration context.
+	 * @return An OccupantArea.
+	 * @throws IllegalArgumentException
+	 *             in case of an invalid configuration
+	 */
+	@Override
+	protected OccupantArea createArea(final ConfigurableFactoryContext ctx) {
+<span class="nc" id="L59">		return new DamagingArea(getWidth(ctx), getHeight(ctx),</span>
+				getInterval(ctx), getDamage(ctx), getProbability(ctx));
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

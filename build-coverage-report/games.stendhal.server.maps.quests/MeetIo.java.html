@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>MeetIo.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests</a> &gt; <span class="el_source">MeetIo.java</span></div><h1>MeetIo.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2011 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests;
+
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.action.EquipItemAction;
+import games.stendhal.server.entity.npc.action.IncreaseXPAction;
+import games.stendhal.server.entity.npc.action.MultipleActions;
+import games.stendhal.server.entity.npc.action.SetQuestAction;
+import games.stendhal.server.entity.npc.condition.QuestCompletedCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotCompletedCondition;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.maps.Region;
+
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+
+/**
+ * QUEST: Speak with Io PARTICIPANTS: - Io
+ * 
+ * STEPS: - Talk to Io to activate the quest and keep speaking with Io.
+ * 
+ * REWARD: - 10 XP - 5 gold coins
+ * 
+ * REPETITIONS: - As much as wanted, but you only get the reward once.
+ */
+<span class="nc" id="L41">public class MeetIo extends AbstractQuest {</span>
+
+	private static final String QUEST_SLOT = &quot;meet_io&quot;;
+
+
+
+	@Override
+	public String getSlotName() {
+<span class="nc" id="L49">		return QUEST_SLOT;</span>
+	}
+	
+	@Override
+	public List&lt;String&gt; getHistory(final Player player) {
+<span class="nc" id="L54">		final List&lt;String&gt; res = new ArrayList&lt;String&gt;();</span>
+<span class="nc bnc" id="L55" title="All 2 branches missed.">		if (!player.hasQuest(QUEST_SLOT)) {</span>
+<span class="nc" id="L56">			return res;</span>
+		}
+<span class="nc" id="L58">		res.add(&quot;I met the telepath Io Flotto in Semos Temple.&quot;);</span>
+<span class="nc bnc" id="L59" title="All 2 branches missed.">		if (isCompleted(player)) {</span>
+<span class="nc" id="L60">			res.add(&quot;Io taught me the six basic elements of telepathy and promised to remind me if I need to refresh my knowledge.&quot;);</span>
+		}
+<span class="nc" id="L62">		return res;</span>
+	}
+
+	private void prepareIO() {
+
+<span class="nc" id="L67">		final SpeakerNPC npc = npcs.get(&quot;Io Flotto&quot;);</span>
+
+<span class="nc" id="L69">		npc.add(ConversationStates.ATTENDING,</span>
+			ConversationPhrases.HELP_MESSAGES,
+			new QuestNotCompletedCondition(QUEST_SLOT),
+			ConversationStates.ATTENDING,
+			&quot;I'm a telepath and a telekinetic; I can help you by sharing my mental skills with you. Do you want me to teach you the six basic elements of telepathy? I already know the answer but I'm being polite...&quot;,
+			null);
+
+<span class="nc" id="L76">		npc.add(ConversationStates.ATTENDING,</span>
+			ConversationPhrases.HELP_MESSAGES,
+			new QuestCompletedCondition(QUEST_SLOT),
+			ConversationStates.ATTENDING,
+			&quot;Do you want to repeat the six basic elements of telepathy? I already know the answer but I'm being polite...&quot;,
+			null);
+
+<span class="nc" id="L83">		npc.add(</span>
+			ConversationStates.ATTENDING,
+			ConversationPhrases.YES_MESSAGES,
+			null,
+			ConversationStates.INFORMATION_1,
+			&quot;Type #/who to ascertain the names of those adventurers who are currently present in the world of Stendhal. Do you want to learn the second basic element of telepathy?&quot;,
+			null);
+
+<span class="nc" id="L91">		npc.add(</span>
+			ConversationStates.INFORMATION_1,
+			ConversationPhrases.YES_MESSAGES,
+			null,
+			ConversationStates.INFORMATION_2,
+			&quot;Type #/where #username to discern where in Stendhal that person is currently roaming; you can use #'/where sheep' to keep track of any sheep you might own. To understand the system used for defining positions in Stendhal, try asking #Zynn; he knows more about it than I do. Ready for the third lesson?&quot;,
+			null);
+
+<span class="nc" id="L99">		npc.add(</span>
+			ConversationStates.INFORMATION_2,
+			&quot;Zynn&quot;,
+			null,
+			ConversationStates.INFORMATION_2,
+			&quot;His full name is Zynn Iwuhos. He spends most of his time in the library, making maps and writing historical record books. Ready for the next lesson?&quot;,
+			null);
+
+<span class="nc" id="L107">		npc.add(</span>
+			ConversationStates.INFORMATION_2,
+			ConversationPhrases.YES_MESSAGES,
+			null,
+			ConversationStates.INFORMATION_3,
+			&quot;Type #'/tell username message' or #'/msg username message' to talk to anybody you wish, no matter where in Stendhal that person is.  You can type #'// response' to continue talking to the last person you send a message to. Ready to learn my fourth tip?&quot;,
+			null);
+
+<span class="nc" id="L115">		npc.add(</span>
+			ConversationStates.INFORMATION_3,
+			ConversationPhrases.YES_MESSAGES,
+			null,
+			ConversationStates.INFORMATION_4,
+			&quot;Press #Shift+Up at the same time to recall things you previously said, in case you need to repeat yourself. Okay, shall we move on to the fifth lesson?&quot;,
+			null);
+
+<span class="nc" id="L123">		npc.add(</span>
+			ConversationStates.INFORMATION_4,
+			ConversationPhrases.YES_MESSAGES,
+			null,
+			ConversationStates.INFORMATION_5,
+			&quot;Type #/support #&lt;message&gt; to report a problem. You can also try the IRC channel ##arianne on #'irc.freenode.net'. There is a web frontend at #http://stendhalgame.org/development/chat.html \nOkay, time for your last lesson in mental manipulation!&quot;,
+			null);
+
+<span class="nc" id="L131">		npc.add(</span>
+			ConversationStates.INFORMATION_5,
+			ConversationPhrases.YES_MESSAGES,
+			null,
+			ConversationStates.INFORMATION_6,
+			&quot;You can travel to the astral plane at any time, thereby saving and closing your game. Just type #/quit, or press the #Esc key, or even simply close the window. Okay! Hmm, I think you want to learn how to float in the air like I do.&quot;,
+			null);
+
+		/** Give the reward to the patient newcomer user */
+		final String answer = &quot;*yawns* Maybe I'll show you later... I don't want to overload you with too much information at once. You can get a summary of all those lessons at any time, incidentally, just by typing #/help.\n&quot;;
+<span class="nc" id="L141">		npc.add(ConversationStates.INFORMATION_6,</span>
+			ConversationPhrases.YES_MESSAGES, 
+			new QuestCompletedCondition(QUEST_SLOT),
+			ConversationStates.IDLE, 
+			answer + &quot;Hey! I know what you're thinking, and I don't like it!&quot;,
+			null);
+
+<span class="nc" id="L148">		final List&lt;ChatAction&gt; reward = new LinkedList&lt;ChatAction&gt;();</span>
+<span class="nc" id="L149">		reward.add(new EquipItemAction(&quot;money&quot;, 10));</span>
+<span class="nc" id="L150">		reward.add(new IncreaseXPAction(10));</span>
+<span class="nc" id="L151">		reward.add(new SetQuestAction(QUEST_SLOT, &quot;done&quot;));		</span>
+
+<span class="nc" id="L153">		npc.add(ConversationStates.INFORMATION_6,</span>
+			ConversationPhrases.YES_MESSAGES, 
+			new QuestNotCompletedCondition(QUEST_SLOT),
+			ConversationStates.IDLE, 
+			answer + &quot;Remember, don't let anything disturb your concentration.&quot;,
+			new MultipleActions(reward));
+
+<span class="nc" id="L160">		npc.add(</span>
+			ConversationStates.ANY,
+			ConversationPhrases.NO_MESSAGES,
+			null,
+			ConversationStates.IDLE,
+			&quot;If you ever decide to widen the frontiers of your mind a bit more, drop by and say hello. Farewell for now!&quot;,
+			null);
+<span class="nc" id="L167">	}</span>
+
+	@Override
+	public void addToWorld() {
+<span class="nc" id="L171">		fillQuestInfo(</span>
+				&quot;Meet Io&quot;,
+				&quot;Io Flotto can teach about how to communicate.&quot;,
+				false);
+<span class="nc" id="L175">		prepareIO();</span>
+<span class="nc" id="L176">	}</span>
+
+	@Override
+	public String getName() {
+<span class="nc" id="L180">		return &quot;MeetIo&quot;;</span>
+	}
+	
+	@Override
+	public String getRegion() {
+<span class="nc" id="L185">		return Region.SEMOS_CITY;</span>
+	}
+
+	@Override
+	public String getNPCName() {
+<span class="nc" id="L190">		return &quot;Io Flotto&quot;;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

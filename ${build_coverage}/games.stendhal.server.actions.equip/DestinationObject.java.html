@@ -1,0 +1,397 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>DestinationObject.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.actions.equip</a> &gt; <span class="el_source">DestinationObject.java</span></div><h1>DestinationObject.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2016 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.actions.equip;
+
+import games.stendhal.common.EquipActionConsts;
+import games.stendhal.common.MathHelper;
+import games.stendhal.common.constants.Actions;
+import games.stendhal.server.core.engine.ItemLogger;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.core.pathfinder.Node;
+import games.stendhal.server.core.pathfinder.Path;
+import games.stendhal.server.entity.Entity;
+import games.stendhal.server.entity.item.Item;
+import games.stendhal.server.entity.item.Stackable;
+import games.stendhal.server.entity.item.StackableItem;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.entity.slot.EntitySlot;
+
+import java.awt.Rectangle;
+import java.util.Iterator;
+import java.util.List;
+
+import marauroa.common.game.RPAction;
+import marauroa.common.game.RPObject;
+import marauroa.common.game.RPSlot;
+
+import org.apache.log4j.Logger;
+
+/**
+ * this encapsulates the equip/drop destination.
+ */
+class DestinationObject extends MoveableObject {
+<span class="fc" id="L43">	private static Logger logger = Logger.getLogger(DestinationObject.class);</span>
+
+	/** true when this object is valid. */
+	private boolean valid;
+
+
+
+	/** x coordinate when dropped on ground. */
+	private int x;
+
+	/** y coordinate when dropped on ground.*/
+	private int y;
+
+	/** interprets the given action.
+	 * @param action
+	 * @param player
+	 */
+	public DestinationObject(final RPAction action, final Player player) {
+<span class="fc" id="L61">		super(player);</span>
+<span class="fc" id="L62">		valid = false;</span>
+<span class="fc bfc" id="L63" title="All 2 branches covered.">		if (action.has(Actions.TARGET_PATH)) {</span>
+<span class="fc" id="L64">			List&lt;String&gt; path = action.getList(Actions.TARGET_PATH);</span>
+<span class="fc" id="L65">			Iterator&lt;String&gt; it = path.iterator();</span>
+<span class="fc" id="L66">			parent = EquipUtil.getEntityFromId(player, MathHelper.parseInt(it.next()));</span>
+
+			// check slot
+<span class="pc bpc" id="L69" title="1 of 2 branches missed.">			if (parent == null) {</span>
+<span class="nc" id="L70">				logger.warn(&quot;cannot find target entity for action &quot; + action);</span>
+				// Not valid...
+<span class="nc" id="L72">				return;</span>
+			}
+			// is the top level parent a player and not the current one?
+<span class="pc bpc" id="L75" title="1 of 4 branches missed.">			if ((parent instanceof Player)</span>
+					&amp;&amp; !parent.getID().equals(player.getID())) {
+<span class="fc" id="L77">				logger.warn(&quot;trying to drop an item into another players inventory&quot;);</span>
+				// trying to drop an item into another players inventory
+<span class="fc" id="L79">				return;</span>
+			}
+			// Walk the slot path
+<span class="fc" id="L82">			slot = null;</span>
+<span class="fc bfc" id="L83" title="All 2 branches covered.">			while (it.hasNext()) {</span>
+<span class="fc" id="L84">				slot = it.next();</span>
+<span class="pc bpc" id="L85" title="1 of 2 branches missed.">				if (!parent.hasSlot(slot)) {</span>
+<span class="nc" id="L86">					logger.error(player.getName() + &quot; tried to use non existing slot &quot; + slot + &quot; of &quot; + parent</span>
+							+ &quot; as destination. player zone: &quot; + player.getZone() + &quot; object zone: &quot; + parent.getZone());
+<span class="nc" id="L88">					return;</span>
+				}
+<span class="fc" id="L90">				final RPSlot rpslot = parent.getSlot(slot);</span>
+<span class="pc bpc" id="L91" title="1 of 2 branches missed.">				if (it.hasNext()) {</span>
+<span class="nc" id="L92">					final RPObject.ID itemId = new RPObject.ID(MathHelper.parseInt(it.next()), &quot;&quot;);</span>
+<span class="nc bnc" id="L93" title="All 2 branches missed.">					if (!rpslot.has(itemId)) {</span>
+<span class="nc" id="L94">						return;</span>
+					}
+<span class="nc" id="L96">					parent = (Entity) rpslot.get(itemId);</span>
+				}
+<span class="fc" id="L98">			}</span>
+<span class="pc bpc" id="L99" title="1 of 2 branches missed.">			valid = slot != null;</span>
+<span class="fc" id="L100">			return;</span>
+<span class="pc bpc" id="L101" title="1 of 4 branches missed.">		} else if (action.has(EquipActionConsts.TARGET_OBJECT)</span>
+				&amp;&amp; action.has(EquipActionConsts.TARGET_SLOT)) {
+			// ** Compatibility mode **
+
+			// get base item and slot
+<span class="fc" id="L106">			parent = EquipUtil.getEntityFromId(player,</span>
+					action.getInt(EquipActionConsts.TARGET_OBJECT));
+
+			// check slot
+<span class="pc bpc" id="L110" title="1 of 2 branches missed.">			if (parent == null) {</span>
+<span class="nc" id="L111">				logger.warn(&quot;cannot find target entity for action &quot; + action);</span>
+				// Not valid...
+<span class="nc" id="L113">				return;</span>
+			}
+
+<span class="fc" id="L116">			slot = action.get(EquipActionConsts.TARGET_SLOT);</span>
+
+			// is the container a player and not the current one?
+<span class="pc bpc" id="L119" title="1 of 4 branches missed.">			if ((parent instanceof Player)</span>
+					&amp;&amp; !parent.getID().equals(player.getID())) {
+<span class="fc" id="L121">				logger.warn(&quot;trying to drop an item into another players inventory&quot;);</span>
+				// trying to drop an item into another players inventory
+<span class="fc" id="L123">				return;</span>
+			}
+
+			// check slot
+<span class="pc bpc" id="L127" title="1 of 2 branches missed.">			if (!parent.hasSlot(slot)) {</span>
+<span class="nc" id="L128">				logger.warn(&quot;Parent don't have slot: &quot; + action);</span>
+<span class="nc" id="L129">				return;</span>
+			}
+
+			// ok, action is valid.
+<span class="fc" id="L133">			valid = true;</span>
+<span class="fc" id="L134">			return;</span>
+		}
+
+		// dropped to the ground
+<span class="pc bpc" id="L138" title="2 of 4 branches missed.">		if (action.has(EquipActionConsts.GROUND_X)</span>
+				&amp;&amp; action.has(EquipActionConsts.GROUND_Y)) {
+<span class="fc" id="L140">			x = action.getInt(EquipActionConsts.GROUND_X);</span>
+<span class="fc" id="L141">			y = action.getInt(EquipActionConsts.GROUND_Y);</span>
+<span class="fc" id="L142">			valid = true;</span>
+		}
+
+		// not valid
+<span class="fc" id="L146">	}</span>
+
+	/** checks if it is possible to add the entity to the world.
+	 * @param entity
+	 * @param player
+	 * @return true if can be added to the world
+	 * */
+	@SuppressWarnings(&quot;unchecked&quot;)
+	public boolean preCheck(final Entity entity, final Player player) {
+<span class="fc" id="L155">		final StendhalRPZone zone = player.getZone();</span>
+
+<span class="fc bfc" id="L157" title="All 2 branches covered.">		if (parent != null) {</span>
+<span class="fc" id="L158">			final EntitySlot rpslot = parent.getEntitySlot(slot);</span>
+			// Old clients may try to move items to magic slot
+<span class="pc bpc" id="L160" title="1 of 2 branches missed.">			if (rpslot == null) {</span>
+<span class="nc" id="L161">				return false;</span>
+			}
+<span class="fc" id="L163">			rpslot.clearErrorMessage();</span>
+<span class="pc bpc" id="L164" title="1 of 2 branches missed.">			if (!rpslot.isReachableForThrowingThingsIntoBy(player)) {</span>
+<span class="nc" id="L165">				player.sendPrivateText(rpslot.getErrorMessage());</span>
+<span class="nc" id="L166">				logger.debug(&quot;Unreachable slot&quot;);</span>
+<span class="nc" id="L167">				return false;</span>
+			}
+
+<span class="pc bpc" id="L170" title="1 of 2 branches missed.">			if (rpslot.isFull()) {</span>
+<span class="nc" id="L171">				boolean isStackable = false;</span>
+				// is the entity stackable
+<span class="nc bnc" id="L173" title="All 2 branches missed.">				if (entity instanceof Stackable&lt;?&gt;) {</span>
+<span class="nc" id="L174">					final Stackable&lt;?&gt; stackEntity = (Stackable&lt;?&gt;) entity;</span>
+					// now check if it can be stacked on top of another item
+<span class="nc" id="L176">					final Iterator&lt;RPObject&gt; it = rpslot.iterator();</span>
+<span class="nc bnc" id="L177" title="All 2 branches missed.">					while (it.hasNext()) {</span>
+<span class="nc" id="L178">						final RPObject object = it.next();</span>
+
+<span class="nc bnc" id="L180" title="All 2 branches missed.">						if (object instanceof Stackable&lt;?&gt;) {</span>
+							// found another stackable
+							@SuppressWarnings(&quot;rawtypes&quot;)
+<span class="nc" id="L183">							final Stackable other = (Stackable&lt;?&gt;) object;</span>
+<span class="nc bnc" id="L184" title="All 2 branches missed.">							if (other.isStackable(stackEntity)) {</span>
+								// other is the same type...merge them
+<span class="nc" id="L186">								isStackable = true;</span>
+							}
+						}
+<span class="nc" id="L189">					}</span>
+				}
+
+<span class="nc bnc" id="L192" title="All 2 branches missed.">				if (!isStackable) {</span>
+					// entity cannot be stacked on top of another...
+					// so the equip is invalid
+<span class="nc" id="L195">					player.sendPrivateText(&quot;There is no space in there.&quot;);</span>
+<span class="nc" id="L196">					return false;</span>
+				}
+			}
+
+			// check if someone tried to put an item into itself (maybe
+			// through various levels of indirection)
+<span class="pc bpc" id="L202" title="1 of 2 branches missed.">			if (rpslot.hasAsAncestor(entity)) {</span>
+<span class="nc" id="L203">				logger.warn(&quot;tried to put item &quot; + entity.getID()</span>
+						+ &quot; into itself, equip rejected&quot;);
+<span class="nc" id="L205">				return false;</span>
+			}
+
+<span class="pc bpc" id="L208" title="1 of 2 branches missed.">			if (entity instanceof Item) {</span>
+<span class="fc" id="L209">				Item item = (Item) entity;</span>
+<span class="pc bpc" id="L210" title="1 of 4 branches missed.">				if (item.isBound() &amp;&amp; rpslot.isTargetBoundCheckRequired()) {</span>
+<span class="nc" id="L211">					player.sendPrivateText(&quot;You cannot put this special quest reward there because it can only be used by you.&quot;);</span>
+<span class="nc" id="L212">					return false;</span>
+				}
+
+				// check if an item that is sent to a trade slot is not damaged
+<span class="pc bpc" id="L216" title="3 of 4 branches missed.">				if ((item.getDeterioration() &gt; 0) &amp;&amp; rpslot.getName().equals(&quot;trade&quot;)) {</span>
+<span class="nc" id="L217">					player.sendPrivateText(&quot;You must not trade a damaged item with other players.&quot;);</span>
+<span class="nc" id="L218">					return false;</span>
+				}
+			}
+
+<span class="fc" id="L222">		} else {</span>
+<span class="fc" id="L223">			logger.debug(&quot;entity: &quot; + entity + &quot; zone: &quot; + zone);</span>
+			// check if the destination is free
+<span class="pc bpc" id="L225" title="2 of 4 branches missed.">			if ((zone != null) &amp;&amp; zone.simpleCollides(entity, x, y, entity.getWidth(), entity.getHeight())) {</span>
+<span class="nc" id="L226">				logger.warn(&quot;object &quot; + entity + &quot; collides with &quot; + x + &quot;x&quot;</span>
+						+ y);
+<span class="nc" id="L228">				player.sendPrivateText(&quot;There is no space on there.&quot;);</span>
+<span class="nc" id="L229">				return false;</span>
+			}
+
+			// and in reach
+<span class="pc bpc" id="L233" title="3 of 4 branches missed.">			if (!entity.isContained()</span>
+					&amp;&amp; (entity.squaredDistance(x, y) &gt; (8 * 8))) {
+<span class="nc" id="L235">				logger.warn(&quot;object &quot; + entity + &quot; is too far away from &quot; + x</span>
+						+ &quot;,&quot; + y);
+<span class="nc" id="L237">				player.sendPrivateText(&quot;That is too far away.&quot;);</span>
+<span class="nc" id="L238">				return false;</span>
+			}
+
+<span class="fc bfc" id="L241" title="All 2 branches covered.">			if (!isGamblingZoneAndIsDice(entity, player)) {</span>
+				// and there is a path there
+<span class="fc" id="L243">				final List&lt;Node&gt; path = Path.searchPath(entity, zone,</span>
+						player.getX(), player.getY(), new Rectangle(x, y, 1, 1),
+						64 /* maxDestination * maxDestination */, false);
+<span class="pc bpc" id="L246" title="1 of 2 branches missed.">				if (path.isEmpty()) {</span>
+<span class="nc" id="L247">					player.sendPrivateText(&quot;There is no easy path to that place.&quot;);</span>
+<span class="nc" id="L248">					return false;</span>
+				}
+			}
+		}
+
+<span class="fc" id="L253">		return true;</span>
+	}
+
+	/**
+	 * Check if the entity is dice played at the gambling table.
+	 *
+	 * @param entity the item
+	 * @param player the player to get the zone from
+	 * @return &lt;code&gt;true&lt;/code&gt; if the if zone is Semos tavern and entity is
+	 * 	dice
+	 */
+	private boolean isGamblingZoneAndIsDice(final Entity entity, final Player player) {
+<span class="fc" id="L265">		final StendhalRPZone zone = player.getZone();</span>
+<span class="pc bpc" id="L266" title="1 of 4 branches missed.">		return &quot;int_semos_tavern_0&quot;.equals(zone.getName()) &amp;&amp; (&quot;dice&quot;).equals(entity.getTitle());</span>
+	}
+
+	/** returns true when this DestinationObject is valid. */
+	@Override
+	public boolean isValid() {
+<span class="fc" id="L272">		return valid;</span>
+	}
+
+	/**
+	 * returns true when this entity and the other is within the given distance.
+	 */
+	@Override
+	public boolean checkDistance(final Entity other, final double distance) {
+<span class="fc bfc" id="L280" title="All 2 branches covered.">		if (parent != null) {</span>
+<span class="fc" id="L281">			Entity base = parent;</span>
+<span class="fc" id="L282">			RPObject obj = parent.getBaseContainer();</span>
+<span class="pc bpc" id="L283" title="1 of 2 branches missed.">			if (obj instanceof Entity) {</span>
+<span class="fc" id="L284">				base = (Entity) obj;</span>
+			}
+<span class="fc" id="L286">			return (other.nextTo(base, distance));</span>
+		}
+
+		// Should be dropped to the ground. Do a proper distance calculation
+<span class="pc bpc" id="L290" title="1 of 2 branches missed.">		return (other.squaredDistance(x, y) &lt; (distance * distance));</span>
+	}
+
+	/**
+	 * gets the name of the content slot used for the can equipped check
+	 *
+	 * @return name of slot
+	 */
+	public String getContentSlotName() {
+<span class="fc bfc" id="L299" title="All 2 branches covered.">		if (parent != null) {</span>
+<span class="fc" id="L300">			final EntitySlot entitySlot = parent.getEntitySlot(slot);</span>
+			// Old clients may try to move items to magic slot
+<span class="pc bpc" id="L302" title="1 of 2 branches missed.">			if (entitySlot != null) {</span>
+<span class="fc" id="L303">				return entitySlot.getContentSlotName();</span>
+			}
+		}
+<span class="fc" id="L306">		return null;</span>
+	}
+
+	/**
+	 * add the entity to the world (specified by the action during construction).
+	 * Note that you should call isValid(), preCheck(..) and checkDistance(..)
+	 * before adding an item to the world
+	 * @param entity
+	 * @param player
+	 */
+	public void addToWorld(Entity entity, final Player player) {
+<span class="fc bfc" id="L317" title="All 2 branches covered.">		if (parent != null) {</span>
+			// drop the entity into a slot
+<span class="fc" id="L319">			final RPSlot rpslot = parent.getSlot(slot);</span>
+
+
+			// check if the item can be merged with one already in the slot
+<span class="pc bpc" id="L323" title="1 of 2 branches missed.">			if (entity instanceof StackableItem) {</span>
+<span class="fc" id="L324">				final StackableItem stackEntity = (StackableItem) entity;</span>
+				// find a stackable item of the same type
+<span class="fc" id="L326">				final Iterator&lt;RPObject&gt; it = rpslot.iterator();</span>
+<span class="fc bfc" id="L327" title="All 2 branches covered.">				while (it.hasNext()) {</span>
+<span class="fc" id="L328">					final RPObject object = it.next();</span>
+<span class="pc bpc" id="L329" title="1 of 2 branches missed.">					if (object instanceof StackableItem) {</span>
+						// found another stackable
+<span class="fc" id="L331">						final StackableItem other = (StackableItem) object;</span>
+<span class="pc bpc" id="L332" title="1 of 2 branches missed.">						if (other.isStackable(stackEntity)) {</span>
+<span class="fc" id="L333">							new ItemLogger().merge(player, stackEntity, other);</span>
+
+							// other is the same type...merge them
+<span class="fc" id="L336">							other.add(stackEntity);</span>
+<span class="fc" id="L337">							entity = null;</span>
+							// do not process the entity further
+<span class="fc" id="L339">							break;</span>
+						}
+					}
+<span class="nc" id="L342">				}</span>
+			}
+
+			// entity still there?
+<span class="fc bfc" id="L346" title="All 2 branches covered.">			if (entity != null) {</span>
+				// Set position to 0,0 (relative to container)
+<span class="fc" id="L348">				entity.setPosition(0, 0);</span>
+
+				// yep, so it is not stacked. simply add it
+<span class="fc" id="L351">				rpslot.add(entity);</span>
+
+				/* XXX sjtsp - experiment.
+				 *   - maybe should call this on player, instead of item?
+				 */
+<span class="fc" id="L356">				((Item) entity).onEquipped(player, rpslot.getName());</span>
+			}
+<span class="fc" id="L358">			SingletonRepository.getRPWorld().modify(parent.getBaseContainer());</span>
+<span class="fc" id="L359">		} else {</span>
+			// drop the entity to the ground. Do this always in the player's
+			// zone.
+<span class="fc" id="L362">			final StendhalRPZone zone = player.getZone();</span>
+<span class="fc" id="L363">			logger.debug(&quot;adding &quot; + entity.get(&quot;name&quot;) + &quot; to &quot; + zone);</span>
+
+			// HACK: Avoid a problem on database
+<span class="pc bpc" id="L366" title="1 of 2 branches missed.">			if (entity.has(&quot;#db_id&quot;)) {</span>
+<span class="nc" id="L367">				entity.remove(&quot;#db_id&quot;);</span>
+			}
+
+<span class="fc" id="L370">			entity.setPosition(x, y);</span>
+<span class="fc" id="L371">			logger.debug(&quot;entity set to &quot; + x + &quot;, &quot; + y);</span>
+
+<span class="fc" id="L373">			zone.add(entity, player);</span>
+<span class="fc" id="L374">			logger.debug(&quot;entity has valid id: &quot; + entity.getID());</span>
+		}
+<span class="fc" id="L376">	}</span>
+
+	@Override
+	public String[] getLogInfo() {
+<span class="fc" id="L380">		final String[] res = new String[3];</span>
+<span class="fc bfc" id="L381" title="All 2 branches covered.">		if (parent != null) {</span>
+<span class="fc" id="L382">			res[0] = &quot;slot&quot;;</span>
+<span class="pc bpc" id="L383" title="1 of 2 branches missed.">			if (parent.has(&quot;name&quot;)) {</span>
+<span class="fc" id="L384">				res[1] = parent.get(&quot;name&quot;);</span>
+			} else {
+<span class="nc" id="L386">				res[1] = parent.getDescriptionName(false);</span>
+			}
+<span class="fc" id="L388">			res[2] = slot;</span>
+		} else {
+<span class="fc" id="L390">			res[0] = &quot;ground&quot;;</span>
+<span class="fc" id="L391">			res[1] = player.getZone().getName();</span>
+<span class="fc" id="L392">			res[2] = x + &quot; &quot; + y;</span>
+		}
+<span class="fc" id="L394">		return res;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

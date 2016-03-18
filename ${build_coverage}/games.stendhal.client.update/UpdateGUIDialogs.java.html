@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>UpdateGUIDialogs.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.update</a> &gt; <span class="el_source">UpdateGUIDialogs.java</span></div><h1>UpdateGUIDialogs.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2011 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.update;
+
+import java.text.NumberFormat;
+
+import javax.swing.JOptionPane;
+
+/**
+ * Dialogboxes used during updating..
+ * 
+ * @author hendrik
+ */
+<span class="nc" id="L23">class UpdateGUIDialogs {</span>
+
+<span class="nc" id="L25">	private static final String DIALOG_TITLE = ClientGameConfiguration.get(&quot;GAME_NAME&quot;) + &quot; Update&quot;;</span>
+
+	/**
+	 * Asks the user to accept an update.
+	 * 
+	 * @param updateSize
+	 *            size of the files to download
+	 * @param update
+	 *            true, if it is an update, false on first install
+	 * @return true if the update should be performed, false otherwise
+	 */
+	static boolean askForDownload(final int updateSize, final boolean update) {
+		// format number, only provide decimal digits on very small sizes
+<span class="nc" id="L38">		float size = (float) updateSize / 1024;</span>
+<span class="nc bnc" id="L39" title="All 2 branches missed.">		if (size &gt; 10) {</span>
+<span class="nc" id="L40">			size = (int) size;</span>
+		}
+<span class="nc" id="L42">		final String sizeString = NumberFormat.getInstance().format(size);</span>
+
+		// ask user
+		int resCode;
+<span class="nc bnc" id="L46" title="All 2 branches missed.">		if (update) {</span>
+<span class="nc" id="L47">			resCode = LoneOptionDialog.showConfirmDialog(&quot;There is a new version which is &quot;</span>
+					+ sizeString + &quot; KB.\r\n&quot; + &quot;Should &quot;
+					+ ClientGameConfiguration.get(&quot;GAME_NAME&quot;) + &quot; be updated?&quot;,
+					DIALOG_TITLE, JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+		} else {
+<span class="nc" id="L52">			resCode = LoneOptionDialog.showConfirmDialog(&quot;We need to download some additional files which are &quot;</span>
+						+ sizeString + &quot; KB.\r\n&quot; + &quot;Should &quot;
+					+ ClientGameConfiguration.get(&quot;GAME_NAME&quot;) + &quot; be installed?&quot;,
+					DIALOG_TITLE, JOptionPane.YES_NO_OPTION,
+					JOptionPane.QUESTION_MESSAGE);
+		}
+
+<span class="nc bnc" id="L59" title="All 2 branches missed.">		return (resCode == JOptionPane.YES_OPTION);</span>
+	}
+
+	/**
+	 * Displays a message box.
+	 * 
+	 * @param message
+	 *            message to display
+	 */
+	static void messageBox(final String message) {
+<span class="nc" id="L69">		LoneOptionDialog.showMessageDialog(message, DIALOG_TITLE);</span>
+<span class="nc" id="L70">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>BuddyPanel.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui.buddies</a> &gt; <span class="el_source">BuddyPanel.java</span></div><h1>BuddyPanel.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui.buddies;
+
+import games.stendhal.client.gui.MousePopupAdapter;
+
+import java.awt.Component;
+import java.awt.Font;
+import java.awt.event.MouseEvent;
+
+import javax.swing.JList;
+import javax.swing.JPopupMenu;
+import javax.swing.ListCellRenderer;
+
+/**
+ * JList that can show popup menues for buddies. Use &lt;code&gt;BuddyListModel&lt;/code&gt;
+ * with this.
+ */
+class BuddyPanel extends JList&lt;Buddy&gt; {
+	/**
+	 * The amount of pixels that popup menus will be shifted up and left from
+	 * the clicking point.
+	 */
+	private static final int POPUP_OFFSET = 10;
+
+	/**
+	 * Create a new BuddyList.
+	 * 
+	 * @param model associated list model
+	 */
+	protected BuddyPanel(final BuddyListModel model) {
+<span class="nc" id="L42">		super(model);</span>
+<span class="nc" id="L43">		setCellRenderer(new BuddyLabel());</span>
+<span class="nc" id="L44">		setOpaque(false);</span>
+<span class="nc" id="L45">		this.setFocusable(false);</span>
+<span class="nc" id="L46">		this.addMouseListener(new BuddyPanelMouseListener());</span>
+<span class="nc" id="L47">	}</span>
+	
+	@Override
+	public Font getFont() {
+		// The only real for is that of the cell renderer
+<span class="nc" id="L52">		ListCellRenderer&lt;?&gt; renderer = getCellRenderer();</span>
+<span class="nc bnc" id="L53" title="All 2 branches missed.">		if (renderer instanceof Component) {</span>
+<span class="nc" id="L54">			return ((Component) renderer).getFont();</span>
+		}
+		
+<span class="nc" id="L57">		return super.getFont();</span>
+	}
+
+	@Override
+	public void setFont(Font font) {
+		// Pass the font change to the cell renderer
+<span class="nc" id="L63">		ListCellRenderer&lt;?&gt; renderer = getCellRenderer();</span>
+<span class="nc bnc" id="L64" title="All 2 branches missed.">		if (renderer instanceof Component) {</span>
+<span class="nc" id="L65">			Component comp = (Component) renderer;</span>
+<span class="nc" id="L66">			comp.setFont(font);</span>
+		}
+<span class="nc" id="L68">	}</span>
+	
+	/**
+	 * MouseListener for triggering the buddy list popup menus.
+	 */
+<span class="nc" id="L73">	private class BuddyPanelMouseListener extends MousePopupAdapter {</span>
+		@Override
+		protected void showPopup(final MouseEvent e) {
+<span class="nc" id="L76">			int index = BuddyPanel.this.locationToIndex(e.getPoint());</span>
+<span class="nc" id="L77">			Buddy buddy = BuddyPanel.this.getModel().getElementAt(index);</span>
+			
+<span class="nc" id="L79">			final JPopupMenu popup = new BuddyLabelPopMenu(buddy.getName(), buddy.isOnline());</span>
+<span class="nc" id="L80">			popup.show(e.getComponent(), e.getX() - POPUP_OFFSET, e.getY() - POPUP_OFFSET);</span>
+<span class="nc" id="L81">		}</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

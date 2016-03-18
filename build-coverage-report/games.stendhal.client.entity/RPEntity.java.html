@@ -1,0 +1,1527 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>RPEntity.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.entity</a> &gt; <span class="el_source">RPEntity.java</span></div><h1>RPEntity.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                      (C) Copyright 2003 - Marauroa                      *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.entity;
+
+import games.stendhal.client.ClientSingletonRepository;
+import games.stendhal.client.GameLoop;
+import games.stendhal.client.GameObjects;
+import games.stendhal.client.stendhal;
+import games.stendhal.client.gui.chatlog.HeaderLessEventLine;
+import games.stendhal.client.gui.chatlog.StandardHeaderedEventLine;
+import games.stendhal.common.ItemTools;
+import games.stendhal.common.NotificationType;
+import games.stendhal.common.constants.Nature;
+import games.stendhal.common.constants.SoundLayer;
+import games.stendhal.common.constants.Testing;
+import games.stendhal.common.grammar.Grammar;
+
+import java.util.Collection;
+import java.util.EnumMap;
+import java.util.EnumSet;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedQueue;
+
+import marauroa.common.game.RPObject;
+import marauroa.common.game.RPObject.ID;
+
+import org.apache.log4j.Logger;
+
+/**
+ * This class is a link between client graphical objects and server attributes
+ * objects.&lt;br&gt;
+ * You need to extend this object in order to add new elements to the game.
+ */
+public abstract class RPEntity extends AudibleEntity {
+<span class="fc" id="L49">	private static final Logger LOGGER = Logger.getLogger(RPEntity.class);</span>
+	
+	/**
+	 * Square of the distance where to observe various events, such as speech.
+	 */
+	private static final int HEARING_DISTANCE_SQ = 15 * 15;
+	/** Turn length in milliseconds. */
+	private static final int TURN_LENGTH = 300;
+	/** Maximum length of text in entity speech bubbles. */
+	private static final int BUBBLE_TEXT_LENGTH = 84;
+	/**
+	 * Admin Level property.
+	 */
+<span class="fc" id="L62">	public static final Property PROP_ADMIN_LEVEL = new Property();</span>
+	/**
+	 * ghostmode property.
+	 */
+<span class="fc" id="L66">	public static final Property PROP_GHOSTMODE = new Property();</span>
+	/**
+	 * group membership.
+	 */
+<span class="fc" id="L70">	public static final Property PROP_GROUP_MEMBERSHIP = new Property();</span>
+	/**
+	 * Indicator text property. Fired if they are added or removed.
+	 */
+<span class="fc" id="L74">	public static final Property PROP_TEXT_INDICATORS = new Property();</span>
+	/**
+	 * Outfit property.
+	 */
+<span class="fc" id="L78">	public static final Property PROP_OUTFIT = new Property();</span>
+	/**
+	 * Title Type property.
+	 */
+<span class="fc" id="L82">	public static final Property PROP_TITLE_TYPE = new Property();</span>
+	/**
+	 * Hp and max HP property.
+	 */
+<span class="fc" id="L86">	public static final Property PROP_HP_RATIO = new Property();</span>
+	/** 
+	 * Property for showing and hiding the HP bar.
+	 */
+<span class="fc" id="L90">	public static final Property PROP_HP_DISPLAY = new Property();</span>
+	
+	// Job properties
+	/**
+	 * Healer
+	 */
+<span class="fc" id="L96">	public static final Property PROP_HEALER = new Property();</span>
+	/**
+	 * Merchant
+	 */
+<span class="fc" id="L100">	public static final Property PROP_MERCHANT = new Property();</span>
+	
+    // Status properties
+    /**
+     * Confused property
+     */
+<span class="fc" id="L106">    public static final Property PROP_CONFUSED = new Property();</span>
+    /**
+     * Eating property
+     */
+<span class="fc" id="L110">    public static final Property PROP_EATING = new Property();</span>
+    /** 
+     * Poisoned property
+     */
+<span class="fc" id="L114">    public static final Property PROP_POISONED = new Property();</span>
+    /**
+     * Shock property
+     */
+<span class="fc" id="L118">    public static final Property PROP_SHOCK = new Property();</span>
+    /**
+     * Zombie property
+     */
+<span class="fc" id="L122">    public static final Property PROP_ZOMBIE = new Property();</span>
+    /**
+     * Heavy property
+     */
+<span class="fc" id="L126">    public static final Property PROP_HEAVY = new Property();</span>
+    
+    private static final Map&lt;StatusID, Property&gt; statusProp;
+    static {
+<span class="fc" id="L130">        statusProp = new EnumMap&lt;StatusID, Property&gt;(StatusID.class);</span>
+<span class="fc" id="L131">        statusProp.put(StatusID.CONFUSE, PROP_CONFUSED);</span>
+<span class="fc" id="L132">        statusProp.put(StatusID.POISON, PROP_POISONED);</span>
+<span class="fc" id="L133">        statusProp.put(StatusID.SHOCK, PROP_SHOCK);</span>
+<span class="fc" id="L134">        statusProp.put(StatusID.ZOMBIE, PROP_ZOMBIE);</span>
+<span class="fc" id="L135">        statusProp.put(StatusID.HEAVY, PROP_HEAVY);</span>
+    }
+    
+	/**
+	 * Attacking property. (for attack events)
+	 */
+<span class="fc" id="L141">	public static final Property PROP_ATTACK = new Property();</span>
+	
+	/**
+	 * The value of an outfit that isn't set.
+	 */
+	public static final int OUTFIT_UNSET = -1;
+
+
+	/**
+	 * Entity we are attacking. (need to reconsile this with 'attacking')
+	 */
+	RPEntity attackTarget;
+
+	/**
+	 * The entities attacking this entity.
+	 */
+<span class="fc" id="L157">	private final Collection&lt;Entity&gt; attackers = new ConcurrentLinkedQueue&lt;Entity&gt;();</span>
+	
+	/**
+	 * The nature of the current attack done by this entity, or
+	 * &lt;code&gt;null&lt;/code&gt; if there's no ongoing attack.
+	 */
+	private Nature attackNature;
+	/**
+	 * The weapon used in the current attack, or &lt;code&gt;null&lt;/code&gt; if no weapon
+	 * is specified.
+	 */
+	private String weapon;
+	/**
+	 * &lt;code&gt;true&lt;/code&gt; if the previously done attack event was ranged,
+	 * 	otherwise &lt;code&gt;false&lt;/code&gt;. 
+	 */
+	private boolean isDoingRangedAttack;
+	/**
+	 * Flag for checking attack targets that were added in the zone later than
+	 * this entity.
+	 */
+	private boolean targetUpdated;
+
+	private int atk;
+
+	private int def;
+	
+	private int ratk;
+
+	private int xp;
+
+	private int hp;
+
+	private int adminlevel;
+
+	/**
+	 * The outfit code.
+	 */
+	private int outfit;
+	
+	private int baseHP;
+
+	private float hpRatio;
+
+	private int level;
+
+	private boolean eating;
+	
+	/** Currently active statuses. */
+<span class="fc" id="L206">	private final Set&lt;StatusID&gt; statuses = EnumSet.noneOf(StatusID.class);</span>
+
+	private boolean choking;
+	
+<span class="fc" id="L210">	private boolean showTitle = true;</span>
+	
+<span class="fc" id="L212">	private boolean showHP = true;</span>
+
+	/**
+	 * Time stamp of previous attack event. Volatile to prevent reordering
+	 * assignments with &lt;code&gt;resolution&lt;/code&gt;.
+	 */
+	private volatile long combatIconTime;
+
+	private final List&lt;TextIndicator&gt; textIndicators;
+
+	private RPObject.ID attacking;
+
+	private int mana;
+
+	private int baseMana;
+
+	private boolean ghostmode;
+	
+	private boolean ignoreCollision;
+
+	private String titleType;
+
+	/**
+	 * The result of previous attack against this entity. Volatile to prevent
+	 * reordering assignments with &lt;code&gt;combatIconTime&lt;/code&gt;.
+	 */
+	private volatile Resolution resolution;
+
+	private int atkXP;
+
+	private int defXP;
+	
+	private int ratkXP;
+
+<span class="fc" id="L246">	private int atkItem = -1;</span>
+
+<span class="fc" id="L248">	private int defItem = -1;</span>
+	
+<span class="fc" id="L250">	private int ratkItem = -1;</span>
+	
+	/** A flag that gets set once the entity has been released. */
+	private boolean released;
+	
+	/** Possible attack results. */
+<span class="pc" id="L256">	public enum Resolution {</span>
+<span class="fc" id="L257">		HIT,</span>
+<span class="fc" id="L258">		BLOCKED,</span>
+<span class="fc" id="L259">		MISSED;</span>
+	}
+
+	/** Creates a new game entity. */
+<span class="fc" id="L263">	RPEntity() {</span>
+<span class="fc" id="L264">		textIndicators = new LinkedList&lt;TextIndicator&gt;();</span>
+<span class="fc" id="L265">		attackTarget = null;</span>
+<span class="fc" id="L266">	}</span>
+
+	//
+	// RPEntity
+	//
+
+	/**
+	 * Create/add a text indicator message.
+	 * 
+	 * @param text
+	 *            The text message.
+	 * @param type
+	 *            The indicator type.
+	 */
+	protected void addTextIndicator(final String text,
+			final NotificationType type) {
+<span class="nc" id="L282">		textIndicators.add(new TextIndicator(text, type));</span>
+<span class="nc" id="L283">		fireChange(PROP_TEXT_INDICATORS);</span>
+<span class="nc" id="L284">	}</span>
+
+	/**
+	 * Get the admin level.
+	 * 
+	 * @return The admin level.
+	 */
+	public int getAdminLevel() {
+<span class="nc" id="L292">		return adminlevel;</span>
+	}
+
+	/**
+	 * @return Returns the atk.
+	 */
+	public int getAtk() {
+<span class="nc" id="L299">		return atk;</span>
+	}
+
+	/**
+	 * @return Returns the atk of items
+	 */
+	public int getAtkItem() {
+<span class="nc" id="L306">		return atkItem;</span>
+	}
+
+	/**
+	 * @return the attack xp
+	 */
+	public int getAtkXP() {
+<span class="nc" id="L313">		return atkXP;</span>
+	}
+
+	/**
+	 * @return Returns the base_hp.
+	 */
+	public int getBaseHP() {
+<span class="nc" id="L320">		return baseHP;</span>
+	}
+
+	/**
+	 * @return Returns the base mana value
+	 */
+	public int getBaseMana() {
+<span class="nc" id="L327">		return baseMana;</span>
+	}
+
+	/**
+	 * @return Returns the def.
+	 */
+	public int getDef() {
+<span class="nc" id="L334">		return def;</span>
+	}
+
+	/**
+	 * @return Returns the def of items
+	 */
+	public int getDefItem() {
+<span class="nc" id="L341">		return defItem;</span>
+	}
+
+	/**
+	 * @return the defence xp
+	 */
+	public int getDefXP() {
+<span class="nc" id="L348">		return defXP;</span>
+	}
+
+	/**
+	 * @return Returns the ratk.
+	 */
+	public int getRatk() {
+<span class="nc" id="L355">		return ratk;</span>
+	}
+
+	/**
+	 * @return Returns the ratk of items
+	 */
+	public int getRatkItem() {
+<span class="nc" id="L362">		return ratkItem;</span>
+	}
+
+	/**
+	 * @return the ranged xp
+	 */
+	public int getRatkXP() {
+<span class="nc" id="L369">		return ratkXP;</span>
+	}
+
+	/**
+	 * Get the ratio of HP to base HP.
+	 * 
+	 * @return The HP ratio (0.0 - 1.0).
+	 */
+	public float getHpRatio() {
+<span class="nc" id="L378">		return hpRatio;</span>
+	}
+
+	/**
+	 * Get the list of text indicator elements.
+	 * 
+	 * @return An iterator of text indicators.
+	 */
+	public Iterator&lt;TextIndicator&gt; getTextIndicators() {
+<span class="nc" id="L387">		return textIndicators.iterator();</span>
+	}
+
+	/**
+	 * Get the entity level.
+	 * 
+	 * @return level
+	 */
+	int getLevel() {
+<span class="nc" id="L396">		return level;</span>
+	}
+
+	/**
+	 * @return Returns the total mana of a player
+	 */
+	public int getMana() {
+<span class="nc" id="L403">		return mana;</span>
+	}
+
+	/**
+	 * Get the outfit code.
+	 * 
+	 * @return The outfit code.
+	 */
+	public int getOutfit() {
+<span class="nc" id="L412">		return outfit;</span>
+	}
+	
+	/**
+	 * The result of previous attack against this entity.
+	 * 
+	 * @return attack result
+	 */
+	public Resolution getResolution() {
+<span class="fc" id="L421">		return resolution;</span>
+	}
+	
+	/**
+	 * Get the attack target of an entity.
+	 * 
+	 * @return the target, or &lt;code&gt;null&lt;/code&gt; if there is none
+	 */
+	public RPEntity getAttackTarget() {
+<span class="fc" id="L430">		return attackTarget;</span>
+	}
+
+	/**
+	 * Update the target.
+	 * 
+	 * @param targetString The target id as a string
+	 * @param zoneId zone of the entity
+	 */
+	private void setTarget(String targetString, String zoneId) {
+<span class="nc" id="L440">		final int target = Integer.parseInt(targetString);</span>
+		
+<span class="nc" id="L442">		final RPObject.ID targetEntityID = new RPObject.ID(target, zoneId);</span>
+<span class="nc" id="L443">		final RPEntity targetEntity = (RPEntity) GameObjects.getInstance().get(</span>
+				targetEntityID);
+
+<span class="nc bnc" id="L446" title="All 2 branches missed.">		if (targetEntity != attackTarget) {</span>
+<span class="nc" id="L447">			onStopAttack();</span>
+
+<span class="nc bnc" id="L449" title="All 2 branches missed.">			if (attackTarget != null) {</span>
+<span class="nc" id="L450">				attackTarget.onStopAttacked(this);</span>
+			}
+
+<span class="nc" id="L453">			attackTarget = targetEntity;</span>
+
+<span class="nc bnc" id="L455" title="All 2 branches missed.">			if (attackTarget != null) {</span>
+<span class="nc" id="L456">				onAttack(attackTarget);</span>
+<span class="nc" id="L457">				attackTarget.onAttacked(this);</span>
+			}
+		}
+<span class="nc" id="L460">	}</span>
+	
+	/**
+	 * Update the target.
+	 * 
+	 * @param targetString The target id as a string
+	 */
+	private void setTarget(String targetString) {
+<span class="nc" id="L468">		setTarget(targetString, rpObject.get(&quot;zoneid&quot;));</span>
+<span class="nc" id="L469">	}</span>
+
+
+	/**
+	 * Get the nicely formatted entity title.
+	 * 
+	 * This searches the follow attribute order: title, name (w/o underscore),
+	 * class (w/o underscore), type (w/o underscore).
+	 * 
+	 * @return The title, or &lt;code&gt;null&lt;/code&gt; if unknown.
+	 */
+	@Override
+	public String getTitle() {
+<span class="nc bnc" id="L482" title="All 2 branches missed.">		if (title != null) {</span>
+<span class="nc" id="L483">			return title;</span>
+<span class="nc bnc" id="L484" title="All 2 branches missed.">		} else if (name != null) {</span>
+<span class="nc" id="L485">			return name;</span>
+<span class="nc bnc" id="L486" title="All 2 branches missed.">		} else if (clazz != null) {</span>
+			// replace underscores in clazz and type without calling the function UpdateConverter.transformItemName() located in server code
+<span class="nc" id="L488">			return ItemTools.itemNameToDisplayName(clazz);</span>
+<span class="nc bnc" id="L489" title="All 2 branches missed.">		} else if (type != null) {</span>
+<span class="nc" id="L490">			return ItemTools.itemNameToDisplayName(type);</span>
+		} else {
+<span class="nc" id="L492">			return null;</span>
+		}
+	}
+
+	/**
+	 * Get title type.
+	 * 
+	 * @return The title type, or &lt;code&gt;null&lt;/code&gt; if the entity has no special
+	 * 	title type
+	 */
+	public String getTitleType() {
+<span class="nc" id="L503">		return titleType;</span>
+	}
+
+	/**
+	 * @return Returns the XP.
+	 */
+	public int getXP() {
+<span class="nc" id="L510">		return xp;</span>
+	}
+	
+	/**
+	 * @return Returns the entities attacking this entity
+	 */
+	public Collection&lt;Entity&gt; getAttackers() {
+<span class="nc" id="L517">		return attackers;</span>
+	}
+
+	/**
+	 * Get the ID of the current attack target. Try to resolve targets that
+	 * have been added to the zone after this. This is meant to be called from
+	 * the EDT.
+	 * 
+	 * @return attack target, or &lt;code&gt;null&lt;/code&gt; if the entity is not
+	 * 	attacking
+	 */
+	private ID getTargetID() {
+<span class="nc bnc" id="L529" title="All 4 branches missed.">		if (!targetUpdated &amp;&amp; (attacking == null)) {</span>
+			/*
+			 * Check for disagreement, and update if needs be.
+			 * Can happen when the target is added to the zone after the attacker.
+			 * 
+			 * Fire and forget. The update likely won't be ready for this screen
+			 * redraw, but it'll be ready for some redraw later.
+			 */
+<span class="nc" id="L537">			GameLoop.get().runOnce(new Runnable() {</span>
+				@Override
+				public void run() {
+<span class="nc bnc" id="L540" title="All 4 branches missed.">					if ((attacking == null) &amp;&amp; !released) {</span>
+<span class="nc" id="L541">						String id = rpObject.get(&quot;target&quot;);</span>
+<span class="nc bnc" id="L542" title="All 2 branches missed.">						if (id != null) {</span>
+<span class="nc" id="L543">							setTarget(id);</span>
+						}
+					}
+<span class="nc" id="L546">				}</span>
+			});
+<span class="nc" id="L548">			targetUpdated = true;</span>
+		}
+<span class="nc" id="L550">		return attacking;</span>
+	}
+
+	/**
+	 * Check if the entity is attacking a specified entity. This is meant to be
+	 * called from the EDT when drawing entities.
+	 * 
+	 * @param defender the potential target
+	 * @return &lt;code&gt;true&lt;/code&gt; if defender is attacked by this entity,
+	 * 	otherwise &lt;code&gt;false&lt;/code&gt;
+	 */
+	public boolean isAttacking(final IEntity defender) {
+<span class="nc bnc" id="L562" title="All 2 branches missed.">		if (defender == null) {</span>
+<span class="nc" id="L563">			return false;</span>
+		}
+		
+<span class="nc" id="L566">		final ID defenderID = defender.getID();</span>
+<span class="nc" id="L567">		return defenderID.equals(getTargetID());</span>
+	}
+
+	/**
+	 * Check if the entity is a target of an attack.
+	 * 
+	 * @return &lt;code&gt;true&lt;/code&gt; if the entity is being attacked, otherwise
+	 * 	&lt;code&gt;false&lt;/code&gt;
+	 */
+	public boolean isBeingAttacked() {
+<span class="nc bnc" id="L577" title="All 2 branches missed.">		return !attackers.isEmpty();</span>
+	}
+
+	/**
+	 * Check if a specific entity is attacking this RPEntity.
+	 * 
+	 * @param attacker potential attacker
+	 * @return &lt;code&gt;true&lt;/code&gt; if attacker is attacking this RPEntity,
+	 * 	otherwise &lt;code&gt;false&lt;/code&gt;
+	 */
+	public boolean isAttackedBy(final IEntity attacker) {
+<span class="nc" id="L588">		return attackers.contains(attacker);</span>
+	}
+
+	/**
+	 * Get the damage type of the current strike.
+	 * 
+	 * @return type of damage, or &lt;code&gt;null&lt;/code&gt; if the entity is not striking
+	 */
+	public Nature getShownDamageType() {
+<span class="nc" id="L597">		return attackNature;</span>
+	}
+	
+	/**
+	 * Get the weapon used in the current attack.
+	 * 
+	 * @return weapon, or &lt;code&gt;null&lt;/code&gt; if not specified
+	 */
+	public String getShownWeapon() {
+<span class="nc" id="L606">		return weapon;</span>
+	}
+	
+	/**
+	 * Check if the currently performed attack is ranged.
+	 * 
+	 * @return &lt;code&gt;true&lt;/code&gt; if the attack is ranged, &lt;code&gt;false&lt;/code&gt;
+	 * 	otherwise
+	 */
+	public boolean isDoingRangedAttack() {
+<span class="nc" id="L616">		return isDoingRangedAttack;</span>
+	}
+
+	/**
+	 * Check if the entity is defending against an attack right now. The entity
+	 * is defending if the last attack happened within 1.2s.
+	 * 
+	 * @return &lt;code&gt;true&lt;/code&gt; if the entity is defending against an attack,
+	 * 	&lt;code&gt;false&lt;/code&gt; otherwise 
+	 */
+	public boolean isDefending() {
+<span class="nc bnc" id="L627" title="All 4 branches missed.">		return (isBeingAttacked() &amp;&amp; (System.currentTimeMillis()</span>
+				- combatIconTime &lt; 4 * TURN_LENGTH));
+	}
+
+	/**
+	 * Check if the entity is eating.
+	 * 
+	 * @return &lt;code&gt;true&lt;/code&gt; if the entity is eating, otherwise
+	 * 	&lt;code&gt;false&lt;/code&gt;
+	 */
+	public boolean isEating() {
+<span class="nc" id="L638">		return eating;</span>
+	}
+
+	/**
+	 * Determine if in full ghostmode.
+	 * 
+	 * @return &lt;code&gt;true&lt;/code&gt; is in full ghostmode.
+	 */
+	public boolean isGhostMode() {
+<span class="nc" id="L647">		return ghostmode;</span>
+	}
+
+	/**
+	 * Check if the entity can pass through static collisions.
+	 * 
+	 * @return &lt;code&gt;true&lt;/code&gt; if the entity can pass through walls, otherwise
+	 * 	&lt;code&gt;false&lt;/code&gt;
+	 */
+	public boolean ignoresCollision() {
+<span class="nc" id="L657">		return ignoreCollision;</span>
+	}
+	
+	/**
+	 * Check if the entity is confused or poisoned.
+	 * 
+	 * @return &lt;code&gt;true&lt;/code&gt; if the entity is confused or poisoned,
+	 * 	otherwise &lt;code&gt;false&lt;/code&gt;
+	 */
+	public boolean isConfused() {
+<span class="nc bnc" id="L667" title="All 4 branches missed.">		return hasStatus(StatusID.POISON) || hasStatus(StatusID.CONFUSE);</span>
+	}
+	
+	/**
+	 * Check if the entity has a certain status.
+	 * 
+	 * @param status status id
+	 * @return &lt;code&gt;true&lt;/code&gt; if the entity has the status, otherwise
+	 * 	&lt;code&gt;false&lt;/code&gt;.
+	 */
+	public boolean hasStatus(final StatusID status) {
+<span class="nc" id="L678">	    return statuses.contains(status);</span>
+	}
+
+	/**
+	 * Check if the entity is choking.
+	 * 
+	 * @return &lt;code&gt;true&lt;/code&gt; if the entity is choking, otherwise
+	 * 	&lt;code&gt;false&lt;/code&gt;
+	 */
+	public boolean isChoking() {
+<span class="nc" id="L688">		return choking;</span>
+	}
+
+	// TODO: this is just an ugly workaround to avoid cyclic dependencies with
+	// Creature
+	void nonCreatureClientAddEventLine(final String text) {
+<span class="nc" id="L694">		ClientSingletonRepository.getUserInterface().addEventLine(new StandardHeaderedEventLine(getTitle(), text));</span>
+<span class="nc" id="L695">	}</span>
+
+	/**
+	 * Called when this entity attacks target.
+	 * 
+	 * @param target attack target
+	 */
+	private void onAttack(final IEntity target) {
+<span class="nc" id="L703">		attacking = target.getID();</span>
+<span class="nc" id="L704">	}</span>
+	
+	/**
+	 * When this entity performs an attack.
+	 * 
+	 * @param type attack nature
+	 * @param ranged &lt;code&gt;true&lt;/code&gt; if it's a ranged attack, otherwise
+	 * 	&lt;code&gt;false&lt;/code&gt;
+	 * @param weapon Weapon used in the attack, or &lt;code&gt;null&lt;/code&gt; if not
+	 * 	specified
+	 */
+	public void onAttackPerformed(final Nature type, boolean ranged, String weapon) {
+<span class="fc" id="L716">		attackNature = type;</span>
+<span class="fc" id="L717">		isDoingRangedAttack = ranged;</span>
+<span class="fc" id="L718">		this.weapon = weapon;</span>
+<span class="fc" id="L719">		fireChange(PROP_ATTACK);</span>
+<span class="fc" id="L720">	}</span>
+
+	/**
+	 * When attacker attacks this entity.
+	 * 
+	 * @param attacker attacking entity
+	 */
+	private void onAttacked(final Entity attacker) {
+<span class="nc" id="L728">		attackers.remove(attacker);</span>
+<span class="nc" id="L729">		attackers.add(attacker);</span>
+<span class="nc" id="L730">	}</span>
+
+	/**
+	 * Called when this entity blocks the attack by attacker.
+	 */
+	public void onBlocked() {
+		// Resolution must be set before isDefending may return true.
+<span class="fc" id="L737">		resolution = Resolution.BLOCKED;</span>
+<span class="fc" id="L738">		combatIconTime = System.currentTimeMillis();</span>
+<span class="fc" id="L739">	    playSoundFromCategory(SoundLayer.FIGHTING_NOISE.groupName, &quot;block&quot;);</span>
+<span class="fc" id="L740">	}</span>
+	
+	/**
+	 * Called when this entity is damaged by attacker with damage amount.
+	 * 
+	 * @param attacker attacking entity
+	 * @param damage amount of damage
+	 */
+	public void onDamaged(final Entity attacker, final int damage) {
+		// Resolution must be set before isDefending may return true.
+<span class="fc" id="L750">		resolution = Resolution.HIT;</span>
+<span class="fc" id="L751">		combatIconTime = System.currentTimeMillis();</span>
+
+<span class="pc bpc" id="L753" title="2 of 4 branches missed.">		boolean showAttackInfoForPlayer = (this.isUser() || attacker.isUser());</span>
+<span class="fc" id="L754">		showAttackInfoForPlayer = showAttackInfoForPlayer</span>
+				&amp; (!stendhal.FILTER_ATTACK_MESSAGES);
+
+<span class="pc bpc" id="L757" title="1 of 2 branches missed.">		if (stendhal.SHOW_EVERYONE_ATTACK_INFO || showAttackInfoForPlayer) {</span>
+<span class="nc" id="L758">			ClientSingletonRepository.getUserInterface().addEventLine(new HeaderLessEventLine(</span>
+					getTitle() + &quot; suffers &quot;
+							+ Grammar.quantityplnoun(damage, &quot;point&quot;)
+							+ &quot; of damage from &quot; + attacker.getTitle(),
+					NotificationType.NEGATIVE));
+		}
+<span class="fc" id="L764">	}</span>
+	
+	/**
+	 * Process eating and choking status changes. Avoids firing the PROP_EATING
+	 * property more often than needed and ensures both of the properties are
+	 * in the new state before firing.
+	 * 
+	 * @param newStatus the status where to change eating or choking, if changes
+	 * 	are needed
+	 * @param setEat if &lt;code&gt;true&lt;/code&gt; then eating status should be set
+	 * @param setChoke if &lt;code&gt;true&lt;/code&gt; then choking status should be set
+	 */
+	private void setEatAndChoke(boolean newStatus, boolean setEat, boolean setChoke) {
+<span class="fc" id="L777">		boolean changed = false;</span>
+<span class="pc bpc" id="L778" title="3 of 4 branches missed.">		if (setEat &amp;&amp; (this.eating != newStatus)) {</span>
+<span class="nc" id="L779">			this.eating = newStatus;</span>
+<span class="nc" id="L780">			changed = true;</span>
+		}
+<span class="pc bpc" id="L782" title="3 of 4 branches missed.">		if (setChoke &amp;&amp; (this.choking != newStatus)) {</span>
+<span class="nc" id="L783">			this.choking = newStatus;</span>
+<span class="nc" id="L784">			changed = true;</span>
+		}
+<span class="pc bpc" id="L786" title="1 of 2 branches missed.">		if (changed) {</span>
+<span class="nc" id="L787">			fireChange(PROP_EATING);</span>
+		}
+<span class="fc" id="L789">	}</span>
+
+	/**
+	 * Called when the entity gets healed.
+	 * 
+	 * @param amount amount healed
+	 */
+	public void onHealed(final int amount) {
+		// do nothing for normal rpentities
+<span class="nc" id="L798">	}</span>
+	
+	/**
+	 * Called When entity adjusts HP.
+	 * 
+	 * @param amount change amount
+	 */
+	private void onHPChange(final int amount) {
+<span class="nc bnc" id="L806" title="All 2 branches missed.">		if (User.squaredDistanceTo(x, y) &lt; HEARING_DISTANCE_SQ) {</span>
+<span class="nc bnc" id="L807" title="All 2 branches missed.">			if (amount &gt; 0) {</span>
+<span class="nc" id="L808">				addTextIndicator(&quot;+&quot; + amount, NotificationType.POSITIVE);</span>
+			} else {
+<span class="nc" id="L810">				addTextIndicator(String.valueOf(amount),</span>
+						NotificationType.NEGATIVE);
+			}
+		}
+<span class="nc" id="L814">	}</span>
+
+	/**
+	 * Called when an attacker misses this entity.
+	 */
+	public void onMissed() {
+		// Resolution must be set before isDefending may return true.
+<span class="fc" id="L821">		resolution = Resolution.MISSED;</span>
+<span class="fc" id="L822">		combatIconTime = System.currentTimeMillis();</span>
+<span class="fc" id="L823">	}</span>
+
+	/**
+	 * Called when entity is poisoned.
+	 * 
+	 * @param amount lost HP
+	 */
+	private void onPoisoned(final int amount) {
+<span class="nc bnc" id="L831" title="All 4 branches missed.">		if ((amount &gt; 0) &amp;&amp; (User.squaredDistanceTo(x, y) &lt; HEARING_DISTANCE_SQ)) {</span>
+<span class="nc" id="L832">			ClientSingletonRepository.getUserInterface().addEventLine(</span>
+					new HeaderLessEventLine(
+							getTitle() + &quot; is poisoned, losing &quot;
+							+ Grammar.quantityplnoun(amount, &quot;health point&quot;)
+							+ &quot;.&quot;, NotificationType.POISON));
+		}
+<span class="nc" id="L838">	}</span>
+	
+    /**
+     * Set the status.
+     * 
+     * @param status
+     *         New status
+     * @param show
+     *         Show status overlay
+     */
+    private void setStatus(final StatusID status, final boolean show) {
+<span class="nc bnc" id="L849" title="All 2 branches missed.">        if (show) {</span>
+<span class="nc" id="L850">            statuses.add(status);</span>
+        } else {
+<span class="nc" id="L852">            statuses.remove(status);</span>
+        }
+<span class="nc" id="L854">        fireChange(statusProp.get(status));</span>
+<span class="nc" id="L855">    }</span>
+
+	/**
+	 * Called when entity listen to text from talker.
+	 * 
+	 * @param texttype type of talk (normal private talk, administrator message)
+	 * @param text message contents
+	 */
+	public void onPrivateListen(final String texttype, final String text) {
+		NotificationType type;
+		try {
+<span class="nc" id="L866">			type = NotificationType.valueOf(texttype);</span>
+<span class="nc" id="L867">		} catch (final RuntimeException e) {</span>
+<span class="nc" id="L868">			LOGGER.error(&quot;Unkown texttype: &quot;, e);</span>
+<span class="nc" id="L869">			type = NotificationType.PRIVMSG;</span>
+<span class="nc" id="L870">		}</span>
+
+		
+<span class="nc" id="L873">		ClientSingletonRepository.getUserInterface().addEventLine(new HeaderLessEventLine(text, type));</span>
+
+		// Scene settings messages should not disturb playing, just create some atmosphere
+<span class="nc bnc" id="L876" title="All 2 branches missed.">		if (type != NotificationType.SCENE_SETTING) {</span>
+<span class="nc" id="L877">			ClientSingletonRepository.getUserInterface().addGameScreenText(</span>
+					getX() + (getWidth() / 2.0), getY(),
+					text.replace(&quot;|&quot;, &quot;&quot;), type, false);
+		}
+<span class="nc" id="L881">	}</span>
+
+	/**
+	 * Called when this entity stops attacking.
+	 */
+	private void onStopAttack() {
+<span class="nc" id="L887">		attacking = null;</span>
+<span class="nc" id="L888">	}</span>
+	
+	/**
+	 * Called when attacker stop attacking us.
+	 * 
+	 * @param attacker the attacked that stopped attacking
+	 */
+	private void onStopAttacked(final IEntity attacker) {
+<span class="nc" id="L896">		attackers.remove(attacker);</span>
+<span class="nc" id="L897">	}</span>
+	
+	/**
+	 * Called when the entity reaches an achievement.
+	 * 
+	 * @param achievementTitle title of the achievement
+	 * @param achievementDescription description of the achievement
+	 * @param achievementCategory achievement category
+	 */
+	public void onReachAchievement(String achievementTitle, String achievementDescription, String achievementCategory) {
+<span class="nc" id="L907">		ClientSingletonRepository.getUserInterface().addAchievementBox(achievementTitle, achievementDescription, achievementCategory);</span>
+<span class="nc" id="L908">	}</span>
+
+	/**
+	 * Called when entity says something.
+	 * 
+	 * @param text message contents
+	 */
+	public void onTalk(String text) {
+<span class="nc bnc" id="L916" title="All 4 branches missed.">		if (User.isAdmin() || (User.squaredDistanceTo(x, y) &lt; HEARING_DISTANCE_SQ)) {</span>
+			//an emote action is changed server side to an chat action with a leading !me
+			//this supports also invoking an emote with !me instead of /me
+<span class="nc bnc" id="L919" title="All 2 branches missed.">			if (text.startsWith(&quot;!me&quot;)) {</span>
+<span class="nc" id="L920">				text = text.replace(&quot;!me&quot;, getTitle());</span>
+<span class="nc" id="L921">				ClientSingletonRepository.getUserInterface().addEventLine(new HeaderLessEventLine(text, NotificationType.EMOTE));</span>
+				
+<span class="nc" id="L923">				return;</span>
+			} else {
+				//add the original version
+<span class="nc" id="L926">				nonCreatureClientAddEventLine(text);</span>
+			}
+			
+<span class="nc" id="L929">			text = trimText(text);</span>
+
+<span class="nc" id="L931">			ClientSingletonRepository.getUserInterface().addGameScreenText(</span>
+					getX() + getWidth(), getY(), text,
+					NotificationType.NORMAL, true);
+		}
+<span class="nc" id="L935">	}</span>
+	
+	/**
+	 * Trim text for a speech bubble.
+	 * 
+	 * @param text text to be trimmed
+	 * @return text suitably trimmed for a speech bubble
+	 */
+	private String trimText(String text) {
+<span class="nc bnc" id="L944" title="All 2 branches missed.">		if (text.length() &gt; BUBBLE_TEXT_LENGTH) {</span>
+<span class="nc" id="L945">			text = text.substring(0, BUBBLE_TEXT_LENGTH);</span>
+			// Cut the text if possible at the nearest space etc.
+<span class="nc" id="L947">			int n = text.lastIndexOf(' ');</span>
+<span class="nc" id="L948">			n = Math.max(n, text.lastIndexOf('-'));</span>
+<span class="nc" id="L949">			n = Math.max(n, text.lastIndexOf('.'));</span>
+<span class="nc" id="L950">			n = Math.max(n, text.lastIndexOf(','));</span>
+
+<span class="nc bnc" id="L952" title="All 2 branches missed.">			if (n &gt; 0) {</span>
+<span class="nc" id="L953">				text = text.substring(0, n);</span>
+			}
+
+<span class="nc" id="L956">			text += &quot; ...&quot;;</span>
+		}
+<span class="nc" id="L958">		return text;</span>
+	}
+
+	//
+	// Entity
+	//
+
+	/**
+	 * Get the resistance this has on other entities (0-100).
+	 * 
+	 * @return The resistance, or 0 if in ghostmode.
+	 */
+	@Override
+	public int getResistance() {
+<span class="nc bnc" id="L972" title="All 2 branches missed.">		if (isGhostMode()) {</span>
+<span class="nc" id="L973">			return 0;</span>
+		} else {
+<span class="nc" id="L975">			return super.getResistance();</span>
+		}
+	}
+
+	/**
+	 * Initialize this entity for an object.
+	 * 
+	 * @param object
+	 *            The object.
+	 * 
+	 * @see #release()
+	 */
+	@Override
+	public void initialize(final RPObject object) {
+<span class="fc" id="L989">		super.initialize(object);</span>
+
+		/*
+		 * Base HP
+		 */
+<span class="fc bfc" id="L994" title="All 2 branches covered.">		if (object.has(&quot;base_hp&quot;)) {</span>
+<span class="fc" id="L995">			baseHP = object.getInt(&quot;base_hp&quot;);</span>
+		} else {
+<span class="fc" id="L997">			baseHP = 0;</span>
+		}
+
+		/*
+		 * HP
+		 */
+<span class="fc bfc" id="L1003" title="All 2 branches covered.">		if (object.has(&quot;hp&quot;)) {</span>
+<span class="fc" id="L1004">			hp = object.getInt(&quot;hp&quot;);</span>
+		} else {
+<span class="fc" id="L1006">			hp = 0;</span>
+		}
+
+		/*
+		 * HP ratio
+		 */
+<span class="pc bpc" id="L1012" title="1 of 2 branches missed.">		if (hp &gt;= baseHP) {</span>
+<span class="fc" id="L1013">			hpRatio = 1.0f;</span>
+<span class="nc bnc" id="L1014" title="All 2 branches missed.">		} else if (hp &lt;= 0) {</span>
+<span class="nc" id="L1015">			hpRatio = 0.0f;</span>
+		} else {
+<span class="nc" id="L1017">			hpRatio = hp / (float) baseHP;</span>
+		}
+
+		/*
+		 * Public chat
+		 */
+<span class="pc bpc" id="L1023" title="1 of 2 branches missed.">		if (object.has(&quot;text&quot;)) {</span>
+<span class="nc" id="L1024">			onTalk(object.get(&quot;text&quot;));</span>
+		}
+
+		/*
+		 * Outfit
+		 */
+<span class="fc bfc" id="L1030" title="All 2 branches covered.">		if (object.has(&quot;outfit&quot;)) {</span>
+<span class="fc" id="L1031">			outfit = object.getInt(&quot;outfit&quot;);</span>
+		} else {
+<span class="fc" id="L1033">			outfit = OUTFIT_UNSET;</span>
+		}
+
+		/*
+		 * eating and choking
+		 */
+<span class="fc" id="L1039">		setEatAndChoke(true, object.has(&quot;eating&quot;), object.has(&quot;choking&quot;));</span>
+
+        /* Statuses */
+<span class="fc bfc" id="L1042" title="All 2 branches covered.">		for (StatusID id : StatusID.values()) {</span>
+<span class="pc bpc" id="L1043" title="1 of 2 branches missed.">			if (object.has(id.getAttribute())) {</span>
+<span class="nc" id="L1044">				setStatus(id, true);</span>
+			}
+		}
+
+		/*
+		 * Ghost mode feature.
+		 */
+<span class="fc" id="L1051">		ghostmode = object.has(&quot;ghostmode&quot;);</span>
+		
+		/*
+		 * Ignoring collision.
+		 */
+<span class="fc" id="L1056">		ignoreCollision = object.has(&quot;ignore_collision&quot;);</span>
+
+		/*
+		 * Healed
+		 */
+<span class="pc bpc" id="L1061" title="1 of 2 branches missed.">		if (object.has(&quot;heal&quot;)) {</span>
+<span class="nc" id="L1062">			onHealed(object.getInt(&quot;heal&quot;));</span>
+		}
+
+		/*
+		 * Attack Target is handled later, as it can not be checked reliably
+		 * now anyway.
+		 */
+
+		/*
+		 * Admin level
+		 */
+<span class="pc bpc" id="L1073" title="1 of 2 branches missed.">		if (object.has(&quot;adminlevel&quot;)) {</span>
+<span class="nc" id="L1074">			adminlevel = object.getInt(&quot;adminlevel&quot;);</span>
+		} else {
+<span class="fc" id="L1076">			adminlevel = 0;</span>
+		}
+
+		/*
+		 * Title type
+		 */
+<span class="fc" id="L1082">		titleType = object.get(&quot;title_type&quot;);</span>
+
+<span class="pc bpc" id="L1084" title="1 of 2 branches missed.">		showTitle = !object.has(&quot;unnamed&quot;);</span>
+<span class="pc bpc" id="L1085" title="1 of 2 branches missed.">		showHP = !object.has(&quot;no_hpbar&quot;);</span>
+		
+<span class="fc" id="L1087">		initializeSounds();</span>
+<span class="fc" id="L1088">	}</span>
+	
+	/**
+	 * Initialize the fighting sounds.
+	 */
+	private void initializeSounds() {
+<span class="fc" id="L1094">		addSounds(SoundLayer.FIGHTING_NOISE.groupName, &quot;attack&quot;,</span>
+			&quot;punch-1&quot;   , &quot;punch-2&quot;, &quot;punch-3&quot;,
+			&quot;punch-4&quot;   , &quot;punch-5&quot;, &quot;punch-6&quot;,
+			&quot;swingaxe-1&quot;, &quot;slap-1&quot; , &quot;arrow-1&quot;);
+		
+<span class="fc" id="L1099">		addSounds(SoundLayer.FIGHTING_NOISE.groupName, &quot;block&quot;,</span>
+		        &quot;clang-metallic-1&quot;);
+		
+<span class="fc" id="L1102">	}</span>
+
+	/**
+	 * Release this entity. This should clean anything that isn't automatically
+	 * released (such as unregister callbacks, cancel external operations, etc).
+	 * 
+	 * @see #initialize(RPObject)
+	 */
+	@Override
+	public void release() {
+<span class="nc" id="L1112">		released = true;</span>
+<span class="nc" id="L1113">		onStopAttack();</span>
+
+<span class="nc bnc" id="L1115" title="All 2 branches missed.">		if (attackTarget != null) {</span>
+<span class="nc" id="L1116">			attackTarget.onStopAttacked(this);</span>
+<span class="nc" id="L1117">			attackTarget = null;</span>
+		}
+
+<span class="nc" id="L1120">		super.release();</span>
+<span class="nc" id="L1121">	}</span>
+
+	/**
+	 * Update cycle.
+	 * 
+	 * @param delta
+	 *            The time (in ms) since last call.
+	 */
+	@Override
+	public void update(final int delta) {
+<span class="nc" id="L1131">		super.update(delta);</span>
+
+<span class="nc bnc" id="L1133" title="All 2 branches missed.">		if (!textIndicators.isEmpty()) {</span>
+<span class="nc" id="L1134">			final Iterator&lt;TextIndicator&gt; iter = textIndicators.iterator();</span>
+
+<span class="nc" id="L1136">			boolean changed = false;</span>
+<span class="nc bnc" id="L1137" title="All 2 branches missed.">			while (iter.hasNext()) {</span>
+<span class="nc" id="L1138">				final TextIndicator textIndicator = iter.next();</span>
+
+<span class="nc bnc" id="L1140" title="All 2 branches missed.">				if (textIndicator.addAge(delta) &gt; 2000L) {</span>
+<span class="nc" id="L1141">					iter.remove();</span>
+<span class="nc" id="L1142">					changed = true;</span>
+				}
+<span class="nc" id="L1144">			}</span>
+
+<span class="nc bnc" id="L1146" title="All 2 branches missed.">			if (changed) {</span>
+<span class="nc" id="L1147">				fireChange(PROP_TEXT_INDICATORS);</span>
+			}
+		}
+<span class="nc" id="L1150">	}</span>
+
+	//
+	// RPObjectChangeListener
+	//
+
+	/**
+	 * The object added/changed attribute(s).
+	 * 
+	 * @param object
+	 *            The base object.
+	 * @param changes
+	 *            The changes.
+	 */
+	@Override
+	public void onChangedAdded(final RPObject object, final RPObject changes) {
+<span class="fc" id="L1166">		super.onChangedAdded(object, changes);</span>
+
+<span class="fc bfc" id="L1168" title="All 2 branches covered.">		if (!inAdd) {</span>
+			/*
+			 * Public chat
+			 */
+<span class="pc bpc" id="L1172" title="1 of 2 branches missed.">			if (changes.has(&quot;text&quot;)) {</span>
+<span class="nc" id="L1173">				onTalk(changes.get(&quot;text&quot;));</span>
+			}
+
+			/*
+			 * Outfit
+			 */
+<span class="pc bpc" id="L1179" title="1 of 2 branches missed.">			if (changes.has(&quot;outfit&quot;)) {</span>
+<span class="nc" id="L1180">				outfit = changes.getInt(&quot;outfit&quot;);</span>
+<span class="nc" id="L1181">				fireChange(PROP_OUTFIT);</span>
+			}
+
+			/*
+			 * Eating and choking
+			 */
+<span class="fc" id="L1187">			setEatAndChoke(true, changes.has(&quot;eating&quot;), changes.has(&quot;choking&quot;));</span>
+
+			/* Statuses */
+<span class="fc bfc" id="L1190" title="All 2 branches covered.">			for (StatusID id : StatusID.values()) {</span>
+<span class="fc" id="L1191">				String status = id.getAttribute();</span>
+<span class="pc bpc" id="L1192" title="1 of 2 branches missed.">				if (changes.has(status)) {</span>
+<span class="nc" id="L1193">					setStatus(id, true);</span>
+<span class="nc bnc" id="L1194" title="All 2 branches missed.">					if (status.equals(StatusID.POISON.getAttribute())) {</span>
+						// To remove the - sign on poison.
+<span class="nc" id="L1196">						onPoisoned(Math.abs(changes.getInt(status)));</span>
+					}
+				}
+			}
+
+			/*
+			 * Healed
+			 */
+<span class="pc bpc" id="L1204" title="1 of 2 branches missed.">			if (changes.has(&quot;heal&quot;)) {</span>
+<span class="nc" id="L1205">				onHealed(changes.getInt(&quot;heal&quot;));</span>
+			}
+
+<span class="fc" id="L1208">			boolean hpRatioChange = false;</span>
+
+			/*
+			 * Base HP
+			 */
+<span class="pc bpc" id="L1213" title="1 of 2 branches missed.">			if (changes.has(&quot;base_hp&quot;)) {</span>
+<span class="nc" id="L1214">				baseHP = changes.getInt(&quot;base_hp&quot;);</span>
+<span class="nc" id="L1215">				hpRatioChange = true;</span>
+			}
+<span class="pc bpc" id="L1217" title="1 of 2 branches missed.">			if (changes.has(&quot;modified_base_hp&quot;)) {</span>
+<span class="nc" id="L1218">				baseHP = changes.getInt(&quot;modified_base_hp&quot;);</span>
+<span class="nc" id="L1219">				hpRatioChange = true;</span>
+			}
+
+			/*
+			 * HP
+			 */
+<span class="pc bpc" id="L1225" title="1 of 2 branches missed.">			if (changes.has(&quot;hp&quot;)) {</span>
+<span class="nc" id="L1226">				final int newHP = changes.getInt(&quot;hp&quot;);</span>
+<span class="nc" id="L1227">				final int change = newHP - hp;</span>
+
+<span class="nc" id="L1229">				hp = newHP;</span>
+
+<span class="nc bnc" id="L1231" title="All 4 branches missed.">				if (object.has(&quot;hp&quot;) &amp;&amp; (change != 0)) {</span>
+<span class="nc" id="L1232">					onHPChange(change);</span>
+				}
+
+<span class="nc" id="L1235">				hpRatioChange = true;</span>
+			}
+<span class="pc bpc" id="L1237" title="1 of 2 branches missed.">			if (changes.has(&quot;modified_hp&quot;)) {</span>
+<span class="nc" id="L1238">				final int newHP = changes.getInt(&quot;modified_hp&quot;);</span>
+<span class="nc" id="L1239">				final int change = newHP - hp;</span>
+
+<span class="nc" id="L1241">				hp = newHP;</span>
+
+<span class="nc bnc" id="L1243" title="All 4 branches missed.">				if (object.has(&quot;hp&quot;) &amp;&amp; (change != 0)) {</span>
+<span class="nc" id="L1244">					onHPChange(change);</span>
+				}
+
+<span class="nc" id="L1247">				hpRatioChange = true;</span>
+			}
+
+			/*
+			 * HP ratio
+			 */
+<span class="pc bpc" id="L1253" title="1 of 2 branches missed.">			if (hpRatioChange) {</span>
+<span class="nc bnc" id="L1254" title="All 2 branches missed.">				if (hp &gt;= baseHP) {</span>
+<span class="nc" id="L1255">					hpRatio = 1.0f;</span>
+<span class="nc bnc" id="L1256" title="All 2 branches missed.">				} else if (hp &lt;= 0) {</span>
+<span class="nc" id="L1257">					hpRatio = 0.0f;</span>
+				} else {
+<span class="nc" id="L1259">					hpRatio = hp / (float) baseHP;</span>
+				}
+<span class="nc bnc" id="L1261" title="All 2 branches missed.">				if (hp == 0) {</span>
+<span class="nc" id="L1262">					onDeath();</span>
+				}
+<span class="nc" id="L1264">				fireChange(PROP_HP_RATIO);</span>
+			}
+			
+<span class="pc bpc" id="L1267" title="1 of 2 branches missed.">			if (changes.has(&quot;no_hpbar&quot;)) {</span>
+<span class="nc" id="L1268">				showHP = false;</span>
+<span class="nc" id="L1269">				fireChange(PROP_HP_DISPLAY);</span>
+			}
+
+			/*
+			 * Attack Target
+			 */
+
+<span class="fc" id="L1276">			String target = changes.get(&quot;target&quot;);</span>
+<span class="pc bpc" id="L1277" title="1 of 2 branches missed.">			if (target != null) {</span>
+<span class="nc" id="L1278">				setTarget(target, changes.get(&quot;zoneid&quot;));</span>
+			}
+
+			/*
+			 * Admin level
+			 */
+<span class="pc bpc" id="L1284" title="1 of 2 branches missed.">			if (changes.has(&quot;adminlevel&quot;)) {</span>
+<span class="nc" id="L1285">				adminlevel = changes.getInt(&quot;adminlevel&quot;);</span>
+<span class="nc" id="L1286">				fireChange(PROP_ADMIN_LEVEL);</span>
+			}
+
+			/*
+			 * Title type
+			 */
+<span class="pc bpc" id="L1292" title="1 of 2 branches missed.">			if (changes.has(&quot;title_type&quot;)) {</span>
+<span class="nc" id="L1293">				titleType = changes.get(&quot;title_type&quot;);</span>
+<span class="nc" id="L1294">				fireChange(PROP_TITLE_TYPE);</span>
+			}
+
+			/*
+			 * Title
+			 */
+<span class="pc bpc" id="L1300" title="3 of 6 branches missed.">			if (changes.has(&quot;class&quot;) || changes.has(&quot;name&quot;)</span>
+					|| changes.has(&quot;title&quot;)) {
+<span class="nc" id="L1302">				fireChange(PROP_TITLE);</span>
+			}
+<span class="pc bpc" id="L1304" title="1 of 2 branches missed.">			if (changes.has(&quot;unnamed&quot;)) {</span>
+<span class="nc" id="L1305">				showTitle = false;</span>
+<span class="nc" id="L1306">				fireChange(PROP_TITLE);</span>
+			}
+		}
+
+<span class="fc bfc" id="L1310" title="All 2 branches covered.">		if (changes.has(&quot;atk&quot;)) {</span>
+<span class="fc" id="L1311">			atk = changes.getInt(&quot;atk&quot;);</span>
+		}
+<span class="pc bpc" id="L1313" title="1 of 2 branches missed.">		if (changes.has(&quot;modified_atk&quot;)) {</span>
+<span class="nc" id="L1314">			atk = changes.getInt(&quot;modified_atk&quot;);</span>
+		}
+
+		// handle def
+		// basic def is overriden by modified def, as it has the last word
+		// server side when determining the right value
+<span class="fc bfc" id="L1320" title="All 2 branches covered.">		if (changes.has(&quot;def&quot;)) {</span>
+<span class="fc" id="L1321">			def = changes.getInt(&quot;def&quot;);</span>
+		}
+<span class="pc bpc" id="L1323" title="1 of 2 branches missed.">		if (changes.has(&quot;modified_def&quot;)) {</span>
+<span class="nc" id="L1324">			def = changes.getInt(&quot;modified_def&quot;);</span>
+		}
+
+		/* TODO: Remove condition when ranged stat testing is finished. */
+<span class="pc bpc" id="L1328" title="1 of 2 branches missed.">		if (Testing.COMBAT) {</span>
+<span class="nc bnc" id="L1329" title="All 2 branches missed.">			if (changes.has(&quot;ratk&quot;)) {</span>
+<span class="nc" id="L1330">				ratk = changes.getInt(&quot;ratk&quot;);</span>
+			}
+<span class="nc bnc" id="L1332" title="All 2 branches missed.">			if (changes.has(&quot;modified_ratk&quot;)) {</span>
+<span class="nc" id="L1333">				ratk = changes.getInt(&quot;modified_ratk&quot;);</span>
+			}
+		}
+
+<span class="fc bfc" id="L1337" title="All 2 branches covered.">		if (changes.has(&quot;level&quot;)) {</span>
+<span class="fc" id="L1338">			level = changes.getInt(&quot;level&quot;);</span>
+		}
+<span class="pc bpc" id="L1340" title="1 of 2 branches missed.">		if (changes.has(&quot;modified_level&quot;)) {</span>
+<span class="nc" id="L1341">			level = changes.getInt(&quot;modified_level&quot;);</span>
+		}
+
+<span class="fc bfc" id="L1344" title="All 2 branches covered.">		if (changes.has(&quot;atk_xp&quot;)) {</span>
+<span class="fc" id="L1345">			atkXP = changes.getInt(&quot;atk_xp&quot;);</span>
+		}
+
+<span class="fc bfc" id="L1348" title="All 2 branches covered.">		if (changes.has(&quot;def_xp&quot;)) {</span>
+<span class="fc" id="L1349">			defXP = changes.getInt(&quot;def_xp&quot;);</span>
+		}
+		
+		/* TODO: Remove condition when ranged stat testing is finished. */
+<span class="pc bpc" id="L1353" title="1 of 2 branches missed.">		if (Testing.COMBAT) {</span>
+<span class="nc bnc" id="L1354" title="All 2 branches missed.">			if (changes.has(&quot;ratk_xp&quot;)) {</span>
+<span class="nc" id="L1355">				ratkXP = changes.getInt(&quot;ratk_xp&quot;);</span>
+			}
+		}
+
+<span class="pc bpc" id="L1359" title="1 of 2 branches missed.">		if (changes.has(&quot;atk_item&quot;)) {</span>
+<span class="nc" id="L1360">			atkItem = changes.getInt(&quot;atk_item&quot;);</span>
+		}
+
+<span class="pc bpc" id="L1363" title="1 of 2 branches missed.">		if (changes.has(&quot;def_item&quot;)) {</span>
+<span class="nc" id="L1364">			defItem = changes.getInt(&quot;def_item&quot;);</span>
+		}
+		
+		/* TODO: Remove condition when ranged stat testing is finished. */
+<span class="pc bpc" id="L1368" title="1 of 2 branches missed.">		if (Testing.COMBAT) {</span>
+<span class="nc bnc" id="L1369" title="All 2 branches missed.">			if (changes.has(&quot;ratk_item&quot;)) {</span>
+<span class="nc" id="L1370">				ratkItem = changes.getInt(&quot;ratk_item&quot;);</span>
+			}
+		}
+
+<span class="pc bpc" id="L1374" title="1 of 2 branches missed.">		if (changes.has(&quot;mana&quot;)) {</span>
+<span class="nc" id="L1375">			mana = changes.getInt(&quot;mana&quot;);</span>
+		}
+<span class="pc bpc" id="L1377" title="1 of 2 branches missed.">		if (changes.has(&quot;modified_mana&quot;)) {</span>
+<span class="nc" id="L1378">			mana = changes.getInt(&quot;modified_mana&quot;);</span>
+		}
+
+<span class="pc bpc" id="L1381" title="1 of 2 branches missed.">		if (changes.has(&quot;base_mana&quot;)) {</span>
+<span class="nc" id="L1382">			baseMana = changes.getInt(&quot;base_mana&quot;);</span>
+		}
+<span class="pc bpc" id="L1384" title="1 of 2 branches missed.">		if (changes.has(&quot;modified_base_mana&quot;)) {</span>
+<span class="nc" id="L1385">			baseMana = changes.getInt(&quot;modified_base_mana&quot;);</span>
+		}
+
+<span class="pc bpc" id="L1388" title="1 of 2 branches missed.">		if (changes.has(&quot;ghostmode&quot;)) {</span>
+<span class="nc" id="L1389">			ghostmode = true;</span>
+<span class="nc" id="L1390">			fireChange(PROP_GHOSTMODE);</span>
+		}
+
+<span class="fc bfc" id="L1393" title="All 2 branches covered.">		if (changes.has(&quot;xp&quot;)) {</span>
+<span class="fc" id="L1394">			int newXp = changes.getInt(&quot;xp&quot;); </span>
+			
+<span class="pc bpc" id="L1396" title="3 of 4 branches missed.">			if (object.has(&quot;xp&quot;) &amp;&amp; (User.squaredDistanceTo(x, y) &lt; HEARING_DISTANCE_SQ)) {</span>
+<span class="nc" id="L1397">				final int amount = newXp - xp;</span>
+<span class="nc bnc" id="L1398" title="All 2 branches missed.">				if (amount &gt; 0) {</span>
+<span class="nc" id="L1399">					addTextIndicator(&quot;+&quot; + amount,</span>
+							NotificationType.SIGNIFICANT_POSITIVE);
+<span class="nc" id="L1401">					ClientSingletonRepository.getUserInterface().addEventLine(new HeaderLessEventLine(</span>
+							getTitle()
+							+ &quot; earns &quot;
+							+ Grammar.quantityplnoun(amount,
+									&quot;experience point&quot;) + &quot;.&quot;,
+									NotificationType.SIGNIFICANT_POSITIVE));
+<span class="nc bnc" id="L1407" title="All 2 branches missed.">				} else if (amount &lt; 0) {</span>
+<span class="nc" id="L1408">					addTextIndicator(Integer.toString(amount),</span>
+							NotificationType.SIGNIFICANT_NEGATIVE);
+<span class="nc" id="L1410">					ClientSingletonRepository.getUserInterface().addEventLine(new HeaderLessEventLine(</span>
+							getTitle()
+							+ &quot; loses &quot;
+							+ Grammar.quantityplnoun(-amount,
+									&quot;experience point&quot;) + &quot;.&quot;,
+									NotificationType.SIGNIFICANT_NEGATIVE));
+				}
+			}
+			
+<span class="fc" id="L1419">			xp = newXp;</span>
+		}
+
+<span class="pc bpc" id="L1422" title="3 of 6 branches missed.">		if (changes.has(&quot;level&quot;) &amp;&amp; object.has(&quot;level&quot;)</span>
+				&amp;&amp; (User.squaredDistanceTo(x, y) &lt; HEARING_DISTANCE_SQ)) {
+<span class="nc" id="L1424">			final String text = getTitle() + &quot; reaches Level &quot; + getLevel();</span>
+<span class="nc" id="L1425">			ClientSingletonRepository.getUserInterface().addEventLine(new HeaderLessEventLine(text,</span>
+					NotificationType.SIGNIFICANT_POSITIVE));
+
+<span class="nc" id="L1428">			ClientSingletonRepository.getUserInterface().addGameScreenText(</span>
+					getX() + (getWidth() / 2.0), getY(),
+					text, NotificationType.SIGNIFICANT_POSITIVE, false);
+		}
+<span class="fc" id="L1432">	}</span>
+
+	/**
+	 * Called when the entity dies.
+	 */
+	private void onDeath() {
+<span class="nc" id="L1438">	    playSoundFromCategory(SoundLayer.FIGHTING_NOISE.groupName, &quot;death&quot;);</span>
+<span class="nc" id="L1439">	}</span>
+
+	/**
+	 * The object removed attribute(s).
+	 * 
+	 * @param object
+	 *            The base object.
+	 * @param changes
+	 *            The changes.
+	 */
+	@Override
+	public void onChangedRemoved(final RPObject object, final RPObject changes) {
+<span class="fc" id="L1451">		super.onChangedRemoved(object, changes);</span>
+
+		/*
+		 * Outfit
+		 */
+<span class="pc bpc" id="L1456" title="1 of 2 branches missed.">		if (changes.has(&quot;outfit&quot;)) {</span>
+<span class="nc" id="L1457">			outfit = OUTFIT_UNSET;</span>
+<span class="nc" id="L1458">			fireChange(PROP_OUTFIT);</span>
+		}
+
+		/* 
+		 * No longer has status. The iterator of EnumSet is safe despite the
+		 * modification in the loop.
+		 */
+<span class="pc bpc" id="L1465" title="1 of 2 branches missed.">		for (StatusID status : statuses) {</span>
+<span class="nc bnc" id="L1466" title="All 2 branches missed.">			if (changes.has(status.getAttribute())) {</span>
+<span class="nc" id="L1467">				setStatus(status, false);</span>
+			}
+<span class="nc" id="L1469">		}</span>
+
+		/*
+		 * No longer eating or choking?
+		 */
+<span class="fc" id="L1474">		setEatAndChoke(false, changes.has(&quot;eating&quot;), changes.has(&quot;choking&quot;));</span>
+
+<span class="pc bpc" id="L1476" title="1 of 2 branches missed.">		if (changes.has(&quot;ghostmode&quot;)) {</span>
+<span class="nc" id="L1477">			ghostmode = false;</span>
+<span class="nc" id="L1478">			fireChange(PROP_GHOSTMODE);</span>
+		}
+
+		/*
+		 * Attack target gone?
+		 */
+<span class="pc bpc" id="L1484" title="1 of 2 branches missed.">		if (changes.has(&quot;target&quot;)) {</span>
+<span class="nc" id="L1485">			onStopAttack();</span>
+
+<span class="nc bnc" id="L1487" title="All 2 branches missed.">			if (attackTarget != null) {</span>
+<span class="nc" id="L1488">				attackTarget.onStopAttacked(this);</span>
+<span class="nc" id="L1489">				attackTarget = null;</span>
+			}
+		}
+		
+		/*
+		 * Title
+		 */
+<span class="pc bpc" id="L1496" title="1 of 2 branches missed.">		if (changes.has(&quot;unnamed&quot;)) {</span>
+<span class="nc" id="L1497">			showTitle = true;</span>
+<span class="nc" id="L1498">			fireChange(PROP_TITLE);</span>
+		}
+		
+<span class="pc bpc" id="L1501" title="1 of 2 branches missed.">		if (changes.has(&quot;no_hpbar&quot;)) {</span>
+<span class="nc" id="L1502">			showHP = true;</span>
+<span class="nc" id="L1503">			fireChange(PROP_HP_DISPLAY);</span>
+		}
+<span class="fc" id="L1505">	}</span>
+	
+	/**
+	 * Check if the entity view should show the title.
+	 * 
+	 * @return &lt;code&gt;true&lt;/code&gt;, if the title should be displayed,
+	 * 	&lt;code&gt;false&lt;/code&gt; if it should be hidden
+	 */
+	public boolean showTitle() {
+<span class="nc" id="L1514">		return showTitle;</span>
+	}
+	
+	/**
+	 * Check if the entity view should show the HP indicator.
+	 * 
+	 * @return &lt;code&gt;true&lt;/code&gt;, if the HP bar should be displayed,
+	 * 	&lt;code&gt;false&lt;/code&gt; if it should be hidden
+	 */
+	public boolean showHPBar() {
+<span class="nc" id="L1524">		return showHP;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

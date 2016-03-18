@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>EquipmentActionData.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.core.rp.equipping</a> &gt; <span class="el_source">EquipmentActionData.java</span></div><h1>EquipmentActionData.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2011 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.core.rp.equipping;
+
+import games.stendhal.server.entity.Entity;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.entity.slot.EntitySlot;
+
+import java.util.LinkedList;
+import java.util.List;
+
+/**
+ * data use in an equipment action
+ *
+ * @author hendrik
+ */
+// TODO: This is experimental code not in use, yet.
+<span class="nc" id="L27">public class EquipmentActionData {</span>
+
+	/** the name of an item */
+	private String itemName;
+
+	/** the requested quantity */
+<span class="nc" id="L33">	private int quantity = -1;</span>
+
+	/** the source slots */
+<span class="nc" id="L36">	private final List&lt;EntitySlot&gt; sourceSlots = new LinkedList&lt;EntitySlot&gt;();</span>
+
+	/** the source items */
+<span class="nc" id="L39">	private final List&lt;Entity&gt; sourceItems = new LinkedList&lt;Entity&gt;();</span>
+
+	/** root object of the source item */
+	private Entity sourceRoot;
+
+	/** the target slots */
+	private EntitySlot targetSlot;
+
+	/** root object of the target slot */
+	private Entity targetRoot;
+
+	/** player */
+	private Player player;
+
+	/** isSwapable? */
+	private boolean swapable;
+
+	/** in-game error message */
+	private String errorMessage;
+
+	/** in-game warning message */
+	private String warningMessage;
+
+	public String getItemName() {
+<span class="nc" id="L63">		return itemName;</span>
+	}
+
+	public void setItemName(String itemName) {
+<span class="nc" id="L67">		this.itemName = itemName;</span>
+<span class="nc" id="L68">	}</span>
+
+	public int getQuantity() {
+<span class="nc" id="L71">		return quantity;</span>
+	}
+
+	public void setQuantity(int quantity) {
+<span class="nc" id="L75">		this.quantity = quantity;</span>
+<span class="nc" id="L76">	}</span>
+
+	public List&lt;EntitySlot&gt; getSourceSlots() {
+<span class="nc" id="L79">		return sourceSlots;</span>
+	}
+
+	public void addSourceSlot(EntitySlot sourceSlot) {
+<span class="nc" id="L83">		this.sourceSlots.add(sourceSlot);</span>
+<span class="nc" id="L84">	}</span>
+
+	public EntitySlot getTargetSlot() {
+<span class="nc" id="L87">		return targetSlot;</span>
+	}
+
+	public void setTargetSlot(EntitySlot targetSlot) {
+<span class="nc" id="L91">		this.targetSlot = targetSlot;</span>
+<span class="nc" id="L92">	}</span>
+
+	public List&lt;Entity&gt; getSourceItems() {
+<span class="nc" id="L95">		return sourceItems;</span>
+	}
+
+	public void addSourceItem(Entity sourceItem) {
+<span class="nc" id="L99">		this.sourceItems.add(sourceItem);</span>
+<span class="nc" id="L100">	}</span>
+
+	public Player getPlayer() {
+<span class="nc" id="L103">		return player;</span>
+	}
+
+	public void setPlayer(Player player) {
+<span class="nc" id="L107">		this.player = player;</span>
+<span class="nc" id="L108">	}</span>
+
+	public boolean isSwapable() {
+<span class="nc" id="L111">		return swapable;</span>
+	}
+
+	public void setSwapable(boolean swapable) {
+<span class="nc" id="L115">		this.swapable = swapable;</span>
+<span class="nc" id="L116">	}</span>
+
+	public String getErrorMessage() {
+<span class="nc" id="L119">		return errorMessage;</span>
+	}
+
+	/**
+	 * stores the in-game error message to be sent to the client. &quot;&quot; means fail silently.
+	 *
+	 * @param message in-game error message
+	 */
+	public void setErrorMessage(String message) {
+<span class="nc" id="L128">		this.errorMessage = message;</span>
+<span class="nc" id="L129">	}</span>
+
+	public String getWarningMessage() {
+<span class="nc" id="L132">		return warningMessage;</span>
+	}
+
+	public void setWarningMessage(String warningMessage) {
+<span class="nc" id="L136">		this.warningMessage = warningMessage;</span>
+<span class="nc" id="L137">	}</span>
+
+	public Entity getSourceRoot() {
+<span class="nc" id="L140">		return sourceRoot;</span>
+	}
+
+	public void setSourceRoot(Entity sourceRoot) {
+<span class="nc" id="L144">		this.sourceRoot = sourceRoot;</span>
+<span class="nc" id="L145">	}</span>
+
+	public Entity getTargetRoot() {
+<span class="nc" id="L148">		return targetRoot;</span>
+	}
+
+	public void setTargetRoot(Entity targetRoot) {
+<span class="nc" id="L152">		this.targetRoot = targetRoot;</span>
+<span class="nc" id="L153">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

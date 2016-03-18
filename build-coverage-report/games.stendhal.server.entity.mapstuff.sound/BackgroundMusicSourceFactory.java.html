@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>BackgroundMusicSourceFactory.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.mapstuff.sound</a> &gt; <span class="el_source">BackgroundMusicSourceFactory.java</span></div><h1>BackgroundMusicSourceFactory.java</h1><pre class="source lang-java linenums">/*
+ * @(#) src/games/stendhal/server/entity/area/CreatureProtectionAreaFactory.java
+ *
+ * $Id$
+ */
+
+package games.stendhal.server.entity.mapstuff.sound;
+
+import games.stendhal.server.core.config.factory.ConfigurableFactoryContext;
+
+/**
+ * A factory for a BackgroundMusicSource.
+ */
+<span class="nc" id="L14">public class BackgroundMusicSourceFactory extends SoundSourceFactory {</span>
+
+	/**
+	 * Create an BackgroundMusicSource.
+	 * 
+	 * @param ctx
+	 *            Configuration context.
+	 * 
+	 * @return An BackgroundMusicSource.
+	 * 
+	 * @throws IllegalArgumentException
+	 *             If there is a problem with the attributes.
+	 * @see LoopedAmbientSoundSource
+	 */
+	@Override
+	public BackgroundMusicSource create(final ConfigurableFactoryContext ctx) {
+		BackgroundMusicSource source;
+
+<span class="nc" id="L32">		source = new BackgroundMusicSource(getSound(ctx), getRadius(ctx), getVolume(ctx));</span>
+
+<span class="nc" id="L34">		return source;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

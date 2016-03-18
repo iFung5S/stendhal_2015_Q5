@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>GetPostmanMessagesCommand.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.core.engine.dbcommand</a> &gt; <span class="el_source">GetPostmanMessagesCommand.java</span></div><h1>GetPostmanMessagesCommand.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                    (C) Copyright 2007-2010 - Stendhal                   *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.core.engine.dbcommand;
+
+import games.stendhal.server.core.engine.ChatMessage;
+import games.stendhal.server.core.engine.db.PostmanDAO;
+import games.stendhal.server.entity.player.Player;
+
+import java.sql.SQLException;
+import java.util.List;
+
+import marauroa.server.db.DBTransaction;
+import marauroa.server.db.command.AbstractDBCommand;
+import marauroa.server.game.db.DAORegister;
+
+/**
+ * Get postman messages for a player
+ *
+ * @author kymara
+ */
+public class GetPostmanMessagesCommand extends AbstractDBCommand {
+
+	private Player player;
+	private List&lt;ChatMessage&gt; messages;
+
+
+	/**
+	 * creates a new GetPostmanMessagesCommand
+	 *
+	 * @param player the player the check originated from
+	 */
+<span class="fc" id="L41">	public GetPostmanMessagesCommand(Player player) {</span>
+<span class="fc" id="L42">		this.player = player;</span>
+<span class="fc" id="L43">	}</span>
+
+	@Override
+	public void execute(DBTransaction transaction) throws SQLException {
+<span class="fc" id="L47">		PostmanDAO dao = DAORegister.get().get(PostmanDAO.class);</span>
+<span class="fc" id="L48">		messages = dao.getChatMessages(transaction, player.getName());</span>
+		// mark the messages delivered in the same transaction that we got them in
+<span class="fc" id="L50">		dao.markMessagesDelivered(transaction, player.getName());</span>
+<span class="fc" id="L51">	}</span>
+
+	/**
+	 * gets the list of messages
+	 *
+	 * @return messages
+	 */
+	public List&lt;ChatMessage&gt; getMessages() {
+<span class="fc" id="L59">		return messages; </span>
+	}
+	
+	/**
+	 * To access the player sending the query
+	 *
+	 * @return player
+	 */
+	public Player getPlayer() {
+<span class="fc" id="L68">		return player;</span>
+	}
+
+	/**
+	 * returns a string suitable for debug output of this DBCommand.
+	 *
+	 * @return debug string
+	 */
+	@Override
+	public String toString() {
+<span class="fc" id="L78">		return &quot;GetPostmanMessagesCommand [player=&quot; + player + &quot;, messages=&quot;</span>
+				+ messages + &quot;]&quot;;
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

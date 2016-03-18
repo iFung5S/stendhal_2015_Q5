@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>XMLUtil.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.core.config</a> &gt; <span class="el_source">XMLUtil.java</span></div><h1>XMLUtil.java</h1><pre class="source lang-java linenums">/*
+ * @(#) src/games/stendhal/server/config/XMLUtil.java
+ *
+ * $Id$
+ */
+
+package games.stendhal.server.core.config;
+
+//
+//
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.LinkedList;
+import java.util.List;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
+
+/**
+ * XML utility methods for DOM reading.
+ */
+<span class="nc" id="L30">public class XMLUtil {</span>
+	//
+	// XMLUtil
+	//
+
+	/**
+	 * Get all the direct children elements of an element.
+	 *
+	 * @param parent
+	 *            The parent element.
+	 *
+	 * @return A list of Element's.
+	 */
+	public static List&lt;Element&gt; getElements(final Element parent) {
+<span class="fc" id="L44">		final LinkedList&lt;Element&gt; list = new LinkedList&lt;Element&gt;();</span>
+
+<span class="fc" id="L46">		Node node = parent.getFirstChild();</span>
+
+<span class="fc bfc" id="L48" title="All 2 branches covered.">		while (node != null) {</span>
+<span class="fc bfc" id="L49" title="All 2 branches covered.">			if (node.getNodeType() == Node.ELEMENT_NODE) {</span>
+<span class="fc" id="L50">				list.add((Element) node);</span>
+			}
+
+<span class="fc" id="L53">			node = node.getNextSibling();</span>
+		}
+
+<span class="fc" id="L56">		return list;</span>
+	}
+
+	/**
+	 * Get all the direct children elements of an element that have a specific
+	 * tag name.
+	 *
+	 * @param parent
+	 *            The parent element.
+	 * @param name
+	 *            The tag name to match.
+	 *
+	 * @return A list of Element's.
+	 */
+	public static List&lt;Element&gt; getElements(final Element parent,
+			final String name) {
+<span class="fc" id="L72">		final LinkedList&lt;Element&gt; list = new LinkedList&lt;Element&gt;();</span>
+
+<span class="fc" id="L74">		Node node = parent.getFirstChild();</span>
+
+<span class="fc bfc" id="L76" title="All 2 branches covered.">		while (node != null) {</span>
+<span class="fc bfc" id="L77" title="All 2 branches covered.">			if (node.getNodeType() == Node.ELEMENT_NODE) {</span>
+<span class="fc" id="L78">				final Element element = (Element) node;</span>
+
+<span class="pc bpc" id="L80" title="1 of 2 branches missed.">				if (element.getTagName().equals(name)) {</span>
+<span class="fc" id="L81">					list.add(element);</span>
+				}
+			}
+
+<span class="fc" id="L85">			node = node.getNextSibling();</span>
+		}
+
+<span class="fc" id="L88">		return list;</span>
+	}
+
+	/**
+	 * Get the direct text content of an element.
+	 *
+	 * @param element
+	 *            The element.
+	 *
+	 * @return The contained text.
+	 */
+	public static String getText(final Element element) {
+<span class="nc" id="L100">		final StringBuilder sbuf = new StringBuilder();</span>
+
+<span class="nc" id="L102">		getText(element, sbuf, false);</span>
+
+<span class="nc" id="L104">		return sbuf.toString();</span>
+	}
+
+	/**
+	 * Get the text content of an element.
+	 *
+	 * @param element
+	 *            The element.
+	 * @param sbuf
+	 *            The buffer to append to.
+	 * @param decend
+	 *            Whether to descend into child elements.
+	 */
+	public static void getText(final Element element, final StringBuilder sbuf,
+			final boolean decend) {
+<span class="nc" id="L119">		Node node = element.getFirstChild();</span>
+
+<span class="nc bnc" id="L121" title="All 2 branches missed.">		while (node != null) {</span>
+<span class="nc bnc" id="L122" title="All 3 branches missed.">			switch (node.getNodeType()) {</span>
+			case Node.TEXT_NODE:
+<span class="nc" id="L124">				sbuf.append(node.getNodeValue());</span>
+<span class="nc" id="L125">				break;</span>
+
+			case Node.ELEMENT_NODE:
+<span class="nc bnc" id="L128" title="All 2 branches missed.">				if (decend) {</span>
+<span class="nc" id="L129">					getText((Element) node, sbuf, decend);</span>
+				}
+
+				break;
+			}
+
+<span class="nc" id="L135">			node = node.getNextSibling();</span>
+		}
+<span class="nc" id="L137">	}</span>
+
+	/**
+	 * Parse an XML document.
+	 *
+	 * @param in
+	 *            The input stream.
+	 *
+	 * @return A Document.
+	 *
+	 * @throws SAXException
+	 *             If there is a parsing error.
+	 * @throws IOException
+	 *             If there is an I/O error.
+	 * @throws IllegalArgumentException
+	 *             If there is a parser configuration error.
+	 */
+	public static Document parse(final InputStream in) throws SAXException,
+			IOException {
+<span class="fc" id="L156">		return parse(new InputSource(in));</span>
+	}
+
+	/**
+	 * Parse an XML document.
+	 *
+	 * @param is
+	 *            The input source.
+	 *
+	 * @return A Document.
+	 *
+	 * @throws SAXException
+	 *             If there is a parsing error.
+	 * @throws IOException
+	 *             If there is an I/O error.
+	 * @throws IllegalArgumentException
+	 *             If there is a parser configuration error.
+	 */
+	public static Document parse(final InputSource is) throws SAXException,
+			IOException {
+		try {
+<span class="fc" id="L177">			final DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();</span>
+
+<span class="fc" id="L179">			return builder.parse(is);</span>
+<span class="nc" id="L180">		} catch (final ParserConfigurationException ex) {</span>
+<span class="nc" id="L181">			throw new IllegalArgumentException(</span>
+					&quot;DOM parser configuration error: &quot; + ex.getMessage());
+		}
+	}
+
+
+	/**
+	 * checks if a condition is true
+	 *
+	 * @param condition value of the condition attribute
+	 * @return result of the evaluation of the condition
+	 */
+	public static boolean checkCondition(String condition) {
+<span class="pc bpc" id="L194" title="1 of 4 branches missed.">		if ((condition == null) || condition.trim().equals(&quot;&quot;)) {</span>
+<span class="fc" id="L195">			return true;</span>
+		}
+
+<span class="fc" id="L198">		String value  = condition.trim();</span>
+<span class="fc bfc" id="L199" title="All 2 branches covered.">		if (value.charAt(0) == '!') {</span>
+<span class="pc bpc" id="L200" title="1 of 2 branches missed.">			return System.getProperty(value.substring(1)) == null;</span>
+		}
+
+<span class="pc bpc" id="L203" title="1 of 2 branches missed.">		return System.getProperty(value) != null;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

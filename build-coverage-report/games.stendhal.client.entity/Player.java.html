@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Player.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.entity</a> &gt; <span class="el_source">Player.java</span></div><h1>Player.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *		      (C) Copyright 2003 - Marauroa		      *
+ ***************************************************************************
+ ***************************************************************************
+ *									 *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.				   *
+ *									 *
+ ***************************************************************************/
+package games.stendhal.client.entity;
+
+import games.stendhal.common.NotificationType;
+import games.stendhal.common.constants.SoundLayer;
+import marauroa.common.game.RPObject;
+
+/** A Player entity. */
+public class Player extends RPEntity {
+	
+	/**
+	 * Away property.
+	 */
+<span class="fc" id="L25">	public static final Property PROP_AWAY = new Property();</span>
+	/**
+	 * Grumpy property.
+	 */
+<span class="fc" id="L29">	public static final Property PROP_GRUMPY = new Property();</span>
+	/**
+	 * Player killer property.
+	 */
+<span class="fc" id="L33">	public static final Property PROP_PLAYER_KILLER = new Property();</span>
+	
+	private static final String LAST_PLAYER_KILL_TIME = &quot;last_player_kill_time&quot;;
+	
+	/**
+	 * The away message of this player.
+	 */
+	private String away;
+	/**
+	 * The grumpy message of this player.
+	 */
+	private String grumpy;
+	private boolean badboy;
+
+	/**
+	 * Create a player entity.
+	 */
+<span class="fc" id="L50">	public Player() {</span>
+<span class="fc" id="L51">		away = null;</span>
+<span class="fc" id="L52">		grumpy = null;</span>
+<span class="fc" id="L53">	}</span>
+
+	//
+	// Player
+	//
+
+	/**
+	 * Determine if the player is away.
+	 * 
+	 * @return &lt;code&gt;true&lt;/code&gt; if the player is away.
+	 */
+	public boolean isAway() {
+<span class="nc bnc" id="L65" title="All 2 branches missed.">		return (getAway() != null);</span>
+	}
+	
+	public boolean isBadBoy() {
+<span class="fc" id="L69">		return badboy;</span>
+	}
+
+	/**
+	 * Get the away message.
+	 * 
+	 * @return The away text, or &lt;code&gt;null&lt;/code&gt; if not away.
+	 */
+	public String getAway() {
+<span class="nc" id="L78">		return away;</span>
+	}
+	
+	/**
+	 * An away message was set/cleared.
+	 * 
+	 * @param message
+	 *            The away message, or &lt;code&gt;null&lt;/code&gt; if no-longer away.
+	 */
+	protected void onAway(final String message) {
+		// Filter out events about changing to same message
+<span class="nc bnc" id="L89" title="All 2 branches missed.">		if (messageChanged(away, message)) {</span>
+<span class="nc" id="L90">			away = message;</span>
+<span class="nc" id="L91">			fireChange(PROP_AWAY);</span>
+<span class="nc bnc" id="L92" title="All 2 branches missed.">			if (message != null) {</span>
+<span class="nc" id="L93">				addTextIndicator(&quot;Away&quot;, NotificationType.INFORMATION);</span>
+			} else {
+<span class="nc" id="L95">				addTextIndicator(&quot;Back&quot;, NotificationType.INFORMATION);</span>
+			}
+		}
+<span class="nc" id="L98">	}</span>
+	
+	/**
+	 * Determine if the player is grumpy.
+	 * 
+	 * @return &lt;code&gt;true&lt;/code&gt; if the player is grumpy.
+	 */
+	public boolean isGrumpy() {
+<span class="nc bnc" id="L106" title="All 2 branches missed.">		return (grumpy != null);</span>
+	}
+
+	/**
+	 * An away message was set/cleared.
+	 * 
+	 * @param message
+	 *            The away message, or &lt;code&gt;null&lt;/code&gt; if no-longer away.
+	 */
+	private void onGrumpy(final String message) {
+		// Filter out events about changing to same message
+<span class="nc bnc" id="L117" title="All 2 branches missed.">		if (messageChanged(grumpy, message)) {</span>
+<span class="nc" id="L118">			grumpy = message;</span>
+<span class="nc" id="L119">			fireChange(PROP_GRUMPY);</span>
+<span class="nc bnc" id="L120" title="All 2 branches missed.">			if (message != null) {</span>
+<span class="nc" id="L121">				addTextIndicator(&quot;Grumpy&quot;, NotificationType.INFORMATION);</span>
+			} else {
+<span class="nc" id="L123">				addTextIndicator(&quot;Receptive&quot;, NotificationType.INFORMATION);</span>
+			}
+		}
+<span class="nc" id="L126">	}</span>
+
+	/**
+	 * Check if a message string has changed.
+	 * 
+	 * @param oldMessage
+	 * @param newMessage
+	 * @return &lt;code&gt;true&lt;/code&gt; if the message has changed
+	 */
+	private boolean messageChanged(String oldMessage, String newMessage) {
+<span class="nc bnc" id="L136" title="All 8 branches missed.">		return ((newMessage == null) &amp;&amp; (oldMessage != null))</span>
+		|| ((newMessage != null) &amp;&amp; !newMessage.equals(oldMessage));
+	}
+
+	@Override
+	public void onTalk(String text) {
+<span class="nc bnc" id="L142" title="All 2 branches missed.">		if (!User.isIgnoring(this.getName())) {</span>
+<span class="nc" id="L143">			super.onTalk(text);</span>
+		}
+<span class="nc" id="L145">	}</span>
+
+	@Override
+	public void onDamaged(Entity attacker, int damage) {
+<span class="nc" id="L149">		super.onDamaged(attacker, damage);</span>
+<span class="nc" id="L150">		playRandomSoundFromCategory(SoundLayer.FIGHTING_NOISE.groupName, &quot;attack&quot;);</span>
+<span class="nc" id="L151">	}</span>
+
+	//
+	// RPObjectChangeListener
+	//
+
+	/**
+	 * The object added/changed attribute(s).
+	 * 
+	 * @param object
+	 *            The base object.
+	 * @param changes
+	 *            The changes.
+	 */
+	@Override
+	public void onChangedAdded(final RPObject object, final RPObject changes) {
+<span class="fc" id="L167">		super.onChangedAdded(object, changes);</span>
+
+<span class="pc bpc" id="L169" title="1 of 2 branches missed.">		if (changes.has(&quot;away&quot;)) {</span>
+<span class="nc" id="L170">			onAway(changes.get(&quot;away&quot;));</span>
+		}
+		
+<span class="pc bpc" id="L173" title="1 of 2 branches missed.">		if (changes.has(&quot;grumpy&quot;)) {</span>
+<span class="nc" id="L174">			onGrumpy(changes.get(&quot;grumpy&quot;));</span>
+		}
+		
+<span class="fc bfc" id="L177" title="All 2 branches covered.">		if (changes.has(LAST_PLAYER_KILL_TIME)) {</span>
+<span class="fc" id="L178">			badboy = true;</span>
+<span class="fc" id="L179">			fireChange(PROP_PLAYER_KILLER);</span>
+		}
+<span class="fc" id="L181">	}</span>
+
+	/**
+	 * The object removed attribute(s).
+	 * 
+	 * @param object
+	 *            The base object.
+	 * @param changes
+	 *            The changes.
+	 */
+	@Override
+	public void onChangedRemoved(final RPObject object, final RPObject changes) {
+<span class="fc" id="L193">		super.onChangedRemoved(object, changes);</span>
+
+<span class="pc bpc" id="L195" title="1 of 2 branches missed.">		if (changes.has(&quot;away&quot;)) {</span>
+<span class="nc" id="L196">			onAway(null);</span>
+		}
+<span class="pc bpc" id="L198" title="1 of 2 branches missed.">		if (changes.has(&quot;grumpy&quot;)) {</span>
+<span class="nc" id="L199">			onGrumpy(null);</span>
+		}
+<span class="pc bpc" id="L201" title="1 of 2 branches missed.">		if (changes.has(LAST_PLAYER_KILL_TIME)) {</span>
+<span class="fc" id="L202">			badboy = false;</span>
+<span class="fc" id="L203">			fireChange(PROP_PLAYER_KILLER);</span>
+		}
+<span class="fc" id="L205">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

@@ -1,0 +1,290 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>DefaultSpell.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.core.rule.defaultruleset</a> &gt; <span class="el_source">DefaultSpell.java</span></div><h1>DefaultSpell.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.core.rule.defaultruleset;
+
+import games.stendhal.common.constants.Nature;
+import games.stendhal.server.core.rule.EntityManager;
+import games.stendhal.server.core.rule.defaultruleset.creator.AbstractCreator;
+import games.stendhal.server.core.rule.defaultruleset.creator.FullSpellCreator;
+import games.stendhal.server.entity.spell.Spell;
+
+import java.lang.reflect.Constructor;
+
+import org.apache.log4j.Logger;
+/**
+ * Spell information are loaded from XML into a {@link DefaultSpell}.
+ * The {@link EntityManager} uses this information to instantiate objects of
+ * the right type.
+ * 
+ * @author madmetzger
+ */
+public class DefaultSpell {
+	
+<span class="fc" id="L33">	private static final Logger logger = Logger.getLogger(DefaultSpell.class);</span>
+	
+	private AbstractCreator&lt;Spell&gt; creator;
+	
+	private String name;
+	
+	private Nature nature;
+	
+	private Class&lt;?&gt; implementationClass;
+	
+	private int mana;
+	
+	private int cooldown;
+	
+	private int minimumLevel;
+	
+	private int range;
+	
+	private int atk;
+	
+	private int def;
+	
+	private int amount;
+	
+	private int regen;
+	
+	private int rate;
+	
+	private double lifesteal;
+	
+	private double modifier;
+
+	/**
+	 * Creates a new {@link DefaultSpell}
+	 * @param name the name of that spell
+	 * @param clazzName class name
+	 */
+<span class="fc" id="L70">	public DefaultSpell(String name, String clazzName) {</span>
+		try {
+<span class="fc" id="L72">			this.name = name;</span>
+<span class="fc" id="L73">			this.implementationClass = Class.forName(clazzName);</span>
+<span class="fc" id="L74">			this.buildCreator(implementationClass);</span>
+<span class="nc" id="L75">		} catch (ClassNotFoundException e) {</span>
+<span class="nc" id="L76">			logger.error(&quot;Error while creating DefaultSpell&quot;, e);</span>
+<span class="fc" id="L77">		}</span>
+<span class="fc" id="L78">	}</span>
+	
+	private void buildCreator(final Class&lt; ? &gt; implementation) {
+		try {
+			Constructor&lt; ? &gt; construct;
+<span class="fc" id="L83">			construct = implementation.getConstructor(new Class[] {</span>
+					String.class, Nature.class, int.class, int.class, int.class,
+					int.class, double.class, int.class, int.class,
+					int.class, int.class, int.class, double.class});
+
+<span class="fc" id="L88">			this.creator = new FullSpellCreator(this, construct);</span>
+<span class="nc" id="L89">		} catch (final NoSuchMethodException ex) {</span>
+<span class="nc" id="L90">			logger.error(&quot;No matching full constructor for Spell found.&quot;, ex);</span>
+<span class="fc" id="L91">		}</span>
+		
+<span class="fc" id="L93">	}</span>
+	
+	/**
+	 * Creates a new instance using the configured implementation class of that spell
+	 *  
+	 * @return an instance of the specified implementation class
+	 */
+	public Spell getSpell() {
+<span class="pc bpc" id="L101" title="1 of 2 branches missed.">		if (creator == null) {</span>
+<span class="nc" id="L102">			return null;</span>
+		}
+<span class="fc" id="L104">		return creator.create();</span>
+	}
+	
+
+	/**
+	 * @return the name
+	 */
+	public String getName() {
+<span class="fc" id="L112">		return name;</span>
+	}
+
+	/**
+	 * @return the class object specified in the xml configuration 
+	 */
+	public Class&lt;?&gt; getImplementationClass() {
+<span class="fc" id="L119">		return implementationClass;</span>
+	}
+	/**
+	 * @return the mana
+	 */
+	public int getMana() {
+<span class="fc" id="L125">		return mana;</span>
+	}
+
+	/**
+	 * @param mana the mana to set
+	 */
+	public void setMana(String mana) {
+<span class="fc" id="L132">		this.mana = Integer.parseInt(mana);</span>
+<span class="fc" id="L133">	}</span>
+
+	/**
+	 * @return the cooldown
+	 */
+	public int getCooldown() {
+<span class="fc" id="L139">		return cooldown;</span>
+	}
+
+	/**
+	 * @param cooldown the cooldown to set
+	 */
+	public void setCooldown(String cooldown) {
+<span class="fc" id="L146">		this.cooldown = Integer.parseInt(cooldown);</span>
+<span class="fc" id="L147">	}</span>
+
+	/**
+	 * @return the minimumLevel
+	 */
+	public int getMinimumLevel() {
+<span class="fc" id="L153">		return minimumLevel;</span>
+	}
+
+	/**
+	 * @param minimumLevel the minimumLevel to set
+	 */
+	public void setMinimumLevel(String minimumLevel) {
+<span class="fc" id="L160">		this.minimumLevel = Integer.parseInt(minimumLevel);</span>
+<span class="fc" id="L161">	}</span>
+
+	/**
+	 * @return the range
+	 */
+	public int getRange() {
+<span class="fc" id="L167">		return range;</span>
+	}
+
+	/**
+	 * @param range the range to set
+	 */
+	public void setRange(String range) {
+<span class="fc" id="L174">		this.range = Integer.parseInt(range);</span>
+<span class="fc" id="L175">	}</span>
+
+	/**
+	 * @return the atk
+	 */
+	public int getAtk() {
+<span class="fc" id="L181">		return atk;</span>
+	}
+
+	/**
+	 * @param atk the atk to set
+	 */
+	public void setAtk(String atk) {
+<span class="fc" id="L188">		this.atk = Integer.parseInt(atk);</span>
+<span class="fc" id="L189">	}</span>
+
+	/**
+	 * @return the def
+	 */
+	public int getDef() {
+<span class="fc" id="L195">		return def;</span>
+	}
+
+	/**
+	 * @param def the def to set
+	 */
+	public void setDef(String def) {
+<span class="fc" id="L202">		this.def = Integer.parseInt(def);</span>
+<span class="fc" id="L203">	}</span>
+
+	/**
+	 * @return the amount
+	 */
+	public int getAmount() {
+<span class="fc" id="L209">		return amount;</span>
+	}
+
+	/**
+	 * @param amount the amount to set
+	 */
+	public void setAmount(String amount) {
+<span class="fc" id="L216">		this.amount = Integer.parseInt(amount);</span>
+<span class="fc" id="L217">	}</span>
+
+	/**
+	 * @return the regen
+	 */
+	public int getRegen() {
+<span class="fc" id="L223">		return regen;</span>
+	}
+
+	/**
+	 * @param regen the regen to set
+	 */
+	public void setRegen(String regen) {
+<span class="fc" id="L230">		this.regen = Integer.parseInt(regen);</span>
+<span class="fc" id="L231">	}</span>
+
+	/**
+	 * @return the rate
+	 */
+	public int getRate() {
+<span class="fc" id="L237">		return rate;</span>
+	}
+
+	/**
+	 * @param rate the rate to set
+	 */
+	public void setRate(String rate) {
+<span class="fc" id="L244">		this.rate = Integer.parseInt(rate);</span>
+<span class="fc" id="L245">	}</span>
+
+	/**
+	 * @return the lifesteal
+	 */
+	public double getLifesteal() {
+<span class="fc" id="L251">		return lifesteal;</span>
+	}
+
+	/**
+	 * @param lifesteal the lifesteal to set
+	 */
+	public void setLifesteal(String lifesteal) {
+<span class="fc" id="L258">		this.lifesteal = Float.parseFloat(lifesteal);</span>
+<span class="fc" id="L259">	}</span>
+
+	/**
+	 * sets the nature for the spell
+	 * @param nature the spell's nature
+	 */
+	public void setNature(String nature) {
+<span class="fc" id="L266">		this.nature = Nature.parse(nature);</span>
+<span class="fc" id="L267">	}</span>
+
+	/**
+	 * @return the spell's nature
+	 */
+	public Nature getNature() {
+<span class="fc" id="L273">		return nature;</span>
+	}
+
+	/**
+	 * @return the modifier value
+	 */
+	public double getModifier() {
+<span class="fc" id="L280">		return this.modifier;</span>
+	}
+	/**
+	 * @param modifier the modifier to set
+	 */
+	public void setModifier(String modifier) {
+<span class="fc" id="L286">		this.modifier = Double.parseDouble(modifier);</span>
+<span class="fc" id="L287">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

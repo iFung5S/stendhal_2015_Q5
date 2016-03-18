@@ -1,0 +1,374 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ChocolateForElisabeth.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests</a> &gt; <span class="el_source">ChocolateForElisabeth.java</span></div><h1>ChocolateForElisabeth.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests;
+
+import games.stendhal.common.Rand;
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.entity.item.StackableItem;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.action.DecreaseKarmaAction;
+import games.stendhal.server.entity.npc.action.DropItemAction;
+import games.stendhal.server.entity.npc.action.IncreaseKarmaAction;
+import games.stendhal.server.entity.npc.action.IncreaseXPAction;
+import games.stendhal.server.entity.npc.action.InflictStatusOnNPCAction;
+import games.stendhal.server.entity.npc.action.MultipleActions;
+import games.stendhal.server.entity.npc.action.SetQuestAction;
+import games.stendhal.server.entity.npc.action.SetQuestAndModifyKarmaAction;
+import games.stendhal.server.entity.npc.action.SetQuestToTimeStampAction;
+import games.stendhal.server.entity.npc.condition.AndCondition;
+import games.stendhal.server.entity.npc.condition.GreetingMatchesNameCondition;
+import games.stendhal.server.entity.npc.condition.NotCondition;
+import games.stendhal.server.entity.npc.condition.PlayerHasItemWithHimCondition;
+import games.stendhal.server.entity.npc.condition.QuestActiveCondition;
+import games.stendhal.server.entity.npc.condition.QuestCompletedCondition;
+import games.stendhal.server.entity.npc.condition.QuestInStateCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotInStateCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotStartedCondition;
+import games.stendhal.server.entity.npc.condition.QuestStartedCondition;
+import games.stendhal.server.entity.npc.condition.QuestStateStartsWithCondition;
+import games.stendhal.server.entity.npc.condition.TimePassedCondition;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.maps.Region;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
+
+/**
+ * Quest to buy chocolate for a little girl called Elisabeth.
+ * Ask her mother Carey for a quest and she will ask you to get some chocolate for her daughter.
+ * Get some chocolate and bring it to Elisabeth.
+ *
+ * @author Vanessa Julius idea by miasma
+ * 
+ * 
+ * QUEST: Chocolate for Elisabeth
+ * 
+ * PARTICIPANTS:
+ * &lt;ul&gt;
+ * &lt;li&gt;Elisabeth (a young girl who loves chocolate)&lt;/li&gt;
+ * &lt;li&gt;Carey (Elisabeth's mother)&lt;/li&gt;
+ * &lt;/ul&gt;
+ * 
+ * STEPS:
+ * &lt;ul&gt;
+ * &lt;li&gt;Elisabeth asks you to bring her a chocolate bar.&lt;/li&gt;
+ * &lt;li&gt;Get some chocolate .&lt;/li&gt;
+ * &lt;li&gt;Ask Carey if she allows you to give the chocolate to her daughter.&lt;/li&gt;
+ * &lt;li&gt;Make Elisabeth happy and get a lovely reward.&lt;/li&gt;
+ * &lt;/ul&gt;
+ * 
+ * REWARD:
+ * &lt;ul&gt;
+ * &lt;li&gt;a random flower&lt;/li&gt;
+ * &lt;li&gt;500 XP&lt;/li&gt;
+ * &lt;li&gt;10 karma&lt;/li&gt;
+ * &lt;/ul&gt;
+ * 
+ * REPETITIONS:
+ * &lt;ul&gt;
+ * &lt;li&gt;Every 60 minutes&lt;/li&gt;
+ * &lt;/ul&gt;
+ */
+<span class="nc" id="L89">public class ChocolateForElisabeth extends AbstractQuest {</span>
+
+	// constants
+	private static final String QUEST_SLOT = &quot;chocolate_for_elisabeth&quot;;
+
+	/** The delay between repeating quests. */
+	private static final int REQUIRED_MINUTES = 60;
+	@Override
+	public String getSlotName() {
+<span class="nc" id="L98">		return QUEST_SLOT;</span>
+	}
+	private void chocolateStep() {
+<span class="nc" id="L101">		final SpeakerNPC npc = npcs.get(&quot;Elisabeth&quot;);</span>
+		
+		// first conversation with Elisabeth.
+<span class="nc" id="L104">		npc.add(ConversationStates.IDLE, </span>
+				ConversationPhrases.GREETING_MESSAGES, 
+				new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+						new QuestNotStartedCondition(QUEST_SLOT), new QuestNotInStateCondition(QUEST_SLOT, &quot;rejected&quot;)),
+				ConversationStates.ATTENDING, 
+				&quot;I can't remember when I smelt the good taste of #chocolate the last time...&quot;,
+				null);
+		
+<span class="nc" id="L112">		npc.addReply(&quot;chocolate&quot;, &quot;My mom told me, that chocolate can be found in an assassin school, which is quite #dangerous. She said also that someone sells it in Ados...&quot;);</span>
+		
+<span class="nc" id="L114">		npc.addReply(&quot;dangerous&quot;, &quot;Some bandits wait on the road to the school and assassins guard the way there, so mom and I have to stay in Kirdneh because it's safe here...&quot;);</span>
+		
+		// player is supposed to speak to mummy now
+<span class="nc" id="L117">		npc.add(ConversationStates.IDLE, </span>
+				ConversationPhrases.GREETING_MESSAGES, 
+				new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+						new QuestInStateCondition(QUEST_SLOT, &quot;start&quot;), new PlayerHasItemWithHimCondition(&quot;chocolate bar&quot;)),
+				ConversationStates.IDLE, 
+				&quot;My mum wants to know who I was asking for chocolate from now :(&quot;,
+				null);
+		
+		// player didn't get chocolate, meanie
+<span class="nc" id="L126">		npc.add(ConversationStates.IDLE, </span>
+				ConversationPhrases.GREETING_MESSAGES, 
+				new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+						new QuestInStateCondition(QUEST_SLOT, &quot;start&quot;), new NotCondition(new PlayerHasItemWithHimCondition(&quot;chocolate bar&quot;))),
+				ConversationStates.ATTENDING, 
+				&quot;I hope that someone will bring me some chocolate soon...:(&quot;,
+				null);
+		
+		// player got chocolate and spoke to mummy
+<span class="nc" id="L135">		npc.add(ConversationStates.IDLE, </span>
+				ConversationPhrases.GREETING_MESSAGES, 
+				new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+						new QuestInStateCondition(QUEST_SLOT, &quot;mummy&quot;), new PlayerHasItemWithHimCondition(&quot;chocolate bar&quot;)),
+				ConversationStates.QUESTION_1, 
+				&quot;Awesome! Is that chocolate for me?&quot;,
+				null);
+		
+		// player spoke to mummy and hasn't got chocolate
+<span class="nc" id="L144">		npc.add(ConversationStates.IDLE, </span>
+				ConversationPhrases.GREETING_MESSAGES, 
+				new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+						new QuestInStateCondition(QUEST_SLOT, &quot;mummy&quot;), new NotCondition(new PlayerHasItemWithHimCondition(&quot;chocolate bar&quot;))),
+				ConversationStates.ATTENDING, 
+				&quot;I hope that someone will bring me some chocolate soon...:(&quot;,
+				null);
+		
+		// player is in another state like eating 
+<span class="nc" id="L153">		npc.add(ConversationStates.IDLE, </span>
+				ConversationPhrases.GREETING_MESSAGES, 
+				new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+						new QuestStartedCondition(QUEST_SLOT), new QuestNotInStateCondition(QUEST_SLOT, &quot;start&quot;), new QuestNotInStateCondition(QUEST_SLOT, &quot;mummy&quot;)),
+				ConversationStates.ATTENDING, 
+				&quot;Hello.&quot;,
+				null);
+		
+		// player rejected quest
+<span class="nc" id="L162">		npc.add(ConversationStates.IDLE, </span>
+				ConversationPhrases.GREETING_MESSAGES,
+				new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+						new QuestInStateCondition(QUEST_SLOT, &quot;rejected&quot;)),
+				ConversationStates.ATTENDING, 
+				&quot;Hello.&quot;,
+				null);
+		
+		// player asks about quest for first time (or rejected)
+<span class="nc" id="L171">		npc.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.QUEST_MESSAGES, 
+				new QuestNotStartedCondition(QUEST_SLOT),
+				ConversationStates.QUEST_OFFERED, 
+				&quot;I would really love to have some chocolate. I'd like one bar, please. A dark brown one or a sweet white one or some with flakes. Will you get me one?&quot;,
+				null);
+		
+		// shouldn't happen
+<span class="nc" id="L179">		npc.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.QUEST_MESSAGES, 
+				new QuestCompletedCondition(QUEST_SLOT),
+				ConversationStates.ATTENDING, 
+				&quot;I still enjoy the last chocolate bar you brought me, thanks!&quot;,
+				null);
+		
+		// player can repeat quest
+<span class="nc" id="L187">		npc.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.QUEST_MESSAGES, 
+				new AndCondition(new QuestStateStartsWithCondition(QUEST_SLOT, &quot;eating;&quot;), new TimePassedCondition(QUEST_SLOT, 1, REQUIRED_MINUTES)),
+				ConversationStates.QUEST_OFFERED, 
+				&quot;I hope another chocolate bar wouldn't be greedy. Can you get me another one?&quot;,
+				null);	
+		
+		// player can't repeat quest
+<span class="nc" id="L195">		npc.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.QUEST_MESSAGES, 
+				new AndCondition(new QuestStateStartsWithCondition(QUEST_SLOT, &quot;eating;&quot;), new NotCondition(new TimePassedCondition(QUEST_SLOT, 1, REQUIRED_MINUTES))),
+				ConversationStates.ATTENDING, 
+				&quot;I've had too much chocolate. I feel sick.&quot;,
+				null);	
+		
+		// player should be bringing chocolate not asking about the quest
+<span class="nc" id="L203">		npc.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.QUEST_MESSAGES, 
+				new AndCondition(new QuestActiveCondition(QUEST_SLOT), new NotCondition(new QuestStateStartsWithCondition(QUEST_SLOT, &quot;eating;&quot;))),
+				ConversationStates.ATTENDING,	
+				&quot;Waaaaaaaa! Where is my chocolate ...&quot;,
+				null);
+		
+		// Player agrees to get the chocolate
+<span class="nc" id="L211">		npc.add(ConversationStates.QUEST_OFFERED,</span>
+				ConversationPhrases.YES_MESSAGES, 
+				null,
+				ConversationStates.ATTENDING, 
+				&quot;Thank you!&quot;,
+				new SetQuestAction(QUEST_SLOT, &quot;start&quot;));
+		
+		// Player says no, they've lost karma
+<span class="nc" id="L219">		npc.add(ConversationStates.QUEST_OFFERED,</span>
+				ConversationPhrases.NO_MESSAGES, 
+				null, 
+				ConversationStates.IDLE,
+				&quot;Ok, I'll wait till mommy finds some helpers...&quot;,
+				new SetQuestAndModifyKarmaAction(QUEST_SLOT, &quot;rejected&quot;, -5.0));
+		
+		// Player has got chocolate bar and spoken to mummy
+<span class="nc" id="L227">		final List&lt;ChatAction&gt; reward = new LinkedList&lt;ChatAction&gt;();</span>
+<span class="nc" id="L228">		reward.add(new DropItemAction(&quot;chocolate bar&quot;));</span>
+<span class="nc" id="L229">		reward.add(new ChatAction() {</span>
+			@Override
+			public void fire(final Player player, final Sentence sentence, final EventRaiser raiser) {
+				// pick a random flower
+<span class="nc" id="L233">				String rewardClass = Rand.rand(Arrays.asList(&quot;daisies&quot;,&quot;zantedeschia&quot;,&quot;pansy&quot;));</span>
+				
+<span class="nc" id="L235">				final StackableItem item = (StackableItem) SingletonRepository.getEntityManager().getItem(rewardClass);</span>
+<span class="nc" id="L236">				item.setQuantity(1);</span>
+<span class="nc" id="L237">				player.equipOrPutOnGround(item);</span>
+<span class="nc" id="L238">				player.notifyWorldAboutChanges();</span>
+<span class="nc" id="L239">			}</span>
+		});
+<span class="nc" id="L241">		reward.add(new IncreaseXPAction(500));</span>
+<span class="nc" id="L242">		reward.add(new SetQuestAction(QUEST_SLOT, &quot;eating;&quot;));</span>
+<span class="nc" id="L243">		reward.add(new SetQuestToTimeStampAction(QUEST_SLOT,1));</span>
+<span class="nc" id="L244">		reward.add(new IncreaseKarmaAction(10.0));</span>
+<span class="nc" id="L245">		reward.add(new InflictStatusOnNPCAction(&quot;chocolate bar&quot;));</span>
+
+<span class="nc" id="L247">		npc.add(ConversationStates.QUESTION_1,</span>
+				ConversationPhrases.YES_MESSAGES, 
+				new PlayerHasItemWithHimCondition(&quot;chocolate bar&quot;),
+				ConversationStates.ATTENDING, 
+				&quot;Thank you EVER so much! You are very kind. Here, take a fresh flower as a present.&quot;,
+				new MultipleActions(reward));
+		
+	
+		// player did have chocolate but put it on ground after question?
+<span class="nc" id="L256">		npc.add(ConversationStates.QUESTION_1,</span>
+				ConversationPhrases.YES_MESSAGES, 
+				new NotCondition(new PlayerHasItemWithHimCondition(&quot;chocolate bar&quot;)),
+				ConversationStates.ATTENDING, 
+				&quot;Hey, where's my chocolate gone?!&quot;,
+				null);
+		
+		// Player says no, they've lost karma
+<span class="nc" id="L264">		npc.add(ConversationStates.QUESTION_1,</span>
+				ConversationPhrases.NO_MESSAGES, 
+				null, 
+				ConversationStates.IDLE,
+				&quot;Waaaaaa! You're a big fat meanie.&quot;,
+				new DecreaseKarmaAction(5.0));
+<span class="nc" id="L270">	}</span>
+	
+	private void meetMummyStep() {
+<span class="nc" id="L273">		final SpeakerNPC mummyNPC = npcs.get(&quot;Carey&quot;);</span>
+
+		// player speaks to mummy before Elisabeth
+<span class="nc" id="L276">		mummyNPC.add(ConversationStates.IDLE, </span>
+					ConversationPhrases.GREETING_MESSAGES,
+					new AndCondition(new GreetingMatchesNameCondition(mummyNPC.getName()),
+							new QuestNotStartedCondition(QUEST_SLOT)),
+					ConversationStates.ATTENDING, &quot;Hello, nice to meet you.&quot;,
+					null);
+
+		// player is supposed to begetting chocolate
+<span class="nc" id="L284">		mummyNPC.add(ConversationStates.IDLE, </span>
+					ConversationPhrases.GREETING_MESSAGES,
+					new AndCondition(new GreetingMatchesNameCondition(mummyNPC.getName()),
+							new QuestInStateCondition(QUEST_SLOT, &quot;start&quot;)),
+					ConversationStates.ATTENDING, 
+					&quot;Oh you met my daughter Elisabeth already. You seem like a nice person so it would be really kind, if you can bring her a chocolate bar because I'm not #strong enough for that.&quot;,
+					new SetQuestAction(QUEST_SLOT, &quot;mummy&quot;));
+
+<span class="nc" id="L292">		mummyNPC.addReply(&quot;strong&quot;, &quot;I tried to get some chocolate for Elisabeth a few times, but I couldn't make my way through the assassins and bandits running around #there.&quot;);</span>
+		
+<span class="nc" id="L294">		mummyNPC.addReply(&quot;there&quot;, &quot;They live in and around the Ados castle. Take care there! I also heard about #someone who sells chocolate bars.&quot;);</span>
+		
+<span class="nc" id="L296">		mummyNPC.addReply(&quot;someone&quot;, &quot;I never visited that guy because he seems to be really... well he works somewhere where I don't want to be in Ados.&quot;);</span>
+		
+		// any other state
+<span class="nc" id="L299">		mummyNPC.add(ConversationStates.IDLE, </span>
+					ConversationPhrases.GREETING_MESSAGES, new GreetingMatchesNameCondition(mummyNPC.getName()), true,
+					ConversationStates.ATTENDING, &quot;Hello again.&quot;, null);
+<span class="nc" id="L302">	}</span>
+	@Override
+	public void addToWorld() {
+<span class="nc" id="L305">		fillQuestInfo(</span>
+				&quot;Chocolate for Elisabeth&quot;,
+				&quot;Sweet sweet chocolate! Noone can live without it! And Elisabeth loooves to have some...&quot;,
+				true);
+<span class="nc" id="L309">		chocolateStep();</span>
+<span class="nc" id="L310">		meetMummyStep();</span>
+<span class="nc" id="L311">	}</span>
+
+
+	@Override
+	public List&lt;String&gt; getHistory(final Player player) {
+<span class="nc" id="L316">		final List&lt;String&gt; res = new ArrayList&lt;String&gt;();</span>
+<span class="nc bnc" id="L317" title="All 2 branches missed.">		if (!player.hasQuest(QUEST_SLOT)) {</span>
+<span class="nc" id="L318">			return res;</span>
+		}
+<span class="nc" id="L320">		res.add(&quot;Elisabeth is a sweet little girl who lives in Kirdneh together with her family.&quot;);</span>
+<span class="nc" id="L321">		final String questState = player.getQuest(QUEST_SLOT);</span>
+<span class="nc bnc" id="L322" title="All 2 branches missed.">		if (&quot;rejected&quot;.equals(questState)) {</span>
+<span class="nc" id="L323">			res.add(&quot;I don't like sweet little girls.&quot;);</span>
+		}
+<span class="nc bnc" id="L325" title="All 4 branches missed.">		if (player.isQuestInState(QUEST_SLOT, &quot;start&quot;,&quot;mummy&quot;) || isCompleted(player)) {</span>
+<span class="nc" id="L326">			res.add(&quot;Little Elisabeth wants a chocolate bar.&quot;);</span>
+		}
+<span class="nc bnc" id="L328" title="All 6 branches missed.">		if (player.isQuestInState(QUEST_SLOT, &quot;start&quot;,&quot;mummy&quot;) &amp;&amp; player.isEquipped(&quot;chocolate&quot;) || isCompleted(player)) {</span>
+<span class="nc" id="L329">			res.add(&quot;I found a tasty chocolate bar for Elisabeth.&quot;);</span>
+		}
+<span class="nc bnc" id="L331" title="All 4 branches missed.">        if (&quot;mummy&quot;.equals(questState) || isCompleted(player)) {</span>
+<span class="nc" id="L332">            res.add(&quot;I spoke to Carey, Elisabeth's mom and she agreed I could give a chocolate bar to her daughter.&quot;);        </span>
+        }
+<span class="nc bnc" id="L334" title="All 2 branches missed.">        if (isCompleted(player)) {</span>
+<span class="nc bnc" id="L335" title="All 2 branches missed.">            if (isRepeatable(player)) {</span>
+<span class="nc" id="L336">                res.add(&quot;I took some chocolate to Elisabeth, she gave me some flowers in return. Perhaps she'd like more chocolate now.&quot;);</span>
+            } else {
+<span class="nc" id="L338">                res.add(&quot;Elisabeth is eating the chocolate bar I gave her, and she gave me some flowers in return.&quot;);</span>
+            }			
+		}
+<span class="nc" id="L341">		return res;</span>
+	}
+	@Override
+	public String getName() {
+<span class="nc" id="L345">		return &quot;ChocolateForElisabeth&quot;;</span>
+	}
+	
+	// Getting to Kirdneh is not too feasible till this level
+	@Override
+	public int getMinLevel() {
+<span class="nc" id="L351">		return 10;</span>
+	}
+	
+	@Override
+	public boolean isRepeatable(final Player player) {
+<span class="nc" id="L356">		return new AndCondition(new QuestStateStartsWithCondition(QUEST_SLOT,&quot;eating;&quot;),</span>
+				 new TimePassedCondition(QUEST_SLOT, 1, REQUIRED_MINUTES)).fire(player,null, null);
+	}
+	
+	@Override
+	public boolean isCompleted(final Player player) {
+<span class="nc" id="L362">		return new QuestStateStartsWithCondition(QUEST_SLOT,&quot;eating;&quot;).fire(player, null, null);</span>
+	}
+	
+	@Override
+	public String getRegion() {
+<span class="nc" id="L367">		return Region.KIRDNEH;</span>
+	}
+	@Override
+	public String getNPCName() {
+<span class="nc" id="L371">		return &quot;Elisabeth&quot;;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

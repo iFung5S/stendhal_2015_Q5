@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>StackableItem2DView.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui.j2d.entity</a> &gt; <span class="el_source">StackableItem2DView.java</span></div><h1>StackableItem2DView.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui.j2d.entity;
+
+
+import games.stendhal.client.entity.StackableItem;
+import games.stendhal.client.gui.j2d.entity.helpers.DrawingHelper;
+import games.stendhal.client.gui.j2d.entity.helpers.HorizontalAlignment;
+import games.stendhal.client.gui.j2d.entity.helpers.VerticalAlignment;
+import games.stendhal.client.sprite.Sprite;
+import games.stendhal.client.sprite.TextSprite;
+
+import java.awt.Color;
+import java.awt.Graphics2D;
+
+/**
+ * The 2D view of a stackable item.
+ * 
+ * @param &lt;T&gt; stackable item type
+ */
+<span class="nc" id="L31">public class StackableItem2DView&lt;T extends StackableItem&gt; extends Item2DView&lt;T&gt; {</span>
+
+	/**
+	 * The quantity value changed.
+	 */
+	private volatile boolean quantityChanged;
+
+	/**
+	 * The image of the quantity.
+	 */
+	private Sprite quantitySprite;
+
+	/**
+	 * Whether to show the quantity.
+	 */
+	private boolean showQuantity;
+
+	@Override
+	public void initialize(final T entity) {
+<span class="nc" id="L50">		super.initialize(entity);</span>
+<span class="nc" id="L51">		quantitySprite = getQuantitySprite(entity);</span>
+<span class="nc" id="L52">		quantityChanged = false;</span>
+<span class="nc" id="L53">		showQuantity = true;</span>
+<span class="nc" id="L54">	}</span>
+	
+	//
+	// StackableItem2DView
+	//
+
+	/**
+	 * Get the appropriate quantity sprite.
+	 * 
+	 * @param entity 
+	 * @return A sprite representing the quantity, or &lt;code&gt;null&lt;/code&gt; for
+	 *         none.
+	 */
+	private Sprite getQuantitySprite(T entity) {
+		int quantity;
+		String label;
+
+<span class="nc" id="L71">		quantity = entity.getQuantity();</span>
+
+<span class="nc bnc" id="L73" title="All 2 branches missed.">		if (quantity &lt;= 1) {</span>
+<span class="nc" id="L74">			return null;</span>
+<span class="nc bnc" id="L75" title="All 4 branches missed.">		} else if (isContained() &amp;&amp; (quantity &gt; 9999999)) {</span>
+<span class="nc" id="L76">			label = (quantity / 1000000) + &quot;M&quot;;</span>
+<span class="nc bnc" id="L77" title="All 4 branches missed.">		} else if (isContained() &amp;&amp; (quantity &gt; 9999)) {</span>
+<span class="nc" id="L78">			label = (quantity / 1000) + &quot;K&quot;;</span>
+		} else {
+<span class="nc" id="L80">			label = Integer.toString(quantity);</span>
+		}
+
+<span class="nc" id="L83">		return TextSprite.createTextSprite(label, Color.WHITE);</span>
+	}
+
+	/**
+	 * Set whether to show the quantity value.
+	 * 
+	 * @param showQuantity
+	 *            Whether to show the quantity.
+	 */
+	public void setShowQuantity(final boolean showQuantity) {
+<span class="nc" id="L93">		this.showQuantity = showQuantity;</span>
+<span class="nc" id="L94">	}</span>
+
+	//
+	// Entity2DView
+	//
+
+	@Override
+	protected void draw(final Graphics2D g2d, final int x, final int y,
+			final int width, final int height) {
+<span class="nc" id="L103">		super.draw(g2d, x, y, width, height);</span>
+
+<span class="nc bnc" id="L105" title="All 4 branches missed.">		if (showQuantity &amp;&amp; (quantitySprite != null)) {</span>
+<span class="nc" id="L106">			drawQuantity(g2d, x, y, width, height);</span>
+		}
+<span class="nc" id="L108">	}</span>
+
+	/**
+	 * Draw quantity sprite. Exact position depends on containment status.
+	 * 
+	 * @param g2d graphics
+	 * @param x x coordinate
+	 * @param y y coordinate
+	 * @param width width of the drawing area
+	 * @param height height of the drawing area
+	 */
+	private void drawQuantity(final Graphics2D g2d, final int x, final int y,
+			final int width, int height) {
+<span class="nc bnc" id="L121" title="All 2 branches missed.">		if (isContained()) {</span>
+			// Right alignment
+<span class="nc" id="L123">			DrawingHelper.drawAlignedSprite(g2d, quantitySprite, HorizontalAlignment.RIGHT, VerticalAlignment.TOP, x, y, width, height);</span>
+		} else {
+			// Center alignment
+<span class="nc" id="L126">			DrawingHelper.drawAlignedSprite(g2d, quantitySprite, HorizontalAlignment.CENTER, VerticalAlignment.TOP, x, y, width, height);</span>
+		}
+<span class="nc" id="L128">	}</span>
+
+	/**
+	 * Set whether this view is contained, and should render in a compressed
+	 * (it's defined) area without clipping anything important.
+	 * 
+	 * @param contained
+	 *            &lt;code&gt;true&lt;/code&gt; if contained.
+	 */
+	@Override
+	public void setContained(final boolean contained) {
+<span class="nc" id="L139">		super.setContained(contained);</span>
+
+<span class="nc" id="L141">		quantityChanged = true;</span>
+<span class="nc" id="L142">		markChanged();</span>
+<span class="nc" id="L143">	}</span>
+
+	/**
+	 * Update representation.
+	 */
+	@Override
+	protected void update() {
+<span class="nc" id="L150">		super.update();</span>
+
+<span class="nc" id="L152">		T entity  = this.entity;</span>
+<span class="nc bnc" id="L153" title="All 4 branches missed.">		if (quantityChanged &amp;&amp; (entity != null)) {</span>
+<span class="nc" id="L154">			quantityChanged = false;</span>
+<span class="nc" id="L155">			quantitySprite = getQuantitySprite(entity);</span>
+		}
+<span class="nc" id="L157">	}</span>
+
+	@Override
+	void entityChanged(final Object property) {
+<span class="nc" id="L161">		super.entityChanged(property);</span>
+
+<span class="nc bnc" id="L163" title="All 2 branches missed.">		if (property == StackableItem.PROP_QUANTITY) {</span>
+<span class="nc" id="L164">			quantityChanged = true;</span>
+		}
+<span class="nc" id="L166">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

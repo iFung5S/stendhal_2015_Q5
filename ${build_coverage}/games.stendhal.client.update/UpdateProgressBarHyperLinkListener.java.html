@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>UpdateProgressBarHyperLinkListener.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.update</a> &gt; <span class="el_source">UpdateProgressBarHyperLinkListener.java</span></div><h1>UpdateProgressBarHyperLinkListener.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2011 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.update;
+
+import javax.swing.event.HyperlinkEvent;
+import javax.swing.event.HyperlinkListener;
+
+/**
+ * Opens Hyperlinks in an external browser using the Bare Bones Browser Launcher.
+ *
+ * Note: This is a copy of BareBonesBrowserLauncher because classes in the update
+ * package must not depend on anything outside this package.
+ *
+ * &lt;b&gt;Bare Bones Browser Launch for Java&lt;/b&gt;&lt;br&gt;
+ * Utility class to open a web page from a Swing application in the user's
+ * default browser.&lt;br&gt;
+ * Supports: Mac OS X, GNU/Linux, Unix, Windows XP/Vista/7&lt;br&gt;
+ * Example Usage:&lt;code&gt;&lt;br&gt; &amp;nbsp; &amp;nbsp;
+ *    String url = &quot;http://www.google.com/&quot;;&lt;br&gt; &amp;nbsp; &amp;nbsp;
+ *    BareBonesBrowserLaunch.openURL(url);&lt;br&gt;&lt;/code&gt; Latest Version: &lt;a
+ * href=&quot;http://www.centerkey.com/java/browser/&quot;
+ * &gt;www.centerkey.com/java/browser&lt;/a&gt;&lt;br&gt;
+ * Author: Dem Pilafian&lt;br&gt;
+ * Public Domain Software -- Free to Use as You Like
+ * 
+ * @version 3.0, February 7, 2010
+ */
+<span class="nc" id="L37">class UpdateProgressBarHyperLinkListener implements HyperlinkListener {</span>
+
+	@Override
+	public void hyperlinkUpdate(HyperlinkEvent e) {
+<span class="nc bnc" id="L41" title="All 2 branches missed.">		if (e.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {</span>
+<span class="nc" id="L42">			openURL(e.getURL().toExternalForm());</span>
+		}
+<span class="nc" id="L44">	}</span>
+
+<span class="nc" id="L46">	private static final String[] BROWSER = { &quot;google-chrome&quot;, &quot;chromium-browser&quot;, &quot;firefox&quot;, &quot;opera&quot;,</span>
+			&quot;konqueror&quot;, &quot;epiphany&quot;, &quot;seamonkey&quot;, &quot;galeon&quot;, &quot;kazehakase&quot;,
+			&quot;mozilla&quot; };
+	private static final String ERROR_MESSAGE = &quot;Error attempting to launch web browser:\n &quot;;
+
+	/**
+	 * Opens the specified web page in the user's default browser
+	 * 
+	 * @param url
+	 *            A web address (URL) of a web page (ex:
+	 *            &quot;http://www.google.com/&quot;)
+	 */
+	private static void openURL(String url) {
+		try { // attempt to use Desktop library from JDK 1.6+ (even if on 1.5)
+<span class="nc" id="L60">			Class&lt;?&gt; d = Class.forName(&quot;java.awt.Desktop&quot;);</span>
+<span class="nc" id="L61">			d.getDeclaredMethod(&quot;browse&quot;, new Class[] { java.net.URI.class })</span>
+					.invoke(d.getDeclaredMethod(&quot;getDesktop&quot;).invoke(null),
+							new Object[] { java.net.URI.create(url) });
+			// above code mimics:
+			// java.awt.Desktop.getDesktop().browse(java.net.URI.create(url));
+<span class="nc" id="L66">		} catch (Exception ignore) { // library not available or failed</span>
+<span class="nc" id="L67">			String osName = System.getProperty(&quot;os.name&quot;);</span>
+			try {
+<span class="nc bnc" id="L69" title="All 2 branches missed.">				if (osName.startsWith(&quot;Mac OS&quot;)) {</span>
+<span class="nc" id="L70">					Class.forName(&quot;com.apple.eio.FileManager&quot;)</span>
+							.getDeclaredMethod(&quot;openURL&quot;,
+									new Class[] { String.class }).invoke(null,
+									new Object[] { url });
+<span class="nc bnc" id="L74" title="All 2 branches missed.">				} else if (osName.startsWith(&quot;Windows&quot;))</span>
+<span class="nc" id="L75">					Runtime.getRuntime().exec(</span>
+							&quot;rundll32 url.dll,FileProtocolHandler &quot; + url);
+				else { // assume Unix or Linux
+<span class="nc" id="L78">					boolean found = false;</span>
+<span class="nc bnc" id="L79" title="All 2 branches missed.">					for (String browser : BROWSER)</span>
+<span class="nc bnc" id="L80" title="All 2 branches missed.">						if (!found) {</span>
+<span class="nc bnc" id="L81" title="All 2 branches missed.">							found = Runtime.getRuntime().exec(</span>
+									new String[] { &quot;which&quot;, browser })
+									.waitFor() == 0;
+<span class="nc bnc" id="L84" title="All 2 branches missed.">							if (found)</span>
+<span class="nc" id="L85">								Runtime.getRuntime().exec(</span>
+										new String[] { browser, url });
+						}
+				}
+<span class="nc" id="L89">			} catch (Exception e) {</span>
+<span class="nc" id="L90">				System.err.println(ERROR_MESSAGE + url);</span>
+<span class="nc" id="L91">				System.err.println(e);</span>
+<span class="nc" id="L92">			}</span>
+<span class="nc" id="L93">		}</span>
+<span class="nc" id="L94">	}</span>
+
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

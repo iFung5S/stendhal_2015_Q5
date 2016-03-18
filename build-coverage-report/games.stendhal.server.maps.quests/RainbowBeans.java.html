@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>RainbowBeans.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests</a> &gt; <span class="el_source">RainbowBeans.java</span></div><h1>RainbowBeans.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests;
+
+import games.stendhal.common.MathHelper;
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.events.LoginListener;
+import games.stendhal.server.entity.item.scroll.RainbowBeansScroll;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.action.DropItemAction;
+import games.stendhal.server.entity.npc.action.EquipItemAction;
+import games.stendhal.server.entity.npc.action.MultipleActions;
+import games.stendhal.server.entity.npc.action.SayTimeRemainingAction;
+import games.stendhal.server.entity.npc.condition.AndCondition;
+import games.stendhal.server.entity.npc.condition.GreetingMatchesNameCondition;
+import games.stendhal.server.entity.npc.condition.LevelGreaterThanCondition;
+import games.stendhal.server.entity.npc.condition.LevelLessThanCondition;
+import games.stendhal.server.entity.npc.condition.NotCondition;
+import games.stendhal.server.entity.npc.condition.PlayerHasItemWithHimCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotStartedCondition;
+import games.stendhal.server.entity.npc.condition.QuestStartedCondition;
+import games.stendhal.server.entity.npc.condition.TimePassedCondition;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.maps.Region;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+/**
+ * QUEST: Rainbow Beans
+ *
+ * PARTICIPANTS:
+ * &lt;ul&gt;
+ * &lt;li&gt;Pdiddi, a dealer in rainbow beans
+ * &lt;/ul&gt;
+ *
+ * STEPS:
+ * &lt;ul&gt;
+ * &lt;li&gt;The NPC sells rainbow beans to players above level 30&lt;/li&gt;
+ * &lt;li&gt;When used, rainbow beans teleport you to a dreamworld full of strange
+ * sights, hallucinations and the creatures of your nightmares&lt;/li&gt;
+ * &lt;li&gt;You can remain there for up to 30 minutes&lt;/li&gt;
+ * &lt;/ul&gt;
+ *
+ * REWARD:
+ * &lt;ul&gt;
+ * &lt;li&gt;The dream world is really cool!&lt;/li&gt;
+ * &lt;li&gt;XP from creatures you kill there&lt;/li&gt;
+ * &lt;/ul&gt;
+ *
+ * REPETITIONS:
+ * &lt;ul&gt;
+ * &lt;li&gt;No more than once every 6 hours&lt;/li&gt;
+ * &lt;/ul&gt;
+ *
+ * NOTES:
+ * &lt;ul&gt;
+ * &lt;li&gt;The area of the dreamworld will be a no teleport zone&lt;/li&gt;
+ * &lt;li&gt;You can exit via a portal if you want to exit before the 30 minutes is
+ * up&lt;/li&gt;
+ * &lt;/ul&gt;
+ */
+<span class="fc" id="L79">public class RainbowBeans extends AbstractQuest {</span>
+	
+	private static final int REQUIRED_LEVEL = 30;
+
+	private static final int REQUIRED_MONEY = 2000;
+
+	private static final int REQUIRED_MINUTES = 6 * 60;
+
+	private static final String QUEST_SLOT = &quot;rainbow_beans&quot;;
+
+	@Override
+	public String getSlotName() {
+<span class="fc" id="L91">		return QUEST_SLOT;</span>
+	}
+	private void step_1() {
+<span class="fc" id="L94">		final SpeakerNPC npc = npcs.get(&quot;Pdiddi&quot;);</span>
+
+		// player says hi before starting the quest
+<span class="fc" id="L97">		npc.add(ConversationStates.IDLE, ConversationPhrases.GREETING_MESSAGES,</span>
+			new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+						new QuestNotStartedCondition(QUEST_SLOT)),
+			ConversationStates.INFORMATION_1,
+			&quot;SHHH! Don't want all n' sundry knowin' wot I #deal in.&quot;, null);
+
+		// player returns after finishing the quest (it is repeatable) after the
+		// time as finished
+<span class="fc" id="L105">		npc.add(</span>
+			ConversationStates.IDLE,
+			ConversationPhrases.GREETING_MESSAGES,
+			new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+					new QuestStartedCondition(QUEST_SLOT),
+					new TimePassedCondition(QUEST_SLOT, 1, REQUIRED_MINUTES)), 
+			ConversationStates.QUEST_OFFERED,
+			&quot;Oi, you. Back for more rainbow beans?&quot;, null);
+
+		// player returns after finishing the quest (it is repeatable) before
+		// the time as finished
+<span class="fc" id="L116">		npc.add(</span>
+			ConversationStates.IDLE,
+			ConversationPhrases.GREETING_MESSAGES,
+			new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+					new QuestStartedCondition(QUEST_SLOT),
+					new NotCondition(new TimePassedCondition(QUEST_SLOT, 1, REQUIRED_MINUTES))), 
+			ConversationStates.ATTENDING, 
+			null,
+			new SayTimeRemainingAction(QUEST_SLOT, 1, REQUIRED_MINUTES, &quot;Alright? I hope you don't want more beans. You can't take more of that stuff for at least another&quot;));
+
+		// player responds to word 'deal' - enough level
+<span class="fc" id="L127">		npc.add(ConversationStates.INFORMATION_1, </span>
+			&quot;deal&quot;,
+			new AndCondition(
+					new QuestNotStartedCondition(QUEST_SLOT), 
+					new LevelGreaterThanCondition(REQUIRED_LEVEL-1)),
+			ConversationStates.QUEST_OFFERED, 
+			&quot;Nosy, aint yer? I deal in rainbow beans. You take some, and who knows where the trip will take yer. It'll cost you &quot;
+			+ REQUIRED_MONEY
+			+ &quot; money. And remember pal, it can end up faster than ya wanted! Risky business ya know! So, want to buy some?&quot;,
+			null);
+		
+		// player responds to word 'deal' - low level
+<span class="fc" id="L139">		npc.add(ConversationStates.INFORMATION_1, </span>
+			&quot;deal&quot;,
+			new AndCondition(
+					new QuestNotStartedCondition(QUEST_SLOT), 
+					new LevelLessThanCondition(REQUIRED_LEVEL)),
+			ConversationStates.ATTENDING, 
+			&quot;It's not stuff you're ready for, pal. Now get out of 'ere! An don't you come back till you've got more hairs on that chest!&quot;,
+			null);
+
+		// player wants to take the beans but hasn't the money
+<span class="fc" id="L149">		npc.add(ConversationStates.QUEST_OFFERED,</span>
+			ConversationPhrases.YES_MESSAGES,
+			new NotCondition(new PlayerHasItemWithHimCondition(&quot;money&quot;, REQUIRED_MONEY)),
+			ConversationStates.ATTENDING, 
+			&quot;Scammer! You don't have the cash.&quot;,
+			null);
+
+		// player wants to take the beans
+<span class="fc" id="L157">		npc.add(ConversationStates.QUEST_OFFERED,</span>
+				ConversationPhrases.YES_MESSAGES, 
+				new PlayerHasItemWithHimCondition(&quot;money&quot;, REQUIRED_MONEY),
+				ConversationStates.ATTENDING, 
+				&quot;Alright, here's the beans. Once you take them, you come down in about 30 minutes. And if you get nervous up there, hit one of the green panic squares to take you back here.&quot;,
+				new MultipleActions(
+						new DropItemAction(&quot;money&quot;, REQUIRED_MONEY),
+						new EquipItemAction(&quot;rainbow beans&quot;, 1, true),
+						// this is still complicated and could probably be split out further
+<span class="fc" id="L166">						new ChatAction() {</span>
+							@Override
+							public void fire(final Player player, final Sentence sentence, final EventRaiser npc) {
+<span class="fc bfc" id="L169" title="All 2 branches covered.">								if (player.hasQuest(QUEST_SLOT)) {</span>
+<span class="fc" id="L170">									final String[] tokens = player.getQuest(QUEST_SLOT).split(&quot;;&quot;);</span>
+<span class="pc bpc" id="L171" title="1 of 2 branches missed.">									if (tokens.length == 4) {</span>
+										// we stored an old time taken or set it to -1 (never taken), either way, remember this.
+<span class="fc" id="L173">										player.setQuest(QUEST_SLOT, &quot;bought;&quot;</span>
+												+ System.currentTimeMillis() + &quot;;taken;&quot; + tokens[3]);
+									} else {
+										// it must have started with &quot;done&quot; (old quest slot status was done;timestamp), but now we store when the beans were taken. 
+										// And they haven't taken beans since
+<span class="nc" id="L178">										player.setQuest(QUEST_SLOT, &quot;bought;&quot;</span>
+												+ System.currentTimeMillis() + &quot;;taken;-1&quot;);
+
+									}
+<span class="fc" id="L182">								} else {</span>
+									// first time they bought beans here
+<span class="fc" id="L184">									player.setQuest(QUEST_SLOT, &quot;bought;&quot;</span>
+											+ System.currentTimeMillis() + &quot;;taken;-1&quot;);
+
+								}
+<span class="fc" id="L188">							}</span>
+						}));
+		
+		// player is not willing to experiment
+<span class="fc" id="L192">		npc.add(</span>
+			ConversationStates.QUEST_OFFERED,
+			ConversationPhrases.NO_MESSAGES,
+			null,
+			ConversationStates.ATTENDING,
+			&quot;Aight, ain't for everyone. Anythin else you want, you say so.&quot;,
+			null);
+
+		// player says 'deal' or asks about beans when NPC is ATTENDING, not
+		// just in information state (like if they said no then changed mind and
+		// are trying to get him to deal again)
+<span class="fc" id="L203">		npc.add(ConversationStates.ATTENDING,</span>
+			Arrays.asList(&quot;deal&quot;, &quot;beans&quot;, &quot;rainbow beans&quot;, &quot;yes&quot;),
+			new LevelGreaterThanCondition(REQUIRED_LEVEL-1),
+			ConversationStates.ATTENDING,
+			&quot;We already talked about this, conversation's moved on now mate, keep up! Try another time.&quot;,
+			null);
+			
+		// player says 'deal' or asks about beans when NPC is ATTENDING, not
+		// just in information state (like if they said no then changed mind and
+		// are trying to get him to deal again)
+<span class="fc" id="L213">		npc.add(ConversationStates.ATTENDING,</span>
+			Arrays.asList(&quot;deal&quot;, &quot;beans&quot;, &quot;rainbow beans&quot;, &quot;yes&quot;),
+			new LevelLessThanCondition(REQUIRED_LEVEL),
+			ConversationStates.ATTENDING, 
+			&quot;That stuff's too strong for you. No chance mate!&quot;,
+			null);
+<span class="fc" id="L219">	}</span>
+
+	@Override
+	public void addToWorld() {
+		/* login notifier to teleport away players logging into the dream world.
+		 * there is a note in TimedTeleportScroll that it should be done there or its subclass.
+		 */
+<span class="fc" id="L226">		SingletonRepository.getLoginNotifier().addListener(new LoginListener() {</span>
+			@Override
+			public void onLoggedIn(final Player player) {
+<span class="nc" id="L229">				RainbowBeansScroll scroll = (RainbowBeansScroll) SingletonRepository.getEntityManager().getItem(&quot;rainbow beans&quot;);</span>
+<span class="nc" id="L230">				scroll.teleportBack(player);</span>
+<span class="nc" id="L231">			}</span>
+
+		});
+<span class="fc" id="L234">		fillQuestInfo(</span>
+				&quot;Rainbow Beans&quot;,
+				&quot;Weird beans could be a way to strange and sometimes dangerous places!&quot;,
+				false);
+<span class="fc" id="L238">		step_1();</span>
+
+<span class="fc" id="L240">	}</span>
+	@Override
+	public String getName() {
+<span class="nc" id="L243">		return &quot;RainbowBeans&quot;;</span>
+	}
+	
+	@Override
+	public int getMinLevel() {
+<span class="fc" id="L248">		return REQUIRED_LEVEL;</span>
+	}
+	
+	@Override
+	public boolean isCompleted(final Player player) {
+<span class="nc bnc" id="L253" title="All 2 branches missed.">		if(!player.hasQuest(QUEST_SLOT)) {</span>
+<span class="nc" id="L254">			return false;</span>
+		}
+<span class="nc" id="L256">		String[] tokens = player.getQuest(QUEST_SLOT).split(&quot;;&quot;);</span>
+<span class="nc bnc" id="L257" title="All 2 branches missed.">		if (tokens.length &lt; 4) {</span>
+<span class="nc" id="L258">			return false;</span>
+		}
+<span class="nc bnc" id="L260" title="All 2 branches missed.">		return MathHelper.parseLongDefault(tokens[3],-1)&gt;0;</span>
+	}
+	
+	@Override
+	public boolean isVisibleOnQuestStatus() {
+<span class="nc" id="L265">		return false;</span>
+	}
+	
+	@Override
+	public List&lt;String&gt; getHistory(final Player player) {
+<span class="nc" id="L270">		return new ArrayList&lt;String&gt;();</span>
+	}
+	@Override
+	public String getNPCName() {
+<span class="nc" id="L274">		return &quot;Pdiddi&quot;;</span>
+	}
+	
+	@Override
+	public String getRegion() {
+<span class="nc" id="L279">		return Region.SEMOS_SURROUNDS;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

@@ -1,0 +1,559 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>StuffForBaldemar.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests</a> &gt; <span class="el_source">StuffForBaldemar.java</span></div><h1>StuffForBaldemar.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests;
+
+import games.stendhal.common.MathHelper;
+import games.stendhal.common.grammar.Grammar;
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.entity.item.Item;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.action.SetQuestAndModifyKarmaAction;
+import games.stendhal.server.entity.npc.condition.AndCondition;
+import games.stendhal.server.entity.npc.condition.GreetingMatchesNameCondition;
+import games.stendhal.server.entity.npc.condition.QuestStartedCondition;
+import games.stendhal.server.entity.npc.condition.QuestStateStartsWithCondition;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.maps.Region;
+import games.stendhal.server.util.TimeUtil;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+
+/**
+ * QUEST: The mithril shield forging.
+ * 
+ * PARTICIPANTS:
+ * &lt;ul&gt;
+ * &lt;li&gt; Baldemar, mithrilbourgh elite wizard, will forge a mithril shield.
+ * &lt;/ul&gt;
+ * 
+ * STEPS:
+ * &lt;ul&gt;
+ * &lt;li&gt; Baldemar tells you about shield.
+ * &lt;li&gt; He offers to forge a mithril shield for you if you bring him what he
+ * needs.
+ * &lt;li&gt; You give him all he asks for.
+ * &lt;li&gt; Baldemar checks if you have ever killed a black giant alone, or not
+ * &lt;li&gt; Baldemar forges the shield for you
+ * &lt;/ul&gt;
+ * 
+ * REWARD:
+ * &lt;ul&gt;
+ * &lt;li&gt; mithril shield
+ * &lt;li&gt; 95000 XP
+ * &lt;li&gt; some karma (25)
+ * &lt;/ul&gt;
+ * 
+ * 
+ * REPETITIONS:
+ * &lt;ul&gt;
+ * &lt;li&gt; None.
+ * &lt;/ul&gt;
+ */
+<span class="fc" id="L71">public class StuffForBaldemar extends AbstractQuest {</span>
+<span class="fc" id="L72">	private static Map&lt;Integer, ItemData&gt; neededItems = initneededitems();</span>
+	private static Map&lt;Integer, ItemData&gt; initneededitems() {
+<span class="fc" id="L74">		neededItems = new TreeMap&lt;Integer, ItemData&gt;();</span>
+<span class="fc" id="L75">		ItemData data = new ItemData(&quot;mithril bar&quot;, </span>
+									REQUIRED_MITHRIL_BAR, 
+									&quot;I cannot #forge it without the missing &quot;, 
+									&quot;. After all, this IS a mithril shield.&quot;);
+<span class="fc" id="L79">		neededItems.put(1, data);</span>
+<span class="fc" id="L80">		data = new ItemData(&quot;obsidian&quot;,	REQUIRED_OBSIDIAN, </span>
+				&quot;I need several gems to grind into dust to mix with the mithril. I need &quot;, 
+				&quot; still.&quot;);
+<span class="fc" id="L83">		neededItems.put(2, data);</span>
+<span class="fc" id="L84">		data = new ItemData(&quot;diamond&quot;,	REQUIRED_DIAMOND , </span>
+				&quot;I need several gems to grind into dust to mix with the mithril. I need &quot;, 
+				&quot; still.&quot;);
+<span class="fc" id="L87">		neededItems.put(3, data);</span>
+		
+		
+<span class="fc" id="L90">		data = new ItemData(&quot;emerald&quot;,	REQUIRED_EMERALD , </span>
+				&quot;I need several gems to grind into dust to mix with the mithril. I need &quot;, 
+				&quot; still.&quot;);
+<span class="fc" id="L93">		neededItems.put(4, data);</span>
+		
+<span class="fc" id="L95">		data = new ItemData(&quot;carbuncle&quot;,	REQUIRED_CARBUNCLE , </span>
+				&quot;I need several gems to grind into dust to mix with the mithril. I need &quot;, 
+				&quot; still.&quot;);
+<span class="fc" id="L98">		neededItems.put(5, data);</span>
+		
+<span class="fc" id="L100">		data = new ItemData(&quot;sapphire&quot;,	REQUIRED_SAPPHIRE, </span>
+				&quot;I need several gems to grind into dust to mix with the mithril. I need &quot;, 
+				&quot; still.&quot;);
+<span class="fc" id="L103">		neededItems.put(6, data);</span>
+<span class="fc" id="L104">		int i = 7;</span>
+<span class="fc" id="L105">		data = new ItemData(&quot;black shield&quot;,	REQUIRED_BLACK_SHIELD , </span>
+				&quot;I need &quot;, 
+				&quot; to form the framework for your new shield.&quot;);
+<span class="fc" id="L108">		neededItems.put(i, data);</span>
+		
+<span class="fc" id="L110">		 i = 8;</span>
+<span class="fc" id="L111">		data = new ItemData(&quot;magic plate shield&quot;,	REQUIRED_MAGIC_PLATE_SHIELD , </span>
+				&quot;I need &quot;, 
+				&quot; for the pieces and parts for your new shield.&quot;);
+<span class="fc" id="L114">		neededItems.put(i, data);</span>
+	
+<span class="fc" id="L116">		 i = 9;</span>
+<span class="fc" id="L117">			data = new ItemData(&quot;gold bar&quot;,	REQUIRED_GOLD_BAR , </span>
+					&quot;I need &quot;, 
+					&quot; to melt down with the mithril and iron.&quot;);
+<span class="fc" id="L120">			neededItems.put(i, data);</span>
+
+<span class="fc" id="L122">		 i = 10;</span>
+<span class="fc" id="L123">			data = new ItemData(&quot;iron&quot;,	REQUIRED_IRON , </span>
+					&quot;I need &quot;, 
+					&quot; to melt down with the mithril and gold.&quot;);
+<span class="fc" id="L126">			neededItems.put(i, data);</span>
+<span class="fc" id="L127">		 i = 11;</span>
+<span class="fc" id="L128">			data = new ItemData(&quot;black pearl&quot;,	REQUIRED_BLACK_PEARL , </span>
+					&quot;I need &quot;, 
+					&quot; to crush into fine powder to sprinkle onto shield to give it a nice sheen.&quot;);
+<span class="fc" id="L131">			neededItems.put(i, data);</span>
+
+<span class="fc" id="L133">		 i = 12;</span>
+<span class="fc" id="L134">			data = new ItemData(&quot;shuriken&quot;,	REQUIRED_SHURIKEN , </span>
+					&quot;I need &quot;, 
+					&quot; to melt down with the mithril, gold and iron. It is a 'secret' ingredient that only you and I know about. ;)&quot;);
+<span class="fc" id="L137">			neededItems.put(i, data);</span>
+<span class="fc" id="L138">			i = 13;</span>
+<span class="fc" id="L139">			data = new ItemData(&quot;marbles&quot;,	REQUIRED_MARBLES , </span>
+					&quot;My son wants some new toys. I need &quot;, 
+					&quot; still.&quot;);
+<span class="fc" id="L142">			neededItems.put(i, data);</span>
+
+<span class="fc" id="L144">			data = new ItemData(&quot;snowglobe&quot;,	REQUIRED_SNOWGLOBE, </span>
+					&quot;I just LOVE those trinkets from athor. I need &quot;, 
+					&quot; still.&quot;);
+<span class="fc" id="L147">			neededItems.put(14, data);</span>
+<span class="fc" id="L148">		return neededItems;</span>
+	}
+
+	
+<span class="fc" id="L152">	protected static final class ItemData {</span>
+
+		private int neededAmount;
+		private final String itemName;
+		private final String itemPrefix;
+		private final String itemSuffix;
+		private final int requiredAmount;
+
+<span class="fc" id="L160">		public ItemData(final String name, final int needed, final String prefix, final String suffix) {</span>
+<span class="fc" id="L161">			this.requiredAmount = needed;</span>
+<span class="fc" id="L162">			this.neededAmount = needed;</span>
+<span class="fc" id="L163">			this.itemName = name;</span>
+<span class="fc" id="L164">			this.itemPrefix = prefix;</span>
+<span class="fc" id="L165">			this.itemSuffix = suffix;</span>
+<span class="fc" id="L166">		}</span>
+
+		public int getStillNeeded() {
+<span class="fc" id="L169">			return neededAmount;</span>
+		}
+
+		public void setAmount(final int needed) {
+<span class="fc" id="L173">			neededAmount = needed;</span>
+			
+<span class="fc" id="L175">		}</span>
+
+		public String getName() {
+<span class="fc" id="L178">			return itemName;</span>
+		}
+
+		public String getPrefix() {
+<span class="fc" id="L182">			return itemPrefix;</span>
+		}
+
+		public String getSuffix() {
+<span class="fc" id="L186">			return itemSuffix;</span>
+		}
+
+		public void subAmount(final String string) {
+<span class="fc" id="L190">			subAmount(Integer.parseInt(string));</span>
+			
+<span class="fc" id="L192">		}</span>
+
+		String getAnswer() {
+<span class="fc" id="L195">			return itemPrefix</span>
+				+ Grammar.quantityplnoun(
+						neededAmount, itemName, &quot;a&quot;)
+				+ itemSuffix;
+		}
+
+		public int getRequired() {
+<span class="fc" id="L202">			return requiredAmount;</span>
+		}
+
+		public int getAlreadyBrought() {
+<span class="fc" id="L206">			return requiredAmount - neededAmount;</span>
+		}
+
+		public void subAmount(final int amount) {
+<span class="fc" id="L210">			neededAmount -= amount;</span>
+			
+<span class="fc" id="L212">		}</span>
+
+		public void resetAmount() {
+<span class="fc" id="L215">			neededAmount = requiredAmount;</span>
+			
+<span class="fc" id="L217">		}</span>
+	}
+
+	private static final int REQUIRED_MITHRIL_BAR = 20;
+
+	private static final int REQUIRED_OBSIDIAN = 1;
+
+	private static final int REQUIRED_DIAMOND = 1;
+
+	private static final int REQUIRED_EMERALD = 5;
+	
+	private static final int REQUIRED_CARBUNCLE = 10;
+
+	private static final int REQUIRED_SAPPHIRE = 10;
+
+	private static final int REQUIRED_BLACK_SHIELD = 1;
+
+	private static final int REQUIRED_MAGIC_PLATE_SHIELD = 1;
+
+	private static final int REQUIRED_GOLD_BAR = 10;
+
+	private static final int REQUIRED_IRON = 20;
+
+	private static final int REQUIRED_BLACK_PEARL = 10;
+
+	private static final int REQUIRED_SHURIKEN = 20;
+	
+	private static final int REQUIRED_MARBLES = 15;
+
+	private static final int REQUIRED_SNOWGLOBE = 1;
+
+	private static final String I_WILL_NEED_MANY_THINGS = &quot;I will need many, many things: &quot;
+							+ REQUIRED_MITHRIL_BAR
+							+ &quot; mithril bars, &quot;
+							+ REQUIRED_OBSIDIAN
+							+ &quot; obsidian, &quot;
+							+ REQUIRED_DIAMOND
+							+ &quot; diamond, &quot;
+							+ REQUIRED_EMERALD
+							+ &quot; emeralds,&quot; 
+							+ REQUIRED_CARBUNCLE
+							+ &quot; carbuncles, &quot;
+							+ REQUIRED_SAPPHIRE
+							+ &quot; sapphires, &quot;
+							+ REQUIRED_BLACK_SHIELD
+							+ &quot; black shield, &quot;
+							+ REQUIRED_MAGIC_PLATE_SHIELD
+							+ &quot; magic plate shield, &quot;
+							+ REQUIRED_GOLD_BAR
+							+ &quot; gold bars, &quot;
+							+ REQUIRED_IRON
+							+ &quot; iron bars, &quot;
+							+ REQUIRED_BLACK_PEARL
+							+ &quot; black pearls, &quot; 
+							+ REQUIRED_SHURIKEN
+							+ &quot; shuriken, &quot;
+							+ REQUIRED_MARBLES
+							+ &quot; marbles and &quot;
+							+ REQUIRED_SNOWGLOBE
+							+ &quot; snowglobe. Come back when you have them in the same #exact order!&quot;;
+	
+	private static final int REQUIRED_MINUTES = 10;
+
+	private static final String QUEST_SLOT = &quot;mithrilshield_quest&quot;;
+
+	@Override
+	public String getSlotName() {
+<span class="fc" id="L284">		return QUEST_SLOT;</span>
+	}
+	
+	private void step_1() {
+<span class="fc" id="L288">		final SpeakerNPC npc = npcs.get(&quot;Baldemar&quot;);</span>
+
+<span class="fc" id="L290">		npc.add(ConversationStates.ATTENDING,</span>
+			ConversationPhrases.QUEST_MESSAGES, null,
+			ConversationStates.QUEST_OFFERED, null,
+<span class="fc" id="L293">			new ChatAction() {</span>
+				@Override
+				public void fire(final Player player, final Sentence sentence, final EventRaiser raiser) {
+<span class="nc bnc" id="L296" title="All 4 branches missed.">					if (!player.hasQuest(QUEST_SLOT) || &quot;rejected&quot;.equals(player.getQuest(QUEST_SLOT))) {</span>
+<span class="nc" id="L297">						raiser.say(&quot;I can forge a shield made from mithril along with several other items. Would you like me to do that?&quot;);</span>
+<span class="nc bnc" id="L298" title="All 2 branches missed.">					} else if (player.isQuestCompleted(QUEST_SLOT)) {</span>
+<span class="nc" id="L299">						raiser.say(&quot;I would prefer you left me to my entertainment.&quot;);</span>
+<span class="nc" id="L300">						raiser.setCurrentState(ConversationStates.ATTENDING);</span>
+					} else {
+<span class="nc" id="L302">						raiser.say(&quot;Why are you bothering me when you haven't completed your quest yet?&quot;);</span>
+<span class="nc" id="L303">						raiser.setCurrentState(ConversationStates.ATTENDING);</span>
+					}
+<span class="nc" id="L305">				}</span>
+			});
+
+<span class="fc" id="L308">		npc.add(ConversationStates.QUEST_OFFERED,</span>
+			ConversationPhrases.YES_MESSAGES, null,
+			ConversationStates.ATTENDING, null,
+<span class="fc" id="L311">			new ChatAction() {</span>
+				@Override
+				public void fire(final Player player, final Sentence sentence, final EventRaiser raiser) {
+<span class="fc" id="L314">					raiser.say(I_WILL_NEED_MANY_THINGS);</span>
+<span class="fc" id="L315">					player.setQuest(QUEST_SLOT, &quot;start;0;0;0;0;0;0;0;0;0;0;0;0;0;0&quot;);</span>
+
+<span class="fc" id="L317">				}</span>
+			});
+
+<span class="fc" id="L320">		npc.add(</span>
+			ConversationStates.QUEST_OFFERED,
+			ConversationPhrases.NO_MESSAGES,
+			null,
+			ConversationStates.IDLE,
+			&quot;I can't believe you are going to pass up this opportunity! You must be daft!!!&quot;,
+			new SetQuestAndModifyKarmaAction(QUEST_SLOT, &quot;rejected&quot;, -10.0));
+
+<span class="fc" id="L328">		npc.addReply(&quot;exact&quot;,</span>
+			&quot;As I have listed them here, you must provide them in that order.&quot;);
+<span class="fc" id="L330">	}</span>
+
+	private void step_2() {
+		/* Get the stuff. */
+<span class="fc" id="L334">	}</span>
+
+	private void step_3() {
+<span class="fc" id="L337">		final SpeakerNPC npc = npcs.get(&quot;Baldemar&quot;);</span>
+
+<span class="fc" id="L339">		npc.add(ConversationStates.IDLE, ConversationPhrases.GREETING_MESSAGES,</span>
+			new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+					new QuestStateStartsWithCondition(QUEST_SLOT, &quot;start&quot;)),
+			ConversationStates.ATTENDING, null,
+<span class="fc" id="L343">			new ChatAction() {</span>
+				@Override
+				public void fire(final Player player, final Sentence sentence, final EventRaiser raiser) {
+<span class="fc" id="L346">					final String[] tokens = player.getQuest(QUEST_SLOT).split(&quot;;&quot;);</span>
+					
+<span class="fc" id="L348">					int idx1 = 1;</span>
+<span class="fc bfc" id="L349" title="All 2 branches covered.">					for (ItemData itemdata : neededItems.values()) {</span>
+<span class="fc" id="L350">							itemdata.resetAmount();</span>
+<span class="fc" id="L351">							itemdata.subAmount(tokens[idx1]);</span>
+<span class="fc" id="L352">							idx1++;</span>
+<span class="fc" id="L353">					}</span>
+
+<span class="fc" id="L355">					boolean missingSomething = false;</span>
+
+<span class="fc" id="L357">					int size = neededItems.size();</span>
+<span class="fc bfc" id="L358" title="All 4 branches covered.">					for (int idx = 1; !missingSomething &amp;&amp; idx &lt;= size; idx++) {</span>
+<span class="fc" id="L359">						ItemData itemData = neededItems.get(idx);</span>
+<span class="fc" id="L360">						missingSomething = proceedItem(player, raiser,</span>
+								itemData);
+					}
+					
+<span class="pc bpc" id="L364" title="3 of 4 branches missed.">					if (player.hasKilledSolo(&quot;black giant&quot;) &amp;&amp; !missingSomething) {</span>
+<span class="nc" id="L365">						raiser.say(&quot;You've brought everything I need to forge the shield. Come back in &quot;</span>
+							+ REQUIRED_MINUTES
+							+ &quot; minutes and it will be ready.&quot;);
+<span class="nc" id="L368">						player.setQuest(QUEST_SLOT, &quot;forging;&quot; + System.currentTimeMillis());</span>
+					} else {
+<span class="pc bpc" id="L370" title="1 of 4 branches missed.">						if (!player.hasKilledSolo(&quot;black giant&quot;) &amp;&amp; !missingSomething) {</span>
+<span class="fc" id="L371">							raiser.say(&quot;This shield can only be given to those who have killed a black giant, and without the help of others.&quot;);</span>
+						}
+
+<span class="fc" id="L374">						StringBuilder sb = new StringBuilder(30);</span>
+<span class="fc" id="L375">						sb.append(&quot;start&quot;);</span>
+<span class="fc bfc" id="L376" title="All 2 branches covered.">						for (ItemData id : neededItems.values()) {</span>
+<span class="fc" id="L377">							sb.append(&quot;;&quot;);</span>
+<span class="fc" id="L378">							sb.append(id.getAlreadyBrought());</span>
+<span class="fc" id="L379">						}</span>
+<span class="fc" id="L380">						player.setQuest(QUEST_SLOT, sb.toString());</span>
+							
+					}
+<span class="fc" id="L383">				}</span>
+
+	
+				private boolean proceedItem(final Player player,
+						final EventRaiser engine, final ItemData itemData) {
+<span class="fc bfc" id="L388" title="All 2 branches covered.">					if (itemData.getStillNeeded() &gt; 0) {</span>
+						
+<span class="fc bfc" id="L390" title="All 2 branches covered.">						if (player.isEquipped(itemData.getName(), itemData.getStillNeeded())) {</span>
+<span class="fc" id="L391">							player.drop(itemData.getName(), itemData.getStillNeeded());</span>
+<span class="fc" id="L392">							itemData.setAmount(0);</span>
+						} else {
+<span class="fc" id="L394">							final int amount = player.getNumberOfEquipped(itemData.getName());</span>
+<span class="pc bpc" id="L395" title="1 of 2 branches missed.">							if (amount &gt; 0) {</span>
+<span class="nc" id="L396">								player.drop(itemData.getName(), amount);</span>
+<span class="nc" id="L397">								itemData.subAmount(amount);</span>
+							}
+
+<span class="fc" id="L400">							engine.say(itemData.getAnswer());</span>
+<span class="fc" id="L401">							return true;</span>
+						}
+					}
+<span class="fc" id="L404">					return false;</span>
+				}
+			});
+
+<span class="fc" id="L408">		npc.add(ConversationStates.IDLE, ConversationPhrases.GREETING_MESSAGES,</span>
+				new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+						new QuestStateStartsWithCondition(QUEST_SLOT, &quot;forging;&quot;)),
+<span class="fc" id="L411">				ConversationStates.IDLE, null, new ChatAction() {</span>
+				@Override
+				public void fire(final Player player, final Sentence sentence, final EventRaiser raiser) {
+
+<span class="nc" id="L415">					final String[] tokens = player.getQuest(QUEST_SLOT).split(&quot;;&quot;);</span>
+					
+					final long delay = REQUIRED_MINUTES * MathHelper.MILLISECONDS_IN_ONE_MINUTE; 
+<span class="nc" id="L418">					final long timeRemaining = Long.parseLong(tokens[1]) + delay</span>
+							- System.currentTimeMillis();
+
+<span class="nc bnc" id="L421" title="All 2 branches missed.">					if (timeRemaining &gt; 0L) {</span>
+<span class="nc" id="L422">						raiser.say(&quot;I haven't finished forging your shield. Please check back in &quot;</span>
+							+ TimeUtil.approxTimeUntil((int) (timeRemaining / 1000L))
+							+ &quot;.&quot;);
+<span class="nc" id="L425">						return;</span>
+					}
+
+<span class="nc" id="L428">					raiser.say(&quot;I have finished forging your new mithril shield. Enjoy. Now I will see what Trillium has stored behind the counter for me. ;)&quot;);</span>
+<span class="nc" id="L429">					player.addXP(95000);</span>
+<span class="nc" id="L430">					player.addKarma(25);</span>
+<span class="nc" id="L431">					final Item mithrilshield = SingletonRepository.getEntityManager().getItem(&quot;mithril shield&quot;);</span>
+<span class="nc" id="L432">					mithrilshield.setBoundTo(player.getName());</span>
+<span class="nc" id="L433">					player.equipOrPutOnGround(mithrilshield);</span>
+<span class="nc" id="L434">					player.notifyWorldAboutChanges();</span>
+<span class="nc" id="L435">					player.setQuest(QUEST_SLOT, &quot;done&quot;);</span>
+<span class="nc" id="L436">				}</span>
+			});
+
+<span class="fc" id="L439">		npc.add(ConversationStates.ATTENDING,</span>
+			Arrays.asList(&quot;forge&quot;, &quot;missing&quot;), 
+			new QuestStartedCondition(QUEST_SLOT),
+			ConversationStates.ATTENDING,
+			null,
+<span class="fc" id="L444">			new ChatAction() {</span>
+				@Override
+				public void fire(final Player player, final Sentence sentence, final EventRaiser raiser) {
+<span class="nc" id="L447">					final String[] tokens = player.getQuest(QUEST_SLOT).split(&quot;;&quot;);</span>
+
+<span class="nc" id="L449">					final int neededMithrilBar = REQUIRED_MITHRIL_BAR</span>
+							- Integer.parseInt(tokens[1]);
+<span class="nc" id="L451">					final int neededObsidian = REQUIRED_OBSIDIAN</span>
+							- Integer.parseInt(tokens[2]);
+<span class="nc" id="L453">					final int neededDiamond = REQUIRED_DIAMOND</span>
+							- Integer.parseInt(tokens[3]);
+<span class="nc" id="L455">					final int neededEmerald = REQUIRED_EMERALD</span>
+							- Integer.parseInt(tokens[4]);
+<span class="nc" id="L457">					final int neededCarbuncle = REQUIRED_CARBUNCLE</span>
+							- Integer.parseInt(tokens[5]);
+<span class="nc" id="L459">					final int neededSapphire = REQUIRED_SAPPHIRE</span>
+							- Integer.parseInt(tokens[6]);
+<span class="nc" id="L461">					final int neededBlackShield = REQUIRED_BLACK_SHIELD</span>
+							- Integer.parseInt(tokens[7]);
+<span class="nc" id="L463">					final int neededMagicPlateShield = REQUIRED_MAGIC_PLATE_SHIELD</span>
+							- Integer.parseInt(tokens[8]);
+<span class="nc" id="L465">					final int neededGoldBars = REQUIRED_GOLD_BAR</span>
+							- Integer.parseInt(tokens[9]);
+<span class="nc" id="L467">					final int neededIron = REQUIRED_IRON</span>
+							- Integer.parseInt(tokens[10]);
+<span class="nc" id="L469">					final int neededBlackPearl = REQUIRED_BLACK_PEARL</span>
+							- Integer.parseInt(tokens[11]);
+<span class="nc" id="L471">					final int neededShuriken = REQUIRED_SHURIKEN</span>
+							- Integer.parseInt(tokens[12]);
+<span class="nc" id="L473">					final int neededMarbles = REQUIRED_MARBLES</span>
+							- Integer.parseInt(tokens[13]);
+<span class="nc" id="L475">					final int neededSnowglobe = REQUIRED_SNOWGLOBE</span>
+							- Integer.parseInt(tokens[14]);
+					
+<span class="nc" id="L478">					raiser.say(&quot;I will need &quot; + neededMithrilBar + &quot; mithril bars, &quot;</span>
+							+ neededObsidian + &quot; obsidian, &quot;
+							+ neededDiamond + &quot; diamond, &quot;
+							+ neededEmerald + &quot; emeralds, &quot;
+							+ neededCarbuncle + &quot; carbuncles, &quot;
+							+ neededSapphire + &quot; sapphires, &quot;
+							+ neededBlackShield + &quot; black shield, &quot;
+							+ neededMagicPlateShield + &quot; magic plate shield, &quot;
+							+ neededGoldBars + &quot; gold bars, &quot;
+							+ neededIron + &quot; iron bars, &quot;
+							+ neededBlackPearl + &quot; black pearls, &quot;
+							+ neededShuriken + &quot; shuriken, &quot;
+							+ neededMarbles + &quot; marbles and &quot;
+							+ neededSnowglobe + &quot; snowglobe&quot;);
+<span class="nc" id="L492">				}</span>
+			});
+
+<span class="fc" id="L495">	}</span>
+
+	@Override
+	public void addToWorld() {
+<span class="fc" id="L499">		fillQuestInfo(</span>
+				&quot;Stuff for Baldemar&quot;,
+				&quot;Baldemar, a friendly mithrilbourgh elite wizard, will forge a special shield.&quot;,
+				false);
+<span class="fc" id="L503">		step_1();</span>
+<span class="fc" id="L504">		step_2();</span>
+<span class="fc" id="L505">		step_3();</span>
+<span class="fc" id="L506">	}</span>
+
+	@Override
+	public String getName() {
+<span class="nc" id="L510">		return &quot;StuffForBaldemar&quot;;</span>
+	}
+	
+	@Override
+	public List&lt;String&gt; getHistory(final Player player) {
+<span class="nc" id="L515">			final List&lt;String&gt; res = new ArrayList&lt;String&gt;();</span>
+<span class="nc bnc" id="L516" title="All 2 branches missed.">			if (!player.hasQuest(QUEST_SLOT)) {</span>
+<span class="nc" id="L517">				return res;</span>
+			}			
+<span class="nc" id="L519">			final String questState = player.getQuest(QUEST_SLOT);</span>
+<span class="nc" id="L520">			res.add(&quot;I met Baldemar in the magic theater.&quot;);</span>
+<span class="nc bnc" id="L521" title="All 2 branches missed.">			if (questState.equals(&quot;rejected&quot;)) {</span>
+<span class="nc" id="L522">				res.add(&quot;I'm not interested in his ideas about shields made from mithril.&quot;);</span>
+<span class="nc" id="L523">				return res;</span>
+			} 
+<span class="nc" id="L525">			res.add(&quot;Baldemar told me: &quot; + I_WILL_NEED_MANY_THINGS);</span>
+			// yes, yes. this is the most horrible quest code and so you get a horrible quest history. 
+<span class="nc bnc" id="L527" title="All 4 branches missed.">			if(questState.startsWith(&quot;start&quot;) &amp;&amp; !&quot;start;20;1;1;5;10;10;1;1;10;20;10;20;15;1&quot;.equals(questState)){</span>
+<span class="nc" id="L528">				res.add(&quot;I haven't brought everything yet. Baldemar will tell me what I need to take next.&quot;);</span>
+<span class="nc bnc" id="L529" title="All 4 branches missed.">			} else if (&quot;start;20;1;1;5;10;10;1;1;10;20;10;20;15;1&quot;.equals(questState) || !questState.startsWith(&quot;start&quot;)) {</span>
+<span class="nc" id="L530">				res.add(&quot;I took all the special items to Baldemar.&quot;);</span>
+			}
+<span class="nc bnc" id="L532" title="All 4 branches missed.">			if(&quot;start;20;1;1;5;10;10;1;1;10;20;10;20;15;1&quot;.equals(questState) &amp;&amp; !player.hasKilledSolo(&quot;black giant&quot;)){</span>
+<span class="nc" id="L533">				res.add(&quot;I will need to bravely face a black giant alone, before I am worthy of this shield.&quot;);</span>
+			}
+<span class="nc bnc" id="L535" title="All 2 branches missed.">			if (questState.startsWith(&quot;forging&quot;)) {</span>
+<span class="nc" id="L536">				res.add(&quot;Baldemar is forging my mithril shield!&quot;);</span>
+			} 
+<span class="nc bnc" id="L538" title="All 2 branches missed.">			if (isCompleted(player)) {</span>
+<span class="nc" id="L539">				res.add(&quot;I brought Baldemar many items, killed a black giant solo, and he forged me a mithril shield.&quot;);</span>
+			}
+<span class="nc" id="L541">			return res;</span>
+	}
+	
+	@Override
+	public int getMinLevel() {
+<span class="fc" id="L546">		return 100;</span>
+	}
+
+	@Override
+	public String getNPCName() {
+<span class="nc" id="L551">		return &quot;Baldemar&quot;;</span>
+	}
+	
+	@Override
+	public String getRegion() {
+<span class="nc" id="L556">		return Region.FADO_CAVES;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

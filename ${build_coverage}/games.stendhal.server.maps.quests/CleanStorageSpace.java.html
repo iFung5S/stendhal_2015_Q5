@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>CleanStorageSpace.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests</a> &gt; <span class="el_source">CleanStorageSpace.java</span></div><h1>CleanStorageSpace.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2011 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests;
+
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.action.IncreaseKarmaAction;
+import games.stendhal.server.entity.npc.action.IncreaseXPAction;
+import games.stendhal.server.entity.npc.action.MultipleActions;
+import games.stendhal.server.entity.npc.action.SetQuestAction;
+import games.stendhal.server.entity.npc.action.SetQuestAndModifyKarmaAction;
+import games.stendhal.server.entity.npc.action.StartRecordingKillsAction;
+import games.stendhal.server.entity.npc.condition.AndCondition;
+import games.stendhal.server.entity.npc.condition.GreetingMatchesNameCondition;
+import games.stendhal.server.entity.npc.condition.KilledForQuestCondition;
+import games.stendhal.server.entity.npc.condition.NotCondition;
+import games.stendhal.server.entity.npc.condition.QuestActiveCondition;
+import games.stendhal.server.entity.npc.condition.QuestInStateCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotStartedCondition;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.maps.Region;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+
+import marauroa.common.Pair;
+
+/**
+ * QUEST: CleanStorageSpace
+ * &lt;p&gt;
+ * PARTICIPANTS:
+ * &lt;li&gt; Eonna
+ * &lt;p&gt;
+ * STEPS:
+ * &lt;li&gt; Eonna asks you to clean her storage space.
+ * &lt;li&gt; You go kill at least a rat, a cave rat and a cobra.
+ * &lt;li&gt; Eonna checks your kills and then thanks you.
+ * &lt;p&gt;
+ * REWARD:
+ * &lt;li&gt; 100 XP, karma
+ * &lt;p&gt;
+ * REPETITIONS:
+ * &lt;li&gt; None.
+ */
+<span class="fc" id="L60">public class CleanStorageSpace extends AbstractQuest {</span>
+	private static final String QUEST_SLOT = &quot;clean_storage&quot;;
+
+	@Override
+	public String getSlotName() {
+<span class="nc" id="L65">		return QUEST_SLOT;</span>
+	}
+	
+	@Override
+	public List&lt;String&gt; getHistory(final Player player) {
+<span class="nc" id="L70">		final List&lt;String&gt; res = new ArrayList&lt;String&gt;();</span>
+<span class="nc bnc" id="L71" title="All 2 branches missed.">		if (!player.hasQuest(QUEST_SLOT)) {</span>
+<span class="nc" id="L72">			return res;</span>
+		}
+<span class="nc" id="L74">		res.add(&quot;I have met Eonna at her house in Semos next to the bakery.&quot;);</span>
+<span class="nc" id="L75">		final String questState = player.getQuest(QUEST_SLOT, 0);</span>
+<span class="nc bnc" id="L76" title="All 2 branches missed.">		if (&quot;rejected&quot;.equals(questState)) {</span>
+<span class="nc" id="L77">			res.add(&quot;I do not want to clear her storage space of creatures.&quot;);</span>
+<span class="nc" id="L78">			return res;</span>
+		}
+<span class="nc" id="L80">		res.add(&quot;I promised Eonna to kill the rats and snakes in her basement.&quot;);</span>
+<span class="nc bnc" id="L81" title="All 10 branches missed.">		if (&quot;start&quot;.equals(questState) &amp;&amp; player.hasKilled(&quot;rat&quot;) &amp;&amp; player.hasKilled(&quot;caverat&quot;) &amp;&amp; player.hasKilled(&quot;snake&quot;) || &quot;done&quot;.equals(questState)) {</span>
+<span class="nc" id="L82">			res.add(&quot;I have cleaned out Eonna's storage space.&quot;);</span>
+		}
+<span class="nc bnc" id="L84" title="All 2 branches missed.">		if (&quot;done&quot;.equals(questState)) {</span>
+<span class="nc" id="L85">			res.add(&quot;Wow, Eonna thinks I am her hero. *blush*&quot;);</span>
+		}
+<span class="nc" id="L87">		return res;</span>
+	}
+	
+	private void step_1() {
+<span class="fc" id="L91">		final SpeakerNPC npc = npcs.get(&quot;Eonna&quot;);</span>
+
+<span class="fc" id="L93">		npc.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.QUEST_MESSAGES, 
+				new QuestNotStartedCondition(QUEST_SLOT),
+				ConversationStates.QUEST_OFFERED,
+				&quot;My #basement is absolutely crawling with rats. Will you help me?&quot;,
+				null);
+
+<span class="fc" id="L100">		npc.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.QUEST_MESSAGES, 
+				new QuestActiveCondition(QUEST_SLOT),
+				ConversationStates.ATTENDING, 
+				&quot;Thanks again! I think it's still clear down there.&quot;, null);
+
+<span class="fc" id="L106">		final List&lt;ChatAction&gt; start = new LinkedList&lt;ChatAction&gt;();</span>
+		
+<span class="fc" id="L108">		final HashMap&lt;String, Pair&lt;Integer, Integer&gt;&gt; toKill = </span>
+			new HashMap&lt;String, Pair&lt;Integer, Integer&gt;&gt;();
+		// first number is required solo kills, second is required shared kills
+<span class="fc" id="L111">		toKill.put(&quot;rat&quot;, new Pair&lt;Integer, Integer&gt;(0,1));</span>
+<span class="fc" id="L112">		toKill.put(&quot;caverat&quot;, new Pair&lt;Integer, Integer&gt;(0,1));</span>
+<span class="fc" id="L113">		toKill.put(&quot;snake&quot;, new Pair&lt;Integer, Integer&gt;(0,1));</span>
+		
+<span class="fc" id="L115">		start.add(new SetQuestAction(QUEST_SLOT, 0, &quot;start&quot;));		</span>
+<span class="fc" id="L116">		start.add(new StartRecordingKillsAction(QUEST_SLOT, 1, toKill));</span>
+		
+<span class="fc" id="L118">		npc.add(</span>
+				ConversationStates.QUEST_OFFERED,
+				ConversationPhrases.YES_MESSAGES,
+				null,
+				ConversationStates.ATTENDING,
+				&quot;Oh, thank you! I'll wait up here, and if any try to escape I'll hit them with the broom!&quot;,
+				new MultipleActions(start));
+
+<span class="fc" id="L126">		npc.add(ConversationStates.QUEST_OFFERED, ConversationPhrases.NO_MESSAGES, null,</span>
+				ConversationStates.ATTENDING,
+				&quot;*sigh* Oh well, maybe someone else will be my hero...&quot;,
+				new SetQuestAndModifyKarmaAction(QUEST_SLOT, &quot;rejected&quot;, -2.0));
+
+<span class="fc" id="L131">		npc.add(</span>
+				ConversationStates.QUEST_OFFERED,
+				Arrays.asList(&quot;basement&quot;, &quot;storage space&quot;),
+				null,
+				ConversationStates.QUEST_OFFERED,
+				&quot;Yes, it's just down the stairs, over there. A whole bunch of nasty-looking rats; I think I saw a snake as well! You should be careful... still want to help me?&quot;,
+				null);
+<span class="fc" id="L138">	}</span>
+
+	private void step_2() {
+		// Go kill at least a rat, a cave rat and a snake.
+<span class="fc" id="L142">	}</span>
+
+	private void step_3() {
+
+<span class="fc" id="L146">		final SpeakerNPC npc = npcs.get(&quot;Eonna&quot;);</span>
+		
+<span class="fc" id="L148">		final List&lt;ChatAction&gt; reward = new LinkedList&lt;ChatAction&gt;();</span>
+<span class="fc" id="L149">		reward.add(new IncreaseKarmaAction(5.0));</span>
+<span class="fc" id="L150">		reward.add(new IncreaseXPAction(100));</span>
+<span class="fc" id="L151">		reward.add(new SetQuestAction(QUEST_SLOT, &quot;done&quot;));</span>
+
+		// the player returns to Eonna after having started the quest.
+		// Eonna checks if the player has killed one of each animal race.
+<span class="fc" id="L155">		npc.add(ConversationStates.IDLE, ConversationPhrases.GREETING_MESSAGES,</span>
+				new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+						new QuestInStateCondition(QUEST_SLOT, 0, &quot;start&quot;), new KilledForQuestCondition(QUEST_SLOT,1)),
+				ConversationStates.ATTENDING, &quot;A hero at last! Thank you!&quot;,
+				new MultipleActions(reward));
+
+<span class="fc" id="L161">		npc.add(ConversationStates.IDLE, ConversationPhrases.GREETING_MESSAGES,</span>
+				new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+						new QuestInStateCondition(QUEST_SLOT, 0, &quot;start&quot;), new NotCondition(new KilledForQuestCondition(QUEST_SLOT, 1))),
+				ConversationStates.QUEST_STARTED,
+				&quot;Don't you remember promising to clean out the rats from my #basement?&quot;,
+				null);
+
+<span class="fc" id="L168">		npc.add(</span>
+				ConversationStates.QUEST_STARTED,
+				&quot;basement&quot;,
+				null,
+				ConversationStates.ATTENDING,
+				&quot;Down the stairs, like I said. Please get rid of all those rats, and see if you can find the snake as well!&quot;,
+				null);
+<span class="fc" id="L175">	}</span>
+
+	@Override
+	public void addToWorld() {
+<span class="fc" id="L179">		fillQuestInfo(</span>
+				&quot;Clean the Storage Space&quot;,
+				&quot;Eonna is too scared to go into her underground storage space, as it is filled with rats and snakes.&quot;,
+				false);
+<span class="fc" id="L183">		step_1();</span>
+<span class="fc" id="L184">		step_2();</span>
+<span class="fc" id="L185">		step_3();</span>
+<span class="fc" id="L186">	}</span>
+
+	@Override
+	public String getName() {
+<span class="nc" id="L190">		return &quot;CleanStorageSpace&quot;;</span>
+	}
+	
+	@Override
+	public int getMinLevel() {
+<span class="fc" id="L195">		return 0;</span>
+	}
+	
+	@Override
+	public String getRegion() {
+<span class="nc" id="L200">		return Region.SEMOS_CITY;</span>
+	}
+
+	@Override
+	public String getNPCName() {
+<span class="nc" id="L205">		return &quot;Eonna&quot;;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

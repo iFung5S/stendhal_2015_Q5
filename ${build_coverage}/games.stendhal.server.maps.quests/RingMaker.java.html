@@ -1,0 +1,263 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>RingMaker.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests</a> &gt; <span class="el_source">RingMaker.java</span></div><h1>RingMaker.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests;
+
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.entity.item.RingOfLife;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.action.DropItemAction;
+import games.stendhal.server.entity.npc.action.EquipItemAction;
+import games.stendhal.server.entity.npc.action.IncreaseXPAction;
+import games.stendhal.server.entity.npc.action.MultipleActions;
+import games.stendhal.server.entity.npc.action.SayTimeRemainingAction;
+import games.stendhal.server.entity.npc.action.SetQuestAction;
+import games.stendhal.server.entity.npc.condition.AndCondition;
+import games.stendhal.server.entity.npc.condition.NotCondition;
+import games.stendhal.server.entity.npc.condition.PlayerHasItemWithHimCondition;
+import games.stendhal.server.entity.npc.condition.QuestStateStartsWithCondition;
+import games.stendhal.server.entity.npc.condition.TimePassedCondition;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.maps.Region;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+
+/**
+ * QUEST: The Ring Maker
+ * 
+ * PARTICIPANTS:
+ * &lt;ul&gt;
+ * &lt;li&gt;Ognir, who works in the weapon shop in Fado
+ * &lt;/ul&gt;
+ * 
+ * STEPS:
+ * &lt;ul&gt;
+ * &lt;li&gt;If you go to Ognir with a broken emerald ring he offers to fix it &lt;/li&gt;
+ * &lt;li&gt;Bring him the money he wants (a lot) and gold to fix the ring.&lt;/li&gt;
+ * &lt;/ul&gt;
+ * 
+ * REWARD:
+ * &lt;ul&gt;
+ * &lt;li&gt;Fixed Ring&lt;/li&gt;
+ * &lt;li&gt;500 XP&lt;/li&gt;
+ * &lt;/ul&gt;
+ * 
+ * REPETITIONS:
+ * &lt;ul&gt;
+ * &lt;li&gt;Anytime you need it&lt;/li&gt;
+ * &lt;/ul&gt;
+ * 
+ * NOTE: This quest uses the same NPC as Marriage.java, we need to be careful
+ * not to interfere with that mission.
+ */
+<span class="fc" id="L69">public class RingMaker extends AbstractQuest {</span>
+
+	private static final String FORGING = &quot;forging&quot;;
+
+	private static final int REQUIRED_GOLD = 2;
+
+	private static final int REQUIRED_MONEY = 80000;
+
+	private static final int REQUIRED_GEM = 1;
+
+	private static final int REQUIRED_MINUTES = 10;
+
+	private static final String QUEST_SLOT = &quot;fix_emerald_ring&quot;;
+
+	@Override
+	public String getSlotName() {
+<span class="nc" id="L85">		return QUEST_SLOT;</span>
+	}
+
+	void fixRingStep(final SpeakerNPC npc) {
+
+<span class="fc" id="L90">		npc.add(ConversationStates.ATTENDING, Arrays.asList(&quot;emerald ring&quot;, &quot;life&quot;, &quot;emerald&quot;),</span>
+			new AndCondition(new PlayerHasItemWithHimCondition(&quot;emerald ring&quot;), 
+					         new NotCondition(new QuestStateStartsWithCondition(QUEST_SLOT, FORGING))),
+			ConversationStates.QUEST_ITEM_BROUGHT, 
+			null,
+<span class="fc" id="L95">			new ChatAction() {</span>
+				@Override
+				public void fire(final Player player, final Sentence sentence, final EventRaiser npc) {
+<span class="fc" id="L98">					final RingOfLife emeraldRing = (RingOfLife) player.getFirstEquipped(&quot;emerald ring&quot;);</span>
+					
+<span class="fc bfc" id="L100" title="All 2 branches covered.">						if (emeraldRing.isBroken()) {</span>
+<span class="fc" id="L101">							npc.say(&quot;What a pity, your emerald ring is broken. I can fix it, for a #price.&quot;);</span>
+						} else {
+							// ring is not broken so he just lets player know
+							// where it can be fixed
+<span class="fc" id="L105">							npc.say(&quot;I see you already have an emerald ring. If it gets broken, you can come to me to fix it.&quot;);</span>
+<span class="fc" id="L106">							npc.setCurrentState(ConversationStates.ATTENDING);</span>
+						}
+					
+<span class="fc" id="L109">				}</span>
+			});
+		
+<span class="fc" id="L112">		npc.add(ConversationStates.ATTENDING, </span>
+				Arrays.asList(&quot;emerald ring&quot;, &quot;life&quot;, &quot;emerald&quot;),
+				new AndCondition(new NotCondition(new PlayerHasItemWithHimCondition(&quot;emerald ring&quot;)), 
+				         new NotCondition(new QuestStateStartsWithCondition(QUEST_SLOT, FORGING))),
+
+				ConversationStates.ATTENDING, 
+				&quot;It is difficult to get the ring of life. Do a favour for a powerful elf in Nal'wor and you may receive one as a reward.&quot;
+				, null);
+	
+<span class="fc" id="L121">		npc.add(ConversationStates.ATTENDING, </span>
+				Arrays.asList(&quot;emerald ring&quot;, &quot;life&quot;, &quot;emerald&quot;),
+				new AndCondition(new QuestStateStartsWithCondition(QUEST_SLOT, FORGING),
+						new NotCondition(new QuestStateStartsWithCondition(QUEST_SLOT, FORGING + &quot;unbound&quot;)),
+						new TimePassedCondition(QUEST_SLOT,1,REQUIRED_MINUTES)),
+				ConversationStates.ATTENDING, 
+				&quot;I'm pleased to say, your ring of life is fixed! It's good as new now.&quot;,
+				new MultipleActions(
+						new IncreaseXPAction(500),
+						new SetQuestAction(QUEST_SLOT, &quot;done&quot;),
+						new EquipItemAction(&quot;emerald ring&quot;, 1, true)));
+		
+<span class="fc" id="L133">		npc.add(ConversationStates.ATTENDING, </span>
+				Arrays.asList(&quot;emerald ring&quot;, &quot;life&quot;, &quot;emerald&quot;),
+				new AndCondition(new QuestStateStartsWithCondition(QUEST_SLOT, FORGING),
+						new QuestStateStartsWithCondition(QUEST_SLOT, FORGING + &quot;unbound&quot;),
+						new TimePassedCondition(QUEST_SLOT,1,REQUIRED_MINUTES)),
+				ConversationStates.ATTENDING, 
+				&quot;I'm pleased to say, your ring of life is fixed! It's good as new now.&quot;,
+				new MultipleActions(
+						new IncreaseXPAction(500),
+						new SetQuestAction(QUEST_SLOT, &quot;done&quot;),
+						new EquipItemAction(&quot;emerald ring&quot;, 1, false)));
+
+<span class="fc" id="L145">		npc.add(ConversationStates.ATTENDING, </span>
+				Arrays.asList(&quot;emerald ring&quot;, &quot;life&quot;, &quot;emerald&quot;),
+				new AndCondition(new QuestStateStartsWithCondition(QUEST_SLOT, FORGING),
+						new NotCondition(new TimePassedCondition(QUEST_SLOT,1,REQUIRED_MINUTES))),
+				ConversationStates.IDLE, null,
+				new SayTimeRemainingAction(QUEST_SLOT,1, REQUIRED_MINUTES,&quot;I haven't finished fixing your ring of life. Please check back in&quot;));
+		
+		
+<span class="fc" id="L153">		npc.add(ConversationStates.QUEST_ITEM_BROUGHT, </span>
+				&quot;price&quot;, 
+				null,
+				ConversationStates.QUEST_ITEM_BROUGHT,
+				&quot;The charge for my service is &quot; + REQUIRED_MONEY
+					+ &quot; money, and I need &quot; + REQUIRED_GOLD
+					+ &quot; gold bars and &quot; + REQUIRED_GEM
+					+ &quot; emerald to fix the ring. Do you want to pay now?&quot;,
+				null);
+
+<span class="fc" id="L163">		npc.add(ConversationStates.QUEST_ITEM_BROUGHT,</span>
+				ConversationPhrases.YES_MESSAGES, 
+				new AndCondition(
+						new PlayerHasItemWithHimCondition(&quot;gold bar&quot;, REQUIRED_GOLD),
+						new PlayerHasItemWithHimCondition(&quot;money&quot;, REQUIRED_MONEY),
+						new PlayerHasItemWithHimCondition(&quot;emerald&quot;, REQUIRED_GEM)), 
+				ConversationStates.IDLE,
+				&quot;Okay, that's all I need to fix the ring. Come back in &quot;
+						+ REQUIRED_MINUTES
+						+ &quot; minutes and it will be ready. Bye for now.&quot;,
+				new MultipleActions(
+						new DropItemAction(&quot;gold bar&quot;, REQUIRED_GOLD),
+						new DropItemAction(&quot;emerald&quot;, REQUIRED_GEM),
+						new DropItemAction(&quot;money&quot;, REQUIRED_MONEY), 
+<span class="fc" id="L177">						new ChatAction() {</span>
+							@Override
+							public void fire(final Player player,
+									final Sentence sentence,
+									final EventRaiser npc) {
+<span class="fc" id="L182">								final RingOfLife emeraldRing = (RingOfLife) player.getFirstEquipped(&quot;emerald ring&quot;);</span>
+<span class="fc bfc" id="L183" title="All 2 branches covered.">								if (player.isBoundTo(emeraldRing)) {</span>
+<span class="fc" id="L184">									player.setQuest(QUEST_SLOT, &quot;forging;&quot;</span>
+											+ System.currentTimeMillis());
+								} else {
+<span class="fc" id="L187">									player.setQuest(QUEST_SLOT, &quot;forgingunbound;&quot;</span>
+											+ System.currentTimeMillis());
+								}
+
+<span class="fc" id="L191">							}</span>
+						},
+						new DropItemAction(&quot;emerald ring&quot;)));
+		
+<span class="fc" id="L195">		npc.add(ConversationStates.QUEST_ITEM_BROUGHT,</span>
+				ConversationPhrases.YES_MESSAGES, 
+				new NotCondition(new  AndCondition(
+						new PlayerHasItemWithHimCondition(&quot;gold bar&quot;, REQUIRED_GOLD),
+						new PlayerHasItemWithHimCondition(&quot;money&quot;, REQUIRED_MONEY),
+						new PlayerHasItemWithHimCondition(&quot;emerald&quot;, REQUIRED_GEM))),
+				ConversationStates.IDLE, 
+				&quot;Come back when you have the money, the gem and the gold. Goodbye.&quot;,
+				null);
+
+<span class="fc" id="L205">		npc.add(ConversationStates.QUEST_ITEM_BROUGHT,</span>
+			ConversationPhrases.NO_MESSAGES, 
+			null,
+			ConversationStates.ATTENDING, 
+			&quot;No problem, just come back when you have the money, the emerald, and the gold.&quot;,
+			null);
+<span class="fc" id="L211">	}</span>
+
+	@Override
+	public void addToWorld() {
+<span class="fc" id="L215">		fillQuestInfo(</span>
+				&quot;Ring Maker&quot;,
+				&quot;Ognir, the expert on rings, is able to fix broken rings of life.&quot;,
+				false);
+<span class="fc" id="L219">		fixRingStep(npcs.get(&quot;Ognir&quot;));</span>
+<span class="fc" id="L220">	}</span>
+
+	@Override
+	public List&lt;String&gt; getHistory(final Player player) {
+<span class="nc" id="L224">		final List&lt;String&gt; res = new ArrayList&lt;String&gt;();</span>
+<span class="nc bnc" id="L225" title="All 2 branches missed.">		if (player.isEquipped(&quot;emerald ring&quot;)) { </span>
+<span class="nc" id="L226">			final RingOfLife emeraldRing = (RingOfLife) player.getFirstEquipped(&quot;emerald ring&quot;);</span>
+<span class="nc bnc" id="L227" title="All 2 branches missed.">			if (emeraldRing.isBroken()) {</span>
+<span class="nc" id="L228">				res.add(&quot;Oh no! My ring of life is broken. I must look for an expert craftsman to help me fix it.&quot;);</span>
+			}
+		}
+<span class="nc bnc" id="L231" title="All 2 branches missed.">		if (!player.hasQuest(QUEST_SLOT)) {</span>
+<span class="nc" id="L232">			return res;</span>
+		}
+		// Note: this will not be seen till the forging stage starts as no quest slot is set before then.
+<span class="nc" id="L235">		res.add(&quot;Ognir said he can fix my ring of life by bringing him an emerald, 80000 money and 2 gold bars.&quot;);</span>
+<span class="nc" id="L236">		final String questState = player.getQuest(QUEST_SLOT);</span>
+<span class="nc bnc" id="L237" title="All 4 branches missed.">		if (questState.startsWith(FORGING) &amp;&amp; new TimePassedCondition(QUEST_SLOT, 1, REQUIRED_MINUTES).fire(player,null, null)) {</span>
+<span class="nc" id="L238">				res.add(&quot;My fixed ring is ready to collect from Ognir! I must ask about \&quot;life\&quot; to get it back.&quot;);</span>
+<span class="nc bnc" id="L239" title="All 4 branches missed.">		} else if (questState.startsWith(FORGING) || isCompleted(player))  {</span>
+<span class="nc" id="L240">				res.add(&quot;Ognir said it would take 10 minutes to fix my ring. I need to ask him about \&quot;life\&quot; so that he'll give it to me.&quot;);</span>
+		}
+<span class="nc bnc" id="L242" title="All 2 branches missed.">		if (isCompleted(player)) {</span>
+<span class="nc" id="L243">			res.add(&quot;My ring of life is as good as new and will work again to limit my losses when I die.&quot;);</span>
+		}
+<span class="nc" id="L245">		return res;</span>
+	}
+
+	@Override
+	public String getName() {
+<span class="nc" id="L250">		return &quot;RingMaker&quot;;</span>
+	}
+	
+	@Override
+	public String getRegion() {
+<span class="nc" id="L255">		return Region.FADO_CITY;</span>
+	}
+
+	@Override
+	public String getNPCName() {
+<span class="nc" id="L260">		return &quot;Ognir&quot;;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

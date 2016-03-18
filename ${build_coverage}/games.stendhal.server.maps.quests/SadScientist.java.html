@@ -1,0 +1,585 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SadScientist.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests</a> &gt; <span class="el_source">SadScientist.java</span></div><h1>SadScientist.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests;
+
+import games.stendhal.common.grammar.Grammar;
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.entity.item.Item;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ChatCondition;
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.action.CollectRequestedItemsAction;
+import games.stendhal.server.entity.npc.action.DropItemAction;
+import games.stendhal.server.entity.npc.action.EquipItemAction;
+import games.stendhal.server.entity.npc.action.IncreaseKarmaAction;
+import games.stendhal.server.entity.npc.action.IncreaseXPAction;
+import games.stendhal.server.entity.npc.action.MultipleActions;
+import games.stendhal.server.entity.npc.action.SayRequiredItemsFromCollectionAction;
+import games.stendhal.server.entity.npc.action.SayTextAction;
+import games.stendhal.server.entity.npc.action.SayTimeRemainingAction;
+import games.stendhal.server.entity.npc.action.SetQuestAction;
+import games.stendhal.server.entity.npc.action.SetQuestAndModifyKarmaAction;
+import games.stendhal.server.entity.npc.action.SetQuestToTimeStampAction;
+import games.stendhal.server.entity.npc.action.StartRecordingKillsAction;
+import games.stendhal.server.entity.npc.condition.AndCondition;
+import games.stendhal.server.entity.npc.condition.GreetingMatchesNameCondition;
+import games.stendhal.server.entity.npc.condition.KilledForQuestCondition;
+import games.stendhal.server.entity.npc.condition.NotCondition;
+import games.stendhal.server.entity.npc.condition.PlayerHasItemWithHimCondition;
+import games.stendhal.server.entity.npc.condition.QuestActiveCondition;
+import games.stendhal.server.entity.npc.condition.QuestCompletedCondition;
+import games.stendhal.server.entity.npc.condition.QuestInStateCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotStartedCondition;
+import games.stendhal.server.entity.npc.condition.QuestStateStartsWithCondition;
+import games.stendhal.server.entity.npc.condition.TimePassedCondition;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.maps.Region;
+import games.stendhal.server.util.ItemCollection;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.log4j.Logger;
+
+
+/**
+ * QUEST: The Sad Scientist.
+ * 
+ * PARTICIPANTS:
+ * &lt;ul&gt;
+ * &lt;li&gt;Vasi Elos, a scientist in Kalavan&lt;/li&gt;
+ * &lt;li&gt;Mayor Sakhs, the mayor of semos&lt;/li&gt;
+ * &lt;/ul&gt;
+ * 
+ * STEPS:
+ * &lt;ul&gt;
+ * 		&lt;li&gt;Talk to Vasi Elos, a lonely scientist.&lt;/li&gt;
+ * 		&lt;li&gt;Give him all stuff he needs for a present for his honey.&lt;/li&gt;
+ * 		&lt;li&gt;Talk to semos mayor.&lt;/li&gt;
+ * 		&lt;li&gt;Bring Elos mayor's letter.&lt;/li&gt;
+ * 		&lt;li&gt;Kill the Imperial Scientist.&lt;/li&gt;
+ *		&lt;li&gt;Give him the flask with his brother's blood.&lt;/li&gt; 
+ * &lt;/ul&gt;
+ * 
+ * REWARD:
+ * &lt;ul&gt;
+ * 		&lt;li&gt;a pair of black legs&lt;/li&gt;
+ * 		&lt;li&gt;20 Karma&lt;/li&gt;
+ * 		&lt;li&gt;10000 XP&lt;/li&gt;
+ * &lt;/ul&gt;
+ * 
+ * REPETITIONS:
+ * &lt;ul&gt;
+ * 		&lt;li&gt;None&lt;/li&gt;
+ * &lt;/ul&gt;
+ */
+<span class="fc" id="L92">public class SadScientist extends AbstractQuest {</span>
+
+<span class="fc" id="L94">	private static Logger logger = Logger.getLogger(SadScientist.class);</span>
+
+	private static final String LETTER_DESCRIPTION = &quot;You see a letter for Vasi Elos.&quot;;
+	private static final String QUEST_SLOT = &quot;sad_scientist&quot;;
+	private static final int REQUIRED_MINUTES = 20;
+	private static final String NEEDED_ITEMS = &quot;emerald=1;obsidian=1;sapphire=1;carbuncle=2;gold bar=20;mithril bar=1&quot;;
+	
+	@Override
+	public String getName() {
+<span class="nc" id="L103">		return &quot;TheSadScientist&quot;;</span>
+	}
+
+	@Override
+	public String getSlotName() {
+<span class="nc" id="L108">		return QUEST_SLOT;</span>
+	}
+
+	@Override
+	public List&lt;String&gt; getHistory(final Player player) {
+<span class="nc" id="L113">		final List&lt;String&gt; res = new ArrayList&lt;String&gt;();</span>
+<span class="nc bnc" id="L114" title="All 2 branches missed.">		if (!player.hasQuest(QUEST_SLOT)) {</span>
+<span class="nc" id="L115">			return res;</span>
+		}
+<span class="nc" id="L117">		final String questState = player.getQuest(QUEST_SLOT);</span>
+		// it might have been rejected before Vasi even explained what he wanted.
+<span class="nc bnc" id="L119" title="All 2 branches missed.">		if (&quot;rejected&quot;.equals(questState)) {</span>
+<span class="nc" id="L120">			res.add(&quot;Vasi Elos asked me for help, but I'm not really interested to help the scientist.&quot;);</span>
+<span class="nc" id="L121">			return res;</span>
+		} 
+<span class="nc" id="L123">		res.add(&quot;Vasi Elos asked me bring gems, gold and mithril to make a present of jewelled legs for his honey, Vera.&quot;);</span>
+<span class="nc bnc" id="L124" title="All 2 branches missed.">		if (getConditionForBeingInCollectionPhase().fire(player,null,null)) {</span>
+<span class="nc" id="L125">			final ItemCollection missingItems = new ItemCollection();</span>
+<span class="nc" id="L126">			missingItems.addFromQuestStateString(questState);</span>
+<span class="nc" id="L127">			res.add(&quot;The jewelled legs still need &quot; + Grammar.enumerateCollection(missingItems.toStringList()) + &quot;.&quot;);</span>
+<span class="nc" id="L128">			return res;</span>
+		}
+<span class="nc" id="L130">		res.add(&quot;Vasi Elos needs a base to add those gems I brought, to. He asked for shadow legs.&quot;);</span>
+<span class="nc bnc" id="L131" title="All 2 branches missed.">		if (&quot;legs&quot;.equals(questState)) {	</span>
+<span class="nc" id="L132">			return res;</span>
+		} 
+<span class="nc" id="L134">		res.add(&quot;Vasi Elos is making jewelled legs with the gems I brought.&quot;);</span>
+<span class="nc bnc" id="L135" title="All 2 branches missed.">		if (questState.startsWith(&quot;making&quot;)) {	</span>
+<span class="nc" id="L136">			return res;</span>
+		}	
+<span class="nc" id="L138">		res.add(&quot;Vasi Elos asked me to speak to Mayor Sakhs to find out where Vera is.&quot;);</span>
+<span class="nc bnc" id="L139" title="All 4 branches missed.">		if (&quot;find_vera&quot;.equals(questState) &amp;&amp; !player.isEquipped(&quot;note&quot;)) {	</span>
+<span class="nc" id="L140">			return res;</span>
+		} 
+<span class="nc" id="L142">		res.add(&quot;I have a note with some terrible news on it to give Vasi.&quot;);</span>
+<span class="nc bnc" id="L143" title="All 4 branches missed.">		if (&quot;find_vera&quot;.equals(questState) &amp;&amp; player.isEquipped(&quot;note&quot;)) {	</span>
+<span class="nc" id="L144">			return res;</span>
+		} 
+<span class="nc" id="L146">		res.add(&quot;Vasi Elos is so sad and angry that Vera is gone. I must kill his own brother and give him a goblet of blood.&quot;);</span>
+<span class="nc bnc" id="L147" title="All 4 branches missed.">		if (questState.startsWith(&quot;kill_scientist&quot;) &amp;&amp; !new KilledForQuestCondition(QUEST_SLOT, 1).fire(player, null, null)) {</span>
+<span class="nc" id="L148">			return res;</span>
+		}
+<span class="nc" id="L150">		res.add(&quot;I killed the Imperial Scientist Sergej Elos and must take the goblet of his blood as proof.&quot;);</span>
+<span class="nc bnc" id="L151" title="All 4 branches missed.">		if (questState.startsWith(&quot;kill_scientist&quot;) &amp;&amp; new KilledForQuestCondition(QUEST_SLOT, 1).fire(player, null, null)) {</span>
+<span class="nc" id="L152">			return res;</span>
+		}
+<span class="nc" id="L154">		res.add(&quot;Vasi Elos is really sad. He's decorating the legs he made...with blood.&quot;);</span>
+<span class="nc bnc" id="L155" title="All 2 branches missed.">		if (questState.startsWith(&quot;decorating&quot;)) {	</span>
+<span class="nc" id="L156">			return res;</span>
+		} 
+<span class="nc" id="L158">		res.add(&quot;The new legs, now black legs, darkened with blood and evil, are mine. &quot; +</span>
+				&quot;But at what cost?&quot;);
+<span class="nc bnc" id="L160" title="All 2 branches missed.">        if (&quot;done&quot;.equals(questState)){</span>
+<span class="nc" id="L161">        	return res;</span>
+		}
+        // if things have gone wrong and the quest state didn't match any of the above, debug a bit:
+<span class="nc" id="L164">		final List&lt;String&gt; debug = new ArrayList&lt;String&gt;();</span>
+<span class="nc" id="L165">		debug.add(&quot;Quest state is: &quot; + questState);</span>
+<span class="nc" id="L166">		logger.error(&quot;History doesn't have a matching quest state for &quot; + questState);</span>
+<span class="nc" id="L167">		return debug;</span>
+	}
+	
+	/* (non-Javadoc)
+	 * @see games.stendhal.server.maps.quests.AbstractQuest#addToWorld()
+	 */
+	@Override
+	public void addToWorld() {
+<span class="fc" id="L175">		fillQuestInfo(</span>
+				&quot;A Sad Scientist&quot;,
+				&quot;Vasi Elos, a lonely scientist, wants to deliver a present to his honey.&quot;,
+				false);
+<span class="fc" id="L179">		prepareQuestSteps();</span>
+<span class="fc" id="L180">	}</span>
+
+	private void prepareQuestSteps() {
+<span class="fc" id="L183">		prepareScientist();</span>
+<span class="fc" id="L184">	}</span>
+
+	private void prepareScientist() {
+<span class="fc" id="L187">		final SpeakerNPC scientistNpc = npcs.get(&quot;Vasi Elos&quot;);</span>
+<span class="fc" id="L188">		final SpeakerNPC mayorNpc = npcs.get(&quot;Mayor Sakhs&quot;);</span>
+<span class="fc" id="L189">		startOfQuest(scientistNpc);</span>
+<span class="fc" id="L190">		bringItemsPhase(scientistNpc);</span>
+<span class="fc" id="L191">		playerReturnsAfterRequestForLegs(scientistNpc);</span>
+<span class="fc" id="L192">		playerReturnsAfterGivingTooEarly(scientistNpc);</span>
+<span class="fc" id="L193">		playerReturnsAfterGivingWhenFinished(scientistNpc);</span>
+<span class="fc" id="L194">		playerReturnsWithoutLetter(scientistNpc);</span>
+<span class="fc" id="L195">		playerVisitsMayorSakhs(mayorNpc);</span>
+<span class="fc" id="L196">		playerReturnsWithLetter(scientistNpc);</span>
+<span class="fc" id="L197">		playerReturnsWithoutKillingTheImperialScientistOrWithoutGoblet(scientistNpc);</span>
+<span class="fc" id="L198">		playerReturnsAfterKillingTheImperialScientist(scientistNpc);</span>
+<span class="fc" id="L199">		playerReturnsToFetchReward(scientistNpc);</span>
+<span class="fc" id="L200">		playerReturnsAfterCompletingQuest(scientistNpc);</span>
+<span class="fc" id="L201">	}</span>
+
+	private void playerReturnsToFetchReward(SpeakerNPC npc) {
+		// time has passed
+<span class="fc" id="L205">		final ChatCondition condition = new AndCondition(new GreetingMatchesNameCondition(npc.getName()),</span>
+						new QuestStateStartsWithCondition(QUEST_SLOT,&quot;decorating&quot;),
+						new TimePassedCondition(QUEST_SLOT, 1, 5)
+					);
+<span class="fc" id="L209">		final ChatAction action = new MultipleActions(</span>
+											new SetQuestAction(QUEST_SLOT,&quot;done&quot;),
+											new IncreaseKarmaAction(20),
+											new IncreaseXPAction(10000),
+											// here, true = bind them to player
+											new EquipItemAction(&quot;black legs&quot;, 1, true)
+										);
+<span class="fc" id="L216">		npc.add(ConversationStates.IDLE, </span>
+				ConversationPhrases.GREETING_MESSAGES, 
+				condition, 
+				ConversationStates.IDLE, 
+				&quot;Here are the black legs. Now I beg you to wear them. The symbol of my pain is done. Fare thee well.&quot;,
+				action);
+		
+		// time has not yet passed
+<span class="fc" id="L224">		final ChatCondition notCondition = new AndCondition(new GreetingMatchesNameCondition(npc.getName()),</span>
+				new QuestStateStartsWithCondition(QUEST_SLOT,&quot;decorating&quot;),
+				new NotCondition( new TimePassedCondition(QUEST_SLOT, 1, 5))
+			);
+<span class="fc" id="L228">		ChatAction reply = new SayTimeRemainingAction(QUEST_SLOT, 1, 5, &quot;I did not finish decorating the legs. &quot; +</span>
+						&quot;Please check back in&quot;);
+<span class="fc" id="L230">		npc.add(ConversationStates.IDLE, </span>
+				ConversationPhrases.GREETING_MESSAGES, 
+				notCondition, 
+				ConversationStates.IDLE, 
+				null, 
+				reply);
+<span class="fc" id="L236">	}</span>
+	
+	private void playerReturnsAfterKillingTheImperialScientist(SpeakerNPC npc) {
+<span class="fc" id="L239">		final ChatCondition condition = new AndCondition(</span>
+				new QuestStateStartsWithCondition(QUEST_SLOT, &quot;kill_scientist&quot;),
+				new KilledForQuestCondition(QUEST_SLOT, 1),
+				new PlayerHasItemWithHimCondition(&quot;goblet&quot;)
+			);
+<span class="fc" id="L244">		ChatAction action = new MultipleActions(</span>
+										new SetQuestAction(QUEST_SLOT, &quot;decorating;&quot;),
+										new SetQuestToTimeStampAction(QUEST_SLOT, 1),
+										new DropItemAction(&quot;goblet&quot;,1)
+										);
+<span class="fc" id="L249">		npc.add(ConversationStates.IDLE, ConversationPhrases.GREETING_MESSAGES,</span>
+				new AndCondition(new GreetingMatchesNameCondition(npc.getName()), condition),
+				ConversationStates.ATTENDING, 
+				&quot;Ha, ha, ha! I will cover those jewelled legs with this blood and they will transform &quot; +
+				&quot;into a #symbol of pain.&quot;, 
+				null);
+		
+<span class="fc" id="L256">		npc.add(ConversationStates.ATTENDING, &quot;symbol&quot;,</span>
+				condition, ConversationStates.IDLE, 
+				&quot;I am going to create a pair of black legs. Come back in 5 minutes.&quot;, 
+				action);
+<span class="fc" id="L260">	}</span>
+
+
+	private void playerReturnsWithoutKillingTheImperialScientistOrWithoutGoblet(
+			SpeakerNPC npc) {
+<span class="fc" id="L265">		final ChatCondition condition = new AndCondition(</span>
+				new GreetingMatchesNameCondition(npc.getName()),
+				new QuestStateStartsWithCondition(QUEST_SLOT, &quot;kill_scientist&quot;),
+				new NotCondition( 
+						new AndCondition( 
+										new KilledForQuestCondition(QUEST_SLOT, 1),
+										new PlayerHasItemWithHimCondition(&quot;goblet&quot;)))
+			);
+<span class="fc" id="L273">		npc.add(ConversationStates.IDLE, ConversationPhrases.GREETING_MESSAGES,</span>
+				condition, ConversationStates.IDLE, 
+				&quot;I am only in pain. Kill my brother and bring me his blood. It's all I want now.&quot;, 
+				null);
+<span class="fc" id="L277">	}</span>
+	
+	private void playerReturnsWithLetter(final SpeakerNPC npc) {
+<span class="fc" id="L280">		final ChatCondition condition = new AndCondition(</span>
+				new QuestStateStartsWithCondition(QUEST_SLOT, &quot;find_vera&quot;),
+				new PlayerHasItemWithHimCondition(&quot;note&quot;)
+			);
+		
+<span class="fc" id="L285">		final ChatAction action = new MultipleActions(</span>
+					new SetQuestAction(QUEST_SLOT, 0, &quot;kill_scientist&quot;),
+					new StartRecordingKillsAction(QUEST_SLOT, 1, &quot;Sergej Elos&quot;, 0, 1),
+					new DropItemAction(&quot;note&quot;)
+				);
+<span class="fc" id="L290">		npc.add(ConversationStates.IDLE, ConversationPhrases.GREETING_MESSAGES,</span>
+				new AndCondition(new GreetingMatchesNameCondition(npc.getName()), condition),
+				ConversationStates.INFORMATION_2,
+				&quot;Hello! Do you have anything for me?&quot;,
+				null);
+		
+<span class="fc" id="L296">		npc.add(ConversationStates.INFORMATION_2, Arrays.asList(&quot;letter&quot;, &quot;yes&quot;, &quot;note&quot;),</span>
+				condition,
+				ConversationStates.ATTENDING,
+				&quot;Oh no! I feel the pain. I do not need to create those beautiful jewelled legs now. &quot; +
+				&quot;I want to transform them. I want to make them a symbol of pain. You! Go kill my brother, &quot; +
+				&quot;the Imperial Scientist Sergej Elos. Give me his blood.&quot;,
+				action);
+		
+<span class="fc" id="L304">		npc.add(ConversationStates.ATTENDING, ConversationPhrases.GOODBYE_MESSAGES,</span>
+				new QuestInStateCondition(QUEST_SLOT, 0, &quot;kill_scientist&quot;),
+				ConversationStates.INFORMATION_2,
+				&quot;Do it!&quot;,
+				null);
+<span class="fc" id="L309">	}</span>
+	
+	private void playerReturnsWithoutLetter(final SpeakerNPC npc) {
+<span class="fc" id="L312">		final ChatCondition condition = new AndCondition(new GreetingMatchesNameCondition(npc.getName()),</span>
+				new QuestStateStartsWithCondition(QUEST_SLOT, &quot;find_vera&quot;),
+				new NotCondition(new PlayerHasItemWithHimCondition(&quot;note&quot;))
+			);
+<span class="fc" id="L316">		npc.add(ConversationStates.IDLE, ConversationPhrases.GREETING_MESSAGES,</span>
+				condition,
+				ConversationStates.IDLE,
+				&quot;Please ask Mayor Sakhs about my wife Vera.&quot;,
+				null);
+<span class="fc" id="L321">	}</span>
+
+	private void playerVisitsMayorSakhs(final SpeakerNPC npc) {
+<span class="fc" id="L324">		final ChatAction action = new ChatAction() {</span>
+			@Override
+			public void fire(final Player player, final Sentence sentence, final EventRaiser npc) {
+<span class="fc" id="L327">				final Item item = SingletonRepository.getEntityManager().getItem(&quot;note&quot;);</span>
+<span class="fc" id="L328">				item.setInfoString(player.getName());</span>
+<span class="fc" id="L329">				item.setDescription(LETTER_DESCRIPTION);</span>
+<span class="fc" id="L330">				item.setBoundTo(player.getName());</span>
+<span class="fc" id="L331">				player.equipOrPutOnGround(item);</span>
+<span class="fc" id="L332">			}</span>
+		};
+<span class="fc" id="L334">		npc.add(ConversationStates.ATTENDING, &quot;Vera&quot;,</span>
+				new QuestStateStartsWithCondition(QUEST_SLOT, &quot;find_vera&quot;),
+				ConversationStates.ATTENDING, 
+				&quot;What? How do you know her? Well it is a sad story.&quot; +
+				&quot; She was picking arandula for Ilisa (they were friends)&quot; +
+				&quot; and she saw the catacombs entrance. 3 months later a&quot; +
+				&quot; young hero saw her, and she was a vampirette. What a&quot; +
+				&quot; sad story. I kept this for her husband. A letter. &quot; +
+				&quot;I think he is in Kalavan.&quot; ,
+				action);
+<span class="fc" id="L344">	}</span>
+
+	private void playerReturnsAfterGivingWhenFinished(final SpeakerNPC npc) {
+<span class="fc" id="L347">		final ChatCondition condition = new AndCondition(</span>
+				new QuestStateStartsWithCondition(QUEST_SLOT, &quot;making;&quot;),
+				new TimePassedCondition(QUEST_SLOT, 1, REQUIRED_MINUTES)
+			);
+<span class="fc" id="L351">		final ChatAction action = new SetQuestAction(QUEST_SLOT,&quot;find_vera&quot;);</span>
+<span class="fc" id="L352">		npc.add(ConversationStates.IDLE, ConversationPhrases.GREETING_MESSAGES,</span>
+				new AndCondition(new GreetingMatchesNameCondition(npc.getName()), condition),
+				ConversationStates.INFORMATION_1, 
+				&quot;I finished the legs. But I cannot trust you. Before I give the&quot; +
+				&quot; jewelled legs to you, I need a message from my darling. Ask Mayor&quot; +
+				&quot; Sakhs for Vera. Can you do that for me?&quot;,
+				null);
+		
+<span class="fc" id="L360">		npc.add(ConversationStates.INFORMATION_1, ConversationPhrases.YES_MESSAGES,</span>
+				condition,
+				ConversationStates.IDLE, 
+				&quot;Oh, thank you. I am waiting.&quot;,
+				action);
+		
+<span class="fc" id="L366">		npc.add(ConversationStates.INFORMATION_1, ConversationPhrases.NO_MESSAGES,</span>
+				condition,
+				ConversationStates.IDLE, 
+				&quot;Pah! Bye!&quot;,
+				null);
+<span class="fc" id="L371">	}</span>
+
+	private void playerReturnsAfterGivingTooEarly(final SpeakerNPC npc) {
+<span class="fc" id="L374">		final ChatCondition condition = new AndCondition(new GreetingMatchesNameCondition(npc.getName()),</span>
+				new QuestStateStartsWithCondition(QUEST_SLOT, &quot;making;&quot;),
+				new NotCondition(new TimePassedCondition(QUEST_SLOT, 1, REQUIRED_MINUTES))
+			);
+<span class="fc" id="L378">		npc.add(ConversationStates.IDLE, ConversationPhrases.GREETING_MESSAGES,</span>
+				condition,
+				ConversationStates.IDLE, 
+				null,
+				new SayTimeRemainingAction(QUEST_SLOT, 1, REQUIRED_MINUTES, &quot;Do you think I can work that fast? Go away. &quot; +
+								&quot;Come back in&quot;));
+<span class="fc" id="L384">	}</span>
+	
+	private void bringItemsPhase(final SpeakerNPC npc) {
+		//condition for quest being active and in item collection phase
+<span class="fc" id="L388">		ChatCondition itemPhaseCondition = getConditionForBeingInCollectionPhase();</span>
+		
+		//player returns during item collection phase
+<span class="fc" id="L391">		npc.add(ConversationStates.IDLE, ConversationPhrases.GREETING_MESSAGES,</span>
+				new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+						itemPhaseCondition),
+				ConversationStates.QUESTION_1, 
+				&quot;Hello. Do you have any #items I need for the jewelled legs?&quot;,
+				null);
+		
+		//player asks for items
+<span class="fc" id="L399">		npc.add(ConversationStates.QUESTION_1, Arrays.asList(&quot;items&quot;,&quot;item&quot;),</span>
+				itemPhaseCondition,
+				ConversationStates.QUESTION_1, 
+				null,
+				new SayRequiredItemsFromCollectionAction(QUEST_SLOT, &quot;Please return when you have anything I need for the jewelled legs. I need [items].&quot;));
+		
+		//player says no
+<span class="fc" id="L406">		npc.add(ConversationStates.QUESTION_1, ConversationPhrases.NO_MESSAGES,</span>
+				itemPhaseCondition,
+				ConversationStates.IDLE, 
+				&quot;What a wasteful child.&quot;,
+				null);
+		
+		//player says yes
+<span class="fc" id="L413">		npc.add(ConversationStates.QUESTION_1, ConversationPhrases.YES_MESSAGES,</span>
+				itemPhaseCondition,
+				ConversationStates.QUESTION_1, 
+				&quot;Fine! So what did you bring with you?&quot;,
+				null);
+		
+		//add transition for each item
+<span class="fc" id="L420">		final ItemCollection items = new ItemCollection();</span>
+<span class="fc" id="L421">		items.addFromQuestStateString(NEEDED_ITEMS);</span>
+<span class="fc bfc" id="L422" title="All 2 branches covered.">		for (final Map.Entry&lt;String, Integer&gt; item : items.entrySet()) {</span>
+<span class="fc" id="L423">			npc.add(ConversationStates.QUESTION_1, item.getKey(), null,</span>
+					ConversationStates.QUESTION_1, null,
+					new CollectRequestedItemsAction(
+							item.getKey(), QUEST_SLOT,
+							&quot;Good, do you have anything else?&quot;,
+							&quot;You have already brought that!&quot;,
+							new MultipleActions(
+									new SetQuestAction(QUEST_SLOT,&quot;legs&quot;),
+									new SayTextAction(&quot;I am a stupid fool too much in love with my wife Vera to remember, of course these legs also need a base to add &quot; +
+											&quot;the jewels to. Please return with a pair of shadow legs. Bye.&quot;)), ConversationStates.IDLE
+							));
+<span class="fc" id="L434">		}</span>
+<span class="fc" id="L435">	}</span>
+	
+	
+//																new SetQuestAction(QUEST_SLOT,&quot;making;&quot;), new SetQuestToTimeStampAction(QUEST_SLOT, 1),
+	/**
+	 * Creates a condition for quest being active and in item collection phase 
+	 * @return the condition
+	 */
+	private AndCondition getConditionForBeingInCollectionPhase() {
+<span class="fc" id="L444">		return new AndCondition(</span>
+													new QuestActiveCondition(QUEST_SLOT),
+													new NotCondition(
+															new QuestStateStartsWithCondition(QUEST_SLOT,&quot;making;&quot;)
+																	),
+													new NotCondition(
+															new QuestStateStartsWithCondition(QUEST_SLOT,&quot;decorating;&quot;)
+																	),
+													new NotCondition(
+															new QuestStateStartsWithCondition(QUEST_SLOT,&quot;find_vera&quot;)
+																	),
+													new NotCondition(
+															new QuestStateStartsWithCondition(QUEST_SLOT,&quot;kill_scientist&quot;)
+																	),
+													new NotCondition(
+															new QuestStateStartsWithCondition(QUEST_SLOT,&quot;legs&quot;)
+																					)
+															);
+	}
+	
+	private void playerReturnsAfterRequestForLegs(final SpeakerNPC npc) {
+	//player returns without legs
+<span class="fc" id="L466">	final AndCondition nolegscondition = new AndCondition(new GreetingMatchesNameCondition(npc.getName()),</span>
+									new QuestInStateCondition(QUEST_SLOT, &quot;legs&quot;),
+									new NotCondition(new PlayerHasItemWithHimCondition(&quot;shadow legs&quot;))
+									);
+<span class="fc" id="L470">	npc.add(ConversationStates.IDLE, ConversationPhrases.GREETING_MESSAGES,</span>
+			nolegscondition,
+			ConversationStates.IDLE, 
+			&quot;Hello again. Please return when you have the shadow legs, a base for me to add jewels to make jewelled legs for Vera.&quot;,
+			null);		
+		
+	//player returns with legs
+<span class="fc" id="L477">	final AndCondition legscondition = new AndCondition(new GreetingMatchesNameCondition(npc.getName()),</span>
+								new QuestInStateCondition(QUEST_SLOT, &quot;legs&quot;),
+								new PlayerHasItemWithHimCondition(&quot;shadow legs&quot;)
+								);
+<span class="fc" id="L481">	final ChatAction action = new MultipleActions(</span>
+	new SetQuestAction(QUEST_SLOT,&quot;making;&quot;),
+	new SetQuestToTimeStampAction(QUEST_SLOT, 1),
+	new DropItemAction(&quot;shadow legs&quot;));
+<span class="fc" id="L485">	npc.add(ConversationStates.IDLE, ConversationPhrases.GREETING_MESSAGES,</span>
+			legscondition,
+			ConversationStates.IDLE, 
+			&quot;The shadow legs! Wonderful! I will start my work. I can do this in very little time with the help of technology! &quot; +	
+			&quot;Please come back in 20 minutes.&quot;,
+			action);
+<span class="fc" id="L491">	}</span>
+
+	private void startOfQuest(final SpeakerNPC npc) {
+<span class="fc" id="L494">		npc.add(ConversationStates.IDLE,</span>
+				ConversationPhrases.GREETING_MESSAGES, 
+				new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+						new QuestNotStartedCondition(QUEST_SLOT)),
+				ConversationStates.ATTENDING,
+				&quot;Go away!&quot;,null);
+
+		//offer the quest
+<span class="fc" id="L502">		npc.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.QUEST_MESSAGES, 
+				new QuestNotStartedCondition(QUEST_SLOT),
+				ConversationStates.QUEST_OFFERED,
+				&quot;So...looks like you want to help me?&quot;,null);
+		
+		//accept the quest
+<span class="fc" id="L509">		npc.add(ConversationStates.QUEST_OFFERED,</span>
+				ConversationPhrases.YES_MESSAGES,
+				null,
+				ConversationStates.QUEST_STARTED,
+				&quot;My wife is living in Semos City. She loves gems. Can you bring me some #gems that I need to make a &quot; +
+				&quot;pair of precious #legs?&quot; ,
+				null);
+		
+		// #gems
+<span class="fc" id="L518">		npc.add(ConversationStates.QUEST_STARTED,</span>
+				Arrays.asList(&quot;gem&quot;,&quot;gems&quot;),
+				null,
+				ConversationStates.QUEST_STARTED,
+				&quot;I need an emerald, an obsidian, a sapphire, 2 carbuncles, 20 gold bars and one mithril bar.&quot; +
+				&quot; Can you do that for my wife?&quot;,
+				null);
+		
+		// #legs
+<span class="fc" id="L527">		npc.add(ConversationStates.QUEST_STARTED,</span>
+				Arrays.asList(&quot;leg&quot;,&quot;legs&quot;),
+				null,
+				ConversationStates.QUEST_STARTED,
+				&quot;Jewelled legs. I need an emerald, an obsidian, a sapphire, 2 carbuncles, 20 gold bars and one mithril bar.&quot; +
+				&quot; Can you do that for my wife? Can you bring what I need?&quot;,
+				null);
+		
+		//yes, no after start of quest
+<span class="fc" id="L536">		npc.add(ConversationStates.QUEST_STARTED,</span>
+				ConversationPhrases.YES_MESSAGES,
+				null,
+				ConversationStates.IDLE,
+				&quot;I am waiting, Semos man.&quot; ,
+				new SetQuestAction(QUEST_SLOT, NEEDED_ITEMS));
+		
+<span class="fc" id="L543">		npc.add(ConversationStates.QUEST_STARTED,</span>
+				ConversationPhrases.NO_MESSAGES,
+				null,
+				ConversationStates.QUEST_STARTED,
+				&quot;Go away before I kill you!&quot; ,
+				new SetQuestAndModifyKarmaAction(QUEST_SLOT, &quot;rejected&quot;, -10.0));
+		
+		//reject the quest
+<span class="fc" id="L551">		npc.add(ConversationStates.QUEST_OFFERED,</span>
+				ConversationPhrases.NO_MESSAGES,
+				null,
+				ConversationStates.ATTENDING,
+				&quot;If you change your mind please ask me again...&quot; ,
+				new SetQuestAndModifyKarmaAction(QUEST_SLOT, &quot;rejected&quot;, -10.0));
+<span class="fc" id="L557">	}</span>
+	
+	private void playerReturnsAfterCompletingQuest(final SpeakerNPC npc) {
+		// after finishing the quest, just tell them to go away, and mean it.
+<span class="fc" id="L561">		npc.add(ConversationStates.IDLE,</span>
+				ConversationPhrases.GREETING_MESSAGES, 
+				new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+						new QuestCompletedCondition(QUEST_SLOT)),
+				ConversationStates.IDLE,
+				&quot;Go away!&quot;,null);
+<span class="fc" id="L567">	}</span>
+	
+	// The items and surviving in the basement mean we shouldn't direct them till level 100 or so
+	@Override
+	public int getMinLevel() {
+<span class="fc" id="L572">		return 100;</span>
+	}
+	
+	@Override
+	public String getRegion() {
+<span class="nc" id="L577">		return Region.KALAVAN;</span>
+	}
+
+	@Override
+	public String getNPCName() {
+<span class="nc" id="L582">		return &quot;Vasi Elos&quot;;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

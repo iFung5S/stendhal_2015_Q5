@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>PlayerVisitedZonesInRegionCondition.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.npc.condition</a> &gt; <span class="el_source">PlayerVisitedZonesInRegionCondition.java</span></div><h1>PlayerVisitedZonesInRegionCondition.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.npc.condition;
+
+import static com.google.common.base.Preconditions.checkNotNull;
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.core.config.annotations.Dev;
+import games.stendhal.server.core.config.annotations.Dev.Category;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.entity.Entity;
+import games.stendhal.server.entity.npc.ChatCondition;
+import games.stendhal.server.entity.player.Player;
+
+import java.util.Collection;
+
+import com.google.common.base.Objects;
+/**
+ * Checks if player has visited certain zones in a region
+ *
+ * @author madmetzger
+ */
+// TODO: Replace Boolean with a 3 state enum
+@Dev(category=Category.IGNORE, label=&quot;Zone?&quot;)
+public class PlayerVisitedZonesInRegionCondition implements ChatCondition {
+
+	private final String region;
+
+	private final Boolean exterior;
+
+	private final Boolean aboveGround;
+
+	private final Boolean accessible;
+
+	/**
+	 * Creates a new PlayerVisitedZonesCondition
+	 *
+	 * @param region the name of the region to consider
+	 * @param exterior    outside zones? true, false, null
+	 * @param aboveGround above ground level? true, false, null
+	 * @param accessible  is the zone reachable by players? true, false, null
+	 */
+	public PlayerVisitedZonesInRegionCondition(String region, Boolean exterior,
+<span class="nc" id="L54">			Boolean aboveGround, Boolean accessible) {</span>
+<span class="nc" id="L55">		this.region = checkNotNull(region);</span>
+<span class="nc" id="L56">		this.exterior = exterior;</span>
+<span class="nc" id="L57">		this.aboveGround = aboveGround;</span>
+<span class="nc" id="L58">		this.accessible = accessible;</span>
+<span class="nc" id="L59">	}</span>
+
+	/**
+	 * Creates a new PlayerVisitedZonesCondition
+	 *
+	 * @param region the name of the region to consider
+	 * @param exterior    outside zones? true, false, null
+	 * @param aboveGround above ground level? true, false, null
+	 */
+	public PlayerVisitedZonesInRegionCondition(String region, Boolean exterior,
+			Boolean aboveGround) {
+<span class="nc" id="L70">		this(region, exterior, aboveGround, Boolean.TRUE);</span>
+<span class="nc" id="L71">	}</span>
+
+	@Override
+	public boolean fire(Player player, Sentence sentence, Entity npc) {
+<span class="nc" id="L75">		Collection&lt;StendhalRPZone&gt; zones = SingletonRepository.getRPWorld().getAllZonesFromRegion(region, exterior, aboveGround, accessible);</span>
+<span class="nc bnc" id="L76" title="All 2 branches missed.">		for(StendhalRPZone zone : zones) {</span>
+<span class="nc bnc" id="L77" title="All 2 branches missed.">			if(!player.hasVisitedZone(zone)) {</span>
+<span class="nc" id="L78">				return false;</span>
+			}
+<span class="nc" id="L80">		}</span>
+<span class="nc" id="L81">		return true;</span>
+	}
+
+	@Override
+	public int hashCode() {
+<span class="nc" id="L86">		return 45763 * region.hashCode();</span>
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+<span class="nc bnc" id="L91" title="All 2 branches missed.">		if (!(obj instanceof PlayerVisitedZonesInRegionCondition)) {</span>
+<span class="nc" id="L92">			return false;</span>
+		}
+<span class="nc" id="L94">		PlayerVisitedZonesInRegionCondition other = (PlayerVisitedZonesInRegionCondition) obj;</span>
+<span class="nc bnc" id="L95" title="All 8 branches missed.">		return region.equals(other.region)</span>
+			&amp;&amp; Objects.equal(exterior, other.exterior)
+			&amp;&amp; Objects.equal(aboveGround, other.aboveGround)
+			&amp;&amp; Objects.equal(accessible, other.accessible);
+	}
+
+	@Override
+	public String toString() {
+<span class="nc" id="L103">		return &quot;player visited &lt;region: &quot;+region+&quot;, exterior: &quot;+exterior+&quot;, above ground: &quot;+aboveGround+&quot;, accessible: &quot;+accessible+&quot;&gt;&quot;;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

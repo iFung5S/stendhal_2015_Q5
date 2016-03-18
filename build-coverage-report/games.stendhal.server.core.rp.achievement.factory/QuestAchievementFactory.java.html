@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>QuestAchievementFactory.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.core.rp.achievement.factory</a> &gt; <span class="el_source">QuestAchievementFactory.java</span></div><h1>QuestAchievementFactory.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.core.rp.achievement.factory;
+
+import games.stendhal.server.core.rp.achievement.Achievement;
+import games.stendhal.server.core.rp.achievement.Category;
+import games.stendhal.server.core.rp.achievement.condition.QuestCountCompletedCondition;
+import games.stendhal.server.core.rp.achievement.condition.QuestsInRegionCompletedCondition;
+import games.stendhal.server.entity.npc.condition.QuestStateGreaterThanCondition;
+import games.stendhal.server.maps.Region;
+
+import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
+/**
+ * Factory for quest achievements
+ *
+ * @author madmetzger
+ */
+<span class="nc" id="L30">public class QuestAchievementFactory extends AbstractAchievementFactory {</span>
+
+	@Override
+	public Collection&lt;Achievement&gt; createAchievements() {
+<span class="nc" id="L34">		List&lt;Achievement&gt; questAchievements = new LinkedList&lt;Achievement&gt;();</span>
+
+		//elf princess quest achievement
+<span class="nc" id="L37">		questAchievements.add(createAchievement(&quot;quest.special.elf_princess.0025&quot;, &quot;Faiumoni's Casanova&quot;, &quot;Finish elf princess quest 25 times&quot;,</span>
+												Achievement.MEDIUM_BASE_SCORE, true, new QuestStateGreaterThanCondition(&quot;elf_princess&quot;, 2, 24)));
+
+		//Maze
+<span class="nc" id="L41">		questAchievements.add(createAchievement(&quot;quest.special.maze&quot;, &quot;Pathfinder&quot;, &quot;Finish the maze&quot;,</span>
+				Achievement.EASY_BASE_SCORE, true, new QuestStateGreaterThanCondition(&quot;maze&quot;, 2, 0)));
+<span class="nc" id="L43">		questAchievements.add(createAchievement(&quot;quest.deathmatch&quot;, &quot;Deathmatch Hero&quot;, &quot;Earn 100,000 points in deathmatch&quot;,</span>
+				Achievement.MEDIUM_BASE_SCORE, true, new QuestStateGreaterThanCondition(&quot;deathmatch_score&quot;, 0, 100000)));
+
+		// Ados Deathmatch
+		// disabled. Currently the wrong index is being checked (it would be index 6)
+		// and as per bug report https://sourceforge.net/tracker/?func=detail&amp;aid=3148365&amp;group_id=1111&amp;atid=101111 the count is not saved anyway
+		// questAchievements.add(createAchievement(&quot;quest.special.dm.025&quot;, &quot;Gladiator&quot;, &quot;Fight 25 Deathmatches&quot;,
+		//		Achievement.HARD_BASE_SCORE, true, new QuestStateGreaterThanCondition(&quot;deathmatch&quot;, 1, 24)));
+
+		// have completed all quests in Semos City?
+<span class="nc" id="L53">		questAchievements.add(createAchievement(&quot;quest.special.semos&quot;, &quot;Aide to Semos folk&quot;, &quot;Complete all quests in Semos City&quot;,</span>
+				Achievement.MEDIUM_BASE_SCORE, true, new QuestsInRegionCompletedCondition(Region.SEMOS_CITY)));
+
+		// have completed all quests in Ados City?
+<span class="nc" id="L57">		questAchievements.add(createAchievement(&quot;quest.special.ados&quot;, &quot;Helper of Ados city dwellers&quot;, &quot;Complete all quests in Ados City&quot;,</span>
+				Achievement.MEDIUM_BASE_SCORE, true, new QuestsInRegionCompletedCondition(Region.ADOS_CITY)));
+		
+		// complete nearly all the quests in the game?
+<span class="nc" id="L61">		questAchievements.add(createAchievement(&quot;quest.count.80&quot;, &quot;Quest Junkie&quot;,&quot;Complete at least 80 quests&quot;,</span>
+				Achievement.MEDIUM_BASE_SCORE, true, new QuestCountCompletedCondition(80)));
+
+<span class="nc" id="L64">		return questAchievements;</span>
+	}
+
+	@Override
+	protected Category getCategory() {
+<span class="nc" id="L69">		return Category.QUEST;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

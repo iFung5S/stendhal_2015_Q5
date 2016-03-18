@@ -1,0 +1,384 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ScriptRunner.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.core.scripting</a> &gt; <span class="el_source">ScriptRunner.java</span></div><h1>ScriptRunner.java</h1><pre class="source lang-java linenums">/* $Id$ */
+
+package games.stendhal.server.core.scripting;
+
+import games.stendhal.common.CommandlineParser;
+import games.stendhal.common.ErrorBuffer;
+import games.stendhal.common.ErrorDrain;
+import games.stendhal.server.actions.ActionListener;
+import games.stendhal.server.actions.CommandCenter;
+import games.stendhal.server.actions.admin.AdministrationAction;
+import games.stendhal.server.core.engine.GameEvent;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.extension.StendhalServerExtension;
+
+import java.io.File;
+import java.io.FilenameFilter;
+import java.net.URL;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import marauroa.common.game.RPAction;
+
+import org.apache.log4j.Logger;
+
+/**
+ * ServerExtension to load Groovy and Java scripts.
+ * 
+ * @author intensifly
+ */
+public class ScriptRunner extends StendhalServerExtension implements
+		ActionListener {
+
+	private static final int REQUIRED_ADMINLEVEL = 1000;
+
+	private final Map&lt;String, ScriptingSandbox&gt; scripts;
+
+<span class="nc" id="L39">	private final String scriptDir = &quot;data/script/&quot;;</span>
+
+<span class="nc" id="L41">	private static final Logger logger = Logger.getLogger(ScriptRunner.class);</span>
+
+	/**
+	 * Constructor for ScriptRunner.
+	 */
+	public ScriptRunner() {
+<span class="nc" id="L47">		super();</span>
+<span class="nc" id="L48">		scripts = new HashMap&lt;String, ScriptingSandbox&gt;();</span>
+<span class="nc" id="L49">		CommandCenter.register(&quot;script&quot;, this, REQUIRED_ADMINLEVEL);</span>
+<span class="nc" id="L50">	}</span>
+
+	@Override
+	public void init() {
+<span class="nc" id="L54">		final URL url = getClass().getClassLoader().getResource(scriptDir);</span>
+<span class="nc bnc" id="L55" title="All 2 branches missed.">		if (url != null) {</span>
+<span class="nc" id="L56">			final File dir = new File(url.getFile());</span>
+<span class="nc" id="L57">			final String[] strs = dir.list(new FilenameFilter() {</span>
+				@Override
+				public boolean accept(final File dir, final String name) {
+<span class="nc" id="L60">					return name.endsWith(&quot;.groovy&quot;);</span>
+				}
+			});
+
+<span class="nc bnc" id="L64" title="All 2 branches missed.">			for (int i = 0; i &lt; strs.length; i++) {</span>
+				try {
+<span class="nc" id="L66">					perform(strs[i]);</span>
+<span class="nc" id="L67">				} catch (final Exception e) {</span>
+<span class="nc" id="L68">					logger.error(&quot;Error while loading &quot; + strs[i] + &quot;:&quot;, e);</span>
+<span class="nc" id="L69">				}</span>
+			}
+		}
+
+<span class="nc" id="L73">	}</span>
+
+	@Override
+	public synchronized boolean perform(final String name) {
+<span class="nc" id="L77">		return perform(name, &quot;load&quot;, null, null);</span>
+	}
+	
+	// need that function to filter scripts names 
+	public String searchTermToRegex(String searchTerm) {
+		final String metaSymbols = &quot;*?()[]{}+-.^$|\\&quot;;
+<span class="nc" id="L83">		StringBuilder stringBuilder = new StringBuilder();</span>
+<span class="nc bnc" id="L84" title="All 2 branches missed.">		for (int i = 0; i &lt; searchTerm.length(); i++) {</span>
+<span class="nc" id="L85">			final char c = searchTerm.charAt(i);</span>
+<span class="nc" id="L86">			final int n = metaSymbols.indexOf(c);</span>
+<span class="nc bnc" id="L87" title="All 2 branches missed.">			if (n == -1) {</span>
+<span class="nc" id="L88">				stringBuilder.append(c);</span>
+			} else {
+<span class="nc bnc" id="L90" title="All 3 branches missed.">				switch (c) {</span>
+					case '*':
+<span class="nc" id="L92">						stringBuilder.append(&quot;.*?&quot;);</span>
+<span class="nc" id="L93">						break;</span>
+					case '?':
+<span class="nc" id="L95">						stringBuilder.append(&quot;.&quot;);</span>
+<span class="nc" id="L96">						break;</span>
+					default:
+<span class="nc" id="L98">						stringBuilder.append('\\');</span>
+<span class="nc" id="L99">						stringBuilder.append(c);</span>
+						break;
+				}
+			}
+		}
+<span class="nc" id="L104">		return stringBuilder.toString();</span>
+	}
+	
+	private synchronized boolean perform(final String name, final String mode,
+			final Player player, final List&lt;String&gt; args) {
+<span class="nc" id="L109">		boolean ret = false;</span>
+		
+		// block exploit
+<span class="nc bnc" id="L112" title="All 2 branches missed.">		if (name.indexOf(&quot;..&quot;) &gt;= 0) {</span>
+<span class="nc" id="L113">			return false;</span>
+		}
+		
+		// list mode
+<span class="nc bnc" id="L117" title="All 2 branches missed.">		if (&quot;list&quot;.equals(mode)) {</span>
+<span class="nc" id="L118">			return listScripts(player, args);</span>
+		}
+
+<span class="nc" id="L121">		final String trimmedName = name.trim();</span>
+		// if the script is already running get it, else null it
+<span class="nc" id="L123">		ScriptingSandbox script = scripts.get(trimmedName);</span>
+
+		// unloading
+<span class="nc bnc" id="L126" title="All 6 branches missed.">		if (&quot;load&quot;.equals(mode) || &quot;remove&quot;.equals(mode)</span>
+				|| &quot;unload&quot;.equals(mode)) {
+
+<span class="nc" id="L129">			script = scripts.remove(trimmedName);</span>
+<span class="nc bnc" id="L130" title="All 2 branches missed.">			if (script != null) {</span>
+<span class="nc" id="L131">				script.unload(player, args);</span>
+<span class="nc" id="L132">				ret = true;</span>
+			}
+<span class="nc" id="L134">			script = null;</span>
+		}
+
+		// load and/or execute
+<span class="nc bnc" id="L138" title="All 4 branches missed.">		if (&quot;load&quot;.equals(mode) || &quot;execute&quot;.equals(mode)) {</span>
+<span class="nc" id="L139">			boolean ignoreExecute = false;</span>
+
+			// load script if it is not already loaded,
+			// if we want to execute we'll also load it if needed
+<span class="nc bnc" id="L143" title="All 2 branches missed.">			if (script == null) {</span>
+<span class="nc bnc" id="L144" title="All 2 branches missed.">				if (trimmedName.endsWith(&quot;.groovy&quot;)) {</span>
+<span class="nc" id="L145">					script = new ScriptInGroovy(scriptDir + trimmedName);</span>
+<span class="nc" id="L146">					ignoreExecute = true;</span>
+<span class="nc bnc" id="L147" title="All 2 branches missed.">				} else if (trimmedName.endsWith(&quot;.class&quot;)) {</span>
+<span class="nc" id="L148">					script = new ScriptInJava(trimmedName);</span>
+				}
+<span class="nc bnc" id="L150" title="All 2 branches missed.">				if (script != null) {</span>
+<span class="nc" id="L151">					ret = script.load(player, args);</span>
+<span class="nc" id="L152">					scripts.put(trimmedName, script);</span>
+				}
+			}
+
+<span class="nc bnc" id="L156" title="All 4 branches missed.">			if (&quot;execute&quot;.equals(mode) &amp;&amp; !ignoreExecute) {</span>
+<span class="nc bnc" id="L157" title="All 2 branches missed.">				if (script != null) {</span>
+<span class="nc" id="L158">					ret = script.execute(player, args);</span>
+				} else {
+<span class="nc" id="L160">					logger.error(&quot;Script not executed: &quot; + trimmedName);</span>
+				}
+			}
+		}
+
+<span class="nc" id="L165">		return (ret);</span>
+	}
+
+	/**
+	 * Lists the available scripts
+	 *
+	 * @param player player requesting the list
+	 * @param filterTerm filter
+	 * @return true
+	 */
+	private boolean listScripts(final Player player, List&lt;String&gt; filterTerm) {
+		// *.groovy scripts is in data/script/
+<span class="nc" id="L177">		final File dirGroovy = new File(scriptDir);</span>
+		// *.class scripts is in data/script/games/stendhal/server/script/
+<span class="nc" id="L179">		final File dirClasses = new File(scriptDir+&quot;games/stendhal/server/script/&quot;);</span>
+<span class="nc" id="L180">		final String[] scriptsGroovy = dirGroovy.list(new FilenameFilter() {</span>
+				@Override
+				public boolean accept(final File dir, final String name) {
+<span class="nc bnc" id="L183" title="All 4 branches missed.">					return (name.endsWith(&quot;.groovy&quot;) &amp;&amp; (name.indexOf('$') == -1));</span>
+				}
+			});
+<span class="nc" id="L186">		final String[] scriptsJava = dirClasses.list(new FilenameFilter(){</span>
+				@Override
+				public boolean accept(final File dir, final String name) {
+					// remove filenames with '$' inside because they are inner classes
+<span class="nc bnc" id="L190" title="All 4 branches missed.">					return (name.endsWith(&quot;.class&quot;) &amp;&amp; (name.indexOf('$') == -1));</span>
+				}
+			});
+        		
+<span class="nc" id="L194">		int scriptsGroovyLength = 0;</span>
+<span class="nc bnc" id="L195" title="All 2 branches missed.">		if (scriptsGroovy!=null) {</span>
+<span class="nc" id="L196">			scriptsGroovyLength=scriptsGroovy.length;</span>
+		}
+<span class="nc" id="L198">		int scriptsJavaLength = 0;</span>
+<span class="nc bnc" id="L199" title="All 2 branches missed.">		if (scriptsJava!=null) {</span>
+<span class="nc" id="L200">			scriptsJavaLength=scriptsJava.length;</span>
+		}
+<span class="nc" id="L202">		final int scriptsLength = scriptsGroovyLength + scriptsJavaLength; </span>
+		// concatenating String arrays scriptsGroovy and scriptsJava to scripts
+<span class="nc" id="L204">		final String[] scripts= new String[scriptsLength];</span>
+		
+<span class="nc bnc" id="L206" title="All 2 branches missed.">		if (scriptsGroovy!=null) {</span>
+<span class="nc" id="L207">		System.arraycopy(scriptsGroovy, 0, scripts, 0, scriptsGroovyLength);</span>
+		}
+		
+<span class="nc bnc" id="L210" title="All 2 branches missed.">		if (scriptsJava!=null) {</span>
+<span class="nc" id="L211">		System.arraycopy(scriptsJava, 0, scripts, scriptsGroovyLength, scriptsJavaLength);</span>
+		}
+		
+<span class="nc" id="L214">		StringBuilder stringBuilder = new StringBuilder();</span>
+
+<span class="nc bnc" id="L216" title="All 2 branches missed.">		if (!filterTerm.isEmpty()) {</span>
+<span class="nc" id="L217">			stringBuilder.append(&quot;results for /script &quot;);</span>
+<span class="nc bnc" id="L218" title="All 2 branches missed.">			for (int i=0; i&lt;filterTerm.size(); i++) {</span>
+<span class="nc" id="L219">				stringBuilder.append(&quot; &quot;+ filterTerm.get(i));</span>
+			}
+<span class="nc" id="L221">			stringBuilder.append(&quot;:\n&quot;);</span>
+		}
+
+<span class="nc bnc" id="L224" title="All 2 branches missed.">		for (int i = 0; i &lt; scriptsLength; i++) {</span>
+			// if arguments given, will look for matches.
+<span class="nc bnc" id="L226" title="All 2 branches missed.">			if (!filterTerm.isEmpty()) {</span>
+<span class="nc" id="L227">				int j = 0;					</span>
+<span class="nc bnc" id="L228" title="All 2 branches missed.">				for (j = 0; j &lt; filterTerm.size(); j++) {</span>
+<span class="nc bnc" id="L229" title="All 2 branches missed.">					if (scripts[i].matches(searchTermToRegex(filterTerm.get(j)))) {</span>
+<span class="nc" id="L230">						stringBuilder.append(scripts[i]+&quot;\n&quot;);</span>
+					}
+				}
+<span class="nc" id="L233">			} else {</span>
+<span class="nc" id="L234">				stringBuilder.append(scripts[i]+&quot;\n&quot;);</span>
+			}
+		}	
+<span class="nc" id="L237">		stringBuilder.append(&quot;(end of listing).&quot;);</span>
+<span class="nc" id="L238">		player.sendPrivateText(stringBuilder.toString());</span>
+<span class="nc" id="L239">		return true;</span>
+	}
+
+	@Override
+	public String getMessage(final String name) {
+<span class="nc" id="L244">		final ScriptingSandbox gr = scripts.get(name);</span>
+<span class="nc bnc" id="L245" title="All 2 branches missed.">		if (gr != null) {</span>
+<span class="nc" id="L246">			return (gr.getMessage());</span>
+		}
+<span class="nc" id="L248">		return (null);</span>
+	}
+
+	@Override
+	public void onAction(final Player player, final RPAction action) {
+
+<span class="nc bnc" id="L254" title="All 2 branches missed.">		if (!AdministrationAction.isPlayerAllowedToExecuteAdminCommand(player, &quot;script&quot;, true)) {</span>
+<span class="nc" id="L255">			return;</span>
+		}
+<span class="nc" id="L257">		String sender = player.getName();</span>
+<span class="nc bnc" id="L258" title="All 4 branches missed.">		if (action.has(&quot;sender&quot;) &amp;&amp; (player.getName().equals(&quot;postman&quot;))) {</span>
+<span class="nc" id="L259">			sender = action.get(&quot;sender&quot;);</span>
+		}
+
+<span class="nc" id="L262">		String text = &quot;usage: #/script #[-list|-execute|-load|-unload] #&lt;filename&gt; #[&lt;args&gt;]\n mode is either load (default) or remove&quot;;</span>
+<span class="nc bnc" id="L263" title="All 2 branches missed.">		if (action.has(&quot;target&quot;)) {</span>
+
+			// concat target and args to get the original string back
+<span class="nc" id="L266">			String cmd = action.get(&quot;target&quot;);</span>
+<span class="nc bnc" id="L267" title="All 2 branches missed.">			if (action.has(&quot;args&quot;)) {</span>
+<span class="nc" id="L268">				cmd = cmd + &quot; &quot; + action.get(&quot;args&quot;);</span>
+			}
+			// in the simplest case there is only one argument which is the
+			// script name
+<span class="nc" id="L272">			String mode = &quot;execute&quot;;</span>
+<span class="nc" id="L273">			String script = cmd;</span>
+			
+			/* 
+			 // parse args if there is a space
+			 int pos = cmd.indexOf(' ');
+			 if (pos &gt; -1) {
+				// Analyze the first word: mode or filename?
+				String temp = cmd.substring(0, pos);
+				cmd = cmd.substring(pos + 1);
+				if (temp.startsWith(&quot;-&quot;)) {
+					// it is &quot;mode&quot;
+					mode = temp.substring(1);
+					pos = cmd.indexOf(' ');
+
+					if (pos &gt; -1) {
+						temp = cmd.substring(0, pos);
+						cmd = cmd.substring(pos + 1);
+					} else {
+						temp = cmd;
+					}
+				}
+				script = temp;
+			 }
+			 */
+			
+			// parts of script command. 
+<span class="nc" id="L299">			final List&lt;String&gt; parts = Arrays.asList(cmd.split(&quot; &quot;));</span>
+<span class="nc" id="L300">			cmd = &quot;&quot;;</span>
+<span class="nc" id="L301">			int scp = 0;</span>
+<span class="nc bnc" id="L302" title="All 2 branches missed.">			if (!parts.isEmpty()) {</span>
+<span class="nc bnc" id="L303" title="All 2 branches missed.">				if (parts.get(0).startsWith(&quot;-&quot;)) {</span>
+					// it is &quot;mode&quot;
+<span class="nc" id="L305">					mode = parts.get(0).substring(1);</span>
+<span class="nc" id="L306">					scp = 1;</span>
+				}
+				// determine where is script name
+<span class="nc bnc" id="L309" title="All 2 branches missed.">				if (scp &lt; parts.size()) {</span>
+<span class="nc" id="L310">					script = parts.get(scp);</span>
+				}
+<span class="nc" id="L312">				StringBuilder sb = new StringBuilder(cmd);</span>
+				// concatenating script arguments
+<span class="nc bnc" id="L314" title="All 2 branches missed.">				for (int i = scp+1; i&lt;parts.size(); i++) {</span>
+<span class="nc" id="L315">					 sb.append(' ').append(parts.get(i));				</span>
+				}
+<span class="nc" id="L317">				cmd = sb.toString();</span>
+				// for list mode we dont have script name
+<span class="nc bnc" id="L319" title="All 2 branches missed.">				if (&quot;list&quot;.equals(mode)) {</span>
+<span class="nc" id="L320">					 cmd = script + &quot; &quot; + cmd;</span>
+				}
+			}
+
+			// use the same routine as in the client to parse quoted arguments
+<span class="nc" id="L325">			final CommandlineParser parser = new CommandlineParser(cmd);</span>
+<span class="nc" id="L326">			final ErrorDrain errors = new ErrorBuffer();</span>
+
+<span class="nc" id="L328">			final List&lt;String&gt; args = parser.readAllParameters(errors);</span>
+
+<span class="nc" id="L330">			new GameEvent(sender, &quot;script&quot;, script, mode, args.toString()).raise();</span>
+
+			// execute script
+<span class="nc" id="L333">			script = script.trim();</span>
+<span class="nc bnc" id="L334" title="All 6 branches missed.">			if (&quot;list&quot;.equals(mode) || script.endsWith(&quot;.groovy&quot;) || script.endsWith(&quot;.class&quot;)) {</span>
+<span class="nc" id="L335">				boolean res = false;</span>
+<span class="nc" id="L336">				res = perform(script, mode, player, args);</span>
+<span class="nc bnc" id="L337" title="All 2 branches missed.">				if (res) {</span>
+<span class="nc" id="L338">					StringBuilder stringBuilder = new StringBuilder();</span>
+<span class="nc bnc" id="L339" title="All 2 branches missed.">					if (!&quot;list&quot;.equals(mode)) {</span>
+<span class="nc" id="L340">					stringBuilder.append(&quot;Script \&quot;&quot;);</span>
+<span class="nc" id="L341">					stringBuilder.append(script);</span>
+<span class="nc" id="L342">					stringBuilder.append(&quot;\&quot; was successfully &quot;);</span>
+<span class="nc" id="L343">					stringBuilder.append(mode);</span>
+					} else {
+						// we dont want spam messages.
+						//stringBuilder.append(&quot;script directories was successfully list&quot;);
+<span class="nc" id="L347">						return;</span>
+					}
+<span class="nc bnc" id="L349" title="All 2 branches missed.">					if (&quot;execute&quot;.equals(mode)) {</span>
+<span class="nc" id="L350">						stringBuilder.append(&quot;d&quot;);</span>
+					} else {
+<span class="nc" id="L352">						stringBuilder.append(&quot;ed&quot;);</span>
+					}
+<span class="nc" id="L354">					stringBuilder.append(&quot;.&quot;);</span>
+<span class="nc" id="L355">					text = stringBuilder.toString();</span>
+<span class="nc" id="L356">				} else {</span>
+<span class="nc" id="L357">					final String msg = getMessage(script);</span>
+<span class="nc bnc" id="L358" title="All 2 branches missed.">					if (msg != null) {</span>
+<span class="nc" id="L359">						text = msg;</span>
+					} else {
+<span class="nc" id="L361">						StringBuilder stringBuilder = new StringBuilder();</span>
+<span class="nc" id="L362">						stringBuilder.append(&quot;Script \&quot;&quot;);</span>
+<span class="nc" id="L363">						stringBuilder.append(script);</span>
+<span class="nc" id="L364">						stringBuilder.append(&quot;\&quot; was either not found, or encountered an error during &quot;);</span>
+<span class="nc bnc" id="L365" title="All 2 branches missed.">						if (&quot;execute&quot;.equals(mode)) {</span>
+<span class="nc" id="L366">							stringBuilder.append(&quot;execution&quot;);</span>
+						} else {
+<span class="nc" id="L368">							stringBuilder.append(mode);</span>
+<span class="nc" id="L369">							stringBuilder.append(&quot;ing&quot;);</span>
+						}
+<span class="nc" id="L371">						stringBuilder.append(&quot;.&quot;);</span>
+<span class="nc" id="L372">						text = stringBuilder.toString();</span>
+					}
+				}
+<span class="nc" id="L375">			} else {</span>
+<span class="nc" id="L376">				text = &quot;Invalid filename: It should end with .groovy or .class&quot;;</span>
+			}
+		}
+
+<span class="nc" id="L380">		player.sendPrivateText(text);</span>
+<span class="nc" id="L381">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

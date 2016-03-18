@@ -1,0 +1,596 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>KTextEdit.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui</a> &gt; <span class="el_source">KTextEdit.java</span></div><h1>KTextEdit.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2013 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui;
+
+import games.stendhal.client.stendhal;
+import games.stendhal.client.gui.chatlog.ChatTextSink;
+import games.stendhal.client.gui.chatlog.EventLine;
+import games.stendhal.client.gui.chatlog.HeaderLessEventLine;
+import games.stendhal.client.gui.textformat.StringFormatter;
+import games.stendhal.client.gui.textformat.StyleSet;
+import games.stendhal.common.MathHelper;
+import games.stendhal.common.NotificationType;
+
+import java.awt.Adjustable;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.AdjustmentEvent;
+import java.awt.event.AdjustmentListener;
+import java.awt.event.MouseEvent;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
+import java.text.Format;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.regex.Pattern;
+
+import javax.swing.DefaultBoundedRangeModel;
+import javax.swing.JComponent;
+import javax.swing.JMenuItem;
+import javax.swing.JPopupMenu;
+import javax.swing.JScrollBar;
+import javax.swing.JScrollPane;
+import javax.swing.JTextPane;
+import javax.swing.SwingUtilities;
+import javax.swing.text.AbstractDocument;
+import javax.swing.text.AttributeSet;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.BoxView;
+import javax.swing.text.Caret;
+import javax.swing.text.ComponentView;
+import javax.swing.text.DefaultCaret;
+import javax.swing.text.Document;
+import javax.swing.text.Element;
+import javax.swing.text.IconView;
+import javax.swing.text.LabelView;
+import javax.swing.text.ParagraphView;
+import javax.swing.text.Style;
+import javax.swing.text.StyleConstants;
+import javax.swing.text.StyleContext;
+import javax.swing.text.StyledDocument;
+import javax.swing.text.StyledEditorKit;
+import javax.swing.text.View;
+import javax.swing.text.ViewFactory;
+
+import org.apache.log4j.Logger;
+
+/**
+ * Appendable text component to be used as the chat log.
+ */
+class KTextEdit extends JComponent {
+	/** Color of the time stamp written before the lines. */
+<span class="fc" id="L76">	protected static final Color HEADER_COLOR = Color.gray;</span>
+
+<span class="fc" id="L78">	private static final Logger logger = Logger.getLogger(KTextEdit.class);</span>
+
+	/** The actual text component for showing the chat log. */
+	JTextPane textPane;
+	/** Scroll pane containing the text component. */
+	private JScrollPane scrollPane;
+	/** Name of the log. */
+<span class="fc" id="L85">	private String name = &quot;&quot;;</span>
+	/** Background color when not highlighting unread messages. */
+<span class="fc" id="L87">	private Color defaultBackground = Color.white;</span>
+	/** Formatting class for text containing stendhal markup. */
+<span class="fc" id="L89">	private final StringFormatter&lt;Style, StyleSet&gt; formatter = new StringFormatter&lt;Style, StyleSet&gt;();</span>
+	private StyleSet defaultAttributes;
+<span class="fc" id="L91">	private final Format dateFormatter = new SimpleDateFormat(&quot;[HH:mm] &quot;);</span>
+
+	/** Listener for opening the popup menu when it's requested. */
+<span class="fc" id="L94">	private final class TextPaneMouseListener extends MousePopupAdapter {</span>
+		@Override
+		protected void showPopup(final MouseEvent e) {
+<span class="nc" id="L97">			final JPopupMenu popup = new JPopupMenu(&quot;save&quot;);</span>
+
+<span class="nc" id="L99">			JMenuItem menuItem = new JMenuItem(&quot;Save&quot;);</span>
+<span class="nc" id="L100">			menuItem.addActionListener(new ActionListener() {</span>
+				@Override
+				public void actionPerformed(final ActionEvent e) {
+<span class="nc" id="L103">					save();</span>
+<span class="nc" id="L104">				}</span>
+			});
+<span class="nc" id="L106">			popup.add(menuItem);</span>
+
+<span class="nc" id="L108">			menuItem = new JMenuItem(&quot;Clear&quot;);</span>
+<span class="nc" id="L109">			menuItem.addActionListener(new ActionListener() {</span>
+				@Override
+				public void actionPerformed(final ActionEvent e) {
+<span class="nc" id="L112">					clear();</span>
+<span class="nc" id="L113">				}</span>
+			});
+<span class="nc" id="L115">			popup.add(menuItem);</span>
+
+<span class="nc" id="L117">			popup.show(e.getComponent(), e.getX(), e.getY());</span>
+<span class="nc" id="L118">		}</span>
+		
+		@Override
+		public void mouseClicked(MouseEvent e) {
+<span class="nc" id="L122">			StyledDocument doc = (StyledDocument) textPane.getDocument();</span>
+<span class="nc" id="L123">			Element ele = doc.getCharacterElement(textPane.viewToModel(e.getPoint()));</span>
+<span class="nc" id="L124">			AttributeSet as = ele.getAttributes();</span>
+<span class="nc" id="L125">			Object fla = as.getAttribute(&quot;linkact&quot;);</span>
+<span class="nc bnc" id="L126" title="All 2 branches missed.">			if (fla instanceof LinkListener) {</span>
+				try {
+<span class="nc" id="L128">					((LinkListener) fla).linkClicked(doc.getText(ele.getStartOffset(), ele.getEndOffset() - ele.getStartOffset()));</span>
+<span class="nc" id="L129">				} catch (BadLocationException exc) {</span>
+<span class="nc" id="L130">					logger.error(&quot;Trying to extract link from invalid range&quot;, exc);</span>
+<span class="nc" id="L131">				}</span>
+			}
+<span class="nc" id="L133">		}</span>
+	}
+
+	@Override
+	public void setFont(Font font) {
+		/*
+		 * Dynamic font size changing tries to set the default font for
+		 * KTextEdit. We don't use it, but we can signal the change of font
+		 * sizes to textPane. Traditionally the chat log has used one point
+		 * smaller font than the rest of the UI, so we keep that practice.
+		 */
+<span class="nc" id="L144">		initStylesForTextPane(textPane, font.getSize() - 1);</span>
+<span class="nc" id="L145">	}</span>
+
+	/**
+	 * Basic Constructor.
+	 */
+<span class="fc" id="L150">	KTextEdit() {</span>
+<span class="fc" id="L151">		buildGUI();</span>
+<span class="fc" id="L152">	}</span>
+
+	/**
+	 * This method builds the Gui.
+	 */
+	private void buildGUI() {
+<span class="fc" id="L158">		textPane = new JTextPane();</span>
+<span class="fc" id="L159">		textPane.setEditorKit(new WrapEditorKit());</span>
+<span class="fc" id="L160">		textPane.setEditable(false);</span>
+<span class="fc" id="L161">		textPane.setAutoscrolls(true);</span>
+		// Turn off caret following. VerticalScrollBarModel takes care of
+		// automatic scrolling
+<span class="fc" id="L164">		Caret caret = textPane.getCaret();</span>
+<span class="pc bpc" id="L165" title="1 of 2 branches missed.">		if (caret instanceof DefaultCaret) {</span>
+<span class="fc" id="L166">			((DefaultCaret) caret).setUpdatePolicy(DefaultCaret.NEVER_UPDATE);</span>
+		} else {
+<span class="nc" id="L168">			logger.warn(&quot;Failed to turn off caret following&quot;);</span>
+		}
+
+<span class="fc" id="L171">		textPane.addMouseListener(new TextPaneMouseListener());</span>
+
+<span class="fc" id="L173">		initStylesForTextPane(textPane, textPane.getFont().getSize());</span>
+<span class="fc" id="L174">		setLayout(new BorderLayout());</span>
+
+<span class="fc" id="L176">		scrollPane = new JScrollPane(textPane) {</span>
+			@Override
+			public JScrollBar createVerticalScrollBar() {
+<span class="fc" id="L179">				JScrollBar bar = super.createVerticalScrollBar();</span>
+<span class="fc" id="L180">				bar.setModel(new VerticalScollbarModel());</span>
+<span class="fc" id="L181">				return bar;</span>
+			}
+		};
+
+<span class="fc" id="L185">		scrollPane.getVerticalScrollBar().addAdjustmentListener(new AdjustmentListener() {</span>
+			@Override
+			public void adjustmentValueChanged(final AdjustmentEvent ev) {
+<span class="nc" id="L188">				JScrollBar bar = (JScrollBar) ev.getAdjustable();</span>
+				// Try to avoid turning the new message indicator off
+				// while the player keeps adjusting the scroll bar to
+				// avoid missleading results
+<span class="nc bnc" id="L192" title="All 4 branches missed.">				if (!bar.getValueIsAdjusting() &amp;&amp; isAtMaximum(bar)) {</span>
+<span class="nc" id="L193">					setUnreadLinesWarning(false);</span>
+				}
+<span class="nc" id="L195">			}</span>
+		});
+
+<span class="fc" id="L198">		add(scrollPane, BorderLayout.CENTER);</span>
+<span class="fc" id="L199">	}</span>
+
+	/**
+	 * Initializes the basic styles.
+	 *
+	 * @param textPane
+	 *            the active text component
+	 * @param mainTextSize size of regular text
+	 */
+	protected void initStylesForTextPane(final JTextPane textPane, int mainTextSize) {
+		// ****** General style definitions for the text pane ******
+<span class="fc" id="L210">		Style regular = textPane.getStyle(&quot;regular&quot;);</span>
+<span class="pc bpc" id="L211" title="1 of 2 branches missed.">		if (regular == null) {</span>
+<span class="fc" id="L212">			final Style def = StyleContext.getDefaultStyleContext().getStyle(</span>
+					StyleContext.DEFAULT_STYLE);
+<span class="fc" id="L214">			regular = textPane.addStyle(&quot;regular&quot;, def);</span>
+<span class="fc" id="L215">			StyleConstants.setFontFamily(def, &quot;Dialog&quot;);</span>
+		}
+<span class="fc" id="L217">		StyleConstants.setFontSize(regular, mainTextSize);</span>
+
+<span class="fc" id="L219">		Style s = textPane.getStyle(&quot;normal&quot;);</span>
+<span class="pc bpc" id="L220" title="1 of 2 branches missed.">		if (s == null) {</span>
+<span class="fc" id="L221">			s = textPane.addStyle(&quot;normal&quot;, regular);</span>
+<span class="fc" id="L222">			StyleConstants.setBold(s, true);</span>
+<span class="fc" id="L223">			StyleConstants.setForeground(s, HEADER_COLOR);</span>
+		}
+
+<span class="fc" id="L226">		s = textPane.getStyle(&quot;bold&quot;);</span>
+<span class="pc bpc" id="L227" title="1 of 2 branches missed.">		if (s == null) {</span>
+<span class="fc" id="L228">			s = textPane.addStyle(&quot;bold&quot;, regular);</span>
+<span class="fc" id="L229">			StyleConstants.setItalic(s, true);</span>
+<span class="fc" id="L230">			StyleConstants.setBold(s, true);</span>
+<span class="fc" id="L231">			StyleConstants.setForeground(s, Color.blue);</span>
+		}
+<span class="fc" id="L233">		StyleConstants.setFontSize(regular, mainTextSize + 1);</span>
+
+<span class="fc" id="L235">		s = textPane.getStyle(&quot;header&quot;);</span>
+<span class="pc bpc" id="L236" title="1 of 2 branches missed.">		if (s == null) {</span>
+<span class="fc" id="L237">			s = textPane.addStyle(&quot;header&quot;, regular);</span>
+<span class="fc" id="L238">			StyleConstants.setItalic(s, true);</span>
+<span class="fc" id="L239">			StyleConstants.setForeground(s, HEADER_COLOR);</span>
+		}
+<span class="fc" id="L241">		StyleConstants.setFontSize(s, mainTextSize);</span>
+
+<span class="fc" id="L243">		s = textPane.getStyle(&quot;timestamp&quot;);</span>
+<span class="pc bpc" id="L244" title="1 of 2 branches missed.">		if (s == null) {</span>
+<span class="fc" id="L245">			s = textPane.addStyle(&quot;timestamp&quot;, regular);</span>
+<span class="fc" id="L246">			StyleConstants.setItalic(s, true);</span>
+<span class="fc" id="L247">			StyleConstants.setForeground(s, HEADER_COLOR);</span>
+		}
+<span class="fc" id="L249">		StyleConstants.setFontSize(s, mainTextSize - 1);</span>
+		
+		//****** Styles used by the string formatter ******
+<span class="fc" id="L252">		defaultAttributes = new StyleSet(StyleContext.getDefaultStyleContext(), regular);</span>
+		
+<span class="fc" id="L254">		StyleSet attributes = defaultAttributes.copy();</span>
+<span class="fc" id="L255">		attributes.setAttribute(StyleConstants.Italic, Boolean.TRUE);</span>
+<span class="fc" id="L256">		attributes.setAttribute(StyleConstants.Foreground, Color.blue);</span>
+<span class="fc" id="L257">		attributes.setAttribute(&quot;linkact&quot;, new LinkListener());</span>
+		
+<span class="fc" id="L259">		formatter.addStyle('#', attributes);</span>
+
+<span class="fc" id="L261">		attributes = defaultAttributes.copy();</span>
+<span class="fc" id="L262">		attributes.setAttribute(StyleConstants.Underline, Boolean.TRUE);</span>
+<span class="fc" id="L263">		formatter.addStyle('§', attributes);</span>
+<span class="fc" id="L264">	}</span>
+
+	/**
+	 * Get the style corresponding to a description and color.
+	 *
+	 * @param desiredColor
+	 *            the color with which the text must be colored
+	 * @param styleDescription
+	 *            which style to use (may not be normal)
+	 * @return the colored style
+	 */
+	private Style getStyle(final Color desiredColor, final String styleDescription) {
+<span class="nc" id="L276">		final Style s = textPane.getStyle(styleDescription);</span>
+<span class="nc" id="L277">		StyleConstants.setForeground(s, desiredColor);</span>
+<span class="nc" id="L278">		return s;</span>
+	}
+
+	/**
+	 * Insert a header.
+	 *
+	 * @param header header string
+	 */
+	protected void insertHeader(final String header) {
+<span class="nc" id="L287">		final Document doc = textPane.getDocument();</span>
+		try {
+<span class="nc bnc" id="L289" title="All 2 branches missed.">			if (header.length() &gt; 0) {</span>
+<span class="nc" id="L290">				doc.insertString(doc.getLength(), &quot;&lt;&quot; + header + &quot;&gt; &quot;,</span>
+						textPane.getStyle(&quot;header&quot;));
+			}
+<span class="nc" id="L293">		} catch (final BadLocationException e) {</span>
+<span class="nc" id="L294">			logger.error(&quot;Couldn't insert initial text.&quot;, e);</span>
+<span class="nc" id="L295">		}</span>
+<span class="nc" id="L296">	}</span>
+
+	/**
+	 * Insert time stamp.
+	 *
+	 * @param header time stamp
+	 */
+	protected void insertTimestamp(final String header) {
+<span class="nc" id="L304">		final Document doc = textPane.getDocument();</span>
+		try {
+<span class="nc bnc" id="L306" title="All 2 branches missed.">			if (header.length() &gt; 0) {</span>
+<span class="nc" id="L307">				doc.insertString(doc.getLength(), header,</span>
+						textPane.getStyle(&quot;timestamp&quot;));
+			}
+<span class="nc" id="L310">		} catch (final BadLocationException e) {</span>
+<span class="nc" id="L311">			logger.error(&quot;Couldn't insert initial text.&quot;, e);</span>
+<span class="nc" id="L312">		}</span>
+<span class="nc" id="L313">	}</span>
+
+	/**
+	 * Add text using a style defined for a notification type.
+	 *
+	 * @param text text contents
+	 * @param type type for formatting
+	 */
+	protected void insertText(final String text, final NotificationType type) {
+<span class="nc" id="L322">		ChatTextSink dest = new ChatTextSink(textPane.getDocument());</span>
+<span class="nc" id="L323">		StyleSet set = new StyleSet(StyleContext.getDefaultStyleContext(), getStyle(type.getColor(), type.getStyleDescription()));</span>
+<span class="nc" id="L324">		set.setAttribute(StyleConstants.Foreground, type.getColor());</span>
+
+<span class="nc" id="L326">		formatter.format(text, set, dest);</span>
+<span class="nc" id="L327">	}</span>
+
+	/**
+	 * Start a new line.
+	 */
+	protected void insertNewline() {
+<span class="nc" id="L333">		final Document doc = textPane.getDocument();</span>
+		try {
+<span class="nc" id="L335">			doc.insertString(doc.getLength(), &quot;\r\n&quot;, getStyle(Color.black, &quot;normal&quot;));</span>
+<span class="nc" id="L336">		} catch (final BadLocationException e) {</span>
+<span class="nc" id="L337">			logger.error(&quot;Couldn't insert initial text.&quot;, e);</span>
+<span class="nc" id="L338">		}</span>
+<span class="nc" id="L339">	}</span>
+
+	/**
+	 * Add a new line with a specified header and content. The style will be
+	 * chosen according to the type of the message.
+	 *
+	 * @param header
+	 *            a string with the header
+	 * @param line
+	 *            a string representing the line to be printed
+	 * @param type
+	 *            The logical format type.
+	 */
+	private void addLine(final String header, final String line,
+			final NotificationType type) {
+		// do the whole thing in the event dispatch thread to ensure the generated
+		// events get handled in the correct order
+		try {
+<span class="nc bnc" id="L357" title="All 2 branches missed.">			if (SwingUtilities.isEventDispatchThread()) {</span>
+<span class="nc" id="L358">				handleAddLine(header, line, type);</span>
+			} else {
+<span class="nc" id="L360">				SwingUtilities.invokeLater(new Runnable() {</span>
+					@Override
+					public void run() {
+<span class="nc" id="L363">						handleAddLine(header, line, type);</span>
+<span class="nc" id="L364">					}</span>
+				});
+			}
+<span class="nc" id="L367">		} catch (final RuntimeException e) {</span>
+<span class="nc" id="L368">			logger.error(e, e);</span>
+<span class="nc" id="L369">		}</span>
+<span class="nc" id="L370">	}</span>
+
+	/**
+	 * Add a new line with a specified header and content. The style will be
+	 * chosen according to the type of the message. Keep the view at the last
+	 * line unless the user has scrolled higher.
+	 *
+	 * @param header
+	 *            a string with the header
+	 * @param line
+	 *            a string representing the line to be printed
+	 * @param type
+	 *            The logical format type.
+	 */
+	private void handleAddLine(final String header, final String line, final NotificationType type) {
+<span class="nc" id="L385">		insertNewline();</span>
+
+<span class="nc" id="L387">		String dateString = dateFormatter.format(new Date());</span>
+<span class="nc" id="L388">		insertTimestamp(dateString);</span>
+
+<span class="nc" id="L390">		insertHeader(header);</span>
+<span class="nc" id="L391">		insertText(line, type);</span>
+<span class="nc" id="L392">	}</span>
+
+	/**
+	 * Check if a scroll bar is at its maximum value.
+	 *
+	 * @param bar scroll bar
+	 * @return &lt;code&gt;true&lt;/code&gt; if the scrollbar is at its maximum value
+	 * 	location, &lt;code&gt;false&lt;/code&gt;otherwise
+	 */
+	private boolean isAtMaximum(Adjustable bar) {
+<span class="nc bnc" id="L402" title="All 2 branches missed.">		return (bar.getValue() + bar.getVisibleAmount() &gt;= bar.getMaximum());</span>
+	}
+
+	/**
+	 * Append an event line.
+	 *
+	 * @param line event line
+	 */
+	void addLine(final EventLine line) {
+<span class="nc" id="L411">		this.addLine(line.getHeader(), line.getText(), line.getType());</span>
+<span class="nc" id="L412">	}</span>
+
+	/**
+	 * Clear the context.
+	 */
+	void clear() {
+<span class="nc" id="L418">		textPane.setText(&quot;&quot;);</span>
+<span class="nc" id="L419">	}</span>
+
+	/**
+	 * Set the background color to be used normally, when not highlighting
+	 * unread messages.
+	 *
+	 * @param color background color
+	 */
+	void setDefaultBackground(Color color) {
+<span class="nc" id="L428">		defaultBackground = color;</span>
+<span class="nc" id="L429">	}</span>
+
+	/**
+	 * Set the name of the logged channel.
+	 *
+	 * @param name channel name
+	 */
+	void setChannelName(String name) {
+<span class="nc" id="L437">		this.name = name;</span>
+<span class="nc" id="L438">	}</span>
+
+	/**
+	 * Set a clear warning for the user that there are new, unread lines.
+	 * @param warn true if the warning indicator should be shown, false otherwise
+	 */
+	private void setUnreadLinesWarning(final boolean warn) {
+<span class="nc bnc" id="L445" title="All 2 branches missed.">		if (warn) {</span>
+<span class="nc" id="L446">			textPane.setBackground(Color.pink);</span>
+		} else {
+<span class="nc" id="L448">			textPane.setBackground(defaultBackground);</span>
+		}
+<span class="nc" id="L450">	}</span>
+
+	/**
+	 * Get name of the file where logs should be saved on request.
+	 *
+	 * @return file name
+	 */
+	private String getSaveFileName() {
+<span class="nc bnc" id="L458" title="All 2 branches missed.">		if (&quot;&quot;.equals(name)) {</span>
+<span class="nc" id="L459">			return stendhal.getGameFolder() + &quot;gamechat.log&quot;;</span>
+		} else {
+<span class="nc" id="L461">			return stendhal.getGameFolder() + &quot;gamechat-&quot; + name + &quot;.log&quot;;</span>
+		}
+	}
+
+	/**
+	 * Save the contents into the log file and inform the user about it.
+	 */
+	private void save() {
+<span class="nc" id="L469">		String fname = getSaveFileName();</span>
+		Writer fo;
+		try {
+<span class="nc" id="L472">			fo = new OutputStreamWriter(new FileOutputStream(fname), &quot;UTF-8&quot;);</span>
+			try {
+<span class="nc" id="L474">				textPane.write(fo);</span>
+			} finally {
+<span class="nc" id="L476">				fo.close();</span>
+<span class="nc" id="L477">			}</span>
+
+<span class="nc" id="L479">			addLine(&quot;&quot;, &quot;Chat log has been saved to &quot; + fname, NotificationType.CLIENT);</span>
+<span class="nc" id="L480">		} catch (final IOException ex) {</span>
+<span class="nc" id="L481">			logger.error(ex, ex);</span>
+<span class="nc" id="L482">		}</span>
+<span class="nc" id="L483">	}</span>
+
+	/**
+	 * A custom range model that implements the automatically scrolling pane.
+	 * Keeps the scrollbar at bottom, if it it was there before.
+	 */
+<span class="fc" id="L489">	private class VerticalScollbarModel extends DefaultBoundedRangeModel {</span>
+		@Override
+		public void setRangeProperties(int value, int extent, int min, int max,
+				boolean adjusting) {
+<span class="nc bnc" id="L493" title="All 2 branches missed.">			boolean atBottom = getValue() + getExtent() &gt;= getMaximum();</span>
+<span class="nc bnc" id="L494" title="All 4 branches missed.">			if (atBottom &amp;&amp; (value == getValue())) {</span>
+				// We are at bottom, use adjusted values to ensure we stay
+				// at bottom
+<span class="nc" id="L497">				value = MathHelper.clamp(max - extent, min, max);</span>
+<span class="nc bnc" id="L498" title="All 2 branches missed.">			} else if (max &gt; getMaximum()) {</span>
+				// Not at bottom. Keep the old location.
+<span class="nc" id="L500">				value = MathHelper.clamp(getValue(), min, max);</span>
+<span class="nc" id="L501">				setUnreadLinesWarning(true);</span>
+			}
+<span class="nc" id="L503">			super.setRangeProperties(value, extent, min, max, adjusting);</span>
+<span class="nc" id="L504">		}</span>
+	}
+	
+
+	/**
+	 * Listener for clicking text marked with &quot;#&quot;.
+	 */
+<span class="fc" id="L511">	class LinkListener {</span>
+		/** Allowed patterns for links to be opened in a browser. */
+<span class="fc" id="L513">		final Pattern whitelist = Pattern.compile(&quot;^https?://stendhalgame\\.org(/.*)*$&quot;);</span>
+
+		/**
+		 * Called when a text marked with &quot;#&quot; is clicked.
+		 * 
+		 * @param text content of the marked text
+		 */
+		void linkClicked(String text) {
+<span class="nc bnc" id="L521" title="All 2 branches missed.">			if (whitelist.matcher(text).matches()) {</span>
+<span class="nc" id="L522">				addLine(new HeaderLessEventLine(&quot;Trying to open #'&quot; + text</span>
+						+ &quot;' in your browser.&quot;, NotificationType.CLIENT));
+<span class="nc" id="L524">				BareBonesBrowserLaunch.openURL(text);</span>
+			}
+<span class="nc" id="L526">		}</span>
+	}
+	
+	/**
+	 * This is a workaround to line break behavior change between java versions
+	 * 6 and 7. Long words do not get line breaks and no officially supported
+	 * mechanism to get the old behavior is provided. Java bug &lt;a href=
+	 * &quot;http://bugs.java.com/view_bug.do?bug_id=7125737&quot;&gt;7125737&lt;/a&gt; was closed
+	 * as &quot;Not an Issue&quot;.&lt;p&gt;
+	 *
+	 * The solution here is by StanislavL, published at multiple places,
+	 * including &lt;a href=&quot;http://stackoverflow.com/questions/8666727/wrap-long-words-in-jtextpane-java-7&quot;&gt;
+	 * here.&lt;/a&gt;
+	 */
+<span class="fc" id="L540">	private static class WrapEditorKit extends StyledEditorKit {</span>
+<span class="fc" id="L541">		private final ViewFactory defaultFactory = new WrapColumnFactory();</span>
+
+		@Override
+		public ViewFactory getViewFactory() {
+<span class="fc" id="L545">			return defaultFactory;</span>
+		}
+	}
+
+	/**
+	 * Part of the bug workaround mentioned in {@link WrapEditorKit}.
+	 */
+<span class="fc" id="L552">	private static class WrapColumnFactory implements ViewFactory {</span>
+		@Override
+		public View create(Element elem) {
+<span class="fc" id="L555">			String kind = elem.getName();</span>
+<span class="pc bpc" id="L556" title="1 of 2 branches missed.">			if (kind != null) {</span>
+<span class="fc bfc" id="L557" title="All 2 branches covered.">				if (kind.equals(AbstractDocument.ContentElementName)) {</span>
+<span class="fc" id="L558">					return new WrapLabelView(elem);</span>
+<span class="fc bfc" id="L559" title="All 2 branches covered.">				} else if (kind.equals(AbstractDocument.ParagraphElementName)) {</span>
+<span class="fc" id="L560">					return new ParagraphView(elem);</span>
+<span class="pc bpc" id="L561" title="1 of 2 branches missed.">				} else if (kind.equals(AbstractDocument.SectionElementName)) {</span>
+<span class="fc" id="L562">					return new BoxView(elem, View.Y_AXIS);</span>
+<span class="nc bnc" id="L563" title="All 2 branches missed.">				} else if (kind.equals(StyleConstants.ComponentElementName)) {</span>
+<span class="nc" id="L564">					return new ComponentView(elem);</span>
+<span class="nc bnc" id="L565" title="All 2 branches missed.">				} else if (kind.equals(StyleConstants.IconElementName)) {</span>
+<span class="nc" id="L566">					return new IconView(elem);</span>
+				}
+			}
+
+			// default to text display
+<span class="nc" id="L571">			return new LabelView(elem);</span>
+		}
+	}
+
+	/**
+	 * Part of the bug workaround mentioned in {@link WrapEditorKit}.
+	 */
+	private static class WrapLabelView extends LabelView {
+		public WrapLabelView(Element elem) {
+<span class="fc" id="L580">			super(elem);</span>
+<span class="fc" id="L581">		}</span>
+
+		@Override
+		public float getMinimumSpan(int axis) {
+<span class="nc bnc" id="L585" title="All 3 branches missed.">			switch (axis) {</span>
+			case View.X_AXIS:
+<span class="nc" id="L587">				return 0;</span>
+			case View.Y_AXIS:
+<span class="nc" id="L589">				return super.getMinimumSpan(axis);</span>
+			default:
+<span class="nc" id="L591">				throw new IllegalArgumentException(&quot;Invalid axis: &quot; + axis);</span>
+			}
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

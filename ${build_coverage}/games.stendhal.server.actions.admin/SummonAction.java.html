@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SummonAction.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.actions.admin</a> &gt; <span class="el_source">SummonAction.java</span></div><h1>SummonAction.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2016 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.actions.admin;
+
+import static games.stendhal.common.constants.Actions.CREATURE;
+import static games.stendhal.common.constants.Actions.SUMMON;
+import static games.stendhal.common.constants.Actions.X;
+import static games.stendhal.common.constants.Actions.Y;
+import games.stendhal.common.grammar.Grammar;
+import games.stendhal.server.actions.CommandCenter;
+import games.stendhal.server.core.config.annotations.ServerModeUtil;
+import games.stendhal.server.core.engine.GameEvent;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.core.rp.StendhalRPAction;
+import games.stendhal.server.core.rule.EntityManager;
+import games.stendhal.server.entity.Entity;
+import games.stendhal.server.entity.creature.BabyDragon;
+import games.stendhal.server.entity.creature.PurpleDragon;
+import games.stendhal.server.entity.creature.Cat;
+import games.stendhal.server.entity.creature.Creature;
+import games.stendhal.server.entity.creature.RaidCreature;
+import games.stendhal.server.entity.creature.Sheep;
+import games.stendhal.server.entity.mapstuff.block.Block;
+import games.stendhal.server.entity.mapstuff.portal.Gate;
+import games.stendhal.server.entity.player.Player;
+import marauroa.common.game.RPAction;
+
+<span class="fc" id="L38">public class SummonAction extends AdministrationAction {</span>
+	private static final String USAGE = &quot;Usage: /summon &lt;whatToSummon&gt; [&lt;x&gt; &lt;y&gt;]&quot;;
+
+
+	public static void register() {
+<span class="fc" id="L43">		CommandCenter.register(SUMMON, new SummonAction(), 800);</span>
+<span class="fc" id="L44">	}</span>
+
+	/**
+	 * Inline class to create entities of all creature types including pets.
+	 */
+<span class="fc" id="L49">	abstract static class EntityFactory {</span>
+		final Player player;
+<span class="fc" id="L51">		final EntityManager manager = SingletonRepository.getEntityManager();</span>
+
+<span class="fc" id="L53">		protected boolean searching = true;</span>
+
+<span class="fc" id="L55">		public EntityFactory(final Player player) {</span>
+<span class="fc" id="L56">			this.player = player;</span>
+<span class="fc" id="L57">		}</span>
+
+		boolean isSearching() {
+<span class="fc" id="L60">			return searching;</span>
+		}
+
+		abstract void found(String type, Entity entity);
+		abstract void error(String message);
+
+		/**
+		 * Create the named entity (creature, pet or sheep) of type 'type'.
+		 * 
+		 * @param type
+		 */
+		private void createEntity(final String type) {
+<span class="fc" id="L72">			final Entity entity = manager.getEntity(type);</span>
+
+<span class="fc bfc" id="L74" title="All 2 branches covered.">			if (entity != null) {</span>
+<span class="fc" id="L75">				found(type, entity);</span>
+<span class="pc bpc" id="L76" title="1 of 2 branches missed.">			} else if (&quot;cat&quot;.equals(type)) {</span>
+<span class="nc bnc" id="L77" title="All 2 branches missed.">				if (player.hasPet()) {</span>
+<span class="nc" id="L78">					error(&quot;You already own a pet!&quot;);</span>
+				} else {
+<span class="nc" id="L80">					final Cat cat = new Cat(player);</span>
+<span class="nc" id="L81">					found(type, cat);</span>
+<span class="nc" id="L82">				}</span>
+<span class="pc bpc" id="L83" title="1 of 2 branches missed.">			} else if (&quot;baby dragon&quot;.equals(type)) {</span>
+<span class="nc bnc" id="L84" title="All 2 branches missed.">				if (player.hasPet()) {</span>
+<span class="nc" id="L85">					error(&quot;You already own a pet!&quot;);</span>
+				} else {
+<span class="nc" id="L87">					final BabyDragon dragon = new BabyDragon(player);</span>
+<span class="nc" id="L88">					found(type, dragon);</span>
+<span class="nc" id="L89">				}</span>
+<span class="pc bpc" id="L90" title="1 of 2 branches missed.">			} else if (&quot;purple dragon&quot;.equals(type)) {</span>
+<span class="nc bnc" id="L91" title="All 2 branches missed.">				if (player.hasPet()) {</span>
+<span class="nc" id="L92">					error(&quot;You already own a pet!&quot;);</span>
+				} else {
+<span class="nc" id="L94">					final PurpleDragon dragon = new PurpleDragon(player);</span>
+<span class="nc" id="L95">					found(type, dragon);</span>
+<span class="nc" id="L96">				}</span>
+<span class="pc bpc" id="L97" title="1 of 2 branches missed.">			} else if (&quot;sheep&quot;.equals(type)) {</span>
+<span class="nc bnc" id="L98" title="All 2 branches missed.">				if (player.hasSheep()) {</span>
+<span class="nc" id="L99">					error(&quot;You already own a sheep!&quot;);</span>
+				} else {
+<span class="nc" id="L101">					final Sheep sheep = new Sheep(player);</span>
+<span class="nc" id="L102">					found(type, sheep);</span>
+				}
+			}
+<span class="fc" id="L105">		}</span>
+	}
+
+	@Override
+	public void perform(final Player player, final RPAction action) {
+<span class="pc bpc" id="L110" title="1 of 2 branches missed.">		if (&quot;gate&quot;.equals(action.get(CREATURE))) {</span>
+<span class="nc" id="L111">			final Gate gate = new Gate();</span>
+<span class="nc" id="L112">			gate.setPosition(action.getInt(X), action.getInt(Y));</span>
+<span class="nc" id="L113">			player.getZone().add(gate);</span>
+<span class="nc" id="L114">			return;</span>
+		}
+		
+<span class="pc bpc" id="L117" title="1 of 2 branches missed.">        if (&quot;block&quot;.equals(action.get(CREATURE))) {</span>
+<span class="nc" id="L118">		    final Block block = new Block(action.getInt(X), action.getInt(Y), true);</span>
+<span class="nc" id="L119">		    player.getZone().add(block);</span>
+<span class="nc" id="L120">		    player.getZone().addMovementListener(block);</span>
+<span class="nc" id="L121">		    player.getZone().addZoneEnterExitListener(block);</span>
+		}
+
+		try {
+<span class="pc bpc" id="L125" title="3 of 6 branches missed.">			if (action.has(CREATURE) &amp;&amp; action.has(X) &amp;&amp; action.has(Y)) {</span>
+<span class="fc" id="L126">				final StendhalRPZone zone = player.getZone();</span>
+<span class="fc" id="L127">				final int x = action.getInt(X);</span>
+<span class="fc" id="L128">				final int y = action.getInt(Y);</span>
+
+<span class="pc bpc" id="L130" title="1 of 2 branches missed.">				if (!zone.collides(player, x, y)) {</span>
+<span class="fc" id="L131">					final EntityFactory factory = new EntityFactory(player) {</span>
+						@Override
+						void found(final String type, final Entity entity) {
+							final Entity entityToBePlaced;
+<span class="fc bfc" id="L135" title="All 2 branches covered.">							if (manager.isCreature(type)) {</span>
+<span class="fc" id="L136">								entityToBePlaced = new RaidCreature((Creature) entity);</span>
+<span class="pc bpc" id="L137" title="3 of 4 branches missed.">								if (((Creature) entity).isRare() &amp;&amp; !ServerModeUtil.isTestServer()) {</span>
+									// Rare creatures should not be summoned even in raids
+									// Require parameter -Dstendhal.testserver=junk
+<span class="nc" id="L140">									error(&quot;Rare creatures may not be summoned.&quot;);</span>
+<span class="nc" id="L141">									return;</span>
+								}
+							} else {
+<span class="fc" id="L144">								entityToBePlaced = entity;</span>
+							}
+<span class="fc" id="L146">							StendhalRPAction.placeat(zone, entityToBePlaced, x, y);</span>
+<span class="fc" id="L147">							new GameEvent(player.getName(), SUMMON, type).raise();</span>
+							// We found what we are searching for.
+<span class="fc" id="L149">							searching = false;</span>
+<span class="fc" id="L150">						}</span>
+
+						@Override
+						void error(final String message) {
+<span class="fc" id="L154">							player.sendPrivateText(message);</span>
+
+							// Stop searching because of an error.
+<span class="fc" id="L157">							searching = false;</span>
+<span class="fc" id="L158">						}</span>
+					};
+
+<span class="fc" id="L161">					final String typeName = action.get(CREATURE);</span>
+<span class="fc" id="L162">					String type = typeName;</span>
+
+<span class="fc" id="L164">					factory.createEntity(type);</span>
+
+<span class="fc bfc" id="L166" title="All 2 branches covered.">					if (factory.isSearching()) {</span>
+						// see it the name was in plural
+<span class="fc" id="L168">						type = Grammar.singular(typeName);</span>
+<span class="fc" id="L169">						factory.createEntity(type);</span>
+
+<span class="pc bpc" id="L171" title="1 of 2 branches missed.">						if (factory.isSearching()) {</span>
+							// see it the name was in singular but the registered type is in plural
+<span class="fc" id="L173">							type = Grammar.plural(typeName);</span>
+<span class="fc" id="L174">							factory.createEntity(type);</span>
+
+							// Did we still not find any matching class?
+<span class="pc bpc" id="L177" title="1 of 2 branches missed.">							if (factory.isSearching()) {</span>
+<span class="fc" id="L178">								logger.info(&quot;onSummon: Entity \&quot;&quot; + typeName + &quot;\&quot; not found.&quot;);</span>
+<span class="fc" id="L179">								factory.error(&quot;onSummon: Entity \&quot;&quot; + typeName + &quot;\&quot; not found.&quot;);</span>
+							}
+						}
+					}
+				}
+			}
+<span class="fc" id="L185">		} catch (final NumberFormatException e) {</span>
+<span class="fc" id="L186">			player.sendPrivateText(USAGE);</span>
+<span class="fc" id="L187">		}</span>
+<span class="fc" id="L188">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

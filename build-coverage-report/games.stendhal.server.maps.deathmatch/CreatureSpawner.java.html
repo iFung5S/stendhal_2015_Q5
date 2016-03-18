@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>CreatureSpawner.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.deathmatch</a> &gt; <span class="el_source">CreatureSpawner.java</span></div><h1>CreatureSpawner.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.deathmatch;
+
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.core.rp.StendhalRPAction;
+import games.stendhal.server.entity.creature.ArenaCreature;
+import games.stendhal.server.entity.creature.Creature;
+import games.stendhal.server.entity.creature.DeathMatchCreature;
+import games.stendhal.server.entity.creature.LevelBasedComparator;
+import games.stendhal.server.entity.npc.condition.KilledForQuestCondition;
+import games.stendhal.server.entity.player.Player;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+
+import org.apache.log4j.Logger;
+
+
+/**
+ * This class spawns creatures during a deathmatch session.
+ *
+ * @author hendrik
+ */
+public class CreatureSpawner  {
+
+<span class="nc" id="L41">	static final Logger logger = Logger.getLogger(CreatureSpawner.class);</span>
+
+	// spawn a new monster each 20 seconds
+	static final long SPAWN_DELAY = 20000;
+	static final long NUMBER_OF_CREATURES = 10;
+
+<span class="nc" id="L47">	private final List&lt;Creature&gt; sortedCreatures = new LinkedList&lt;Creature&gt;();</span>
+<span class="nc" id="L48">	private final List&lt;DeathMatchCreature&gt; spawnedCreatures = new ArrayList&lt;DeathMatchCreature&gt;();</span>
+
+	/**
+	 * Creates a new CreatureSpawner.
+	 */
+<span class="nc" id="L53">	public CreatureSpawner() {</span>
+<span class="nc" id="L54">		final Collection&lt;Creature&gt; creatures = SingletonRepository.getEntityManager().getCreatures();</span>
+<span class="nc bnc" id="L55" title="All 2 branches missed.">		for (Creature creature : creatures) {</span>
+<span class="nc bnc" id="L56" title="All 2 branches missed.">			if (!creature.isRare()) {</span>
+<span class="nc" id="L57">				sortedCreatures.add(creature);</span>
+			}
+<span class="nc" id="L59">		}</span>
+<span class="nc" id="L60">		Collections.sort(sortedCreatures, new LevelBasedComparator());</span>
+<span class="nc" id="L61">	}</span>
+
+	/**
+	 * Removes the critters that the player was supposed to kill.
+	 */
+	public void removePlayersMonsters() {
+<span class="nc bnc" id="L67" title="All 2 branches missed.">		for (final Creature creature : spawnedCreatures) {</span>
+<span class="nc" id="L68">			final StendhalRPZone monsterZone = creature.getZone();</span>
+
+<span class="nc bnc" id="L70" title="All 2 branches missed.">			if (monsterZone != null) {</span>
+<span class="nc" id="L71">				monsterZone.remove(creature);</span>
+			}
+<span class="nc" id="L73">		}</span>
+<span class="nc" id="L74">	}</span>
+
+	/**
+	 * Checks if all our enemies are dead.
+	 *
+	 * @return true if all are dead, false otherwise
+	 */
+	boolean areAllCreaturesDead() {
+<span class="nc bnc" id="L82" title="All 2 branches missed.">		for (final Creature creature : spawnedCreatures) {</span>
+<span class="nc bnc" id="L83" title="All 2 branches missed.">			if (creature.getHP() &gt; 0) {</span>
+<span class="nc" id="L84">				return false;</span>
+			}
+<span class="nc" id="L86">		}</span>
+
+<span class="nc" id="L88">		return true;</span>
+	}
+
+	/**
+	 * Gives the daily quest creature to the player,
+	 * if he hasn't found it yet, to be nice to the player.
+	 * @param player the player taking the Deathmatch
+	 * @param dmInfo the Deathmatch's Info
+	 */
+	void spawnDailyMonster(final Player player, final DeathmatchInfo dmInfo) {
+<span class="nc" id="L98">		String dailyInfo = player.getQuest(&quot;daily&quot;, 0);</span>
+<span class="nc bnc" id="L99" title="All 2 branches missed.">		if (dailyInfo != null) {</span>
+<span class="nc bnc" id="L100" title="All 2 branches missed.">		    if (dailyInfo.startsWith(&quot;done&quot;)) {</span>
+<span class="nc" id="L101">		        return;</span>
+		    }
+<span class="nc" id="L103">			boolean questDone = new KilledForQuestCondition(&quot;daily&quot;, 0).fire(player, null, null);</span>
+<span class="nc bnc" id="L104" title="All 2 branches missed.">			if (!questDone) {</span>
+<span class="nc" id="L105">				final String[] dTokens = dailyInfo.split(&quot;,&quot;);</span>
+<span class="nc bnc" id="L106" title="All 2 branches missed.">				if (dTokens.length &gt; 0) {</span>
+<span class="nc" id="L107">					final String daily = dTokens[0];</span>
+
+<span class="nc bnc" id="L109" title="All 2 branches missed.">					for (final Creature creature : sortedCreatures) {</span>
+<span class="nc bnc" id="L110" title="All 2 branches missed.">						if (creature.getName().equals(daily)) {</span>
+<span class="nc" id="L111">							spawnNewCreature(creature, player, dmInfo);</span>
+<span class="nc" id="L112">							break;</span>
+						}
+<span class="nc" id="L114">					}</span>
+				}
+			}
+		}
+<span class="nc" id="L118">	}</span>
+
+	/**
+	 * Calculates which type of creature should be spawned next.
+	 *
+	 * @param questLevel level of creature / deathmatch status
+	 * @return creature template
+	 */
+	public Creature calculateNextCreature(final int questLevel) {
+<span class="nc" id="L127">		final List&lt;Creature&gt; possibleCreaturesToSpawn = new ArrayList&lt;Creature&gt;();</span>
+<span class="nc" id="L128">		int lastLevel = 0;</span>
+
+<span class="nc bnc" id="L130" title="All 2 branches missed.">		for (final Creature creature : sortedCreatures) {</span>
+<span class="nc bnc" id="L131" title="All 2 branches missed.">			if (creature.getLevel() &gt; questLevel) {</span>
+<span class="nc" id="L132">				break;</span>
+			}
+
+<span class="nc bnc" id="L135" title="All 2 branches missed.">			if (creature.getLevel() &gt; lastLevel) {</span>
+<span class="nc" id="L136">				possibleCreaturesToSpawn.clear();</span>
+<span class="nc" id="L137">				lastLevel = creature.getLevel();</span>
+			}
+
+<span class="nc" id="L140">			possibleCreaturesToSpawn.add(creature);</span>
+<span class="nc" id="L141">		}</span>
+
+<span class="nc" id="L143">		Creature creatureToSpawn = null;</span>
+
+<span class="nc bnc" id="L145" title="All 2 branches missed.">		if (possibleCreaturesToSpawn.size() == 0) {</span>
+<span class="nc" id="L146">			creatureToSpawn = sortedCreatures.get(sortedCreatures.size() - 1);</span>
+		} else {
+<span class="nc" id="L148">			Collections.shuffle(possibleCreaturesToSpawn);</span>
+<span class="nc" id="L149">			creatureToSpawn = possibleCreaturesToSpawn.get(0);</span>
+		}
+
+<span class="nc" id="L152">		return creatureToSpawn;</span>
+	}
+
+	/**
+	 * Creates a new creature of the named type and adds it to the world.
+	 *
+	 * @param template Creature to create
+	 * @param player the player who takes the deatchmatch
+	 * @param deathmatchInfo the deatchmatch's info
+	 * @return Creature or &lt;code&gt;null&lt;/code&gt; in case it cannot be created
+	 */
+	DeathMatchCreature spawnNewCreature(final Creature template, final Player player, final DeathmatchInfo deathmatchInfo) {
+<span class="nc" id="L164">		DeathMatchCreature creature = new DeathMatchCreature(</span>
+		        new ArenaCreature(template.getNewInstance(), deathmatchInfo.getArena().getShape()));
+
+<span class="nc bnc" id="L167" title="All 2 branches missed.">		if (StendhalRPAction.placeat(deathmatchInfo.getZone(), creature, player.getX(), player.getY(), deathmatchInfo.getArena().getShape())) {</span>
+<span class="nc" id="L168">			creature.clearDropItemList();</span>
+<span class="nc" id="L169">			creature.setTarget(player);</span>
+<span class="nc" id="L170">			creature.setPlayerToReward(player);</span>
+
+<span class="nc" id="L172">			spawnedCreatures.add(creature);</span>
+		} else {
+<span class="nc" id="L174">			logger.info(&quot; could not add a creature: &quot; + creature);</span>
+<span class="nc" id="L175">			creature = null;</span>
+		}
+
+<span class="nc" id="L178">		return creature;</span>
+	}
+
+	DeathMatchCreature spawnNewCreature(final int questLevel , final Player player, final DeathmatchInfo deathmatchInfo) {
+<span class="nc" id="L182">		return spawnNewCreature(calculateNextCreature(questLevel), player,  deathmatchInfo);</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

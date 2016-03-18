@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ProgressBar.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui</a> &gt; <span class="el_source">ProgressBar.java</span></div><h1>ProgressBar.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui;
+
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JDialog;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JProgressBar;
+import javax.swing.Timer;
+
+public class ProgressBar extends JDialog {
+	private static final long serialVersionUID = 6241161656154797719L;
+	/** Default delay between updating */
+	private static final int SLEEP_TIME = 200;
+	/** Maximum value for the progress bar */
+	private static final int MAX_VALUE = 100;
+	/** Default step size */
+	private static final int STEP_SIZE = MAX_VALUE / 50;
+
+	private JProgressBar progressBar;
+
+	/** Speed factor for updating the bar */
+<span class="nc" id="L39">	private int stepSizeMultiplier = 1;</span>
+	/**
+	 * Keeps track of how many times it has looped with a multiplier greater
+	 * than 0
+	 */
+	private int stepCounter;
+	
+<span class="nc" id="L46">	private final Timer timer = new Timer(SLEEP_TIME, new Updater());</span>
+
+	/**
+	 * Create a new ProgressBar.
+	 * 
+	 * @param w parent dialog
+	 */
+	public ProgressBar(final JDialog w) {
+<span class="nc" id="L54">		super(w, &quot;Connecting...&quot;, true);</span>
+<span class="nc" id="L55">		initializeComponents();</span>
+<span class="nc" id="L56">		this.pack();</span>
+<span class="nc" id="L57">		setLocationRelativeTo(w);</span>
+<span class="nc" id="L58">	}</span>
+
+	private void initializeComponents() {
+<span class="nc" id="L61">		JPanel contentPane = (JPanel) this.getContentPane();</span>
+
+<span class="nc" id="L63">		contentPane.setLayout(new BoxLayout(contentPane, BoxLayout.PAGE_AXIS));</span>
+<span class="nc" id="L64">		contentPane.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));</span>
+
+<span class="nc" id="L66">		contentPane.add(new JLabel(&quot;Connecting...&quot;));</span>
+<span class="nc" id="L67">		contentPane.add(Box.createVerticalStrut(5));</span>
+
+<span class="nc" id="L69">		progressBar = new JProgressBar(0, MAX_VALUE);</span>
+<span class="nc" id="L70">		progressBar.setStringPainted(false);</span>
+<span class="nc" id="L71">		contentPane.add(progressBar);</span>
+<span class="nc" id="L72">	}</span>
+	
+	/**
+	 * Timer task that updates the progress bar.
+	 */
+<span class="nc" id="L77">	private class Updater implements ActionListener {</span>
+<span class="nc" id="L78">		private int counter = 0;</span>
+		
+		@Override
+		public void actionPerformed(ActionEvent arg0) {
+<span class="nc" id="L82">			counter += STEP_SIZE * stepSizeMultiplier;</span>
+<span class="nc" id="L83">			progressBar.setValue(counter);</span>
+<span class="nc bnc" id="L84" title="All 2 branches missed.">			if (stepCounter &gt;= 0) {</span>
+<span class="nc bnc" id="L85" title="All 2 branches missed.">				if (stepCounter == 0) {</span>
+<span class="nc" id="L86">					stepSizeMultiplier = 1;</span>
+				}
+<span class="nc" id="L88">				stepCounter--;</span>
+			}
+<span class="nc bnc" id="L90" title="All 2 branches missed.">			if (counter &gt; 100) {</span>
+<span class="nc" id="L91">				cancel();</span>
+			}
+<span class="nc" id="L93">		}</span>
+	}
+
+	/** Start updating the progress bar */
+	public void start() {
+<span class="nc" id="L98">		timer.start();</span>
+<span class="nc" id="L99">		setVisible(true);</span>
+<span class="nc" id="L100">	}</span>
+	
+	/** 
+	 * Temporarily speeds up the bar.
+	 */
+	public void step() { 
+<span class="nc" id="L106">		stepCounter = 3;</span>
+<span class="nc" id="L107">		stepSizeMultiplier = 3;</span>
+<span class="nc" id="L108">	}</span>
+	
+	/**
+	 *  Speeds up to quickly finish.
+	 */
+	public void finish() {
+<span class="nc" id="L114">		stepCounter = 20;</span>
+<span class="nc" id="L115">		stepSizeMultiplier = 3;</span>
+<span class="nc" id="L116">		timer.setDelay(15);</span>
+<span class="nc" id="L117">	}</span>
+	
+	/**
+	 * Exits quickly.
+	 */
+	public void cancel() { 
+<span class="nc" id="L123">		timer.stop();</span>
+		// workaround near failures in AWT at openjdk (tested on openjdk-1.6.0.0)
+		try {
+<span class="nc" id="L126">		    this.dispose();</span>
+<span class="nc" id="L127">		} catch(NullPointerException npe) {</span>
+<span class="nc" id="L128">			return;</span>
+<span class="nc" id="L129">		}</span>
+<span class="nc" id="L130">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>MarriageQuestChain.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests.marriage</a> &gt; <span class="el_source">MarriageQuestChain.java</span></div><h1>MarriageQuestChain.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests.marriage;
+
+import games.stendhal.common.Rand;
+import games.stendhal.server.entity.player.Player;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import org.apache.log4j.Logger;
+
+
+/**
+ * QUEST: Marriage
+ * &lt;p&gt;
+ * PARTICIPANTS:
+ * &lt;li&gt; Sister Benedicta, the nun of Fado Church
+ * &lt;li&gt; the Priest of Fado Church
+ * &lt;li&gt; Ognir, the Ring Maker in Fado
+ * &lt;p&gt;
+ * STEPS:
+ * &lt;li&gt; The nun explains that when two people are married, they can be together
+ * whenever they want
+ * &lt;li&gt; When two players wish to become engaged, they tell the nun
+ * &lt;li&gt; The nun gives them invitation scrolls for the wedding, marked with the
+ * church
+ * &lt;li&gt;The players get a wedding ring made to give the other at the wedding
+ * &lt;li&gt; They can get dressed into an outfit in the hotel
+ * &lt;li&gt; When an engaged player goes to the priest, he knows they are there to be
+ * married
+ * &lt;li&gt; The marriage rites are performed
+ * &lt;li&gt; The players are given rings
+ * &lt;li&gt; When they go to the Hotel they choose a lovers room
+ * &lt;li&gt; Champagne and fruit baskets is put in their bag (room if possible)
+ * &lt;li&gt; They leave the lovers room when desired with another marked scroll
+ * 
+ * &lt;p&gt;
+ * REWARD:
+ * &lt;li&gt; Wedding Ring that teleports you to your spouse if worn - 1500 XP in
+ * total
+ * &lt;li&gt; nice food in the lovers room
+ * &lt;p&gt;
+ * 
+ * REPETITIONS:
+ * &lt;li&gt; None.
+ * 
+ * @author kymara
+ */
+<span class="fc" id="L61">public class MarriageQuestChain  {</span>
+<span class="fc" id="L62">	private static MarriageQuestInfo marriage = new MarriageQuestInfo();</span>
+
+<span class="fc" id="L64">	private static Logger logger = Logger.getLogger(MarriageQuestChain.class);</span>
+
+
+	public void addToWorld() {
+<span class="fc" id="L68">		new Engagement(marriage).addToWorld();</span>
+<span class="fc" id="L69">		new MakeRings(marriage).addToWorld();</span>
+<span class="fc" id="L70">		new GetOutfits(marriage).addToWorld();	</span>
+<span class="fc" id="L71">		new Marriage(marriage).addToWorld();</span>
+<span class="fc" id="L72">		new Honeymoon(marriage).addToWorld();</span>
+<span class="fc" id="L73">		new Divorce(marriage).addToWorld();</span>
+<span class="fc" id="L74">	}</span>
+
+	public List&lt;String&gt; getHistory(final Player player) {
+<span class="nc" id="L77">		final List&lt;String&gt; res = new ArrayList&lt;String&gt;();</span>
+<span class="nc bnc" id="L78" title="All 2 branches missed.">		if (!player.hasQuest(marriage.getQuestSlot())) {</span>
+<span class="nc" id="L79">			return res;</span>
+		}
+<span class="nc" id="L81">		final String questState = player.getQuest(marriage.getQuestSlot());</span>
+<span class="nc" id="L82">		res.add(&quot;Me and &quot; + getSpouseOrNickname(player) + &quot; met Sister Benedicta and confirmed our engagement to marry.&quot;);</span>
+<span class="nc" id="L83">		res.add(&quot;We must each make a wedding ring to give the other, which Ognir will help with.&quot;);</span>
+<span class="nc bnc" id="L84" title="All 2 branches missed.">		if (&quot;engaged&quot;.equals(questState)) {</span>
+<span class="nc" id="L85">			return res;</span>
+		} 
+<span class="nc" id="L87">		res.add(&quot;Ognir took the gold I had collected and agreed to forge a wedding ring that I can give to &quot; + getSpouseOrNickname(player)  + &quot;.&quot;);</span>
+<span class="nc bnc" id="L88" title="All 2 branches missed.">		if (questState.startsWith(&quot;forging&quot;)) {</span>
+<span class="nc" id="L89">			return res;</span>
+		} 
+<span class="nc" id="L91">		res.add(&quot;I collected my ring from Ognir. He hinted we could get special outfits from Timothy and Tamara in Fado Hotel.&quot;);</span>
+<span class="nc bnc" id="L92" title="All 2 branches missed.">		if (&quot;engaged_with_ring&quot;.equals(questState)) {</span>
+<span class="nc" id="L93">	        res.add(&quot;Now I just have to make sure that &quot; + getSpouseOrNickname(player) + &quot; makes a ring, and then we can go to church together.&quot;);</span>
+<span class="nc" id="L94">			return res;</span>
+		} 
+<span class="nc" id="L96">		res.add(&quot;I married &quot; + getSpouseOrNickname(player) + &quot; in a lovely ceremony in Fado Church.&quot;);</span>
+<span class="nc bnc" id="L97" title="All 2 branches missed.">		if (&quot;just_married&quot;.equals(questState)) {</span>
+<span class="nc" id="L98">			res.add(&quot;We have not yet taken our honeymoon, we should ask Linda about that.&quot;);</span>
+<span class="nc" id="L99">			return res;</span>
+		} 
+<span class="nc" id="L101">		res.add(getSpouseOrNickname(player) + &quot; and I had a great honeymoon in Fado Hotel, helped by Linda.&quot;);</span>
+<span class="nc bnc" id="L102" title="All 2 branches missed.">		if (&quot;done&quot;.equals(questState)) {</span>
+<span class="nc" id="L103">			return res;</span>
+		}
+		// if things have gone wrong and the quest state didn't match any of the above, debug a bit:
+<span class="nc" id="L106">		final List&lt;String&gt; debug = new ArrayList&lt;String&gt;();</span>
+<span class="nc" id="L107">		debug.add(&quot;Quest state is: &quot; + questState);</span>
+<span class="nc" id="L108">		logger.error(&quot;History doesn't have a matching quest state for player &quot; + player.getTitle() + &quot; in quest state &quot; + questState);</span>
+<span class="nc" id="L109">		return debug;</span>
+	}
+	
+	private String getSpouseOrNickname(final Player player) {
+<span class="nc" id="L113">		String spouse = player.getQuest(marriage.getSpouseQuestSlot());</span>
+<span class="nc bnc" id="L114" title="All 2 branches missed.">		if(spouse == null) {</span>
+			// probably just engaged so we didn't get a spouse yet, just set this to something generic and sickly sweet
+<span class="nc" id="L116">			spouse = Rand.rand(Arrays.asList(&quot;my dearest&quot;, &quot;my love&quot;, &quot;my honeypie&quot;, &quot;the one I love&quot;));</span>
+		}
+<span class="nc" id="L118">		return spouse;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

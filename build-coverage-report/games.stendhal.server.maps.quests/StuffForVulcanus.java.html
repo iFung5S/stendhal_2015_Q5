@@ -1,0 +1,410 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>StuffForVulcanus.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests</a> &gt; <span class="el_source">StuffForVulcanus.java</span></div><h1>StuffForVulcanus.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests;
+
+import games.stendhal.common.MathHelper;
+import games.stendhal.common.grammar.Grammar;
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.entity.item.Item;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.action.SetQuestAndModifyKarmaAction;
+import games.stendhal.server.entity.npc.condition.AndCondition;
+import games.stendhal.server.entity.npc.condition.GreetingMatchesNameCondition;
+import games.stendhal.server.entity.npc.condition.QuestStartedCondition;
+import games.stendhal.server.entity.npc.condition.QuestStateStartsWithCondition;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.maps.Region;
+import games.stendhal.server.util.TimeUtil;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+/**
+ * QUEST: The immortal sword forging.
+ * 
+ * PARTICIPANTS:
+ * &lt;ul&gt;
+ * &lt;li&gt; Vulcanus, son of Zeus itself, will forge for you the god's sword.
+ * &lt;/ul&gt;
+ * 
+ * STEPS:
+ * &lt;ul&gt;
+ * &lt;li&gt; Vulcanus tells you about the sword.
+ * &lt;li&gt; He offers to forge a immortal sword for you if you bring him what it
+ * needs.
+ * &lt;li&gt; You give him all what he ask you.
+ * &lt;li&gt; He tells you you must have killed a giant to get the shield
+ * &lt;li&gt; Vulcanus forges the immortal sword for you
+ * &lt;/ul&gt;
+ * 
+ * REWARD:
+ * &lt;ul&gt;
+ * &lt;li&gt; immortal sword
+ * &lt;li&gt; 15000 XP
+ * &lt;li&gt; some karma (25)
+ * &lt;/ul&gt;
+ * 
+ * 
+ * REPETITIONS:
+ * &lt;ul&gt;
+ * &lt;li&gt; None.
+ * &lt;/ul&gt;
+ */
+<span class="fc" id="L69">public class StuffForVulcanus extends AbstractQuest {</span>
+	private static final int REQUIRED_IRON = 15;
+
+	private static final int REQUIRED_GOLD_BAR = 12;
+
+	private static final int REQUIRED_WOOD = 26;
+
+	private static final int REQUIRED_GIANT_HEART = 6;
+
+	private static final int REQUIRED_MINUTES = 10;
+
+	private static final String QUEST_SLOT = &quot;immortalsword_quest&quot;;
+
+	@Override
+	public String getSlotName() {
+<span class="nc" id="L84">		return QUEST_SLOT;</span>
+	}
+
+	private void step_1() {
+<span class="fc" id="L88">		final SpeakerNPC npc = npcs.get(&quot;Vulcanus&quot;);</span>
+
+<span class="fc" id="L90">		npc.add(ConversationStates.ATTENDING,</span>
+			ConversationPhrases.QUEST_MESSAGES, null,
+			ConversationStates.QUEST_OFFERED, null,
+<span class="fc" id="L93">			new ChatAction() {</span>
+				@Override
+				public void fire(final Player player, final Sentence sentence, final EventRaiser raiser) {
+<span class="fc bfc" id="L96" title="All 4 branches covered.">					if (!player.hasQuest(QUEST_SLOT) || &quot;rejected&quot;.equals(player.getQuest(QUEST_SLOT))) {</span>
+<span class="fc" id="L97">						raiser.say(&quot;I once forged the most powerful of swords. I can do it again for you. Are you interested?&quot;);</span>
+<span class="pc bpc" id="L98" title="1 of 2 branches missed.">					} else if (player.isQuestCompleted(QUEST_SLOT)) {</span>
+<span class="fc" id="L99">						raiser.say(&quot;Oh! I am so tired. Look for me later. I need a few years of relaxing.&quot;);</span>
+<span class="fc" id="L100">						raiser.setCurrentState(ConversationStates.ATTENDING);</span>
+					} else {
+<span class="nc" id="L102">						raiser.say(&quot;Why are you bothering me when you haven't completed your quest yet?&quot;);</span>
+<span class="nc" id="L103">						raiser.setCurrentState(ConversationStates.ATTENDING);</span>
+					}
+<span class="fc" id="L105">				}</span>
+			});
+
+<span class="fc" id="L108">		npc.add(ConversationStates.QUEST_OFFERED,</span>
+			ConversationPhrases.YES_MESSAGES, null,
+			ConversationStates.ATTENDING, null,
+<span class="fc" id="L111">			new ChatAction() {</span>
+				@Override
+				public void fire(final Player player, final Sentence sentence, final EventRaiser raiser) {
+<span class="fc" id="L114">					raiser.say(&quot;I will need several things: &quot;</span>
+						+ REQUIRED_IRON
+						+ &quot; iron, &quot;
+						+ REQUIRED_WOOD
+						+ &quot; wood logs, &quot;
+						+ REQUIRED_GOLD_BAR
+						+ &quot; gold bars and &quot;
+						+ REQUIRED_GIANT_HEART
+						+ &quot; giant hearts. Come back when you have them in the same #exact order!&quot;);
+<span class="fc" id="L123">					player.setQuest(QUEST_SLOT, &quot;start;0;0;0;0&quot;);</span>
+
+<span class="fc" id="L125">				}</span>
+			});
+
+<span class="fc" id="L128">		npc.add(</span>
+			ConversationStates.QUEST_OFFERED,
+			ConversationPhrases.NO_MESSAGES,
+			null,
+			ConversationStates.IDLE,
+			&quot;Oh, well forget it then, if you don't want an immortal sword...&quot;,
+			new SetQuestAndModifyKarmaAction(QUEST_SLOT, &quot;rejected&quot;, -10.0));
+
+<span class="fc" id="L136">		npc.addReply(&quot;exact&quot;,</span>
+			&quot;This archaic magic requires that the ingredients are added on an exact order.&quot;);
+<span class="fc" id="L138">	}</span>
+
+	private void step_2() {
+		/* Get the stuff. */
+<span class="fc" id="L142">	}</span>
+
+	private void step_3() {
+
+<span class="fc" id="L146">		final SpeakerNPC npc = npcs.get(&quot;Vulcanus&quot;);</span>
+
+<span class="fc" id="L148">		npc.add(ConversationStates.IDLE, ConversationPhrases.GREETING_MESSAGES,</span>
+			new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+						new QuestStateStartsWithCondition(QUEST_SLOT, &quot;start&quot;)),
+			ConversationStates.ATTENDING, null,
+<span class="fc" id="L152">			new ChatAction() {</span>
+				@Override
+				public void fire(final Player player, final Sentence sentence, final EventRaiser raiser) {
+<span class="fc" id="L155">					final String[] tokens = player.getQuest(QUEST_SLOT).split(&quot;;&quot;);</span>
+
+<span class="fc" id="L157">					int neededIron = REQUIRED_IRON</span>
+							- Integer.parseInt(tokens[1]);
+<span class="fc" id="L159">					int neededWoodLogs = REQUIRED_WOOD</span>
+							- Integer.parseInt(tokens[2]);
+<span class="fc" id="L161">					int neededGoldBars = REQUIRED_GOLD_BAR</span>
+							- Integer.parseInt(tokens[3]);
+<span class="fc" id="L163">					int neededGiantHearts = REQUIRED_GIANT_HEART</span>
+							- Integer.parseInt(tokens[4]);
+<span class="fc" id="L165">					boolean missingSomething = false;</span>
+
+<span class="pc bpc" id="L167" title="1 of 4 branches missed.">					if (!missingSomething &amp;&amp; neededIron &gt; 0) {</span>
+<span class="fc bfc" id="L168" title="All 2 branches covered.">						if (player.isEquipped(&quot;iron&quot;, neededIron)) {</span>
+<span class="fc" id="L169">							player.drop(&quot;iron&quot;, neededIron);</span>
+<span class="fc" id="L170">							neededIron = 0;</span>
+						} else {
+<span class="fc" id="L172">							final int amount = player.getNumberOfEquipped(&quot;iron&quot;);</span>
+<span class="fc bfc" id="L173" title="All 2 branches covered.">							if (amount &gt; 0) {</span>
+<span class="fc" id="L174">								player.drop(&quot;iron&quot;, amount);</span>
+<span class="fc" id="L175">								neededIron -= amount;</span>
+							}
+
+<span class="fc" id="L178">							raiser.say(&quot;I cannot #forge it without the missing &quot;</span>
+								+ Grammar.quantityplnoun(
+										neededIron, &quot;iron&quot;, &quot;a&quot;)
+								+ &quot;.&quot;);
+<span class="fc" id="L182">							missingSomething = true;</span>
+						}
+					}
+
+<span class="fc bfc" id="L186" title="All 4 branches covered.">					if (!missingSomething &amp;&amp; neededWoodLogs &gt; 0) {</span>
+<span class="fc bfc" id="L187" title="All 2 branches covered.">						if (player.isEquipped(&quot;wood&quot;, neededWoodLogs)) {</span>
+<span class="fc" id="L188">							player.drop(&quot;wood&quot;, neededWoodLogs);</span>
+<span class="fc" id="L189">							neededWoodLogs = 0;</span>
+						} else {
+<span class="fc" id="L191">							final int amount = player.getNumberOfEquipped(&quot;wood&quot;);</span>
+<span class="pc bpc" id="L192" title="1 of 2 branches missed.">							if (amount &gt; 0) {</span>
+<span class="nc" id="L193">								player.drop(&quot;wood&quot;, amount);</span>
+<span class="nc" id="L194">								neededWoodLogs -= amount;</span>
+							}
+
+<span class="fc" id="L197">							raiser.say(&quot;How do you expect me to #forge it without missing &quot;</span>
+								+ Grammar.quantityplnoun(neededWoodLogs, &quot;wood log&quot;, &quot;a&quot;)
+								+ &quot; for the fire?&quot;);
+<span class="fc" id="L200">							missingSomething = true;</span>
+						}
+					}
+
+<span class="fc bfc" id="L204" title="All 4 branches covered.">					if (!missingSomething &amp;&amp; neededGoldBars &gt; 0) {</span>
+<span class="pc bpc" id="L205" title="1 of 2 branches missed.">						if (player.isEquipped(&quot;gold bar&quot;, neededGoldBars)) {</span>
+<span class="fc" id="L206">							player.drop(&quot;gold bar&quot;, neededGoldBars);</span>
+<span class="fc" id="L207">							neededGoldBars = 0;</span>
+						} else {
+<span class="nc" id="L209">							final int amount = player.getNumberOfEquipped(&quot;gold bar&quot;);</span>
+<span class="nc bnc" id="L210" title="All 2 branches missed.">							if (amount &gt; 0) {</span>
+<span class="nc" id="L211">								player.drop(&quot;gold bar&quot;, amount);</span>
+<span class="nc" id="L212">								neededGoldBars -= amount;</span>
+							}
+<span class="nc" id="L214">							raiser.say(&quot;I must pay a bill to spirits in order to cast the enchantment over the sword. I need &quot;</span>
+									+ Grammar.quantityplnoun(neededGoldBars, &quot;gold bar&quot;, &quot;one&quot;) + &quot; more.&quot;);
+<span class="nc" id="L216">							missingSomething = true;</span>
+						}
+					}
+
+<span class="fc bfc" id="L220" title="All 4 branches covered.">					if (!missingSomething &amp;&amp; neededGiantHearts &gt; 0) {</span>
+<span class="fc bfc" id="L221" title="All 2 branches covered.">						if (player.isEquipped(&quot;giant heart&quot;, neededGiantHearts)) {</span>
+<span class="fc" id="L222">							player.drop(&quot;giant heart&quot;, neededGiantHearts);</span>
+<span class="fc" id="L223">							neededGiantHearts = 0;</span>
+						} else {
+<span class="fc" id="L225">							final int amount = player.getNumberOfEquipped(&quot;giant heart&quot;);</span>
+<span class="fc bfc" id="L226" title="All 2 branches covered.">							if (amount &gt; 0) {</span>
+<span class="fc" id="L227">								player.drop(&quot;giant heart&quot;, amount);</span>
+<span class="fc" id="L228">								neededGiantHearts -= amount;</span>
+							}
+<span class="fc" id="L230">							raiser.say(&quot;It is the base element of the enchantment. I need &quot;</span>
+								+ Grammar.quantityplnoun(neededGiantHearts, &quot;giant heart&quot;, &quot;one&quot;) + &quot; still.&quot;);
+<span class="fc" id="L232">							missingSomething = true;</span>
+						}
+					}
+
+<span class="pc bpc" id="L236" title="1 of 4 branches missed.">					if (player.hasKilled(&quot;giant&quot;) &amp;&amp; !missingSomething) {</span>
+<span class="fc" id="L237">						raiser.say(&quot;You've brought everything I need to make the immortal sword, and what is more, you are strong enough to handle it. Come back in &quot;</span>
+							+ REQUIRED_MINUTES
+							+ &quot; minutes and it will be ready.&quot;);
+<span class="fc" id="L240">						player.setQuest(QUEST_SLOT, &quot;forging;&quot; + System.currentTimeMillis());</span>
+					} else {
+<span class="pc bpc" id="L242" title="1 of 4 branches missed.">						if (!player.hasKilled(&quot;giant&quot;) &amp;&amp; !missingSomething) {</span>
+<span class="fc" id="L243">							raiser.say(&quot;Did you really get those giant hearts yourself? I don't think so! This powerful sword can only be given to those that are strong enough to kill a #giant.&quot;);</span>
+						}
+
+<span class="fc" id="L246">						player.setQuest(QUEST_SLOT,</span>
+							&quot;start;&quot;
+							+ (REQUIRED_IRON - neededIron)
+							+ &quot;;&quot;
+							+ (REQUIRED_WOOD - neededWoodLogs)
+							+ &quot;;&quot;
+							+ (REQUIRED_GOLD_BAR - neededGoldBars)
+							+ &quot;;&quot;
+							+ (REQUIRED_GIANT_HEART - neededGiantHearts));
+					}
+<span class="fc" id="L256">				}</span>
+			});
+
+<span class="fc" id="L259">		npc.add(ConversationStates.IDLE, ConversationPhrases.GREETING_MESSAGES,</span>
+			new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+						new QuestStateStartsWithCondition(QUEST_SLOT, &quot;forging;&quot;)),
+<span class="fc" id="L262">			ConversationStates.IDLE, null, new ChatAction() {</span>
+				@Override
+				public void fire(final Player player, final Sentence sentence, final EventRaiser raiser) {
+
+<span class="fc" id="L266">					final String[] tokens = player.getQuest(QUEST_SLOT).split(&quot;;&quot;);</span>
+					
+					final long delay = REQUIRED_MINUTES * MathHelper.MILLISECONDS_IN_ONE_MINUTE; 
+<span class="fc" id="L269">					final long timeRemaining = Long.parseLong(tokens[1]) + delay</span>
+							- System.currentTimeMillis();
+
+<span class="fc bfc" id="L272" title="All 2 branches covered.">					if (timeRemaining &gt; 0L) {</span>
+<span class="fc" id="L273">						raiser.say(&quot;I haven't finished forging the sword. Please check back in &quot;</span>
+							+ TimeUtil.approxTimeUntil((int) (timeRemaining / 1000L))
+							+ &quot;.&quot;);
+<span class="fc" id="L276">						return;</span>
+					}
+
+<span class="fc" id="L279">					raiser.say(&quot;I have finished forging the mighty immortal sword. You deserve this. Now I'm going to have a long rest, so, goodbye!&quot;);</span>
+<span class="fc" id="L280">					player.addXP(15000);</span>
+<span class="fc" id="L281">					player.addKarma(25);</span>
+<span class="fc" id="L282">					final Item magicSword = SingletonRepository.getEntityManager().getItem(&quot;immortal sword&quot;);</span>
+<span class="fc" id="L283">					magicSword.setBoundTo(player.getName());</span>
+<span class="fc" id="L284">					player.equipOrPutOnGround(magicSword);</span>
+<span class="fc" id="L285">					player.notifyWorldAboutChanges();</span>
+<span class="fc" id="L286">					player.setQuest(QUEST_SLOT, &quot;done&quot;);</span>
+<span class="fc" id="L287">				}</span>
+			});
+
+<span class="fc" id="L290">		npc.add(ConversationStates.ATTENDING,</span>
+			Arrays.asList(&quot;forge&quot;, &quot;missing&quot;), 
+			new QuestStartedCondition(QUEST_SLOT),
+			ConversationStates.ATTENDING,
+			null,
+<span class="fc" id="L295">			new ChatAction() {</span>
+				@Override
+				public void fire(final Player player, final Sentence sentence, final EventRaiser raiser) {
+<span class="fc" id="L298">					final String[] tokens = player.getQuest(QUEST_SLOT).split(&quot;;&quot;);</span>
+
+<span class="fc" id="L300">					final int neededIron = REQUIRED_IRON</span>
+							- Integer.parseInt(tokens[1]);
+<span class="fc" id="L302">					final int neededWoodLogs = REQUIRED_WOOD</span>
+							- Integer.parseInt(tokens[2]);
+<span class="fc" id="L304">					final int neededGoldBars = REQUIRED_GOLD_BAR</span>
+							- Integer.parseInt(tokens[3]);
+<span class="fc" id="L306">					final int neededGiantHearts = REQUIRED_GIANT_HEART</span>
+							- Integer.parseInt(tokens[4]);
+
+<span class="fc" id="L309">					raiser.say(&quot;I will need &quot; + neededIron + &quot; #iron, &quot;</span>
+							+ neededWoodLogs + &quot; #wood logs, &quot;
+							+ neededGoldBars + &quot; #gold bars and &quot;
+							+ neededGiantHearts + &quot; #giant hearts.&quot;);
+<span class="fc" id="L313">				}</span>
+			});
+
+<span class="fc" id="L316">		npc.add(</span>
+			ConversationStates.ANY,
+			&quot;iron&quot;,
+			null,
+			ConversationStates.ATTENDING,
+			&quot;Collect some iron ore from the mines which are rich in minerals.&quot;,
+			null);
+
+<span class="fc" id="L324">		npc.add(ConversationStates.ANY, &quot;wood&quot;, null,</span>
+				ConversationStates.ATTENDING,
+				&quot;The forest is full of wood logs.&quot;, null);
+<span class="fc" id="L327">		npc.add(ConversationStates.ANY, &quot;gold&quot;, null,</span>
+				ConversationStates.ATTENDING,
+				&quot;A smith in Ados can forge the gold into gold bars for you.&quot;,
+				null);
+<span class="fc" id="L331">		npc.add(</span>
+			ConversationStates.ANY,
+			&quot;giant&quot;,
+			null,
+			ConversationStates.ATTENDING,
+			&quot;There are ancient stories of giants living in the mountains at the north of Semos and Ados.&quot;,
+			null);
+<span class="fc" id="L338">	}</span>
+
+	@Override
+	public void addToWorld() {
+<span class="fc" id="L342">		fillQuestInfo(</span>
+				&quot;Stuff for Vulcanus&quot;,
+				&quot;Vulcanus, the son of Zeus himself, will forge the god's sword.&quot;,
+				false);
+<span class="fc" id="L346">		step_1();</span>
+<span class="fc" id="L347">		step_2();</span>
+<span class="fc" id="L348">		step_3();</span>
+<span class="fc" id="L349">	}</span>
+
+	@Override
+	public String getName() {
+<span class="nc" id="L353">		return &quot;StuffForVulcanus&quot;;</span>
+	}
+	
+	@Override
+	public List&lt;String&gt; getHistory(final Player player) {
+<span class="nc" id="L358">			final List&lt;String&gt; res = new ArrayList&lt;String&gt;();</span>
+<span class="nc bnc" id="L359" title="All 2 branches missed.">			if (!player.hasQuest(QUEST_SLOT)) {</span>
+<span class="nc" id="L360">				return res;</span>
+			}
+<span class="nc" id="L362">			final String questState = player.getQuest(QUEST_SLOT);</span>
+<span class="nc" id="L363">			res.add(&quot;I met Vulcanus in Kotoch.&quot;);</span>
+<span class="nc bnc" id="L364" title="All 2 branches missed.">			if (questState.equals(&quot;rejected&quot;)) {</span>
+<span class="nc" id="L365">				res.add(&quot;I don't want an immortal sword.&quot;);</span>
+<span class="nc" id="L366">				return res;</span>
+			} 
+<span class="nc" id="L368">			res.add(&quot;To forge the immortal sword I must bring &quot; + REQUIRED_IRON</span>
+					+ &quot; iron, &quot;
+					+ REQUIRED_WOOD
+					+ &quot; wood logs, &quot;
+					+ REQUIRED_GOLD_BAR
+					+ &quot; gold bars and &quot;
+					+ REQUIRED_GIANT_HEART
+					+ &quot; giant hearts, in that order.&quot;);
+			// yes, yes. this is the most horrible quest code and so you get a horrible quest history. 
+<span class="nc bnc" id="L377" title="All 4 branches missed.">			if(questState.startsWith(&quot;start&quot;) &amp;&amp; !&quot;start;15;26;12;6&quot;.equals(questState)){</span>
+<span class="nc" id="L378">				res.add(&quot;I haven't brought everything yet. Vulcanus will tell me what I need to take next.&quot;);</span>
+<span class="nc bnc" id="L379" title="All 4 branches missed.">			} else if (&quot;start;15;26;12;6&quot;.equals(questState) || !questState.startsWith(&quot;start&quot;)) {</span>
+<span class="nc" id="L380">				res.add(&quot;I took all the special items to Vulcanus.&quot;);</span>
+			}
+<span class="nc bnc" id="L382" title="All 4 branches missed.">			if(&quot;start;15;26;12;6&quot;.equals(questState) &amp;&amp; !player.hasKilled(&quot;giant&quot;)){</span>
+<span class="nc" id="L383">				res.add(&quot;I must prove my worth and kill a giant, before I am worthy of this prize.&quot;);</span>
+			} 
+<span class="nc bnc" id="L385" title="All 2 branches missed.">			if (questState.startsWith(&quot;forging&quot;)) {</span>
+<span class="nc" id="L386">				res.add(&quot;Vulcanus, son of gods himself, now forges my immortal sword.&quot;);</span>
+			} 
+<span class="nc bnc" id="L388" title="All 2 branches missed.">			if (isCompleted(player)) {</span>
+<span class="nc" id="L389">				res.add(&quot;Gold bars and giant hearts together with the forging from a god's son made me a sword of which I can be proud.&quot;);</span>
+			}
+<span class="nc" id="L391">			return res;</span>
+	}
+	
+	// match to the min level of the immortal sword
+	@Override
+	public int getMinLevel() {
+<span class="fc" id="L397">		return 80;</span>
+	}
+
+	@Override
+	public String getNPCName() {
+<span class="nc" id="L402">		return &quot;Vulcanus&quot;;</span>
+	}
+	
+	@Override
+	public String getRegion() {
+<span class="nc" id="L407">		return Region.KOTOCH;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

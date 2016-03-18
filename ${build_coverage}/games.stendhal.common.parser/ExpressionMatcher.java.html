@@ -1,0 +1,450 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ExpressionMatcher.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.common.parser</a> &gt; <span class="el_source">ExpressionMatcher.java</span></div><h1>ExpressionMatcher.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.common.parser;
+
+import java.util.NoSuchElementException;
+import java.util.StringTokenizer;
+
+/**
+ * ExpressionMatcher is used to compare Expression in various matching modes.
+ *
+ * @author Martin Fuchs
+ */
+<span class="fc" id="L23">public class ExpressionMatcher {</span>
+    public static final String PM_SEPARATOR = &quot;|&quot;;
+
+    // There are some patterns that can be used as leading flags in expression strings, e.g. &quot;|EXACT|&quot;:
+    static final String PM_TYPE_MATCH = &quot;TYPE&quot;;
+    static final String PM_EXACT_MATCH = &quot;EXACT&quot;;
+    static final String PM_SIMILAR_MATCH = &quot;SIMILAR&quot;;
+    static final String PM_ICASE_MATCH = &quot;ICASE&quot;;
+    static final String PM_JOKER_MATCH = &quot;JOKER&quot;;
+
+
+    /** Flag to enable type string matching. */
+<span class="fc" id="L35">    protected boolean typeMatching = false;</span>
+
+    /** Flag to enforce exact expression matching. */
+<span class="fc" id="L38">    protected boolean exactMatching = false;</span>
+
+    /** Flag to use similarity matching. */
+<span class="fc" id="L41">    protected boolean similarMatching = false;</span>
+
+    /** Flag to enable case insensitive matching. */
+<span class="fc" id="L44">    protected boolean caseInsensitive = false;</span>
+
+    /** Flag to enable joker matching. */
+<span class="fc" id="L47">    protected boolean jokerMatching = false;</span>
+
+    /** Reset all matching flags. */
+    public void clear() {
+<span class="fc" id="L51">        typeMatching = false;</span>
+<span class="fc" id="L52">        exactMatching = false;</span>
+<span class="fc" id="L53">        similarMatching = false;</span>
+<span class="fc" id="L54">        caseInsensitive = false;</span>
+<span class="fc" id="L55">        jokerMatching = false;</span>
+<span class="fc" id="L56">    }</span>
+
+    /**
+     * @param typeMatching
+     *            the typeMatching flag to set
+     */
+    protected void setTypeMatching(final boolean typeMatching) {
+<span class="fc" id="L63">        this.typeMatching = typeMatching;</span>
+<span class="fc" id="L64">    }</span>
+
+    /**
+     * @return the typeMatching flag
+     */
+    protected boolean getTypeMatching() {
+<span class="fc" id="L70">        return typeMatching;</span>
+    }
+
+    /**
+     * @param exactMatching
+     *            the exactMatching flag to set
+     */
+    public void setExactMatching(final boolean exactMatching) {
+<span class="fc" id="L78">        this.exactMatching = exactMatching;</span>
+<span class="fc" id="L79">    }</span>
+
+    /**
+     * @return the exactMatching flag
+     */
+    public boolean getExactMatching() {
+<span class="fc" id="L85">        return exactMatching;</span>
+    }
+
+    /**
+     * @param similarMatching
+     *            the similarMatching flag to set
+     */
+    public void setSimilarMatching(final boolean similarMatching) {
+<span class="nc" id="L93">        this.similarMatching = similarMatching;</span>
+<span class="nc" id="L94">    }</span>
+
+    /**
+     * @return the similarMatching flag
+     */
+    public boolean getSimilarMatching() {
+<span class="nc" id="L100">        return similarMatching;</span>
+    }
+
+    /**
+     * @param caseInsensitive
+     *            the caseInsensitive flag to set
+     */
+    public void setCaseInsensitive(final boolean caseInsensitive) {
+<span class="fc" id="L108">        this.caseInsensitive = caseInsensitive;</span>
+<span class="fc" id="L109">    }</span>
+
+    /**
+     * @return the caseInsensitive flag
+     */
+    public boolean isCaseInsensitive() {
+<span class="nc" id="L115">        return caseInsensitive;</span>
+    }
+
+    /**
+     * @return the jokerMatching flag
+     */
+    public boolean isJokerMatching() {
+<span class="nc" id="L122">        return jokerMatching;</span>
+    }
+
+    /**
+     * @param jokerMatching
+     *            the jokerMatching flag to set
+     */
+    public void setJokerMatching(final boolean jokerMatching) {
+<span class="nc" id="L130">        this.jokerMatching = jokerMatching;</span>
+<span class="nc" id="L131">    }</span>
+
+    /**
+     * @return true if any of the available matching flags is set.
+     */
+    public boolean isAnyFlagSet() {
+<span class="fc bfc" id="L137" title="All 20 branches covered.">        return typeMatching || exactMatching || similarMatching || caseInsensitive || jokerMatching;</span>
+    }
+
+    /**
+     * @return true if none of the available matching flags is set.
+      */
+    public boolean isEmpty() {
+<span class="fc bfc" id="L144" title="All 4 branches covered.">        return !isAnyFlagSet();</span>
+    }
+
+    /**
+     * Read leading matching flags from the given text string and return the remaining text.
+     *
+     * @param text
+     * @return text without leading flags
+     */
+    public String readMatchingFlags(String text) {
+<span class="fc" id="L154">        clear();</span>
+
+<span class="fc bfc" id="L156" title="All 4 branches covered.">        if (text.startsWith(PM_SEPARATOR)) {</span>
+<span class="fc" id="L157">            final StringTokenizer tok = new StringTokenizer(text, PM_SEPARATOR);</span>
+
+<span class="pc bpc" id="L159" title="2 of 4 branches missed.">            while (tok.hasMoreTokens()) {</span>
+<span class="fc" id="L160">                final String flag = tok.nextToken();</span>
+
+<span class="fc bfc" id="L162" title="All 4 branches covered.">                if (flag.equals(PM_TYPE_MATCH)) {</span>
+<span class="fc" id="L163">                    typeMatching = true;</span>
+<span class="fc bfc" id="L164" title="All 4 branches covered.">                } else if (flag.equals(PM_EXACT_MATCH)) {</span>
+<span class="fc" id="L165">                    exactMatching = true;</span>
+<span class="fc bfc" id="L166" title="All 4 branches covered.">                } else if (flag.equals(PM_SIMILAR_MATCH)) {</span>
+<span class="fc" id="L167">                    similarMatching = true;</span>
+<span class="fc bfc" id="L168" title="All 4 branches covered.">                } else if (flag.equals(PM_ICASE_MATCH)) {</span>
+<span class="fc" id="L169">                    caseInsensitive = true;</span>
+<span class="fc bfc" id="L170" title="All 4 branches covered.">                } else if (flag.equals(PM_JOKER_MATCH)) {</span>
+<span class="fc" id="L171">                    jokerMatching = true;</span>
+                } else {
+                    break;
+                }
+
+<span class="fc" id="L176">                text = text.substring(flag.length() + 1);</span>
+<span class="fc" id="L177">            }</span>
+
+<span class="pc bpc" id="L179" title="2 of 4 branches missed.">            if (isAnyFlagSet()) {</span>
+                // strip the last separator character
+<span class="fc" id="L181">                text = text.substring(1);</span>
+            }
+        }
+
+<span class="fc" id="L185">        return text;</span>
+    }
+
+    /**
+     * Parse the given text string and create a Sentence object using the current matching flags.
+     *
+     * @param text
+     * @param ctx
+     * @return parsed Sentence
+     */
+    Sentence parseSentence(final String text, final ConversationContext ctx) {
+<span class="fc bfc" id="L196" title="All 4 branches covered.">        if (isEmpty()) {</span>
+<span class="fc" id="L197">            return ConversationParser.parse(text, ctx);</span>
+        }
+
+        // Trim white space from beginning and end.
+<span class="fc" id="L201">        String txt = text.trim();</span>
+
+<span class="fc" id="L203">        final Sentence sentence = new SentenceImplementation(ctx, txt);</span>
+
+        // determine sentence type from trailing punctuation
+<span class="fc" id="L206">        txt = ConversationParser.detectSentenceType(txt, sentence);</span>
+
+<span class="fc bfc" id="L208" title="All 4 branches covered.">        if (typeMatching) {</span>
+<span class="fc" id="L209">            readTypeMatchExpressions(txt, ctx, sentence);</span>
+<span class="fc bfc" id="L210" title="All 4 branches covered.">        } else if (exactMatching) {</span>
+<span class="fc" id="L211">            readSimpleExpressions(txt, ctx, sentence);</span>
+<span class="fc bfc" id="L212" title="All 4 branches covered.">        } else if (similarMatching) {</span>
+<span class="fc" id="L213">            readSimpleExpressions(txt, ctx, sentence);</span>
+<span class="fc bfc" id="L214" title="All 4 branches covered.">        } else if (jokerMatching) {</span>
+<span class="fc" id="L215">            readJokerExpressions(txt, ctx, sentence);</span>
+<span class="pc bpc" id="L216" title="2 of 4 branches missed.">        } else if (caseInsensitive) {</span>
+<span class="fc" id="L217">            readSimpleExpressions(txt, ctx, sentence);</span>
+        }
+
+<span class="fc" id="L220">        return sentence;</span>
+    }
+
+    /**
+     * Reads in the expressions from the given string in prepared form. The given text should be in the format:
+     * &quot;&amp;lt;expression&amp;gt;/&amp;lt;TYPESTRING&amp;gt; &amp;lt;expression&amp;gt;/&amp;lt;TYPESTRING&amp;gt; ...&quot;
+     *
+     * @param text to be parsed
+     * @param ctx 
+     * @param sentence 
+     */
+    private void readTypeMatchExpressions(final String text, final ConversationContext ctx, final Sentence sentence) {
+<span class="fc" id="L232">        final StringTokenizer tok = new StringTokenizer(text, &quot;/&quot;);</span>
+
+<span class="fc bfc" id="L234" title="All 4 branches covered.">        while (tok.hasMoreTokens()) {</span>
+<span class="fc" id="L235">            final String str = tok.nextToken();</span>
+            String typeStr;
+
+            try {
+                // remove the leading slash from the type string
+<span class="fc" id="L240">                typeStr = tok.nextToken(&quot; \t\n\r\f&quot;).substring(1);</span>
+<span class="nc" id="L241">            } catch (final NoSuchElementException e) {</span>
+<span class="nc" id="L242">                typeStr = Expression.JOKER;</span>
+<span class="fc" id="L243">            }</span>
+
+<span class="fc" id="L245">            final Expression expr = new Expression(str, typeStr);</span>
+<span class="fc" id="L246">            expr.setMatcher(this);</span>
+<span class="fc" id="L247">            sentence.expressions.add(expr);</span>
+<span class="fc" id="L248">        }</span>
+<span class="fc" id="L249">    }</span>
+
+    /**
+     * Read in the words from the given string and create the Sentence object using this unchanged expressions.
+     *
+     * @param text to be parsed
+     * @param ctx 
+     * @param sentence 
+     */
+    private void readSimpleExpressions(final String text, final ConversationContext ctx, final Sentence sentence) {
+<span class="fc" id="L259">        final StringTokenizer tok = new StringTokenizer(text);</span>
+
+<span class="fc bfc" id="L261" title="All 4 branches covered.">        while (tok.hasMoreTokens()) {</span>
+<span class="fc" id="L262">            final String str = tok.nextToken();</span>
+
+<span class="fc" id="L264">            final Expression expr = new Expression(str);</span>
+<span class="fc" id="L265">            expr.setNormalized(str);</span>
+<span class="fc" id="L266">            expr.setMatcher(this);</span>
+<span class="fc" id="L267">            sentence.expressions.add(expr);</span>
+<span class="fc" id="L268">        }</span>
+<span class="fc" id="L269">    }</span>
+
+    /**
+     * Read in the words from the given string and create the sentence using the same rules as in SentenceImplementation
+     * with activated 'forMatching' flag.
+     *
+     * @param text to be parsed
+     * @param ctx 
+     * @param sentence 
+     */
+    private void readJokerExpressions(final String text, final ConversationContext ctx, final Sentence sentence) {
+<span class="fc" id="L280">        final StringTokenizer tok = new StringTokenizer(text);</span>
+
+<span class="fc bfc" id="L282" title="All 4 branches covered.">        while (tok.hasMoreTokens()) {</span>
+<span class="fc" id="L283">            final String str = tok.nextToken();</span>
+
+<span class="fc" id="L285">            final Expression expr = new Expression(str);</span>
+
+<span class="fc bfc" id="L287" title="All 4 branches covered.">            if (ExpressionType.isTypeString(str)) {</span>
+<span class="fc" id="L288">                expr.setType(new ExpressionType(str));</span>
+<span class="fc" id="L289">                expr.setNormalized(Expression.JOKER);</span>
+            } else {
+<span class="fc" id="L291">                expr.setNormalized(str);</span>
+            }
+
+<span class="fc" id="L294">            expr.setMatcher(this);</span>
+<span class="fc" id="L295">            sentence.expressions.add(expr);</span>
+<span class="fc" id="L296">        }</span>
+<span class="fc" id="L297">    }</span>
+
+    /**
+     * Match two Expressions using the mode in matchingFlags.
+     *
+     * @param expr1
+     * @param expr2
+     * @return true if two expression match 
+     */
+    public boolean match(final Expression expr1, final Expression expr2) {
+        // In type matching mode, the word type has to match exactly.
+<span class="fc bfc" id="L308" title="All 4 branches covered.">        if (typeMatching) {</span>
+<span class="fc bfc" id="L309" title="All 4 branches covered.">            if (!expr1.getTypeString().equals(expr2.getTypeString())) {</span>
+<span class="fc" id="L310">                return false;</span>
+            }
+        }
+
+        // If the original expression matches, return true.
+<span class="fc bfc" id="L315" title="All 4 branches covered.">        if (expr1.getOriginal().equals(expr2.getOriginal())) {</span>
+<span class="fc" id="L316">            return true;</span>
+        }
+
+<span class="fc bfc" id="L319" title="All 4 branches covered.">        if (caseInsensitive) {</span>
+<span class="fc bfc" id="L320" title="All 4 branches covered.">            if (expr1.getOriginal().equalsIgnoreCase(expr2.getOriginal())) {</span>
+<span class="fc" id="L321">                return true;</span>
+            }
+        }
+
+<span class="fc bfc" id="L325" title="All 4 branches covered.">        if (jokerMatching) {</span>
+<span class="fc" id="L326">            return expr1.sentenceMatchExpression(expr2);</span>
+        }
+
+<span class="fc bfc" id="L329" title="All 4 branches covered.">        if (similarMatching) {</span>
+<span class="fc bfc" id="L330" title="All 4 branches covered.">            if (SimilarExprMatcher.isSimilar(expr1.getOriginal(), expr2.getOriginal(), 0.1)) {</span>
+<span class="fc" id="L331">                return true;</span>
+            }
+        }
+
+        // If no exact match is required, compare the normalized expressions.
+<span class="fc bfc" id="L336" title="All 4 branches covered.">        if (!exactMatching) {</span>
+<span class="pc bpc" id="L337" title="2 of 4 branches missed.">            if (expr2.getNormalized().equals(Expression.JOKER)) {</span>
+<span class="nc" id="L338">                return true;</span>
+            }
+
+<span class="fc bfc" id="L341" title="All 4 branches covered.">            if (expr1.getNormalized().equals(expr2.getNormalized())) {</span>
+<span class="fc" id="L342">                return true;</span>
+            }
+
+<span class="fc bfc" id="L345" title="All 4 branches covered.">            if (caseInsensitive) {</span>
+<span class="pc bpc" id="L346" title="2 of 4 branches missed.">                if (expr1.getNormalized().equalsIgnoreCase(expr2.getNormalized())) {</span>
+<span class="nc" id="L347">                    return true;</span>
+                }
+            }
+        }
+
+<span class="fc" id="L352">        return false;</span>
+    }
+
+    /**
+     * Check for equality of two ExpressionMatcher objects.
+     */
+    @Override
+    public boolean equals(final Object other) {
+<span class="fc bfc" id="L360" title="All 4 branches covered.">        if (this == other) {</span>
+<span class="fc" id="L361">            return true;</span>
+<span class="fc bfc" id="L362" title="All 4 branches covered.">        } else if (other == null) {</span>
+<span class="fc" id="L363">            return false;</span>
+<span class="pc bpc" id="L364" title="2 of 4 branches missed.">        } else if (other instanceof ExpressionMatcher) {</span>
+<span class="fc" id="L365">            final ExpressionMatcher o = (ExpressionMatcher) other;</span>
+
+<span class="fc bfc" id="L367" title="All 4 branches covered.">            if (typeMatching != o.typeMatching) {</span>
+<span class="fc" id="L368">                return false;</span>
+<span class="pc bpc" id="L369" title="2 of 4 branches missed.">            } else if (exactMatching != o.exactMatching) {</span>
+<span class="nc" id="L370">                return false;</span>
+<span class="pc bpc" id="L371" title="2 of 4 branches missed.">            } else if (similarMatching != o.similarMatching) {</span>
+<span class="nc" id="L372">                return false;</span>
+<span class="fc bfc" id="L373" title="All 4 branches covered.">            } else if (caseInsensitive != o.caseInsensitive) {</span>
+<span class="fc" id="L374">                return false;</span>
+            } else {
+<span class="pc bpc" id="L376" title="2 of 4 branches missed.">                return (jokerMatching == o.jokerMatching);</span>
+            }
+
+        } else {
+<span class="nc" id="L380">            return false;</span>
+        }
+    }
+
+    /**
+     * Returns a hash code for this ExpressionMatcher object.
+     */
+    @Override
+    public int hashCode() {
+<span class="nc" id="L389">        int hash = 0;</span>
+
+<span class="nc bnc" id="L391" title="All 4 branches missed.">        if (typeMatching) {</span>
+<span class="nc" id="L392">            hash |= 1;</span>
+        }
+
+<span class="nc bnc" id="L395" title="All 4 branches missed.">        if (exactMatching) {</span>
+<span class="nc" id="L396">            hash |= 2;</span>
+        }
+
+<span class="nc bnc" id="L399" title="All 4 branches missed.">        if (similarMatching) {</span>
+<span class="nc" id="L400">            hash |= 4;</span>
+        }
+
+<span class="nc bnc" id="L403" title="All 4 branches missed.">        if (caseInsensitive) {</span>
+<span class="nc" id="L404">            hash |= 8;</span>
+        }
+
+<span class="nc bnc" id="L407" title="All 4 branches missed.">        if (jokerMatching) {</span>
+<span class="nc" id="L408">            hash |= 0x10;</span>
+        }
+
+<span class="nc" id="L411">        return hash;</span>
+    }
+
+    /**
+     * Return a simple string representation.
+     */
+    @Override
+    public String toString() {
+<span class="fc" id="L419">        final StringBuilder b = new StringBuilder();</span>
+
+<span class="fc bfc" id="L421" title="All 4 branches covered.">        if (typeMatching) {</span>
+<span class="fc" id="L422">            b.append(PM_SEPARATOR);</span>
+<span class="fc" id="L423">            b.append(PM_TYPE_MATCH);</span>
+        }
+
+<span class="fc bfc" id="L426" title="All 4 branches covered.">        if (exactMatching) {</span>
+<span class="fc" id="L427">            b.append(PM_SEPARATOR);</span>
+<span class="fc" id="L428">            b.append(PM_EXACT_MATCH);</span>
+        }
+
+<span class="fc bfc" id="L431" title="All 4 branches covered.">        if (similarMatching) {</span>
+<span class="fc" id="L432">            b.append(PM_SEPARATOR);</span>
+<span class="fc" id="L433">            b.append(PM_SIMILAR_MATCH);</span>
+        }
+
+<span class="fc bfc" id="L436" title="All 4 branches covered.">        if (caseInsensitive) {</span>
+<span class="fc" id="L437">            b.append(PM_SEPARATOR);</span>
+<span class="fc" id="L438">            b.append(PM_ICASE_MATCH);</span>
+        }
+
+<span class="fc bfc" id="L441" title="All 4 branches covered.">        if (jokerMatching) {</span>
+<span class="fc" id="L442">            b.append(PM_SEPARATOR);</span>
+<span class="fc" id="L443">            b.append(PM_JOKER_MATCH);</span>
+        }
+
+<span class="fc" id="L446">        return b.toString();</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

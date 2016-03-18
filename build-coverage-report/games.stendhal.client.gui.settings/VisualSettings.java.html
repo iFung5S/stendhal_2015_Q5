@@ -1,0 +1,547 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>VisualSettings.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui.settings</a> &gt; <span class="el_source">VisualSettings.java</span></div><h1>VisualSettings.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2013 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui.settings;
+
+import games.stendhal.client.ClientSingletonRepository;
+import games.stendhal.client.gui.chatlog.EventLine;
+import games.stendhal.client.gui.layout.SBoxLayout;
+import games.stendhal.client.gui.layout.SLayout;
+import games.stendhal.client.gui.styled.Style;
+import games.stendhal.client.gui.styled.StyleUtil;
+import games.stendhal.client.gui.styled.StyledLookAndFeel;
+import games.stendhal.client.gui.styled.styles.StyleFactory;
+import games.stendhal.client.gui.wt.core.WtWindowManager;
+import games.stendhal.common.MathHelper;
+import games.stendhal.common.NotificationType;
+
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.GraphicsEnvironment;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.DefaultListCellRenderer;
+import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.LookAndFeel;
+import javax.swing.UIManager;
+
+/**
+ * Page for style settings.
+ */
+class VisualSettings {
+	private static final String STYLE_PROPERTY = &quot;ui.style&quot;;
+	private static final String DEFAULT_STYLE = &quot;Wood (default)&quot;;
+	private static final String TRANSPARENCY_PROPERTY = &quot;ui.transparency&quot;;
+
+	private static final String GAMESCREEN_CREATURESPEECH = &quot;gamescreen.creaturespeech&quot;;
+	
+	/** Containers that have components to be toggled */
+	//private JPanel colorsPanel;
+	
+	/** Buttons for selecting either defined styles or custom styles */
+	/*private JRadioButton definedStyleSelector;
+	private JRadioButton customStyleSelector;*/
+	
+	/** Default decorative font. */
+	private static final String DEFAULT_FONT = &quot;BlackChancery&quot;;
+	/** Default font size. */
+	private static final int DEFAULT_FONT_SIZE = 12;
+	/** Smallest size in the font size selector. */
+	private static final int FONT_MIN_SIZE = 8;
+	/** Largest size in the font size selector. */
+	private static final int FONT_MAX_SIZE = 20;
+	/** Property used for the decorative font. */
+	private static final String FONT_PROPERTY = &quot;ui.logfont&quot;;
+	/** Property used for the decorative font. */
+	private static final String FONT_SIZE_PROPERTY = &quot;ui.font_size&quot;;
+	
+	private static final String GAMESCREEN_BLOOD = &quot;gamescreen.blood&quot;;
+	
+	private static final String SCALE_SCREEN_PROPERTY = &quot;ui.scale_screen&quot;;
+	/** Property used for toggling map coloring on. */
+	private static final String MAP_COLOR_PROPERTY = &quot;ui.colormaps&quot;;
+	
+	/** Container for the setting components. */
+	private final JComponent page;
+	
+	/**
+	 * Create new StyleSettings.
+	 */
+<span class="nc" id="L89">	VisualSettings() {</span>
+<span class="nc" id="L90">		int pad = SBoxLayout.COMMON_PADDING;</span>
+<span class="nc" id="L91">		page = SBoxLayout.createContainer(SBoxLayout.VERTICAL, pad);</span>
+		
+<span class="nc" id="L93">		page.setBorder(BorderFactory.createEmptyBorder(pad, pad, pad, pad));</span>
+		
+<span class="nc" id="L95">		page.add(createStyleTypeSelector(), SLayout.EXPAND_X);</span>
+<span class="nc" id="L96">		page.add(createTransparencySelector(), SLayout.EXPAND_X);</span>
+		
+		// Disable widgets not in use
+<span class="nc" id="L99">		toggleComponents(page);</span>
+		
+		// Lighting effects
+<span class="nc" id="L102">		JCheckBox mapColoring = SettingsComponentFactory.createSettingsToggle(MAP_COLOR_PROPERTY, &quot;true&quot;,</span>
+				&quot;Light effects&quot;, &quot;Show night time lighting, and other coloring effects&quot;);
+<span class="nc" id="L104">		page.add(mapColoring);</span>
+		// Coloring setting needs a map change to take an effect, so we need to
+		// inform the player about the delayed effect.
+<span class="nc" id="L107">		mapColoring.addItemListener(new ItemListener() {</span>
+			@Override
+			public void itemStateChanged(ItemEvent e) {
+<span class="nc bnc" id="L110" title="All 2 branches missed.">				boolean enabled = (e.getStateChange() == ItemEvent.SELECTED);</span>
+<span class="nc bnc" id="L111" title="All 2 branches missed.">				String tmp = enabled ? &quot;enabled&quot; : &quot;disabled&quot;;</span>
+<span class="nc" id="L112">				String msg = &quot;Lighting effects are now &quot; + tmp</span>
+						+ &quot;. You may need to change map or relogin for it to take effect.&quot;;
+<span class="nc" id="L114">				ClientSingletonRepository.getUserInterface().addEventLine(new EventLine(&quot;&quot;, msg, NotificationType.CLIENT));</span>
+<span class="nc" id="L115">			}</span>
+		});
+		
+<span class="nc" id="L118">		JCheckBox weather = SettingsComponentFactory.createSettingsToggle(&quot;ui.draw_weather&quot;, &quot;true&quot;,</span>
+				&quot;Draw weather&quot;, &quot;Draw weather effects.&quot;);
+<span class="nc" id="L120">		page.add(weather);</span>
+
+		// blood
+<span class="nc" id="L123">		JCheckBox showBloodToggle = SettingsComponentFactory.createSettingsToggle(GAMESCREEN_BLOOD, &quot;true&quot;,</span>
+				&quot;Show blood and corpses&quot;, &quot;Show blood spots on hits during fighting, and corpses.&quot;);
+<span class="nc" id="L125">		page.add(showBloodToggle);</span>
+		
+		// show creature speech bubbles
+<span class="nc" id="L128">		JCheckBox showCreatureSpeechToggle = SettingsComponentFactory.createSettingsToggle(GAMESCREEN_CREATURESPEECH, &quot;true&quot;,</span>
+										&quot;Show creature speech bubbles&quot;, &quot;Show creature speech bubbles in the client display&quot;);
+<span class="nc" id="L130">		page.add(showCreatureSpeechToggle);</span>
+		
+<span class="nc" id="L132">		final JCheckBox scaleScreenToggle = SettingsComponentFactory.createSettingsToggle(SCALE_SCREEN_PROPERTY,</span>
+				&quot;true&quot;, &quot;Scale view to fit window&quot;, &quot;&lt;html&gt;If selected, the game view will scale to fit the available space,&lt;br&gt;otherwise the default sized graphics are used.&lt;/html&gt;&quot;);
+<span class="nc" id="L134">		page.add(scaleScreenToggle);</span>
+<span class="nc" id="L135">		page.add(Box.createHorizontalStrut(SBoxLayout.COMMON_PADDING));</span>
+		
+		// Font stuff
+<span class="nc" id="L138">		page.add(createFontSizeSelector());</span>
+<span class="nc" id="L139">		page.add(createFontSelector(), SLayout.EXPAND_X);</span>
+<span class="nc" id="L140">	}</span>
+	
+	/**
+	 * Get the component containing the style settings.
+	 * 
+	 * @return style settings page
+	 */
+	JComponent getComponent() {
+<span class="nc" id="L148">		return page;</span>
+	}
+	
+	/**
+	 * Create a selector for styles.
+	 * 
+	 * @return combo box with style options
+	 */
+	private JComponent createStyleSelector() {
+<span class="nc" id="L157">		final JComboBox&lt;String&gt; selector = new JComboBox&lt;&gt;();</span>
+		
+		// Fill with available styles
+<span class="nc bnc" id="L160" title="All 2 branches missed.">		for (String s : StyleFactory.getAvailableStyles()) {</span>
+<span class="nc" id="L161">			selector.addItem(s);</span>
+<span class="nc" id="L162">		}</span>
+		
+<span class="nc" id="L164">		final WtWindowManager wm = WtWindowManager.getInstance();</span>
+<span class="nc" id="L165">		String currentStyle = wm.getProperty(STYLE_PROPERTY, DEFAULT_STYLE);</span>
+<span class="nc" id="L166">		selector.setSelectedItem(currentStyle);</span>
+		 
+<span class="nc" id="L168">		selector.addActionListener(new ActionListener() {</span>
+			@Override
+			public void actionPerformed(ActionEvent e) {
+<span class="nc" id="L171">				Object selected = selector.getSelectedItem();</span>
+<span class="nc" id="L172">				wm.setProperty(STYLE_PROPERTY, selected.toString());</span>
+<span class="nc" id="L173">				ClientSingletonRepository.getUserInterface().addEventLine(new EventLine(&quot;&quot;,</span>
+						&quot;The new style will be used the next time you start the game client.&quot;,
+						NotificationType.CLIENT));
+<span class="nc" id="L176">			}</span>
+		});
+		
+<span class="nc" id="L179">		return selector;</span>
+	}
+	
+	/**
+	 * Create the transparency mode selector row.
+	 * 
+	 * @return component holding the selector and the related label
+	 */
+	private JComponent createTransparencySelector() {
+<span class="nc" id="L188">		JComponent row = SBoxLayout.createContainer(SBoxLayout.HORIZONTAL, SBoxLayout.COMMON_PADDING);</span>
+<span class="nc" id="L189">		JLabel label = new JLabel(&quot;Transparency mode:&quot;);</span>
+<span class="nc" id="L190">		row.add(label);</span>
+<span class="nc" id="L191">		final JComboBox&lt;String&gt; selector = new JComboBox&lt;&gt;();</span>
+<span class="nc" id="L192">		final String[][] data = {</span>
+				{&quot;Automatic (default)&quot;, &quot;auto&quot;, &quot;The appropriate mode is decided automatically based on the system speed.&quot;},
+				{&quot;Full translucency&quot;, &quot;translucent&quot;, &quot;Use semitransparent images where available. This is slow on some systems.&quot;},
+				{&quot;Simple transparency&quot;, &quot;bitmask&quot;, &quot;Use simple transparency where parts of the image are either fully transparent or fully opaque.&lt;p&gt;Use this setting on old computers, if the game is unresponsive otherwise.&quot;}
+		};
+		
+		// Convenience mapping for getting the data rows from either short or
+		// long names
+<span class="nc" id="L200">		final Map&lt;String, String[]&gt; desc2data = new HashMap&lt;String, String[]&gt;();</span>
+<span class="nc" id="L201">		Map&lt;String, String[]&gt; key2data = new HashMap&lt;String, String[]&gt;();</span>
+		
+<span class="nc bnc" id="L203" title="All 2 branches missed.">		for (String[] s : data) {</span>
+			// fill the selector...
+<span class="nc" id="L205">			selector.addItem(s[0]);</span>
+			// ...and prepare the convenience mappings in the same step
+<span class="nc" id="L207">			desc2data.put(s[0], s);</span>
+<span class="nc" id="L208">			key2data.put(s[1], s);</span>
+		}
+		
+		// Find out the current option
+<span class="nc" id="L212">		final WtWindowManager wm = WtWindowManager.getInstance();</span>
+<span class="nc" id="L213">		String currentKey = wm.getProperty(TRANSPARENCY_PROPERTY, &quot;auto&quot;);</span>
+<span class="nc" id="L214">		String[] currentData = key2data.get(currentKey);</span>
+<span class="nc bnc" id="L215" title="All 2 branches missed.">		if (currentData == null) {</span>
+			// invalid value; force the default
+<span class="nc" id="L217">			currentData = key2data.get(&quot;auto&quot;);</span>
+		}
+<span class="nc" id="L219">		selector.setSelectedItem(currentData[0]);</span>
+<span class="nc" id="L220">		selector.setRenderer(new TooltippedRenderer(data));</span>
+		 
+<span class="nc" id="L222">		selector.addActionListener(new ActionListener() {</span>
+			@Override
+			public void actionPerformed(ActionEvent e) {
+<span class="nc" id="L225">				Object selected = selector.getSelectedItem();</span>
+<span class="nc" id="L226">				String[] selectedData = desc2data.get(selected);</span>
+<span class="nc" id="L227">				wm.setProperty(TRANSPARENCY_PROPERTY, selectedData[1]);</span>
+<span class="nc" id="L228">				ClientSingletonRepository.getUserInterface().addEventLine(new EventLine(&quot;&quot;,</span>
+						&quot;The new transparency mode will be used the next time you start the game client.&quot;,
+						NotificationType.CLIENT));
+<span class="nc" id="L231">			}</span>
+		});
+<span class="nc" id="L233">		row.add(selector);</span>
+		
+<span class="nc" id="L235">		StringBuilder toolTip = new StringBuilder(&quot;&lt;html&gt;The transparency mode used for the graphics. The available options are:&lt;dl&gt;&quot;);</span>
+<span class="nc bnc" id="L236" title="All 2 branches missed.">		for (String[] optionData : data) {</span>
+<span class="nc" id="L237">			toolTip.append(&quot;&lt;dt&gt;&lt;b&gt;&quot;);</span>
+<span class="nc" id="L238">			toolTip.append(optionData[0]);</span>
+<span class="nc" id="L239">			toolTip.append(&quot;&lt;/b&gt;&lt;/dt&gt;&quot;);</span>
+<span class="nc" id="L240">			toolTip.append(&quot;&lt;dd&gt;&quot;);</span>
+<span class="nc" id="L241">			toolTip.append(optionData[2]);</span>
+<span class="nc" id="L242">			toolTip.append(&quot;&lt;/dd&gt;&quot;);</span>
+		}
+<span class="nc" id="L244">		toolTip.append(&quot;&lt;/dl&gt;&lt;/html&gt;&quot;);</span>
+<span class="nc" id="L245">		row.setToolTipText(toolTip.toString());</span>
+<span class="nc" id="L246">		selector.setToolTipText(toolTip.toString());</span>
+		
+<span class="nc" id="L248">		return row;</span>
+	}
+		
+	/**
+	 * Disables widgets not being used.
+	 * 
+	 * @param container the container to look within
+	 */
+	private void toggleComponents(Container container) {
+		/*
+		boolean custom = false;
+		if (this.customStyleSelector.isSelected()) {
+			custom = true;
+		}
+		
+		Component[] components = container.getComponents();
+		
+		for (Component c : components) {
+			if (c.getName() == &quot;defined&quot;) {
+				c.setEnabled(!custom);
+			}
+			else if (c.getName() == &quot;custom&quot;) {
+				c.setEnabled(custom);
+			}
+			if (c instanceof Container) {
+				toggleComponents((Container) c);
+			}
+		}*/
+<span class="nc" id="L276">	}</span>
+	
+	/**
+	 * Create selector for choosing between defined and custom styles.
+	 * 
+	 * @return layout for styles widgets
+	 */
+	private JComponent createStyleTypeSelector() {
+<span class="nc" id="L284">		int pad = SBoxLayout.COMMON_PADDING;</span>
+		
+		// Styles
+<span class="nc" id="L287">		JComponent styleBox = SBoxLayout.createContainer(SBoxLayout.VERTICAL, pad);</span>
+		/*
+		styleBox.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createEtchedBorder(),
+				BorderFactory.createEmptyBorder(pad, pad, pad, pad)));
+		// Button group for selecting between defined and custom styles
+		definedStyleSelector = new JRadioButton(&quot;Use a pre-defined style&quot;, true);
+		customStyleSelector = new JRadioButton(&quot;Use a custom style&quot;);
+		ButtonGroup styleTypeSelection = new ButtonGroup();
+		
+		// Defined style selector
+		styleTypeSelection.add(definedStyleSelector);
+		*/
+<span class="nc" id="L299">		JComponent definedStylesHBox = SBoxLayout.createContainer(SBoxLayout.HORIZONTAL, pad);</span>
+<span class="nc" id="L300">		JLabel selectorLabel = new JLabel(&quot;Client style:&quot;);</span>
+<span class="nc" id="L301">		selectorLabel.setName(&quot;defined&quot;);</span>
+<span class="nc" id="L302">		definedStylesHBox.add(selectorLabel);</span>
+<span class="nc" id="L303">		JComponent selector = createStyleSelector();</span>
+<span class="nc" id="L304">		selector.setName(&quot;defined&quot;);</span>
+<span class="nc" id="L305">		definedStylesHBox.add(selector);</span>
+<span class="nc" id="L306">		definedStylesHBox.setToolTipText(&quot;&lt;html&gt;The style used to draw the controls in the game client.&quot;</span>
+				+ &quot;&lt;p&gt;This affects the look only, and will not change the behavior of the game.&lt;/html&gt;&quot;);
+		/*
+		styleBox.add(definedStyleSelector);*/
+<span class="nc" id="L310">		styleBox.add(definedStylesHBox);</span>
+		/*
+		// Custom style options
+		styleTypeSelection.add(customStyleSelector);
+		styleBox.add(customStyleSelector);
+		
+		// Text and border colors
+		final JPanel colorsPanel = new JPanel();
+		colorsPanel.setName(&quot;custom&quot;);
+		colorsPanel.setLayout(new GridLayout(2, 1));
+		List&lt;JLabel&gt; colorLabels = Arrays.asList(
+				new JLabel(&quot;Text&quot;), new JLabel(&quot;Hightlight&quot;), new JLabel(&quot;Shadow&quot;),
+				new JLabel(&quot;Border Color 1&quot;), new JLabel(&quot;Border Color 2&quot;),
+				new JLabel(&quot;Border Color 3&quot;), new JLabel(&quot;Border Color 4&quot;)
+				);
+		int ccount;
+		List&lt;ColorSelector&gt; colorButtons = Arrays.asList(
+				new ColorSelector(), new ColorSelector(), new ColorSelector(),
+				new ColorSelector(), new ColorSelector(), new ColorSelector(),
+				new ColorSelector()
+				);
+		for (ccount = 0; ccount &lt; colorLabels.size(); ccount++) {
+			colorsPanel.add(colorLabels.get(ccount));
+		}
+		for (ccount = 0; ccount &lt; colorButtons.size(); ccount++) {
+			colorsPanel.add(colorButtons.get(ccount));
+		}
+		
+		styleBox.add(colorsPanel);
+		
+		// Background image
+		JLabel bgSelectorText = new JLabel(&quot;Background image&quot;);
+		bgSelectorText.setName(&quot;custom&quot;);
+		JButton bgSelectorButton = new JButton(&quot;...&quot;);
+		bgSelectorButton.setName(&quot;custom&quot;);
+		JTextField bgSelectorInput = new JTextField();
+		bgSelectorInput.setName(&quot;custom&quot;);
+		JComponent bgSelectorHBox = SBoxLayout.createContainer(SBoxLayout.HORIZONTAL, pad);
+		bgSelectorHBox.add(bgSelectorButton);
+		bgSelectorHBox.add(bgSelectorInput);
+		
+		styleBox.add(bgSelectorText);
+		styleBox.add(bgSelectorHBox);
+		
+		bgSelectorButton.addActionListener(
+				new ActionListener() {
+					public void actionPerformed(ActionEvent event) {
+						selectBGImage();
+					}
+				});
+		
+		styleBox.add(Box.createHorizontalStrut(SBoxLayout.COMMON_PADDING));
+		
+		// Add event handlers for the style selector radio buttons
+		definedStyleSelector.addActionListener(
+				new ActionListener() {
+					public void actionPerformed(ActionEvent event) {
+						toggleComponents(page);
+						toggleComponents(colorsPanel);
+					}
+				});
+		customStyleSelector.addActionListener(
+				new ActionListener() {
+					public void actionPerformed(ActionEvent event) {
+						toggleComponents(page);
+						toggleComponents(colorsPanel);
+					}
+				});
+		*/
+<span class="nc" id="L379">		return styleBox;</span>
+	}
+	
+	/**
+	 * Create selector for the default font size.
+	 * 
+	 * @return component containing the selector
+	 */
+	private JComponent createFontSizeSelector() {
+<span class="nc" id="L388">		JComponent container = SBoxLayout.createContainer(SBoxLayout.HORIZONTAL, SBoxLayout.COMMON_PADDING);</span>
+<span class="nc" id="L389">		container.add(new JLabel(&quot;Text size:&quot;));</span>
+		
+<span class="nc" id="L391">		final JComboBox&lt;Object&gt; selector = new JComboBox&lt;&gt;();</span>
+		
+		// Fill the selector, and set current size as the selection
+<span class="nc" id="L394">		int current = WtWindowManager.getInstance().getPropertyInt(FONT_SIZE_PROPERTY, DEFAULT_FONT_SIZE);</span>
+<span class="nc" id="L395">		selector.addItem(&quot;default (12)&quot;);</span>
+<span class="nc bnc" id="L396" title="All 2 branches missed.">		for (int size = FONT_MIN_SIZE; size &lt;= FONT_MAX_SIZE; size += 2) {</span>
+<span class="nc" id="L397">			Integer obj = size;</span>
+<span class="nc" id="L398">			selector.addItem(obj);</span>
+<span class="nc bnc" id="L399" title="All 4 branches missed.">			if ((size == current) &amp;&amp; (size != DEFAULT_FONT_SIZE)) {</span>
+<span class="nc" id="L400">				selector.setSelectedItem(obj);</span>
+			}
+		}
+		
+<span class="nc" id="L404">		selector.addActionListener(new ActionListener() {</span>
+			@Override
+			public void actionPerformed(ActionEvent e) {
+<span class="nc" id="L407">				Object selected = selector.getSelectedItem();</span>
+<span class="nc bnc" id="L408" title="All 2 branches missed.">				if (&quot;default (12)&quot;.equals(selected)) {</span>
+<span class="nc" id="L409">					selected = &quot;12&quot;;</span>
+				}
+<span class="nc" id="L411">				WtWindowManager.getInstance().setProperty(FONT_SIZE_PROPERTY, selected.toString());</span>
+				
+<span class="nc" id="L413">				LookAndFeel look = UIManager.getLookAndFeel();</span>
+<span class="nc bnc" id="L414" title="All 2 branches missed.">				if (look instanceof StyledLookAndFeel) {</span>
+<span class="nc" id="L415">					int size = MathHelper.parseIntDefault(selected.toString(), DEFAULT_FONT_SIZE);</span>
+<span class="nc" id="L416">					((StyledLookAndFeel) look).setDefaultFontSize(size);</span>
+				}
+<span class="nc" id="L418">			}</span>
+		});
+<span class="nc" id="L420">		container.add(selector);</span>
+<span class="nc" id="L421">		container.setToolTipText(&quot;Common text size&quot;);</span>
+<span class="nc" id="L422">		return container;</span>
+	}
+	
+	/**
+	 * Create selector for the font used in the quest log and achievements.
+	 * 
+	 * @return component for specifying a font
+	 */
+	private JComponent createFontSelector() {
+<span class="nc" id="L431">		int pad = SBoxLayout.COMMON_PADDING;</span>
+<span class="nc" id="L432">		JComponent fontBox = SBoxLayout.createContainer(SBoxLayout.VERTICAL, pad);</span>
+<span class="nc" id="L433">		fontBox.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createEtchedBorder(),</span>
+				BorderFactory.createEmptyBorder(pad, pad, pad, pad)));
+		
+		// There seems to be no good way to change the default background color
+		// of all components. The color is needed for making the etched border.
+<span class="nc" id="L438">		Style style = StyleUtil.getStyle();</span>
+<span class="nc bnc" id="L439" title="All 2 branches missed.">		if (style != null) {</span>
+<span class="nc" id="L440">			fontBox.setBackground(style.getPlainColor());</span>
+		}
+		
+<span class="nc" id="L443">		JCheckBox fontToggle = new JCheckBox(&quot;Custom Decorative Font&quot;);</span>
+<span class="nc" id="L444">		fontToggle.setToolTipText(&quot;Set a custom font for the travel log and achievements&quot;);</span>
+<span class="nc" id="L445">		fontBox.add(fontToggle);</span>
+		
+<span class="nc" id="L447">		JComponent fontRow = SBoxLayout.createContainer(SBoxLayout.HORIZONTAL, pad);</span>
+<span class="nc" id="L448">		SBoxLayout.addSpring(fontRow);</span>
+<span class="nc" id="L449">		fontBox.add(fontRow, SLayout.EXPAND_X);</span>
+<span class="nc" id="L450">		final JLabel label = new JLabel(&quot;Font:&quot;);</span>
+<span class="nc" id="L451">		fontRow.add(label);</span>
+<span class="nc" id="L452">		final JComboBox&lt;String&gt; fontList = new JComboBox&lt;&gt;();</span>
+<span class="nc" id="L453">		GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();</span>
+<span class="nc bnc" id="L454" title="All 2 branches missed.">		for (String font : ge.getAvailableFontFamilyNames()) {</span>
+<span class="nc" id="L455">			fontList.addItem(font);</span>
+		}
+		// Show the user what's in use at the moment
+<span class="nc" id="L458">		String font = WtWindowManager.getInstance().getProperty(FONT_PROPERTY, DEFAULT_FONT);</span>
+<span class="nc" id="L459">		fontList.setSelectedItem(font);</span>
+<span class="nc" id="L460">		fontRow.add(fontList);</span>
+		
+		// Detect if the font property had been changed from the default.
+<span class="nc" id="L463">		boolean changed = fontChanged(); </span>
+<span class="nc" id="L464">		fontToggle.setSelected(changed);</span>
+<span class="nc" id="L465">		fontList.setEnabled(changed);</span>
+<span class="nc" id="L466">		label.setEnabled(changed);</span>
+		
+		// Bind the toggle button to enabling and disabling the selector
+<span class="nc" id="L469">		fontToggle.addItemListener(new ItemListener() {</span>
+			@Override
+			public void itemStateChanged(ItemEvent e) {
+<span class="nc bnc" id="L472" title="All 2 branches missed.">				boolean enabled = (e.getStateChange() == ItemEvent.SELECTED);</span>
+<span class="nc bnc" id="L473" title="All 2 branches missed.">				if (enabled) {</span>
+<span class="nc" id="L474">					String selected = fontList.getSelectedItem().toString();</span>
+<span class="nc" id="L475">					WtWindowManager.getInstance().setProperty(FONT_PROPERTY, selected);</span>
+<span class="nc" id="L476">				} else {</span>
+<span class="nc" id="L477">					WtWindowManager.getInstance().setProperty(FONT_PROPERTY, DEFAULT_FONT);</span>
+				}
+<span class="nc" id="L479">				fontList.setEnabled(enabled);</span>
+<span class="nc" id="L480">				label.setEnabled(enabled);</span>
+<span class="nc" id="L481">			}</span>
+		});
+		
+		// Bind changing the selection to changing the font. The selector is
+		// enabled only when font changing is enabled, so this should be safe
+<span class="nc" id="L486">		fontList.addActionListener(new ActionListener() {</span>
+			@Override
+			public void actionPerformed(ActionEvent e) {
+<span class="nc" id="L489">				String selected = fontList.getSelectedItem().toString();</span>
+<span class="nc" id="L490">				WtWindowManager.getInstance().setProperty(FONT_PROPERTY, selected);</span>
+<span class="nc" id="L491">			}</span>
+		});
+		
+<span class="nc" id="L494">		return fontBox;</span>
+	}
+	
+	/**
+	 * Check if a custom font is in use.
+	 * 
+	 * @return &lt;code&gt;true&lt;/code&gt; if the user has changed the font from the
+	 * 	default, &lt;code&gt;false&lt;/code&gt; otherwise 
+	 */
+	private boolean fontChanged() {
+<span class="nc" id="L504">		String currentSetting = WtWindowManager.getInstance().getProperty(FONT_PROPERTY, DEFAULT_FONT);</span>
+<span class="nc bnc" id="L505" title="All 2 branches missed.">		return !currentSetting.equals(DEFAULT_FONT);</span>
+	}
+
+	/*
+	private String selectBGImage() {
+		JFileChooser bgSelector = new JFileChooser();
+		bgSelector.setDialogType(JFileChooser.OPEN_DIALOG | JFileChooser.FILES_ONLY);
+		bgSelector.setDialogTitle(&quot;Select an image to use for the client background&quot;);
+		//bgSelector.createDialog(this.page);
+		
+		// Returning null until I figure out how to use JFileChooser
+		return null;
+	}
+	*/
+
+	/**
+	 * A cell renderer for combo boxes that can show different tooltips for the
+	 * options. The implementation is currently dependent on the data being in
+	 * the format used in {@link #createTransparencySelector()}, so if this is
+	 * needed elsewhere it needs to be generalized first.
+	 */
+	private static class TooltippedRenderer extends DefaultListCellRenderer {
+		private final String[][] data;
+		
+<span class="nc" id="L529">		TooltippedRenderer(String[][] data) {</span>
+<span class="nc" id="L530">			this.data = data;</span>
+<span class="nc" id="L531">		}</span>
+		
+		@Override
+		public Component getListCellRendererComponent(JList&lt;?&gt; list, Object value,
+				int index, boolean isSelected, boolean cellHasFocus) {
+
+<span class="nc" id="L537">			JComponent comp = (JComponent) super.getListCellRendererComponent(list,</span>
+					value, index, isSelected, cellHasFocus);
+
+<span class="nc bnc" id="L540" title="All 4 branches missed.">			if ((index &gt; -1) &amp;&amp; (value != null)) {</span>
+<span class="nc" id="L541">				list.setToolTipText(&quot;&lt;html&gt;&quot; + data[index][2] + &quot;&lt;/html&gt;&quot;);</span>
+			}
+<span class="nc" id="L543">			return comp;</span>
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>WellSource.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.mapstuff.useable</a> &gt; <span class="el_source">WellSource.java</span></div><h1>WellSource.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.mapstuff.useable;
+
+import games.stendhal.common.Rand;
+import games.stendhal.common.grammar.Grammar;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.entity.item.Item;
+import games.stendhal.server.entity.item.StackableItem;
+import games.stendhal.server.entity.player.Player;
+import marauroa.common.game.RPClass;
+
+/**
+ * A well source is a spot where a player can make a wish to gain an item. He
+ * needs time and luck.
+ * 
+ * Wishing takes 10 seconds + randomized 4 seconds; during this time, the player keep standing next to
+ * the well source. At every well are two sources next to each other, so the
+ * player can actually make 2 wishes at once.
+ * 
+ * @author kymara (based on FishSource by daniel)
+ * 
+ */
+public class WellSource extends PlayerActivityEntity {
+	/**
+	 * The list of possible rewards.
+	 */
+<span class="fc" id="L38">	private static final String[] items = { &quot;money&quot;, &quot;wood&quot;, &quot;iron ore&quot;,</span>
+			&quot;gold nugget&quot;, &quot;potion&quot;, &quot;home scroll&quot;, &quot;greater potion&quot;,
+			&quot;sapphire&quot;, &quot;carbuncle&quot;, &quot;horned golden helmet&quot;, &quot;dark dagger&quot;,
+			&quot;present&quot; };
+	
+	/**
+	 * The chance that wishing is successful.
+	 */
+	private static final double FINDING_PROBABILITY = 0.05;
+
+	/**
+	 * How long it takes to wish at a well (in seconds). 
+	 */
+	private static final int DURATION = 10;
+
+	/**
+	 * Create a wishing well source.
+	 */
+<span class="nc" id="L56">	public WellSource() {</span>
+<span class="nc" id="L57">		put(&quot;class&quot;, &quot;source&quot;);</span>
+<span class="nc" id="L58">		put(&quot;name&quot;, &quot;well_source&quot;);</span>
+<span class="nc" id="L59">		setMenu(&quot;Make a wish|Use&quot;);</span>
+<span class="nc" id="L60">		setDescription(&quot;You see a wishing well. Something in it catches your eye.&quot;);</span>
+<span class="nc" id="L61">		setResistance(0);</span>
+<span class="nc" id="L62">	}</span>
+	
+	/**
+	 * source name.
+	 */
+	@Override
+	public String getName() {
+<span class="nc" id="L69">		return(&quot;wishing well&quot;);</span>
+	}
+
+	//
+	// WellSource
+	//
+
+	public static void generateRPClass() {
+<span class="fc" id="L77">		final RPClass rpclass = new RPClass(&quot;well_source&quot;);</span>
+<span class="fc" id="L78">		rpclass.isA(&quot;entity&quot;);</span>
+<span class="fc" id="L79">	}</span>
+
+	//
+	// PlayerActivityEntity
+	//
+
+	/**
+	 * Get the time it takes to perform this activity.
+	 * 
+	 * @return The time to perform the activity (in seconds).
+	 */
+	@Override
+	protected int getDuration() {
+<span class="nc" id="L92">		return DURATION + Rand.rand(5);</span>
+	}
+
+	/**
+	 * Decides if the activity can be done.
+	 * 
+	 * @return &lt;code&gt;true&lt;/code&gt; if successful.
+	 */
+	@Override
+	protected boolean isPrepared(final Player player) {
+        /*
+        * The player 'throws' money into the well, like a wishing well donation.
+        * Check they have it before they use the well.
+		*/
+<span class="nc bnc" id="L106" title="All 2 branches missed.">		if (player.isEquipped(&quot;money&quot;, 30)) {</span>
+<span class="nc" id="L107">			return true;</span>
+		} else {
+<span class="nc" id="L109">			player.sendPrivateText(&quot;You need 30 coins to make a wish.&quot;);</span>
+<span class="nc" id="L110">			return false;</span>
+		}
+	}
+
+	/**
+	 * Decides if the activity was successful.
+	 * 
+	 * @return &lt;code&gt;true&lt;/code&gt; if successful.
+	 */
+	@Override
+	protected boolean isSuccessful(final Player player) {
+<span class="nc" id="L121">		final int random = Rand.roll1D100();</span>
+        /*
+        * Use some karma to help decide if the outcome is successful
+        * We want to use up quite a bit karma at once, so scale it after
+		*/
+<span class="nc" id="L126">		double karma = player.useKarma(FINDING_PROBABILITY*10);</span>
+
+		// if player karma is &gt; 0 it will always return at least 20% of FINDING_PROBABILITY*10, or karma, whichever is smaller
+		// so we can safely say if the karma returned is &lt;= 0, the player had &lt;= 0 karma.
+		// so we'll penalise these stronger
+<span class="nc bnc" id="L131" title="All 2 branches missed.">		if (karma &lt;= 0) {</span>
+<span class="nc" id="L132">			karma = karma - FINDING_PROBABILITY*5;</span>
+		}
+<span class="nc" id="L134">		karma = karma / 10;</span>
+		// right hand side could be negative, if karma was negative but thats ok.
+<span class="nc bnc" id="L136" title="All 2 branches missed.">		return random &lt;= (FINDING_PROBABILITY + karma) * 100;</span>
+	}
+
+	/**
+	 * Called when the activity has finished.
+	 * 
+	 * @param player
+	 *            The player that did the activity.
+	 * @param successful
+	 *            If the activity was successful.
+	 */
+	@Override
+	protected void onFinished(final Player player, final boolean successful) {
+<span class="nc bnc" id="L149" title="All 2 branches missed.">		if (successful) {</span>
+<span class="nc" id="L150">			final String itemName = items[Rand.rand(items.length)];</span>
+<span class="nc" id="L151">			final Item item = SingletonRepository.getEntityManager().getItem(itemName);</span>
+<span class="nc" id="L152">			int amount = 1;</span>
+<span class="nc bnc" id="L153" title="All 4 branches missed.">			if (itemName.equals(&quot;dark dagger&quot;)</span>
+					|| itemName.equals(&quot;horned golden helmet&quot;)) {
+				/*
+				 * Bound powerful items.
+				 */
+<span class="nc" id="L158">				item.setBoundTo(player.getName());</span>
+<span class="nc bnc" id="L159" title="All 2 branches missed.">			} else if (itemName.equals(&quot;money&quot;)) {</span>
+				/*
+				 * Assign a random amount of money from 1 to 100.
+				 */
+<span class="nc" id="L163">				amount = Rand.roll1D100();</span>
+<span class="nc" id="L164">				((StackableItem) item).setQuantity(amount);</span>
+			}
+
+<span class="nc" id="L167">			player.equipOrPutOnGround(item);</span>
+<span class="nc" id="L168">			player.incObtainedForItem(item.getName(), item.getQuantity());</span>
+<span class="nc" id="L169">			SingletonRepository.getAchievementNotifier().onObtain(player);</span>
+<span class="nc" id="L170">			player.sendPrivateText(&quot;You were lucky and found &quot;</span>
+					+ Grammar.quantityplnoun(amount, itemName, &quot;a&quot;)+ &quot;.&quot;);
+<span class="nc" id="L172">		} else {</span>
+<span class="nc" id="L173">			player.sendPrivateText(&quot;Your wish didn't come true.&quot;);</span>
+		}
+<span class="nc" id="L175">	}</span>
+
+	/**
+	 * Called when the activity has started.
+	 * 
+	 * @param player
+	 *            The player starting the activity.
+	 */
+	@Override
+	protected void onStarted(final Player player) {
+		// remove 30 money from player as they throw a coin into the
+		// well
+<span class="nc" id="L187">		player.drop(&quot;money&quot;, 30);</span>
+<span class="nc" id="L188">		player.sendPrivateText(&quot;You throw 30 coins into the well and make a wish.&quot;);</span>
+<span class="nc" id="L189">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

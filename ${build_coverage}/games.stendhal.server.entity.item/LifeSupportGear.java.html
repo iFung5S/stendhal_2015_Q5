@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>LifeSupportGear.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.item</a> &gt; <span class="el_source">LifeSupportGear.java</span></div><h1>LifeSupportGear.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2015 - Faiumoni e. V.                   *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.item;
+
+import java.util.Map;
+
+import org.apache.log4j.Logger;
+
+import games.stendhal.common.Direction;
+import games.stendhal.common.MathHelper;
+import games.stendhal.server.core.engine.StendhalRPWorld;
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.core.events.TurnListener;
+import games.stendhal.server.core.events.TurnNotifier;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.events.GlobalVisualEffectEvent;
+import marauroa.common.game.RPObject;
+
+/**
+ * an item to survive in some environments (e. g. scuba gear)
+ */
+public class LifeSupportGear extends Item {
+<span class="fc" id="L32">	private Logger logger = Logger.getLogger(LifeSupportGear.class);</span>
+
+	/**
+	 * copy constructor
+	 *
+	 * @param item item to copy
+	 */
+	public LifeSupportGear(LifeSupportGear item) {
+<span class="fc" id="L40">		super(item);</span>
+<span class="fc" id="L41">	}</span>
+
+	/**
+	 * creates a new item
+	 *
+	 * @param name item name
+	 * @param clazz item class
+	 * @param subclass item subclass
+	 * @param attributes attributes
+	 */
+	public LifeSupportGear(String name, String clazz, String subclass, Map&lt;String, String&gt; attributes) {
+<span class="fc" id="L52">		super(name, clazz, subclass, attributes);</span>
+<span class="fc" id="L53">	}</span>
+
+	@Override
+	public boolean onUnequipped() {
+<span class="nc" id="L57">		logger.info(&quot;onUnequipped: &quot; + this.getBaseContainer());</span>
+<span class="nc" id="L58">		RPObject entity = this.getBaseContainer();</span>
+<span class="nc bnc" id="L59" title="All 2 branches missed.">		if (entity instanceof Player) {</span>
+<span class="nc bnc" id="L60" title="All 2 branches missed.">			if (isBadSituation((Player) entity)) {</span>
+<span class="nc" id="L61">				handleCriticalUnequipped((Player) entity);</span>
+			}
+		}
+<span class="nc" id="L64">		return super.onUnequipped();</span>
+	}
+
+	private boolean isBadSituation(final Player player) {
+		// was the item removed from the armor slot?
+<span class="nc" id="L69">		Item armor = player.getArmor();</span>
+<span class="nc bnc" id="L70" title="All 2 branches missed.">		if (armor != this) {</span>
+<span class="nc" id="L71">			return false;</span>
+		}
+		// does the zone require life support?
+<span class="nc" id="L74">		String requireLifeSupport = player.getZone().getAttributes().get(&quot;life_support_environment&quot;);</span>
+<span class="nc bnc" id="L75" title="All 2 branches missed.">		if (requireLifeSupport == null) {</span>
+<span class="nc" id="L76">			return false;</span>
+		}
+		// does this item offer required life support
+<span class="nc bnc" id="L79" title="All 2 branches missed.">		if (!requireLifeSupport.equals(this.get(&quot;life_support&quot;))) {</span>
+<span class="nc" id="L80">			return false;</span>
+		}
+
+<span class="nc" id="L83">		return true;</span>
+	}
+
+	private void handleCriticalUnequipped(final Player player) {
+<span class="nc" id="L87">		final String[] target = player.getZone().getAttributes().get(&quot;life_support_failure_location&quot;).split(&quot;[,; ]+&quot;);</span>
+<span class="nc" id="L88">		player.addEvent(new GlobalVisualEffectEvent(&quot;blacken&quot;, 1000));</span>
+<span class="nc" id="L89">		player.sendPrivateText(&quot;You cannot breath, the world around you turns black.&quot;);</span>
+<span class="nc" id="L90">		TurnNotifier.get().notifyInTurns(4, new TurnListener() {</span>
+
+			@Override
+			public void onTurnReached(int currentTurn) {
+<span class="nc" id="L94">				StendhalRPZone zone = StendhalRPWorld.get().getZone(target[0].trim());</span>
+<span class="nc" id="L95">				player.teleport(zone, MathHelper.parseInt(target[1]), MathHelper.parseInt(target[2]), Direction.DOWN, player);</span>
+
+<span class="nc" id="L97">				int hp = player.getHP();</span>
+<span class="nc" id="L98">				player.setHP(Math.min(hp, 50));</span>
+<span class="nc" id="L99">				player.sendPrivateText(&quot;You recover slowly, wondering where you are.&quot;);</span>
+<span class="nc" id="L100">			}</span>
+		});
+<span class="nc" id="L102">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

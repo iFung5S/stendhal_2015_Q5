@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>MarkedScroll.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.item.scroll</a> &gt; <span class="el_source">MarkedScroll.java</span></div><h1>MarkedScroll.java</h1><pre class="source lang-java linenums">/*
+ * $Id$
+ */
+/***************************************************************************
+ *                      (C) Copyright 2003 - Marauroa                      *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.item.scroll;
+
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.core.events.TeleportNotifier;
+import games.stendhal.server.entity.player.Player;
+
+import java.util.Map;
+import java.util.StringTokenizer;
+
+import org.apache.log4j.Logger;
+
+/**
+ * Represents a marked teleport scroll.
+ */
+public class MarkedScroll extends TeleportScroll {
+
+<span class="fc" id="L32">	private static final Logger logger = Logger.getLogger(MarkedScroll.class);</span>
+
+	/**
+	 * Creates a new marked teleport scroll.
+	 * 
+	 * @param name
+	 * @param clazz
+	 * @param subclass
+	 * @param attributes
+	 */
+	public MarkedScroll(final String name, final String clazz, final String subclass,
+			final Map&lt;String, String&gt; attributes) {
+<span class="fc" id="L44">		super(name, clazz, subclass, attributes);</span>
+<span class="fc" id="L45">	}</span>
+
+	/**
+	 * Copy constructor.
+	 * 
+	 * @param item
+	 *            item to copy
+	 */
+	public MarkedScroll(final MarkedScroll item) {
+<span class="fc" id="L54">		super(item);</span>
+<span class="fc" id="L55">	}</span>
+
+	/**
+	 * Is invoked when a teleporting scroll is used. Tries to put the player on
+	 * the scroll's destination, or near it.
+	 * 
+	 * @param player
+	 *            The player who used the scroll and who will be teleported
+	 * @return true iff teleport was successful
+	 */
+	@Override
+	protected boolean useTeleportScroll(final Player player) {
+		// init as home_scroll
+<span class="nc" id="L68">		StendhalRPZone zone = SingletonRepository.getRPWorld().getZone(&quot;0_semos_city&quot;);</span>
+<span class="nc" id="L69">		int x = 30;</span>
+<span class="nc" id="L70">		int y = 40;</span>
+
+		/*
+		 * Marked scrolls have a destination which is stored in the infostring,
+		 * existing of a zone name and x and y coordinates
+		 */
+<span class="nc" id="L76">		final String infostring = getInfoString();</span>
+
+<span class="nc bnc" id="L78" title="All 2 branches missed.">		if (infostring != null) {</span>
+<span class="nc" id="L79">			final StringTokenizer st = new StringTokenizer(infostring);</span>
+<span class="nc bnc" id="L80" title="All 2 branches missed.">			if (st.countTokens() == 3) {</span>
+				// check destination
+<span class="nc" id="L82">				final String zoneName = st.nextToken();</span>
+<span class="nc" id="L83">				final StendhalRPZone temp = SingletonRepository.getRPWorld().getZone(zoneName);</span>
+<span class="nc bnc" id="L84" title="All 2 branches missed.">				if (temp == null) {</span>
+					// invalid zone (the scroll may have been marked in an
+					// old version and the zone was removed)
+<span class="nc" id="L87">					player.sendPrivateText(&quot;Oh oh. For some strange reason the scroll did not teleport me to the right place.&quot;);</span>
+<span class="nc" id="L88">					logger.warn(&quot;marked scroll to unknown zone &quot; + infostring</span>
+							+ &quot; teleported &quot; + player.getName()
+							+ &quot; to Semos instead&quot;);
+				} else {
+<span class="nc bnc" id="L92" title="All 2 branches missed.">					if (player.getKeyedSlot(&quot;!visited&quot;, zoneName) == null) {</span>
+<span class="nc" id="L93">						player.sendPrivateText(&quot;Although you have heard a lot of rumors about the destination, &quot;</span>
+								+ &quot;you cannot concentrate on it because you have never been there.&quot;);
+<span class="nc" id="L95">						return false;</span>
+					} else {
+<span class="nc" id="L97">					        zone = temp;</span>
+<span class="nc" id="L98">					        x = Integer.parseInt(st.nextToken());</span>
+<span class="nc" id="L99">							y = Integer.parseInt(st.nextToken());</span>
+<span class="nc bnc" id="L100" title="All 2 branches missed.">						if (!zone.isTeleportInAllowed(x, y)) {</span>
+<span class="nc" id="L101">							player.sendPrivateText(&quot;The strong anti magic aura in the destination area prevents the scroll from working!&quot;);</span>
+<span class="nc" id="L102">							return false;</span>
+						}
+					}
+				}
+			}
+		}
+
+		// we use the player as teleporter (last parameter) to give feedback
+		// if something goes wrong.
+<span class="nc" id="L111">		TeleportNotifier.get().notify(player, true);</span>
+<span class="nc" id="L112">		return player.teleport(zone, x, y, null, player);</span>
+	}
+	
+	@Override
+	public String describe() {
+<span class="nc" id="L117">		String text = super.describe();</span>
+
+<span class="nc" id="L119">		final String infostring = getInfoString();</span>
+
+<span class="nc bnc" id="L121" title="All 2 branches missed.">		if (infostring != null) {</span>
+<span class="nc" id="L122">			text += &quot; Upon it is written: &quot; + infostring;</span>
+		}
+<span class="nc" id="L124">		return (text);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

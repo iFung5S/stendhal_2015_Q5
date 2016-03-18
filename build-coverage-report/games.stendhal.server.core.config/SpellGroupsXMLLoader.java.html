@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SpellGroupsXMLLoader.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.core.config</a> &gt; <span class="el_source">SpellGroupsXMLLoader.java</span></div><h1>SpellGroupsXMLLoader.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.core.config;
+
+import games.stendhal.server.core.rule.defaultruleset.DefaultSpell;
+
+import java.io.IOException;
+import java.net.URI;
+import java.util.LinkedList;
+import java.util.List;
+
+import org.apache.log4j.Logger;
+import org.xml.sax.SAXException;
+import org.xml.sax.helpers.DefaultHandler;
+/**
+ * XML based loader of spell groups
+ * 
+ * @author madmetzger
+ */
+public class SpellGroupsXMLLoader extends DefaultHandler {
+	
+<span class="fc" id="L32">	private static final Logger logger = Logger.getLogger(SpellGroupsXMLLoader.class);</span>
+	
+	protected URI uri;
+	
+
+	/**
+	 * Create an XML based loader of spell groups.
+	 * 
+	 * @param uri
+	 *            The location of the configuration file.
+	 */
+<span class="fc" id="L43">	public SpellGroupsXMLLoader(final URI uri) {</span>
+<span class="fc" id="L44">		this.uri = uri;</span>
+<span class="fc" id="L45">	}</span>
+
+	/**
+	 * Load spells.
+	 * 
+	 * @return list of spells
+	 * @throws SAXException
+	 *             If a SAX error occurred.
+	 * @throws IOException
+	 *             If an I/O error occurred.
+	 */
+	public List&lt;DefaultSpell&gt; load() throws SAXException, IOException {
+<span class="fc" id="L57">		final GroupsXMLLoader groupsLoader = new GroupsXMLLoader(uri);</span>
+		
+<span class="fc" id="L59">		final List&lt;URI&gt; groups = groupsLoader.load();</span>
+<span class="fc" id="L60">		final SpellXMLLoader loader = new SpellXMLLoader();</span>
+
+<span class="fc" id="L62">		final List&lt;DefaultSpell&gt; list = new LinkedList&lt;DefaultSpell&gt;();</span>
+<span class="fc bfc" id="L63" title="All 2 branches covered.">		for (final URI groupUri : groups) {</span>
+<span class="fc" id="L64">			logger.debug(&quot;Loading spell group [&quot; + groupUri + &quot;]&quot;);</span>
+<span class="fc" id="L65">			list.addAll(loader.load(groupUri));</span>
+<span class="fc" id="L66">		}</span>
+
+<span class="fc" id="L68">		return list;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>BellSoundSource.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.mapstuff.sound</a> &gt; <span class="el_source">BellSoundSource.java</span></div><h1>BellSoundSource.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.mapstuff.sound;
+
+import games.stendhal.common.MathHelper;
+import games.stendhal.common.constants.SoundLayer;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.core.events.TurnListener;
+import games.stendhal.server.entity.PassiveEntity;
+import games.stendhal.server.events.SoundEvent;
+
+import java.util.Calendar;
+
+/**
+ * A sound event generating object for the churches. Plays bell sound every half
+ * an hour.
+ */
+public class BellSoundSource extends PassiveEntity implements TurnListener {
+	/** The played sound */
+	private static final String SOUND_FILE = &quot;bell-1&quot;;
+	/** Radius of the sound */
+	private static final int RADIUS = 70;
+	/** Volume of the sound */
+	private static final int VOLUME = 120;
+
+	/** Time between bell playings in minutes. */
+	private static final int TIME_SLICE = MathHelper.MINUTES_IN_ONE_HOUR / 2;
+
+	/** Time between individual bell sounds when playing */
+	private static final int TIME_BETWEEN_SOUNDS = 3;
+
+<span class="nc" id="L43">	public BellSoundSource() {</span>
+		/*
+		 * The client won't add anything but entities to the GameObjects.
+		 */
+<span class="nc" id="L47">		setRPClass(&quot;entity&quot;);</span>
+<span class="nc" id="L48">		put(&quot;type&quot;, &quot;entity&quot;);</span>
+<span class="nc" id="L49">	}</span>
+
+	@Override
+	public void onAdded(StendhalRPZone zone) {
+<span class="nc" id="L53">		super.onAdded(zone);</span>
+<span class="nc" id="L54">		startTimer();</span>
+<span class="nc" id="L55">	}</span>
+
+	@Override
+	public void onTurnReached(int currentTurn) {
+<span class="nc" id="L59">		Calendar now = Calendar.getInstance();</span>
+<span class="nc" id="L60">		int minute = now.get(Calendar.MINUTE);</span>
+		// Check if the time is closer to even or half hour
+<span class="nc bnc" id="L62" title="All 2 branches missed.">		if (Math.abs(30 - minute) % 60 &lt; 15) {</span>
+			// half hour, play just once
+<span class="nc" id="L64">			new BellPlay(1);</span>
+		} else {
+			// Full hour. Play up to 12 times
+<span class="nc" id="L67">			int bongs = now.get(Calendar.HOUR);</span>
+<span class="nc bnc" id="L68" title="All 2 branches missed.">			if (bongs == 0) {</span>
+<span class="nc" id="L69">				bongs = 12;</span>
+			}
+<span class="nc" id="L71">			new BellPlay(bongs);</span>
+		}
+<span class="nc" id="L73">	}</span>
+
+	/**
+	 * Start the timer for the next playing.
+	 */
+	private void startTimer() {
+		/*
+		 * Time between playing is not very precise. It depends on the accuracy
+		 * of the hourglass of the sacristan. (One minute precision + any turn
+		 * time overflows).
+		 */
+<span class="nc" id="L84">		Calendar now = Calendar.getInstance();</span>
+<span class="nc" id="L85">		int timeToNext = TIME_SLICE - (now.get(Calendar.MINUTE) % TIME_SLICE);</span>
+<span class="nc" id="L86">		SingletonRepository.getTurnNotifier().notifyInSeconds(Math.max(1, timeToNext * MathHelper.SECONDS_IN_ONE_MINUTE), this);</span>
+<span class="nc" id="L87">	}</span>
+
+	/**
+	 * A playing of bells.
+	 */
+	private class BellPlay implements TurnListener {
+		/** Remaining number of hitting the bell */
+		int times;
+
+		/**
+		 * Create a new BellPlay.
+		 *
+		 * @param times number of times the bell should be played
+		 */
+<span class="nc" id="L101">		public BellPlay(int times) {</span>
+<span class="nc" id="L102">			this.times = times;</span>
+			// Start playing immediately
+<span class="nc" id="L104">			onTurnReached(0);</span>
+<span class="nc" id="L105">		}</span>
+
+		@Override
+		public void onTurnReached(int currentTurn) {
+<span class="nc" id="L109">			playSound();</span>
+<span class="nc bnc" id="L110" title="All 2 branches missed.">			if (times &gt; 0) {</span>
+<span class="nc" id="L111">				startTimer();</span>
+			} else {
+				// Job finished. Return to the main notifier
+<span class="nc" id="L114">				BellSoundSource.this.startTimer();</span>
+			}
+<span class="nc" id="L116">		}</span>
+
+		/**
+		 * Create a sound event for one hit of the bell.
+		 */
+		private void playSound() {
+<span class="nc" id="L122">			times--;</span>
+<span class="nc" id="L123">			SoundEvent event = new SoundEvent(SOUND_FILE, RADIUS, VOLUME, SoundLayer.AMBIENT_SOUND);</span>
+<span class="nc" id="L124">			BellSoundSource.this.addEvent(event);</span>
+<span class="nc" id="L125">			BellSoundSource.this.notifyWorldAboutChanges();</span>
+<span class="nc" id="L126">		}</span>
+
+		/**
+		 * Start the internal timer.
+		 */
+		private void startTimer() {
+<span class="nc" id="L132">			SingletonRepository.getTurnNotifier().notifyInSeconds(TIME_BETWEEN_SOUNDS, this);</span>
+<span class="nc" id="L133">		}</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

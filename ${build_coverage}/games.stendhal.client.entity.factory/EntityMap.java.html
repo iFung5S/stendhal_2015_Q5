@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>EntityMap.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.entity.factory</a> &gt; <span class="el_source">EntityMap.java</span></div><h1>EntityMap.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                      (C) Copyright 2003 - Marauroa                      *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+
+package games.stendhal.client.entity.factory;
+
+import games.stendhal.client.Triple;
+import games.stendhal.client.entity.Block;
+import games.stendhal.client.entity.Blood;
+import games.stendhal.client.entity.BossCreature;
+import games.stendhal.client.entity.Box;
+import games.stendhal.client.entity.CarrotGrower;
+import games.stendhal.client.entity.Chest;
+import games.stendhal.client.entity.Corpse;
+import games.stendhal.client.entity.Creature;
+import games.stendhal.client.entity.Door;
+import games.stendhal.client.entity.Entity;
+import games.stendhal.client.entity.Fire;
+import games.stendhal.client.entity.GameBoard;
+import games.stendhal.client.entity.Gate;
+import games.stendhal.client.entity.GrainField;
+import games.stendhal.client.entity.HousePortal;
+import games.stendhal.client.entity.IEntity;
+import games.stendhal.client.entity.InvisibleEntity;
+import games.stendhal.client.entity.Item;
+import games.stendhal.client.entity.LoopedSoundSource;
+import games.stendhal.client.entity.NPC;
+import games.stendhal.client.entity.Pet;
+import games.stendhal.client.entity.PlantGrower;
+import games.stendhal.client.entity.Player;
+import games.stendhal.client.entity.Portal;
+import games.stendhal.client.entity.Ring;
+import games.stendhal.client.entity.Sheep;
+import games.stendhal.client.entity.SheepFood;
+import games.stendhal.client.entity.Sign;
+import games.stendhal.client.entity.Spell;
+import games.stendhal.client.entity.StackableItem;
+import games.stendhal.client.entity.StatefulEntity;
+import games.stendhal.client.entity.UseableItem;
+import games.stendhal.client.entity.UseableRing;
+import games.stendhal.client.entity.WalkBlocker;
+import games.stendhal.client.entity.Wall;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import org.apache.log4j.Logger;
+
+/**
+ * Registers the relationship between Type, eclass and java class of entity
+ * Objects.
+ * &lt;p&gt;
+ * eclass represents a subtype of type
+ * &lt;p&gt;
+ * EntityMap encapsulates the implementation
+ * 
+ */
+<span class="nc" id="L66">public final class EntityMap {</span>
+<span class="fc" id="L67">	private static Map&lt;Triple&lt;String, String, String&gt;, Class&lt; ? extends IEntity&gt;&gt; entityMap = new HashMap&lt;Triple&lt;String, String, String&gt;, Class&lt; ? extends IEntity&gt;&gt;();</span>
+
+	static {
+<span class="fc" id="L70">		register();</span>
+<span class="fc" id="L71">	}</span>
+
+	/**
+	 * Fills EntityMap with initial values.
+	 */
+	private static void register() {
+<span class="fc" id="L77">		register(&quot;entity&quot;, null, null, Entity.class);</span>
+
+<span class="fc" id="L79">		register(&quot;player&quot;, null, null, Player.class);</span>
+
+<span class="fc" id="L81">		register(&quot;creature&quot;, &quot;ent&quot;, null, BossCreature.class);</span>
+<span class="fc" id="L82">		register(&quot;creature&quot;, null, null, Creature.class);</span>
+
+<span class="fc" id="L84">		register(&quot;sheep&quot;, null, null, Sheep.class);</span>
+
+<span class="fc" id="L86">		register(&quot;baby_dragon&quot;, null, null, Pet.class);</span>
+<span class="fc" id="L87">		register(&quot;purple_dragon&quot;, null, null, Pet.class);</span>
+<span class="fc" id="L88">		register(&quot;cat&quot;, null, null, Pet.class);</span>
+<span class="fc" id="L89">		register(&quot;pet&quot;, null, null, Pet.class);</span>
+
+<span class="fc" id="L91">		register(&quot;npc&quot;, null, null, NPC.class);</span>
+
+<span class="fc" id="L93">		register(&quot;plant_grower&quot;, null, null, PlantGrower.class);</span>
+<span class="fc" id="L94">		register(&quot;walkblocker&quot;, null, null, WalkBlocker.class);</span>
+
+<span class="fc" id="L96">		register(&quot;growing_entity_spawner&quot;, &quot;items/grower/carrot_grower&quot;, null,</span>
+				CarrotGrower.class);
+<span class="fc" id="L98">		register(&quot;growing_entity_spawner&quot;, &quot;items/grower/wood_grower&quot;, null,</span>
+				CarrotGrower.class);
+<span class="fc" id="L100">		register(&quot;growing_entity_spawner&quot;, null, null, GrainField.class);</span>
+
+<span class="fc" id="L102">		register(&quot;useable_entity&quot;, null, null, StatefulEntity.class);</span>
+		// deprecated start
+<span class="fc" id="L104">		register(&quot;gold_source&quot;, null, null, StatefulEntity.class);</span>
+<span class="fc" id="L105">		register(&quot;fish_source&quot;, null, null, StatefulEntity.class);</span>
+<span class="fc" id="L106">		register(&quot;well_source&quot;, null, null, StatefulEntity.class);</span>
+		// deprecated end
+
+<span class="fc" id="L109">		register(&quot;area&quot;, null, null, InvisibleEntity.class);</span>
+<span class="fc" id="L110">		register(&quot;block&quot;, null, null, Block.class);</span>
+
+<span class="fc" id="L112">		register(&quot;food&quot;, null, null, SheepFood.class);</span>
+<span class="fc" id="L113">		register(&quot;chest&quot;, null, null, Chest.class);</span>
+
+<span class="fc" id="L115">		register(&quot;corpse&quot;, null, null, Corpse.class);</span>
+
+<span class="fc" id="L117">		register(&quot;blood&quot;, null, null, Blood.class);</span>
+
+<span class="fc" id="L119">		register(&quot;blackboard&quot;, null, null, Sign.class);</span>
+<span class="fc" id="L120">		register(&quot;sign&quot;, null, null, Sign.class);</span>
+<span class="fc" id="L121">		register(&quot;rented_sign&quot;, null, null, Sign.class);</span>
+<span class="fc" id="L122">		register(&quot;shop_sign&quot;, null, null, Sign.class);</span>
+<span class="fc" id="L123">		register(&quot;tradecentersign&quot;, null, null, Sign.class);</span>
+
+<span class="fc" id="L125">		register(&quot;item&quot;, null, null, Item.class);</span>
+<span class="fc" id="L126">		register(&quot;item&quot;, &quot;box&quot;, null, Box.class);</span>
+<span class="fc" id="L127">		register(&quot;item&quot;, &quot;ring&quot;, &quot;emerald-ring&quot;, Ring.class);</span>
+<span class="fc" id="L128">		register(&quot;item&quot;, &quot;ring&quot;, null, UseableRing.class);</span>
+
+<span class="fc" id="L130">		register(&quot;item&quot;, &quot;drink&quot;, null, UseableItem.class);</span>
+<span class="fc" id="L131">		register(&quot;item&quot;, &quot;flower&quot;, null, StackableItem.class);</span>
+<span class="fc" id="L132">		register(&quot;item&quot;, &quot;food&quot;, null, UseableItem.class);</span>
+<span class="fc" id="L133">		register(&quot;item&quot;, &quot;tool&quot;, &quot;foodmill&quot;, UseableItem.class);</span>
+<span class="fc" id="L134">		register(&quot;item&quot;, &quot;tool&quot;, &quot;sugarmill&quot;, UseableItem.class);</span>
+<span class="fc" id="L135">		register(&quot;item&quot;, &quot;tool&quot;, &quot;scrolleraser&quot;, UseableItem.class);</span>
+<span class="fc" id="L136">		register(&quot;item&quot;, &quot;herb&quot;, null, StackableItem.class);</span>
+<span class="fc" id="L137">		register(&quot;item&quot;, &quot;misc&quot;, null, StackableItem.class);</span>
+<span class="fc" id="L138">		register(&quot;item&quot;, &quot;money&quot;, null, StackableItem.class);</span>
+<span class="fc" id="L139">		register(&quot;item&quot;, &quot;missile&quot;, null, StackableItem.class);</span>
+<span class="fc" id="L140">		register(&quot;item&quot;, &quot;ammunition&quot;, null, StackableItem.class);</span>
+<span class="fc" id="L141">		register(&quot;item&quot;, &quot;container&quot;, null, StackableItem.class);</span>
+<span class="fc" id="L142">		register(&quot;item&quot;, &quot;special&quot;, null, StackableItem.class);</span>
+<span class="fc" id="L143">		register(&quot;item&quot;, &quot;special&quot;, &quot;mithril clasp&quot;, Item.class);</span>
+<span class="fc" id="L144">		register(&quot;item&quot;, &quot;club&quot;, &quot;wizard_staff&quot;, UseableItem.class);</span>
+<span class="fc" id="L145">		register(&quot;item&quot;, &quot;misc&quot;, &quot;seed&quot;, UseableItem.class);</span>
+<span class="fc" id="L146">		register(&quot;item&quot;, &quot;misc&quot;, &quot;bulb&quot;, UseableItem.class);</span>
+
+<span class="fc" id="L148">		register(&quot;item&quot;, &quot;resource&quot;, null, StackableItem.class);</span>
+
+<span class="fc" id="L150">		register(&quot;item&quot;, &quot;scroll&quot;, null, UseableItem.class);</span>
+<span class="fc" id="L151">		register(&quot;item&quot;, &quot;jewellery&quot;, null, StackableItem.class);</span>
+
+<span class="fc" id="L153">		register(&quot;item&quot;, &quot;token&quot;, null, Item.class);</span>
+		
+<span class="fc" id="L155">		register(&quot;portal&quot;, null, null, Portal.class);</span>
+<span class="fc" id="L156">		register(&quot;house_portal&quot;, null, null, HousePortal.class);</span>
+<span class="fc" id="L157">		register(&quot;door&quot;, null, null, Door.class);</span>
+<span class="fc" id="L158">		register(&quot;fire&quot;, null, null, Fire.class);</span>
+		
+<span class="fc" id="L160">		register(&quot;spell&quot;, null, null, Spell.class);</span>
+
+<span class="fc" id="L162">		register(&quot;gate&quot;, null, null, Gate.class);</span>
+<span class="fc" id="L163">		register(&quot;game_board&quot;, null, null, GameBoard.class);</span>
+<span class="fc" id="L164">		register(&quot;wall&quot;, null, null, Wall.class);</span>
+<span class="fc" id="L165">		register(&quot;weather_entity&quot;, null, null, InvisibleEntity.class);</span>
+
+<span class="fc" id="L167">		register(&quot;looped_sound_source&quot;, null, null, LoopedSoundSource.class);</span>
+<span class="fc" id="L168">	}</span>
+
+	/**
+	 * @param type
+	 *            the type of the entity to be created, such as Item, creature
+	 * @param eclass
+	 *            the subtype of type such as book, drink, food , ,
+	 *            small_animal, huge_animal
+	 * @param subClass
+	 * @param entityClazz
+	 *            the java class of the Entity
+	 */
+	private static void register(final String type, final String eclass,
+			final String subClass, final Class&lt; ? extends IEntity&gt; entityClazz) {
+<span class="fc" id="L182">		entityMap.put(</span>
+				new Triple&lt;String, String, String&gt;(type, eclass, subClass),
+				entityClazz);
+<span class="fc" id="L185">	}</span>
+
+	/**
+	 * @param type
+	 *            the type of the entity to be created, such as Item, creature
+	 * @param eclass
+	 *            the subtype of type such as book, drink, food , ,
+	 *            small_animal, huge_animal
+	 * @param subClass
+	 * 
+	 * @return the java class of the Entity belonging to type and eclass
+	 */
+	public static Class&lt; ? extends IEntity&gt; getClass(final String type,
+			final String eclass, final String subClass) {
+<span class="fc" id="L199">		Class&lt; ? extends IEntity&gt; result = entityMap</span>
+				.get(new Triple&lt;String, String, String&gt;(type, eclass, subClass));
+<span class="fc bfc" id="L201" title="All 2 branches covered.">		if (result == null) {</span>
+<span class="fc" id="L202">			result = entityMap.get(new Triple&lt;String, String, String&gt;(type,</span>
+					eclass, null));
+		}
+<span class="fc bfc" id="L205" title="All 2 branches covered.">		if (result == null) {</span>
+<span class="fc" id="L206">			result = entityMap.get(new Triple&lt;String, String, String&gt;(type,</span>
+					null, null));
+		}
+<span class="fc bfc" id="L209" title="All 2 branches covered.">		if (result == null) {</span>
+			
+<span class="fc" id="L211">			Logger.getLogger(EntityMap.class).error(&quot;no class for &quot; + type + &quot;,&quot; + eclass + &quot;,&quot; + subClass);</span>
+		}
+		// System.out.println(type + &quot;,&quot; + eclass + &quot;,&quot; + subClass);
+<span class="fc" id="L214">		return result;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

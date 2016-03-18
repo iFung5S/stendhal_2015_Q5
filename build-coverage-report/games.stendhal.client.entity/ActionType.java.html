@@ -1,0 +1,289 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ActionType.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.entity</a> &gt; <span class="el_source">ActionType.java</span></div><h1>ActionType.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.entity;
+
+import games.stendhal.client.StendhalClient;
+import games.stendhal.common.constants.Actions;
+import marauroa.common.game.Definition.DefinitionClass;
+import marauroa.common.game.RPAction;
+import marauroa.common.game.RPClass;
+import marauroa.common.game.RPObject;
+
+/**
+ * translates the visual representation into server side commands.
+ *
+ * @author astridemma
+ */
+<span class="nc" id="L27">public enum ActionType {</span>
+<span class="nc" id="L28">	LOOK(&quot;look&quot;, &quot;Look&quot;) {</span>
+		@Override
+		public RPAction fillTargetInfo(final IEntity entity) {
+<span class="nc" id="L31">			return fillTargetPath(super.fillTargetInfo(entity), entity);</span>
+		}
+	},
+<span class="nc" id="L34">	READ(&quot;look&quot;, &quot;Read&quot;),</span>
+<span class="nc" id="L35">	LOOK_CLOSELY(&quot;use&quot;, &quot;Look closely&quot;),</span>
+<span class="nc" id="L36">	INSPECT(&quot;inspect&quot;, &quot;Inspect&quot;) {</span>
+		@Override
+		public RPAction fillTargetInfo(final IEntity entity) {
+<span class="nc" id="L39">			return fillTargetPath(super.fillTargetInfo(entity), entity);</span>
+		}
+	},
+<span class="nc" id="L42">	ATTACK(&quot;attack&quot;, &quot;Attack&quot;),</span>
+<span class="nc" id="L43">	STOP_ATTACK(&quot;stop&quot;, &quot;Stop attack&quot;),</span>
+<span class="nc" id="L44">	PUSH(&quot;push&quot;, &quot;Push&quot;),</span>
+<span class="nc" id="L45">	CLOSE(&quot;use&quot;, &quot;Close&quot;),</span>
+<span class="nc" id="L46">	OPEN(&quot;use&quot;, &quot;Open&quot;) {</span>
+		@Override
+		public RPAction fillTargetInfo(final IEntity entity) {
+<span class="nc" id="L49">			return fillTargetPath(super.fillTargetInfo(entity), entity);</span>
+		}
+	},
+<span class="nc" id="L52">	OWN(&quot;own&quot;, &quot;Own&quot;),</span>
+<span class="nc" id="L53">	USE(&quot;use&quot;, &quot;Use&quot;) {</span>
+		@Override
+		public RPAction fillTargetInfo(final IEntity entity) {
+<span class="nc" id="L56">			return fillTargetPath(super.fillTargetInfo(entity), entity);</span>
+		}
+	},
+<span class="nc" id="L59">	HARVEST(&quot;use&quot;, &quot;Harvest&quot;),</span>
+<span class="nc" id="L60">	PICK(&quot;use&quot;, &quot;Pick&quot;),</span>
+<span class="nc" id="L61">	PROSPECT(&quot;use&quot;, &quot;Prospect&quot;),</span>
+<span class="nc" id="L62">	FISH(&quot;use&quot;, &quot;Fish&quot;),</span>
+<span class="nc" id="L63">	WISH(&quot;use&quot;, &quot;Make a Wish&quot;),</span>
+<span class="nc" id="L64">	LEAVE_SHEEP(&quot;forsake&quot;, &quot;Leave sheep&quot;) {</span>
+		@Override
+		public RPAction fillTargetInfo(final IEntity entity) {
+<span class="nc" id="L67">			RPAction rpaction = super.fillTargetInfo(entity);</span>
+<span class="nc" id="L68">			rpaction.put(&quot;species&quot;, &quot;sheep&quot;);</span>
+<span class="nc" id="L69">			return rpaction;</span>
+		}
+	},
+<span class="nc" id="L72">	LEAVE_PET(&quot;forsake&quot;, &quot;Leave pet&quot;) {</span>
+		@Override
+		public RPAction fillTargetInfo(final IEntity entity) {
+<span class="nc" id="L75">			RPAction rpaction = super.fillTargetInfo(entity);</span>
+<span class="nc" id="L76">			rpaction.put(&quot;species&quot;, &quot;pet&quot;);</span>
+<span class="nc" id="L77">			return rpaction;</span>
+		}
+	},
+<span class="nc" id="L80">	ADD_BUDDY(&quot;addbuddy&quot;, &quot;Add to Buddies&quot;) {</span>
+		@Override
+		public RPAction fillTargetInfo(final IEntity entity) {
+<span class="nc" id="L83">			RPAction rpaction = super.fillTargetInfo(entity);</span>
+<span class="nc" id="L84">			rpaction.put(&quot;target&quot;, entity.getName());</span>
+<span class="nc" id="L85">			return rpaction;</span>
+		}
+	},
+<span class="nc" id="L88">	IGNORE(&quot;ignore&quot;, &quot;Ignore&quot;) {</span>
+		@Override
+		public RPAction fillTargetInfo(final IEntity entity) {
+<span class="nc" id="L91">			RPAction rpaction = super.fillTargetInfo(entity);</span>
+<span class="nc" id="L92">			rpaction.put(&quot;target&quot;, entity.getName());</span>
+<span class="nc" id="L93">			return rpaction;</span>
+		}
+	},
+<span class="nc" id="L96">	UNIGNORE(&quot;unignore&quot;, &quot;Remove Ignore&quot;) {</span>
+		@Override
+		public RPAction fillTargetInfo(final IEntity entity) {
+<span class="nc" id="L99">			RPAction rpaction = super.fillTargetInfo(entity);</span>
+<span class="nc" id="L100">			rpaction.put(&quot;target&quot;, entity.getName());</span>
+<span class="nc" id="L101">			return rpaction;</span>
+		}
+	},
+<span class="nc" id="L104">	TRADE(&quot;trade&quot;, &quot;Trade&quot;) {</span>
+		@Override
+		public RPAction fillTargetInfo(final IEntity entity) {
+<span class="nc" id="L107">			RPAction rpaction = super.fillTargetInfo(entity);</span>
+<span class="nc" id="L108">			rpaction.put(&quot;action&quot;, &quot;offer_trade&quot;);</span>
+<span class="nc" id="L109">			return rpaction;</span>
+		}
+	},
+<span class="nc" id="L112">	ADMIN_INSPECT(&quot;inspect&quot;, &quot;(*)Inspect&quot;) {</span>
+		@Override
+		public RPAction fillTargetInfo(final IEntity entity) {
+<span class="nc" id="L115">			return fillTargetPath(super.fillTargetInfo(entity), entity);</span>
+		}
+	},
+<span class="nc" id="L118">	ADMIN_DESTROY(&quot;destroy&quot;, &quot;(*)Destroy&quot;) {</span>
+		@Override
+		public RPAction fillTargetInfo(final IEntity entity) {
+<span class="nc" id="L121">			return fillTargetPath(super.fillTargetInfo(entity), entity);</span>
+		}
+	},
+<span class="nc" id="L124">	ADMIN_ALTER(&quot;alter&quot;, &quot;(*)Alter&quot;) {</span>
+		@Override
+		public RPAction fillTargetInfo(final IEntity entity) {
+<span class="nc" id="L127">			return fillTargetPath(super.fillTargetInfo(entity), entity);</span>
+		}
+	},
+<span class="nc" id="L130">	SET_OUTFIT(&quot;outfit&quot;, &quot;Set outfit&quot;),</span>
+<span class="nc" id="L131">	WHERE(&quot;where&quot;, &quot;Where&quot;) {</span>
+		@Override
+		public RPAction fillTargetInfo(final IEntity entity) {
+<span class="nc" id="L134">			RPAction rpaction = super.fillTargetInfo(entity);</span>
+<span class="nc" id="L135">			rpaction.put(&quot;target&quot;, entity.getName());</span>
+<span class="nc" id="L136">			return rpaction;</span>
+		}
+	},
+<span class="nc" id="L139">	ADMIN_VIEW_NPC_TRANSITIONS(&quot;npctransitions&quot;, &quot;(*)View Transitions&quot;),</span>
+<span class="nc" id="L140">	KNOCK(&quot;knock&quot;, &quot;Knock&quot;),</span>
+<span class="nc" id="L141">	INVITE(&quot;group_management&quot;, &quot;Invite&quot;) {</span>
+
+		@Override
+		public RPAction fillTargetInfo(IEntity entity) {
+			// invite action needs to add additional parameters to the RPAction
+<span class="nc" id="L146">			RPAction a = super.fillTargetInfo(entity);</span>
+<span class="nc" id="L147">			a.put(&quot;action&quot;, &quot;invite&quot;);</span>
+<span class="nc" id="L148">			a.put(&quot;params&quot;, entity.getName());</span>
+<span class="nc" id="L149">			return a;</span>
+		}
+		
+	},
+<span class="nc" id="L153">	WALK_START(&quot;walk&quot;, &quot;Walk&quot;),</span>
+<span class="nc" id="L154">	WALK_STOP(&quot;walk&quot;, &quot;Stop&quot;);</span>
+
+	/**
+	 * the String send to the server, if so.
+	 */
+	private final String actionCode;
+
+	/**
+	 * the String which is shown to the user.
+	 */
+	private final String actionRepresentation;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param actCode
+	 *            the code to be sent to the server
+	 * @param actionRep
+	 *            the String to be shown to the user
+	 */
+<span class="nc" id="L174">	private ActionType(final String actCode, final String actionRep) {</span>
+<span class="nc" id="L175">		actionCode = actCode;</span>
+<span class="nc" id="L176">		actionRepresentation = actionRep;</span>
+<span class="nc" id="L177">	}</span>
+
+	/**
+	 * finds the ActionType that belongs to a visual String representation.
+	 *
+	 * @param representation
+	 *            the menu String
+	 * @return the Action Element or null if not found
+	 */
+	public static ActionType getbyRep(final String representation) {
+<span class="nc bnc" id="L187" title="All 2 branches missed.">		for (final ActionType at : ActionType.values()) {</span>
+<span class="nc bnc" id="L188" title="All 2 branches missed.">			if (at.actionRepresentation.equals(representation)) {</span>
+<span class="nc" id="L189">				return at;</span>
+			}
+
+		}
+<span class="nc" id="L193">		return null;</span>
+	}
+
+	/**
+	 * @return the command code for usage on server side
+	 */
+	@Override
+	public String toString() {
+<span class="nc" id="L201">		return actionCode;</span>
+	}
+
+	/**
+	 * @return the String the user should see on the menu
+	 */
+	public String getRepresentation() {
+<span class="nc" id="L208">		return actionRepresentation;</span>
+	}
+
+	/**
+	 * sends the requested action to the server.
+	 *
+	 * @param rpaction
+	 *            action to be sent
+	 */
+	public void send(final RPAction rpaction) {
+<span class="nc" id="L218">		StendhalClient.get().send(rpaction);</span>
+<span class="nc" id="L219">	}</span>
+
+	/**
+	 * Create an RPAction with target information pointing to an entity.
+	 * 
+	 * @param entity target entity
+	 * @return action with entity as the target
+	 */
+	public RPAction fillTargetInfo(final IEntity entity) {
+<span class="nc" id="L228">		RPAction rpaction = new RPAction();</span>
+
+<span class="nc" id="L230">		RPClass rpClass = RPClass.getRPClass(actionCode);</span>
+<span class="nc" id="L231">		boolean includeZone = true;</span>
+<span class="nc bnc" id="L232" title="All 2 branches missed.">		if (rpClass != null) {</span>
+<span class="nc" id="L233">			rpaction.setRPClass(actionCode);</span>
+<span class="nc bnc" id="L234" title="All 2 branches missed.">			if (rpClass.getDefinition(DefinitionClass.ATTRIBUTE, &quot;zone&quot;) == null) {</span>
+<span class="nc" id="L235">				includeZone = false;</span>
+			}
+		} else {
+<span class="nc" id="L238">			rpaction.put(&quot;type&quot;, toString());</span>
+		}
+		
+<span class="nc" id="L241">		RPObject rpObject = entity.getRPObject(); </span>
+<span class="nc" id="L242">		final int id = rpObject.getID().getObjectID();</span>
+		// Compatibility: Don't include zone if the action does not support it
+<span class="nc bnc" id="L244" title="All 2 branches missed.">		if (includeZone) {</span>
+<span class="nc" id="L245">			rpaction.put(&quot;zone&quot;, entity.getRPObject().getBaseContainer().get(&quot;zoneid&quot;));</span>
+		}
+
+<span class="nc bnc" id="L248" title="All 2 branches missed.">		if (rpObject.isContained()) {</span>
+			/*
+			 * Compatibility for old servers. Cannot handle nested objects.
+			 * The actions that need to cope with contained objects should call
+			 * fillTargetPath().
+			 */
+<span class="nc" id="L254">			rpaction.put(&quot;baseobject&quot;,</span>
+					rpObject.getContainer().getID().getObjectID());
+<span class="nc" id="L256">			rpaction.put(&quot;baseslot&quot;, rpObject.getContainerSlot().getName());</span>
+<span class="nc" id="L257">			rpaction.put(&quot;baseitem&quot;, id);</span>
+		} else {
+			StringBuilder target;
+<span class="nc" id="L260">			target = new StringBuilder(&quot;#&quot;);</span>
+<span class="nc" id="L261">			target.append(Integer.toString(id));</span>
+<span class="nc" id="L262">			rpaction.put(&quot;target&quot;, target.toString());</span>
+		}
+
+<span class="nc" id="L265">		return rpaction;</span>
+	}
+	
+	/**
+	 * Add target information for a contained target object.
+	 * 
+	 * @param action
+	 * @param entity target entity
+	 * @return the action
+	 */
+	RPAction fillTargetPath(RPAction action, IEntity entity) {
+<span class="nc" id="L276">		action.put(Actions.TARGET_PATH, entity.getPath());</span>
+<span class="nc" id="L277">		return action;</span>
+	}
+
+	/**
+	 * gets the action code
+	 *
+	 * @return actioncode
+	 */
+	public String getActionCode() {
+<span class="nc" id="L286">		return actionCode;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

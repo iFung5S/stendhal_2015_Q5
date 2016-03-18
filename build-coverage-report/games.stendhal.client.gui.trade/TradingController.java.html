@@ -1,0 +1,326 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>TradingController.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui.trade</a> &gt; <span class="el_source">TradingController.java</span></div><h1>TradingController.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui.trade;
+
+import games.stendhal.client.ClientSingletonRepository;
+import games.stendhal.client.entity.IEntity;
+import games.stendhal.client.gui.j2DClient;
+import games.stendhal.common.TradeState;
+
+import javax.swing.JComponent;
+import javax.swing.SwingUtilities;
+
+import marauroa.common.game.RPAction;
+
+/**
+ * Object for processing trade state changes and sending trading commands.
+ */
+public final class TradingController {
+	/** The controller instance. */
+	private static TradingController instance;
+	/** Trading window component. */
+	private final TradingWindow window;
+	
+	private IEntity tradingPartner;
+	private IEntity user;
+	
+	private TradeState myState;
+	private TradeState partnerState;
+	
+	/**
+	 * Create the controller instance.
+	 */
+<span class="nc" id="L43">	private TradingController() {</span>
+<span class="nc" id="L44">		window = new TradingWindow(this);</span>
+<span class="nc" id="L45">	}</span>
+	
+	/**
+	 * Get the trading window component.
+	 * 
+	 * @return trading window
+	 */
+	public JComponent getWindow() {
+<span class="nc" id="L53">		return window;</span>
+	}
+	
+	/**
+	 * Set the new trading state.
+	 * 
+	 * @param user the trading user
+	 * @param partner the trading partner
+	 * @param myState state of the user
+	 * @param partnerState state of the trading partner 
+	 */
+	public void setState(IEntity user, IEntity partner, TradeState myState, TradeState partnerState) {
+<span class="nc" id="L65">		setMyState(myState);</span>
+<span class="nc" id="L66">		setPartner(partner);</span>
+<span class="nc" id="L67">		setUser(user);</span>
+<span class="nc" id="L68">		setPartnerState(partnerState);</span>
+<span class="nc bnc" id="L69" title="All 2 branches missed.">		if (myState != TradeState.NO_ACTIVE_TRADE) {</span>
+<span class="nc bnc" id="L70" title="All 2 branches missed.">			if (myState == TradeState.TRADE_COMPLETED) {</span>
+<span class="nc" id="L71">				SwingUtilities.invokeLater(new Runnable() {</span>
+					@Override
+					public void run() {
+						/*
+						 * Completed a trade. Close the window.
+						 */
+<span class="nc" id="L77">						window.close();</span>
+<span class="nc" id="L78">					}</span>
+				});
+<span class="nc bnc" id="L80" title="All 2 branches missed.">			} else if (window.getParent() == null) {</span>
+<span class="nc" id="L81">				SwingUtilities.invokeLater(new Runnable() {</span>
+					@Override
+					public void run() {
+						// Starting a trade, and there was no window visible.
+<span class="nc" id="L85">						j2DClient.get().addWindow(window);</span>
+<span class="nc" id="L86">						window.setVisible(true);</span>
+<span class="nc" id="L87">					}</span>
+				});
+			}
+		}
+<span class="nc" id="L91">	}</span>
+	
+	/**
+	 * Set the current trading partner.
+	 * 
+	 * @param partner new trading partner
+	 */
+	private void setPartner(final IEntity partner) {
+<span class="nc bnc" id="L99" title="All 2 branches missed.">		if (partner != tradingPartner) {</span>
+<span class="nc" id="L100">			tradingPartner = partner;</span>
+			/*
+			 * Partner gets set to null on cancelled trade. Do not show the
+			 * window if the user already closed it
+			 */  
+<span class="nc bnc" id="L105" title="All 2 branches missed.">			if (partner != null) {</span>
+<span class="nc" id="L106">				SwingUtilities.invokeLater(new Runnable() {</span>
+					@Override
+					public void run() {
+<span class="nc" id="L109">						window.setPartnerSlot(partner, &quot;trade&quot;);</span>
+<span class="nc" id="L110">						window.setPartnerName(partner.getName());</span>
+<span class="nc" id="L111">					}</span>
+				});
+			}
+		}
+<span class="nc" id="L115">	}</span>
+	
+	/**
+	 * Set the current user, if it has changed.
+	 * 
+	 * @param user current user
+	 */
+	private void setUser(final IEntity user) {
+<span class="nc bnc" id="L123" title="All 2 branches missed.">		if (this.user != user) {</span>
+<span class="nc" id="L124">			this.user = user;</span>
+<span class="nc" id="L125">			SwingUtilities.invokeLater(new Runnable() {</span>
+				@Override
+				public void run() {
+<span class="nc" id="L128">					window.setUserSlot(user, &quot;trade&quot;);</span>
+<span class="nc" id="L129">				}</span>
+			});
+		}
+<span class="nc" id="L132">	}</span>
+	
+	/**
+	 * Set the trading state of the user.
+	 * 
+	 * @param state user trade state
+	 */
+	private void setMyState(TradeState state) {
+<span class="nc bnc" id="L140" title="All 2 branches missed.">		if (myState != state) {</span>
+<span class="nc" id="L141">			myState = state;</span>
+<span class="nc" id="L142">			onMyStateChanged();</span>
+		}
+<span class="nc" id="L144">	}</span>
+	
+	/**
+	 * Set the trading status of the partner.
+	 * 
+	 * @param state partner trade state
+	 */
+	private void setPartnerState(TradeState state) {
+<span class="nc bnc" id="L152" title="All 2 branches missed.">		if (partnerState != state) {</span>
+<span class="nc" id="L153">			partnerState = state;</span>
+<span class="nc" id="L154">			onPartnerStateChanged();</span>
+		}
+<span class="nc" id="L156">	}</span>
+	
+	/**
+	 * Process changes of the user's trade state. Modify the window so that it
+	 * allows the same operations as the server. 
+	 */
+	private void onMyStateChanged() {
+<span class="nc" id="L163">		Runnable guiChange = null;</span>
+<span class="nc bnc" id="L164" title="All 5 branches missed.">		switch (myState) {</span>
+		case NO_ACTIVE_TRADE:
+<span class="nc" id="L166">			guiChange = new Runnable() {</span>
+				@Override
+				public void run() {
+<span class="nc" id="L169">					window.disableAll();</span>
+					/*
+					 * A hack to hide the partners' trading slot in case he
+					 * starts a new trade with someone else while our trading
+					 * window is still visible.
+					 */
+<span class="nc bnc" id="L175" title="All 2 branches missed.">					if (window.isShowing()) {</span>
+<span class="nc" id="L176">						window.setPartnerSlot(user, &quot;trade&quot;);</span>
+					}
+<span class="nc" id="L178">				}</span>
+			};
+<span class="nc" id="L180">			break;</span>
+		case MAKING_OFFERS:
+<span class="nc" id="L182">			guiChange = new Runnable() {</span>
+				@Override
+				public void run() {
+<span class="nc" id="L185">					window.allowAccept(false);</span>
+<span class="nc" id="L186">					window.allowOffer(true);</span>
+<span class="nc" id="L187">					window.allowCancel(true);</span>
+<span class="nc" id="L188">					window.setUserStatus(myState);</span>
+<span class="nc" id="L189">				}</span>
+			};
+<span class="nc" id="L191">			break;</span>
+		case LOCKED:
+<span class="nc" id="L193">			guiChange = new Runnable() {</span>
+				@Override
+				public void run() {
+<span class="nc bnc" id="L196" title="All 2 branches missed.">					window.allowAccept(partnerState == TradeState.LOCKED);</span>
+<span class="nc" id="L197">					window.allowOffer(false);</span>
+<span class="nc" id="L198">					window.allowCancel(true);</span>
+<span class="nc" id="L199">					window.setUserStatus(myState);</span>
+<span class="nc" id="L200">				}</span>
+			};
+<span class="nc" id="L202">			break;</span>
+		case DEAL_WAITING_FOR_OTHER_DEAL:
+<span class="nc" id="L204">			guiChange = new Runnable() {</span>
+				@Override
+				public void run() {
+<span class="nc" id="L207">					window.allowAccept(false);</span>
+<span class="nc" id="L208">					window.allowOffer(false);</span>
+<span class="nc" id="L209">					window.allowCancel(true);</span>
+					// It's the partner's offer that has been accepted
+<span class="nc" id="L211">					window.setPartnerStatus(myState);</span>
+<span class="nc" id="L212">				}</span>
+			};
+<span class="nc" id="L214">			break;</span>
+		default:
+				// do nothing
+		}
+		
+		
+<span class="nc bnc" id="L220" title="All 2 branches missed.">		if (guiChange != null) {</span>
+<span class="nc" id="L221">			SwingUtilities.invokeLater(guiChange);</span>
+		}
+<span class="nc" id="L223">	}</span>
+	
+	/**
+	 * Process changes of the trading partner's trade state. Modify the window
+	 * so that it allows the same operations as the server. 
+	 */
+	private void onPartnerStateChanged() {
+<span class="nc" id="L230">		Runnable guiChange = null;</span>
+<span class="nc bnc" id="L231" title="All 4 branches missed.">		switch (partnerState) {</span>
+		case MAKING_OFFERS:
+<span class="nc" id="L233">			guiChange = new Runnable() {</span>
+				@Override
+				public void run() {
+<span class="nc" id="L236">					window.allowAccept(false);</span>
+<span class="nc" id="L237">					window.allowCancel(true);</span>
+<span class="nc" id="L238">					window.setPartnerStatus(partnerState);</span>
+					// - keep current offering state
+<span class="nc" id="L240">				}</span>
+			};
+<span class="nc" id="L242">			break;</span>
+		case LOCKED:
+<span class="nc" id="L244">			guiChange = new Runnable() {</span>
+				@Override
+				public void run() {
+<span class="nc bnc" id="L247" title="All 2 branches missed.">					window.allowAccept(myState == TradeState.LOCKED);</span>
+<span class="nc bnc" id="L248" title="All 2 branches missed.">					window.allowOffer(myState != TradeState.LOCKED);</span>
+<span class="nc" id="L249">					window.allowCancel(true);</span>
+<span class="nc" id="L250">					window.setPartnerStatus(partnerState);</span>
+<span class="nc" id="L251">				}</span>
+			};
+<span class="nc" id="L253">			break;</span>
+		case DEAL_WAITING_FOR_OTHER_DEAL:
+<span class="nc" id="L255">			guiChange = new Runnable() {</span>
+				@Override
+				public void run() {
+<span class="nc" id="L258">					window.allowAccept(true);</span>
+<span class="nc" id="L259">					window.allowOffer(false);</span>
+<span class="nc" id="L260">					window.allowCancel(true);</span>
+					// It's the user's trade that has been accepted
+<span class="nc" id="L262">					window.setUserStatus(partnerState);</span>
+<span class="nc" id="L263">				}</span>
+			};
+<span class="nc" id="L265">			break;</span>
+		default:
+				// do nothing
+		}
+		
+<span class="nc bnc" id="L270" title="All 2 branches missed.">		if (guiChange != null) {</span>
+<span class="nc" id="L271">			SwingUtilities.invokeLater(guiChange);</span>
+		}
+<span class="nc" id="L273">	}</span>
+	
+	/**
+	 * Get the trading controller instance.
+	 * 
+	 * @return controller instance
+	 */
+	public static synchronized TradingController get() {
+<span class="nc bnc" id="L281" title="All 2 branches missed.">		if (instance == null) {</span>
+<span class="nc" id="L282">			instance = new TradingController();</span>
+		}
+		
+<span class="nc" id="L285">		return instance;</span>
+	}
+	
+	/**
+	 * Make a trading action.
+	 * 
+	 * @return a trading action
+	 */
+	private RPAction makeAction() {
+<span class="nc" id="L294">		RPAction action = new RPAction();</span>
+<span class="nc" id="L295">		action.put(&quot;type&quot;, &quot;trade&quot;);</span>
+<span class="nc" id="L296">		return action;</span>
+	}
+	
+	/**
+	 * Send a trade cancelled action to the server.
+	 */
+	void cancelTrade() {
+<span class="nc" id="L303">		RPAction action = makeAction();</span>
+<span class="nc" id="L304">		action.put(&quot;action&quot;, &quot;cancel&quot;);</span>
+<span class="nc" id="L305">		ClientSingletonRepository.getClientFramework().send(action);</span>
+<span class="nc" id="L306">	}</span>
+	
+	/**
+	 * Send a lock offer action to the server.
+	 */
+	void lockTrade() {
+<span class="nc" id="L312">		RPAction action = makeAction();</span>
+<span class="nc" id="L313">		action.put(&quot;action&quot;, &quot;lock&quot;);</span>
+<span class="nc" id="L314">		ClientSingletonRepository.getClientFramework().send(action);</span>
+<span class="nc" id="L315">	}</span>
+	
+	/**
+	 * Send an accept trade action to the server.
+	 */
+	void acceptTrade() {
+<span class="nc" id="L321">		RPAction action = makeAction();</span>
+<span class="nc" id="L322">		action.put(&quot;action&quot;, &quot;deal&quot;);</span>
+<span class="nc" id="L323">		ClientSingletonRepository.getClientFramework().send(action);</span>
+<span class="nc" id="L324">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

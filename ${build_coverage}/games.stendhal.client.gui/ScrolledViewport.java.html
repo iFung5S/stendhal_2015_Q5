@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ScrolledViewport.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui</a> &gt; <span class="el_source">ScrolledViewport.java</span></div><h1>ScrolledViewport.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui;
+
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
+import java.awt.event.ComponentListener;
+
+import javax.swing.JComponent;
+import javax.swing.JScrollPane;
+import javax.swing.border.Border;
+
+/**
+ * A JScrollPane variant that hides the child components border completely when
+ * the scroll bars are not shown.
+ */
+public class ScrolledViewport {
+	private final JScrollPane scrollPane;
+	private final JComponent view;
+	private final Border originalBorder;
+	
+	/**
+	 * Create a new ScrolledViewport.
+	 * 
+	 * @param view child component. The border that view has at the moment when
+	 * 	the ScrolledViewport is created is used when ant least one of the scroll
+	 * 	bars is visible.
+	 */
+<span class="nc" id="L38">	public ScrolledViewport(JComponent view) {</span>
+<span class="nc" id="L39">		this.view = view;</span>
+<span class="nc" id="L40">		originalBorder = view.getBorder();</span>
+<span class="nc" id="L41">		scrollPane = new JScrollPane(view);</span>
+<span class="nc" id="L42">		ComponentListener listener = new ScrollBarVisibilityChangeListener();</span>
+<span class="nc" id="L43">		scrollPane.getHorizontalScrollBar().addComponentListener(listener);</span>
+<span class="nc" id="L44">		scrollPane.getVerticalScrollBar().addComponentListener(listener);</span>
+<span class="nc" id="L45">	}</span>
+	
+	/**
+	 * Get the enclosing component.
+	 * 
+	 * @return JScrollPane containing the view
+	 */
+	public JComponent getComponent() {
+<span class="nc" id="L53">		return scrollPane;</span>
+	}
+	
+	/**
+	 * Set the scrolling speed when using the mouse wheel.
+	 * 
+	 * @param speed
+	 */
+	public void setScrollingSpeed(int speed) {
+<span class="nc" id="L62">		scrollPane.getHorizontalScrollBar().setUnitIncrement(speed);</span>
+<span class="nc" id="L63">		scrollPane.getVerticalScrollBar().setUnitIncrement(speed);</span>
+<span class="nc" id="L64">	}</span>
+	
+	/**
+	 * Listener for following scroll bar visibility changes.
+	 */
+<span class="nc" id="L69">	private class ScrollBarVisibilityChangeListener extends ComponentAdapter {</span>
+		@Override
+		public void componentHidden(ComponentEvent e) {
+<span class="nc" id="L72">			updateBorder();</span>
+<span class="nc" id="L73">		}</span>
+		
+		@Override
+		public void componentShown(ComponentEvent e) {
+<span class="nc" id="L77">			updateBorder();</span>
+<span class="nc" id="L78">		}</span>
+		
+		/**
+		 * Show the border if at least one of the scroll bars is visible, hide
+		 * it otherwise.
+		 */
+		private void updateBorder() {
+<span class="nc bnc" id="L85" title="All 4 branches missed.">			if (scrollPane.getHorizontalScrollBar().isVisible()</span>
+				|| scrollPane.getVerticalScrollBar().isVisible()) {
+<span class="nc" id="L87">				view.setBorder(originalBorder);</span>
+			} else {
+<span class="nc" id="L89">				view.setBorder(null);</span>
+			}
+<span class="nc" id="L91">		}</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>
