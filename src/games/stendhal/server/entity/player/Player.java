@@ -200,7 +200,7 @@ public class Player extends RPEntity implements UseListener {
 		}
 		player.setOutfit(outfit);
 
-		for (final String slot : Arrays.asList("armor", "rhand")) {
+		for (final String slot : Arrays.asList("armor", "rhand"/*, "finger"*/)) {
 			player.addSlot(slot);
 		}
 
@@ -213,6 +213,11 @@ public class Player extends RPEntity implements UseListener {
 		entity = SingletonRepository.getEntityManager().getItem("club");
 		slot = player.getSlot("rhand");
 		slot.add(entity);
+		
+		// adding stealth ring for testing
+		//entity = SingletonRepository.getEntityManager().getItem("stealth ring");
+		//slot = player.getSlot("finger");
+		//slot.add(entity);
 
 		return player;
 	}
