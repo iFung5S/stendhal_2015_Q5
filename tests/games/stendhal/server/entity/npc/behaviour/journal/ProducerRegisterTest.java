@@ -154,5 +154,56 @@ public class ProducerRegisterTest {
 
 	}
 	
+	/**
+	 * Tests for add Jef.
+	 */
+	@Test
+	public final void testAddJef() {
+		final ProducerRegister producerRegister = new ProducerRegister() {
+		};
+		// check first that it is empty
+		assertTrue(producerRegister.getProducers().isEmpty());
+		
+		final Map<String, Integer> requiredResources = new TreeMap<String, Integer>();
+		requiredResources.put("flour", 2);
+		requiredResources.put("cheese", 4);
+		requiredResources.put("onion", 1);
+		final ProducerBehaviour behaviour = new ProducerBehaviour("jef_make_pie", "make", "cheese and onion pie",
+				requiredResources, 1 * 60);
+		
+		producerRegister.add("Jef", behaviour);
+		
+		assertFalse(producerRegister.getProducers().isEmpty());
+		assertTrue(producerRegister.getProducers().size()==1);
+	}
+	
+	/**
+	 * Tests listing the working producers for Jef
+	 */
+	@Test
+	public final void testListWorkingProducersForJef() {
+		final ProducerRegister producerRegister = new ProducerRegister() {
+		};
+		Player player = PlayerTestHelper.createPlayer("player");
+		
+		MockStendlRPWorld.get();
+		
+		final StendhalRPZone zone = new StendhalRPZone("admin_test");
+		// call NPC code which will make ProducerAdder add to register
+		new BakerNPC().configureZone(zone, null);
+		
+		assertFalse(producerRegister.getProducers().isEmpty());
+		
+		// no orders yet because the player didn't start any
+		assertEquals(producerRegister.listWorkingProducers(player),"You have no ongoing or uncollected orders.");
+		
+		player.setQuest("jef_make_pie", "1;pie;1");
+		
+		//collect orders
+		player.setQuest("jef_make_pie", "done");
+		
+		// no orders now because they are all collected
+		assertEquals(producerRegister.listWorkingProducers(player),"You have no ongoing or uncollected orders.");
+	}
 
 }
