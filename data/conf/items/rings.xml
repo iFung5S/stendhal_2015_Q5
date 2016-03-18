@@ -125,7 +125,7 @@
   <item name="stealth ring">
     <type class="ring" subclass="emerald-ring" tileid="-1"/>
     <description>Stealth Ring. One ring to rule them all...</description>
-    <implementation class-name="games.stendhal.server.entity.item.RingOfLife"/>
+    <implementation class-name="games.stendhal.server.entity.item.Item"/>
     <attributes>
       <amount value="1"/>
       <persistent value="1"/>
