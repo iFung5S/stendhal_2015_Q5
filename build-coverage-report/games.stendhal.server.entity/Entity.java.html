@@ -1,0 +1,791 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Entity.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity</a> &gt; <span class="el_source">Entity.java</span></div><h1>Entity.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                      (C) Copyright 2003 - Marauroa                      *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity;
+
+import static games.stendhal.server.core.engine.Translate._;
+import games.stendhal.common.ItemTools;
+import games.stendhal.common.constants.Events;
+import games.stendhal.common.grammar.Grammar;
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.entity.slot.EntitySlot;
+import games.stendhal.server.entity.slot.SlotNameInList;
+import games.stendhal.server.entity.slot.Slots;
+
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.awt.geom.Rectangle2D;
+import java.util.Iterator;
+
+import marauroa.common.game.Definition;
+import marauroa.common.game.Definition.Type;
+import marauroa.common.game.RPClass;
+import marauroa.common.game.RPObject;
+import marauroa.common.game.RPSlot;
+
+import org.apache.log4j.Logger;
+
+import com.google.common.base.Predicate;
+import com.google.common.collect.Iterators;
+
+public abstract class Entity extends RPObject implements Killer {
+	/**
+	 * The logger.
+	 */
+<span class="fc" id="L44">	private static final Logger logger = Logger.getLogger(Entity.class);</span>
+
+
+<span class="fc" id="L47">	protected Rectangle2D.Double area = new Rectangle2D.Double();</span>
+
+	private int x;
+
+	private int y;
+
+    // Initial coordinates
+    private Point origin;
+
+	/**
+	 * Amount of resistance this has with other entities (0-100).
+	 */
+	private int resistance;
+
+	private StendhalRPZone zone;
+	private StendhalRPZone lastZone;
+
+	public Entity(final RPObject object) {
+<span class="fc" id="L65">		super(object);</span>
+
+<span class="fc bfc" id="L67" title="All 2 branches covered.">		if (!has(&quot;x&quot;)) {</span>
+<span class="fc" id="L68">			put(&quot;x&quot;, 0);</span>
+		}
+
+<span class="fc bfc" id="L71" title="All 2 branches covered.">		if (!has(&quot;y&quot;)) {</span>
+<span class="fc" id="L72">			put(&quot;y&quot;, 0);</span>
+		}
+
+<span class="fc bfc" id="L75" title="All 2 branches covered.">		if (!has(&quot;width&quot;)) {</span>
+<span class="fc" id="L76">			put(&quot;width&quot;, 1);</span>
+		}
+
+<span class="fc bfc" id="L79" title="All 2 branches covered.">		if (!has(&quot;height&quot;)) {</span>
+<span class="fc" id="L80">			put(&quot;height&quot;, 1);</span>
+		}
+
+<span class="fc bfc" id="L83" title="All 2 branches covered.">		if (!has(&quot;resistance&quot;)) {</span>
+<span class="fc" id="L84">			put(&quot;resistance&quot;, 100);</span>
+		}
+
+<span class="fc bfc" id="L87" title="All 2 branches covered.">		if (!has(&quot;visibility&quot;)) {</span>
+<span class="fc" id="L88">			put(&quot;visibility&quot;, 100);</span>
+		}
+
+<span class="fc" id="L91">		update();</span>
+<span class="fc" id="L92">	}</span>
+
+<span class="fc" id="L94">	public Entity() {</span>
+<span class="fc" id="L95">		put(&quot;x&quot;, 0);</span>
+<span class="fc" id="L96">		put(&quot;y&quot;, 0);</span>
+
+<span class="fc" id="L98">		x = 0;</span>
+<span class="fc" id="L99">		y = 0;</span>
+
+<span class="fc" id="L101">		setSize(1, 1);</span>
+<span class="fc" id="L102">		area.setRect(x, y, 1, 1);</span>
+
+<span class="fc" id="L104">		setResistance(100);</span>
+<span class="fc" id="L105">		setVisibility(100);</span>
+<span class="fc" id="L106">	}</span>
+
+	public static void generateRPClass() {
+<span class="fc" id="L109">		final RPClass entity = new RPClass(&quot;entity&quot;);</span>
+
+		// Some things may have a textual description
+<span class="fc" id="L112">		entity.addAttribute(&quot;description&quot;, Type.LONG_STRING, Definition.HIDDEN);</span>
+
+		// TODO: Try to remove this attribute later (at DB reset?)
+<span class="fc" id="L115">		entity.addAttribute(&quot;type&quot;, Type.STRING);</span>
+
+		/**
+		 * Resistance to other entities (0-100). 0=Phantom, 100=Obstacle.
+		 */
+<span class="fc" id="L120">		entity.addAttribute(&quot;resistance&quot;, Type.BYTE, Definition.VOLATILE);</span>
+
+<span class="fc" id="L122">		entity.addAttribute(&quot;x&quot;, Type.SHORT);</span>
+<span class="fc" id="L123">		entity.addAttribute(&quot;y&quot;, Type.SHORT);</span>
+
+		/*
+		 * The size of the entity (in world units).
+		 */
+<span class="fc" id="L128">		entity.addAttribute(&quot;width&quot;, Type.SHORT, Definition.VOLATILE);</span>
+<span class="fc" id="L129">		entity.addAttribute(&quot;height&quot;, Type.SHORT, Definition.VOLATILE);</span>
+
+		/*
+		 * Obsolete and ignored by the client. Do not use.
+		 */
+<span class="fc" id="L134">		entity.addAttribute(&quot;server-only&quot;, Type.FLAG, Definition.VOLATILE);</span>
+
+		/*
+		 * The current overlayed client effect.
+		 */
+<span class="fc" id="L139">		entity.addAttribute(&quot;effect&quot;, Type.STRING, Definition.VOLATILE);</span>
+
+		/*
+		 * The visibility of the entity drawn on client (0-100). 0=Invisible,
+		 * 100=Solid. Useful when mixed with effect.
+		 */
+<span class="fc" id="L145">		entity.addAttribute(&quot;visibility&quot;, Type.INT, Definition.VOLATILE);</span>
+
+		// cursor
+<span class="fc" id="L148">		entity.addAttribute(&quot;cursor&quot;, Type.STRING);</span>
+
+		// menu (Make a wish,use)
+<span class="fc" id="L151">		entity.addAttribute(&quot;menu&quot;, Type.STRING, Definition.VOLATILE);</span>
+
+		// sound events
+<span class="fc" id="L154">		entity.addRPEvent(Events.SOUND, Definition.VOLATILE);</span>
+		// graphical effects
+<span class="fc" id="L156">		entity.addRPEvent(Events.IMAGE, Definition.VOLATILE);</span>
+<span class="fc" id="L157">		entity.addRPEvent(Events.PUBLIC_TEXT, Definition.VOLATILE);</span>
+<span class="fc" id="L158">	}</span>
+
+
+	public void update() {
+<span class="fc" id="L162">		final int oldX = x;</span>
+<span class="fc" id="L163">		final int oldY = y;</span>
+<span class="fc" id="L164">		boolean moved = false;</span>
+
+<span class="pc bpc" id="L166" title="1 of 2 branches missed.">		if (has(&quot;x&quot;)) {</span>
+<span class="fc" id="L167">			x = getInt(&quot;x&quot;);</span>
+<span class="fc" id="L168">			area.x = x;</span>
+
+<span class="fc bfc" id="L170" title="All 2 branches covered.">			if (x != oldX) {</span>
+<span class="fc" id="L171">				moved = true;</span>
+			}
+		}
+
+<span class="pc bpc" id="L175" title="1 of 2 branches missed.">		if (has(&quot;y&quot;)) {</span>
+<span class="fc" id="L176">			y = getInt(&quot;y&quot;);</span>
+<span class="fc" id="L177">			area.y = y;</span>
+
+<span class="fc bfc" id="L179" title="All 2 branches covered.">			if (y != oldY) {</span>
+<span class="fc" id="L180">				moved = true;</span>
+			}
+		}
+
+<span class="pc bpc" id="L184" title="1 of 4 branches missed.">		if (moved &amp;&amp; (zone != null)) {</span>
+<span class="nc" id="L185">			onMoved(oldX, oldY, x, y);</span>
+		}
+
+<span class="pc bpc" id="L188" title="1 of 2 branches missed.">		if (has(&quot;height&quot;)) {</span>
+<span class="fc" id="L189">			area.height = getInt(&quot;height&quot;);</span>
+		}
+
+<span class="pc bpc" id="L192" title="1 of 2 branches missed.">		if (has(&quot;width&quot;)) {</span>
+<span class="fc" id="L193">			area.width = getInt(&quot;width&quot;);</span>
+		}
+
+<span class="pc bpc" id="L196" title="1 of 2 branches missed.">		if (has(&quot;resistance&quot;)) {</span>
+<span class="fc" id="L197">			resistance = getInt(&quot;resistance&quot;);</span>
+		}
+
+<span class="fc" id="L200">	}</span>
+
+	public boolean hasDescription() {
+<span class="fc bfc" id="L203" title="All 2 branches covered.">		if (has(&quot;description&quot;)) {</span>
+<span class="pc bpc" id="L204" title="2 of 4 branches missed.">			return ((getDescription() != null) &amp;&amp; (getDescription().length() &gt; 0));</span>
+		}
+<span class="fc" id="L206">		return (false);</span>
+	}
+
+	public void setDescription(final String text) {
+<span class="pc bpc" id="L210" title="1 of 2 branches missed.">		if (text == null) {</span>
+<span class="nc" id="L211">			put(&quot;description&quot;, &quot;&quot;);</span>
+		} else {
+<span class="fc" id="L213">			put(&quot;description&quot;, text);</span>
+		}
+
+<span class="fc" id="L216">	}</span>
+
+	public String getDescription() {
+<span class="fc" id="L219">		String description = &quot;&quot;;</span>
+<span class="fc bfc" id="L220" title="All 2 branches covered.">		if (has(&quot;description&quot;)) {</span>
+<span class="fc" id="L221">			description = get(&quot;description&quot;);</span>
+		}
+<span class="fc" id="L223">		return _(description);</span>
+	}
+
+	/**
+	 * Get the nicely formatted entity title/name.
+	 *
+	 * @return The title, or &lt;code&gt;null&lt;/code&gt; if unknown.
+	 */
+	public String getTitle() {
+<span class="pc bpc" id="L232" title="1 of 2 branches missed.">		if (has(&quot;subclass&quot;)) {</span>
+<span class="nc" id="L233">			return ItemTools.itemNameToDisplayName(get(&quot;subclass&quot;));</span>
+<span class="pc bpc" id="L234" title="1 of 2 branches missed.">		} else if (has(&quot;class&quot;)) {</span>
+<span class="nc" id="L235">			return ItemTools.itemNameToDisplayName(get(&quot;class&quot;));</span>
+<span class="pc bpc" id="L236" title="1 of 2 branches missed.">		} else if (has(&quot;type&quot;)) {</span>
+<span class="fc" id="L237">			return ItemTools.itemNameToDisplayName(get(&quot;type&quot;));</span>
+		} else {
+<span class="nc" id="L239">			return null;</span>
+		}
+	}
+
+	/**
+	 * Get the entity X coordinate.
+	 *
+	 * @return The X coordinate.
+	 */
+	public int getX() {
+<span class="fc" id="L249">		return x;</span>
+	}
+
+	/**
+	 * Get the entity Y coordinate.
+	 *
+	 * @return The Y coordinate.
+	 */
+	public int getY() {
+<span class="fc" id="L258">		return y;</span>
+	}
+
+	/**
+	 * Get the zone this entity is in.
+	 *
+	 * @return A zone, or &lt;code&gt;null&lt;/code&gt; if not in one.
+	 */
+	public StendhalRPZone getZone() {
+		// Use onAdded()/onRemoved() to grab a reference to the zone and save
+		// as a attribute.
+		// During zone transfer zone is set to null for a short period of time
+		// which causes lots of problems, so we use the old zone until the new
+		// one is set.
+<span class="fc" id="L272">		return lastZone;</span>
+	}
+
+	/**
+	 * Is this entity not moving?
+	 *
+	 * @return true, if it stopped, false if it is moving
+	 */
+	public boolean stopped() {
+<span class="fc" id="L281">		return true;</span>
+	}
+
+	/**
+	 * Get the resistance this has on other entities (0-100).
+	 *
+	 * @return The amount of resistance, or 0 if in ghostmode.
+	 */
+	public int getResistance() {
+<span class="fc" id="L290">		return resistance;</span>
+	}
+
+	/**
+	 * Get the resistance between this and another entity (0-100).
+	 * @param entity other entity to be evaluated
+	 *
+	 * @return The amount of combined resistance.
+	 */
+	public int getResistance(final Entity entity) {
+<span class="fc" id="L300">		return ((getResistance() * entity.getResistance()) / 100);</span>
+	}
+
+
+	/**
+	 * Determine if this is an obstacle for another entity.
+	 *
+	 * @param entity
+	 *            The entity to check against.
+	 *
+	 * @return &lt;code&gt;true&lt;/code&gt; if very high resistance.
+	 */
+	public boolean isObstacle(final Entity entity) {
+		// &gt; 95% combined resistance = obstacle
+<span class="fc bfc" id="L314" title="All 2 branches covered.">		return (getResistance(entity) &gt; 95);</span>
+	}
+
+	/**
+	 * This returns square of the distance between this entity and the given
+	 * one. We're calculating the square because the square root operation would
+	 * be expensive. As long as we only need to compare distances, it doesn't
+	 * matter if we compare the distances or the squares of the distances (the
+	 * square operation is strictly monotonous for positive numbers).
+	 *
+	 * @param other
+	 *            the entity to which the distance should be calculated
+	 * @return double representing the squared distance
+	 */
+	public final double squaredDistance(final Entity other) {
+<span class="fc" id="L329">		final Rectangle2D otherArea = other.getArea();</span>
+<span class="fc" id="L330">		final double otherMiddleX = otherArea.getCenterX();</span>
+<span class="fc" id="L331">		final double otherMiddleY = otherArea.getCenterY();</span>
+
+<span class="fc" id="L333">		final Rectangle2D thisArea = getArea();</span>
+<span class="fc" id="L334">		final double thisMiddleX = thisArea.getCenterX();</span>
+<span class="fc" id="L335">		final double thisMiddleY = thisArea.getCenterY();</span>
+
+<span class="fc" id="L337">		double xDistance = Math.abs(otherMiddleX - thisMiddleX) - (area.getWidth() + other.area.getWidth()) / 2;</span>
+<span class="fc" id="L338">		double yDistance = Math.abs(otherMiddleY - thisMiddleY) - (area.getHeight() + other.area.getHeight()) / 2;</span>
+
+<span class="fc bfc" id="L340" title="All 2 branches covered.">		if (xDistance &lt; 0) {</span>
+<span class="fc" id="L341">			xDistance = 0;</span>
+		}
+<span class="fc bfc" id="L343" title="All 2 branches covered.">		if (yDistance &lt; 0) {</span>
+<span class="fc" id="L344">			yDistance = 0;</span>
+		}
+<span class="fc" id="L346">		return xDistance * xDistance + yDistance * yDistance;</span>
+	}
+
+	/**
+	 * This returns square of the distance from this entity to a specific point.
+	 * We're calculating the square because the square root operation would be
+	 * expensive. As long as we only need to compare distances, it doesn't
+	 * matter if we compare the distances or the squares of the distances (the
+	 * square operation is strictly monotonous for positive numbers).
+	 *
+	 * @param x
+	 *            The horizontal coordinate of the point
+	 * @param y
+	 *            The vertical coordinate of the point
+	 * @return double representing the squared distance
+	 */
+	public final double squaredDistance(final int x, final int y) {
+
+
+<span class="fc" id="L365">		final double otherMiddleX = x + 0.5;</span>
+<span class="fc" id="L366">		final double otherMiddleY = y + 0.5;</span>
+
+
+<span class="fc" id="L369">		final Rectangle2D thisArea = getArea();</span>
+
+<span class="fc" id="L371">		final double thisMiddleX = thisArea.getCenterX();</span>
+<span class="fc" id="L372">		final double thisMiddleY = thisArea.getCenterY();</span>
+
+
+<span class="fc" id="L375">		double xDistance = Math.abs(otherMiddleX - thisMiddleX) - (area.getWidth() + 1) / 2;</span>
+<span class="fc" id="L376">		double yDistance = Math.abs(otherMiddleY - thisMiddleY) - (area.getHeight() + 1) / 2;</span>
+
+<span class="fc bfc" id="L378" title="All 2 branches covered.">		if (xDistance &lt; 0) {</span>
+<span class="fc" id="L379">			xDistance = 0;</span>
+		}
+<span class="fc bfc" id="L381" title="All 2 branches covered.">		if (yDistance &lt; 0) {</span>
+<span class="fc" id="L382">			yDistance = 0;</span>
+		}
+<span class="fc" id="L384">		return xDistance * xDistance + yDistance * yDistance;</span>
+	}
+
+	/**
+	 * Checks whether the given entity is directly next to this entity. This
+	 * method may be optimized over using nextTo(entity, 0.25).
+	 *
+	 * @param entity
+	 *            The entity
+	 *
+	 * @return &lt;code&gt;true&lt;/code&gt; if the entity is next to this.
+	 */
+	public boolean nextTo(final Entity entity) {
+		// For now call old code (just a convenience function)
+<span class="fc" id="L398">		return nextTo(entity, 0.25);</span>
+	}
+
+	/**
+	 * Checks whether the given entity is near this entity.
+	 *
+	 * @param entity
+	 *            the entity
+	 * @param step
+	 *            The maximum distance
+	 * @return true iff the entity is at most &lt;i&gt;step&lt;/i&gt; steps away
+	 */
+	public boolean nextTo(final Entity entity, final double step) {
+		// To check the overlapping between 'this' and the other 'entity'
+		// we create two temporary rectangle objects and initialise them
+		// with the position of the two entities.
+		// The size is calculated from the original objects with the additional
+		// 'step' distance on both sides of the two rectangles.
+		// As the absolute position is not important, 'step' need not be
+		// subtracted from the values of getX() and getY().
+<span class="fc" id="L418">		final Rectangle2D thisArea = new Rectangle2D.Double(x - step, y - step, area.getWidth()</span>
+				+ 2 * step, area.getHeight() + 2 * step);
+
+<span class="fc" id="L421">		return thisArea.intersects(entity.getArea());</span>
+	}
+
+	/**
+	 * Get the area this object currently occupies.
+	 *
+	 * @return A rectangular area.
+	 */
+	public Rectangle2D getArea() {
+<span class="fc" id="L430">		return area;</span>
+	}
+
+	/**
+	 * Returns the area used by this entity.
+	 *
+	 * @param ex
+	 *            x
+	 * @param ey
+	 *            y
+	 * @return rectangle for the used area
+	 */
+	public Rectangle2D getArea(final double ex, final double ey) {
+<span class="fc" id="L443">		final Rectangle2D tempRect = new Rectangle.Double();</span>
+<span class="fc" id="L444">		tempRect.setRect(ex, ey, area.getWidth(), area.getHeight());</span>
+<span class="fc" id="L445">		return tempRect;</span>
+	}
+
+	/**
+	 * Called when this object is added to a zone.
+	 *
+	 * @param zone
+	 *            The zone this was added to.
+	 */
+	public void onAdded(final StendhalRPZone zone) {
+<span class="fc bfc" id="L455" title="All 2 branches covered.">		if (this.zone != null) {</span>
+<span class="fc" id="L456">			logger.error(&quot;Entity added while in another &quot; + zone + &quot;: &quot; + this, new Throwable());</span>
+		}
+
+<span class="fc" id="L459">		this.zone = zone;</span>
+<span class="fc" id="L460">		this.lastZone = zone;</span>
+<span class="fc" id="L461">	}</span>
+
+	/**
+	 * Notification of intra-zone position change.
+	 *
+	 * @param oldX
+	 *            The old X coordinate.
+	 * @param oldY
+	 *            The old Y coordinate.
+	 * @param newX
+	 *            The new X coordinate.
+	 * @param newY
+	 *            The new Y coordinate.
+	 */
+	protected void onMoved(final int oldX, final int oldY, final int newX, final int newY) {
+		// sub classes can implement this method
+<span class="fc" id="L477">	}</span>
+
+	/**
+	 * Called when this object is being removed from a zone.
+	 *
+	 * @param zone
+	 *            The zone this will be removed from.
+	 */
+	public void onRemoved(final StendhalRPZone zone) {
+<span class="fc bfc" id="L486" title="All 2 branches covered.">		if (this.zone != zone) {</span>
+<span class="fc" id="L487">			logger.error(&quot;Entity removed from wrong zone &quot; + zone + &quot; but it thinks it is in &quot; + this.zone + &quot;: &quot;, new Throwable());</span>
+		}
+
+<span class="fc" id="L490">		this.zone = null;</span>
+<span class="fc" id="L491">	}</span>
+
+	/**
+	 * Notifies the StendhalRPWorld that this entity's attributes have changed.
+	 *
+	 */
+	public void notifyWorldAboutChanges() {
+		/*
+		 * Only possible if in a zone. This does *NOT* use getZone(), because
+		 * that can return a zone that currently does not really contain this
+		 * entity, and MarauroaRPZone.modify() assumes the object modified is
+		 * really contained there. Modifying an entity that's not really in the
+		 * zone results in a perception for an entity that the client does not
+		 * recognize.
+		 */
+<span class="fc bfc" id="L506" title="All 2 branches covered.">		if (zone != null) {</span>
+<span class="fc" id="L507">			zone.modify(this);</span>
+		}
+<span class="fc" id="L509">	}</span>
+
+	/**
+	 * Describes the entity (if a players looks at it).
+	 *
+	 * @return description from the players point of view
+	 */
+	public String describe() {
+<span class="pc bpc" id="L517" title="1 of 2 branches missed.">		if (hasDescription()) {</span>
+<span class="nc" id="L518">			return getDescription();</span>
+		}
+
+<span class="fc" id="L521">		return &quot;You see &quot; + getDescriptionName(false) + &quot;.&quot;;</span>
+	}
+
+	/**
+	 * Returns the name or something that can be used to identify the entity for
+	 * the player.
+	 *
+	 * @param definite
+	 *            true for &quot;the&quot; and false for &quot;a/an&quot; in case the entity has no
+	 *            name
+	 * @return name
+	 *
+	 */
+	public String getDescriptionName(final boolean definite) {
+<span class="pc bpc" id="L535" title="1 of 2 branches missed.">		if (has(&quot;subclass&quot;)) {</span>
+<span class="nc" id="L536">			return Grammar.article_noun(ItemTools.itemNameToDisplayName(get(&quot;subclass&quot;)), definite);</span>
+<span class="pc bpc" id="L537" title="1 of 2 branches missed.">		} else if (has(&quot;class&quot;)) {</span>
+<span class="fc" id="L538">			return Grammar.article_noun(ItemTools.itemNameToDisplayName(get(&quot;class&quot;)), definite);</span>
+		} else {
+<span class="nc" id="L540">			String ret = &quot;something indescribably strange&quot;;</span>
+<span class="nc bnc" id="L541" title="All 2 branches missed.">			if (has(&quot;type&quot;)) {</span>
+<span class="nc" id="L542">				ret += &quot; of type &quot; + ItemTools.itemNameToDisplayName(get(&quot;type&quot;));</span>
+			}
+<span class="nc bnc" id="L544" title="All 2 branches missed.">			if (has(&quot;id&quot;)) {</span>
+<span class="nc" id="L545">				ret += &quot; with id &quot; + get(&quot;id&quot;);</span>
+			}
+<span class="nc bnc" id="L547" title="All 2 branches missed.">			if (has(&quot;zone&quot;)) {</span>
+<span class="nc" id="L548">				ret += &quot; in zone &quot; + get(&quot;zone&quot;);</span>
+			}
+<span class="nc" id="L550">			logger.error(&quot;Missing description for &quot; + this);</span>
+<span class="nc" id="L551">			return ret;</span>
+		}
+	}
+
+	/**
+	 * Get the entity height.
+	 *
+	 * @return The height (in world units).
+	 */
+	public double getHeight() {
+<span class="fc" id="L561">		return area.getHeight();</span>
+	}
+
+	/**
+	 * Get the entity width.
+	 *
+	 * @return The width (in world units).
+	 */
+	public double getWidth() {
+<span class="fc" id="L570">		return area.getWidth();</span>
+	}
+
+	/**
+	 * Set the entity class.
+	 *
+	 * @param clazz
+	 *            The class name.
+	 */
+	public final void setEntityClass(final String clazz) {
+<span class="fc" id="L580">		put(&quot;class&quot;, clazz);</span>
+<span class="fc" id="L581">	}</span>
+
+	/**
+	 * Set the entity sub-class.
+	 *
+	 * @param subclazz
+	 *            The sub-class name.
+	 */
+	public final void setEntitySubclass(final String subclazz) {
+<span class="fc" id="L590">		put(&quot;subclass&quot;, subclazz);</span>
+<span class="fc" id="L591">	}</span>
+
+	/**
+	 * Sets the entity position.
+	 *
+	 *
+	 * &lt;p&gt;
+	 * This calls &lt;code&gt;onMoved()&lt;/code&gt;. &lt;strong&gt;Note: When placing during a
+	 * zone change, this call should be done after being removed from the old
+	 * zone, but before adding to the zone to prevent an erroneous position jump
+	 * in the zone.&lt;/strong&gt;
+	 *
+	 * @param x
+	 *            The x position (in world units).
+	 * @param y
+	 *            The y position (in world units).
+	 */
+	public final void setPosition(final int x, final int y) {
+<span class="fc" id="L609">		final int oldX = this.x;</span>
+<span class="fc" id="L610">		final int oldY = this.y;</span>
+<span class="fc" id="L611">		boolean moved = false;</span>
+
+        // Set the original position of the entity
+<span class="fc bfc" id="L614" title="All 2 branches covered.">        if (origin == null) {</span>
+<span class="fc" id="L615">            origin = new Point(x, y);</span>
+        }
+
+<span class="fc bfc" id="L618" title="All 2 branches covered.">		if (x != oldX) {</span>
+<span class="fc" id="L619">			this.x = x;</span>
+<span class="fc" id="L620">			area.x = x;</span>
+<span class="fc" id="L621">			put(&quot;x&quot;, x);</span>
+<span class="fc" id="L622">			moved = true;</span>
+		}
+
+<span class="fc bfc" id="L625" title="All 2 branches covered.">		if (y != oldY) {</span>
+<span class="fc" id="L626">			this.y = y;</span>
+<span class="fc" id="L627">			area.y = y;</span>
+<span class="fc" id="L628">			put(&quot;y&quot;, y);</span>
+<span class="fc" id="L629">			moved = true;</span>
+		}
+
+<span class="fc bfc" id="L632" title="All 4 branches covered.">		if (moved &amp;&amp; (zone != null)) {</span>
+<span class="fc" id="L633">			onMoved(oldX, oldY, x, y);</span>
+		}
+<span class="fc" id="L635">	}</span>
+
+	/**
+	 *
+	 * @return The initial position of the entity
+	 */
+	public final Point getOrigin() {
+<span class="nc" id="L642">	    return origin;</span>
+	}
+
+	/**
+	 * Set resistance this has with other entities.
+	 *
+	 * @param resistance
+	 *            The amount of resistance (0-100).
+	 */
+	public final void setResistance(final int resistance) {
+<span class="fc" id="L652">		this.resistance = resistance;</span>
+<span class="fc" id="L653">		put(&quot;resistance&quot;, resistance);</span>
+<span class="fc" id="L654">	}</span>
+
+	/**
+	 * Set the entity size.
+	 *
+	 * @param width
+	 *            The width (in world units).
+	 * @param height
+	 *            The height (in world units).
+	 */
+	public void setSize(final int width, final int height) {
+<span class="fc" id="L665">		this.area.width = width;</span>
+<span class="fc" id="L666">		put(&quot;width&quot;, width);</span>
+
+<span class="fc" id="L668">		this.area.height = height;</span>
+<span class="fc" id="L669">		put(&quot;height&quot;, height);</span>
+<span class="fc" id="L670">	}</span>
+
+	/**
+	 * gets the name of the mouse cursor or &lt;code&gt;null&lt;/code&gt;.
+	 *
+	 * @return name of the mouse cursor or &lt;code&gt;null&lt;/code&gt;.
+	 */
+	public String getCursor() {
+<span class="nc bnc" id="L678" title="All 2 branches missed.">		if (has(&quot;cursor&quot;)) {</span>
+<span class="nc" id="L679">			return get(&quot;cursor&quot;);</span>
+		}
+<span class="nc" id="L681">		return null;</span>
+	}
+
+	/**
+	 * sets the name of the mouse cursor
+	 *
+	 * @param cursor name of cursor
+	 */
+	public void setCursor(String cursor) {
+<span class="nc bnc" id="L690" title="All 2 branches missed.">		if (cursor == null) {</span>
+<span class="nc" id="L691">			remove(&quot;cursor&quot;);</span>
+		} else {
+<span class="nc" id="L693">			put(&quot;cursor&quot;, cursor);</span>
+		}
+<span class="nc" id="L695">	}</span>
+
+	/**
+	 * Set the entity's visibility.
+	 *
+	 * @param visibility
+	 *            The visibility (0-100).
+	 */
+	public final void setVisibility(final int visibility) {
+<span class="fc" id="L704">		put(&quot;visibility&quot;, visibility);</span>
+<span class="fc" id="L705">	}</span>
+
+	/**
+	 * Check if the other Entity is near enough to be in sight on the client screen.
+	 *
+	 * @param other
+	 * @return true if near enough
+	 */
+	public boolean isInSight(final Entity other) {
+<span class="pc bpc" id="L714" title="1 of 2 branches missed.">		if (other != null) {</span>
+<span class="pc bpc" id="L715" title="1 of 2 branches missed.">			if (other.getZone() == getZone()) {</span>
+				// check distance: 640x480 client screen size for 32x32 pixel tiles
+				// -&gt; makes 20x15 tiles screen size
+<span class="fc bfc" id="L718" title="All 4 branches covered.">				if ((Math.abs(other.getX() - x) &lt;= 20)</span>
+						&amp;&amp; (Math.abs(other.getY() - y) &lt;= 15)) {
+<span class="fc" id="L720">					return true;</span>
+				}
+			}
+		}
+
+<span class="fc" id="L725">		return false;</span>
+	}
+
+	/**
+	 * gets the named entity slot
+	 *
+	 * @param name name of entity slot
+	 * @return EntitySlot or &lt;code&gt;null&lt;/code&gt;
+	 */
+	public EntitySlot getEntitySlot(String name) {
+<span class="fc" id="L735">		RPSlot slot = super.getSlot(name);</span>
+<span class="pc bpc" id="L736" title="1 of 2 branches missed.">		if (!(slot instanceof EntitySlot)) {</span>
+<span class="nc" id="L737">			return null;</span>
+		}
+<span class="fc" id="L739">		return (EntitySlot) slot;</span>
+	}
+
+	/**
+	 * an iterator over slots
+	 *
+	 * @param slotTypes slot types to include in the iteration
+	 * @return Iterator
+	 */
+	public Iterator&lt;RPSlot&gt; slotIterator(Slots slotTypes) {
+<span class="fc" id="L749">		Predicate&lt;RPSlot&gt; p = new SlotNameInList(slotTypes.getNames());</span>
+<span class="fc" id="L750">		return Iterators.filter(slotsIterator(), p);</span>
+	}
+
+	/**
+	 * an Iterable over slots
+	 *
+	 * @param slotTypes slot types to include in the iteration
+	 * @return Iterable
+	 */
+	public Iterable&lt;RPSlot&gt; slots(final Slots slotTypes) {
+<span class="fc" id="L760">		return new Iterable&lt;RPSlot&gt;() {</span>
+			@Override
+			public Iterator&lt;RPSlot&gt; iterator() {
+<span class="fc" id="L763">				return slotIterator(slotTypes);</span>
+			}
+		};
+	}
+
+	/**
+	 * The menu to display on the client in the format:
+	 * &lt;pre&gt;
+	 *    Display Name 1|action1,
+	 *    Display Name 2|action2
+	 * &lt;/pre&gt;
+	 *
+	 * @param menu menu string
+	 */
+	public void setMenu(String menu) {
+<span class="fc" id="L778">		put(&quot;menu&quot;, menu);</span>
+<span class="fc" id="L779">	}</span>
+
+	/**
+	 * gets the name of this entity
+	 *
+	 * @return name
+	 */
+	@Override
+	public String getName() {
+<span class="fc" id="L788">		return getRPClass().getName();</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

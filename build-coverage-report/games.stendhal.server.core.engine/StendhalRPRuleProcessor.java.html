@@ -1,0 +1,798 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>StendhalRPRuleProcessor.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.core.engine</a> &gt; <span class="el_source">StendhalRPRuleProcessor.java</span></div><h1>StendhalRPRuleProcessor.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                      (C) Copyright 2003 - Marauroa                      *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.core.engine;
+
+import games.stendhal.common.Debug;
+import games.stendhal.common.NotificationType;
+import games.stendhal.common.filter.FilterCriteria;
+import games.stendhal.server.actions.CommandCenter;
+import games.stendhal.server.actions.admin.AdministrationAction;
+import games.stendhal.server.core.account.AccountCreator;
+import games.stendhal.server.core.account.CharacterCreator;
+import games.stendhal.server.core.engine.db.StendhalWebsiteDAO;
+import games.stendhal.server.core.engine.dbcommand.SetOnlineStatusCommand;
+import games.stendhal.server.core.engine.transformer.PlayerTransformer;
+import games.stendhal.server.core.events.TutorialNotifier;
+import games.stendhal.server.core.rp.StendhalRPAction;
+import games.stendhal.server.core.scripting.ScriptRunner;
+import games.stendhal.server.entity.Entity;
+import games.stendhal.server.entity.RPEntity;
+import games.stendhal.server.entity.npc.NPCList;
+import games.stendhal.server.entity.npc.behaviour.impl.OutfitChangerBehaviour.ExpireOutfit;
+import games.stendhal.server.entity.player.AfkTimeouter;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.events.PlayerLoggedOnEvent;
+import games.stendhal.server.events.PlayerLoggedOutEvent;
+import games.stendhal.server.extension.StendhalServerExtension;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import marauroa.common.Configuration;
+import marauroa.common.Pair;
+import marauroa.common.game.AccountResult;
+import marauroa.common.game.CharacterResult;
+import marauroa.common.game.IRPZone;
+import marauroa.common.game.RPAction;
+import marauroa.common.game.RPObject;
+import marauroa.common.io.UnicodeSupportingInputStreamReader;
+import marauroa.server.db.command.DBCommand;
+import marauroa.server.db.command.DBCommandQueue;
+import marauroa.server.game.Statistics;
+import marauroa.server.game.db.DAORegister;
+import marauroa.server.game.rp.IRPRuleProcessor;
+import marauroa.server.game.rp.RPServerManager;
+
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
+/**
+ * adds game rules for Stendhal to the marauroa environment.
+ *
+ * @author hendrik
+ */
+public class StendhalRPRuleProcessor implements IRPRuleProcessor {
+
+	/** only log the first exception while reading welcome URL. */
+<span class="fc" id="L76">	private static boolean firstWelcomeException = true;</span>
+	/** the logger instance. */
+<span class="fc" id="L78">	private static final Logger logger = Logger.getLogger(StendhalRPRuleProcessor.class);</span>
+	/** list of super admins read from admins.list. */
+	private static Map&lt;String, String&gt; adminNames;
+	/** welcome message unless overwritten by an URL */
+<span class="fc" id="L82">	private static String welcomeMessage = &quot;Welcome to Stendhal. Need help? #https://stendhalgame.org/player-guide/ask-for-help.html - please report problems, suggestions and bugs. Remember to keep your password completely secret, never tell to another friend, player, or admin.&quot;;</span>
+
+	/** The Singleton instance. */
+	protected static StendhalRPRuleProcessor instance;
+
+	private RPServerManager rpman;
+
+	/** a list of online players */
+	protected PlayerList onlinePlayers;
+	private final List&lt;Player&gt; playersRmText;
+
+	/**
+	 * A list of RPEntities that were killed in the current turn, together with
+	 * the Entity that killed it.
+	 */
+	private final List&lt;Pair&lt;RPEntity, Entity&gt;&gt; entityToKill;
+
+	/** a list of zone that should be removed (like vaults) */
+<span class="fc" id="L100">	private final List&lt;StendhalRPZone&gt; zonesToRemove = new LinkedList&lt;StendhalRPZone&gt;();</span>
+
+	/**
+	 * creates a new StendhalRPRuleProcessor
+	 */
+<span class="fc" id="L105">	protected StendhalRPRuleProcessor() {</span>
+<span class="fc" id="L106">		onlinePlayers = new PlayerList();</span>
+<span class="fc" id="L107">		playersRmText = new LinkedList&lt;Player&gt;();</span>
+<span class="fc" id="L108">		entityToKill = new LinkedList&lt;Pair&lt;RPEntity, Entity&gt;&gt;();</span>
+<span class="fc" id="L109">	}</span>
+
+	private void init() {
+<span class="fc" id="L112">		String[] params = {};</span>
+<span class="fc" id="L113">		new GameEvent(&quot;server system&quot;, &quot;startup&quot;, params).raise();</span>
+<span class="fc" id="L114">		AfkTimeouter.create();</span>
+<span class="fc" id="L115">	}</span>
+
+	/**
+	 * gets the singleton instance of StendhalRPRuleProcessor
+	 *
+	 * @return StendhalRPRuleProcessor
+	 */
+	public static StendhalRPRuleProcessor get() {
+<span class="fc" id="L123">		synchronized(StendhalRPRuleProcessor.class) {</span>
+<span class="fc bfc" id="L124" title="All 2 branches covered.">			if (instance == null) {</span>
+<span class="fc" id="L125">				StendhalRPRuleProcessor instance = new StendhalRPRuleProcessor();</span>
+<span class="fc" id="L126">				instance.init();</span>
+<span class="fc" id="L127">				StendhalRPRuleProcessor.instance = instance;</span>
+			}
+<span class="pc" id="L129">		}</span>
+<span class="fc" id="L130">		return instance;</span>
+	}
+
+	/**
+	 * gets a list of online players
+	 *
+	 * @return list of online players
+	 */
+	public PlayerList getOnlinePlayers() {
+<span class="fc" id="L139">		return onlinePlayers;</span>
+	}
+
+	@Override
+	public void setContext(final RPServerManager rpman) {
+		try {
+			/*
+			 * Print version information.
+			 */
+<span class="nc" id="L148">			String preRelease = &quot;&quot;;</span>
+<span class="nc bnc" id="L149" title="All 2 branches missed.">			if (Debug.PRE_RELEASE_VERSION != null) {</span>
+<span class="nc" id="L150">				preRelease = &quot; - &quot; + preRelease;</span>
+			}
+<span class="nc" id="L152">			logger.info(&quot;Running Stendhal server VERSION &quot; + Debug.VERSION + preRelease);</span>
+<span class="nc" id="L153">			Translate.init();</span>
+
+<span class="nc" id="L155">			this.rpman = rpman;</span>
+<span class="nc" id="L156">			StendhalRPAction.initialize(rpman);</span>
+
+			/* Initialize quests */
+<span class="nc" id="L159">			SingletonRepository.getStendhalQuestSystem().init();</span>
+
+<span class="nc" id="L161">			new ScriptRunner();</span>
+
+<span class="nc" id="L163">			final Configuration config = Configuration.getConfiguration();</span>
+			try {
+<span class="nc" id="L165">				final String[] extensionsToLoad = config.get(&quot;server_extension&quot;).split(&quot;,&quot;);</span>
+<span class="nc bnc" id="L166" title="All 2 branches missed.">				for (final String element : extensionsToLoad) {</span>
+<span class="nc" id="L167">					String extension = null;</span>
+					try {
+<span class="nc" id="L169">						extension = element;</span>
+<span class="nc bnc" id="L170" title="All 2 branches missed.">						if (extension.length() &gt; 0) {</span>
+<span class="nc" id="L171">							StendhalServerExtension.getInstance(config.get(extension)).init();</span>
+						}
+<span class="nc" id="L173">					} catch (final RuntimeException ex) {</span>
+<span class="nc" id="L174">						logger.error(&quot;Error while loading extension: &quot; + extension, ex);</span>
+<span class="nc" id="L175">					}</span>
+				}
+<span class="nc" id="L177">			} catch (final RuntimeException ep) {</span>
+<span class="nc" id="L178">				logger.info(&quot;No server extensions configured in ini file.&quot;);</span>
+<span class="nc" id="L179">			}</span>
+
+			// Remove online info from database.
+<span class="nc" id="L182">			DAORegister.get().get(StendhalWebsiteDAO.class).clearOnlineStatus();</span>
+<span class="nc" id="L183">		} catch (final Exception e) {</span>
+<span class="nc" id="L184">			logger.error(&quot;cannot set Context. exiting&quot;, e);</span>
+<span class="nc" id="L185">			System.exit(-1);</span>
+<span class="nc" id="L186">		}</span>
+<span class="nc" id="L187">	}</span>
+
+	@Override
+	public boolean checkGameVersion(final String game, final String version) {
+		try {
+<span class="nc bnc" id="L192" title="All 2 branches missed.">			if (!game.equals(Configuration.getConfiguration().get(&quot;server_typeGame&quot;, &quot;stendhal&quot;))) {</span>
+<span class="nc" id="L193">				logger.warn(&quot;Client for game &quot; + game + &quot; is trying to login to server for game &quot;</span>
+						+ Configuration.getConfiguration().get(&quot;server_typeGame&quot;, &quot;stendhal&quot;)
+						+ &quot;, as defined in server configuration file (usually server.ini) with key server_typeGame (defaults to \&quot;stendhal\&quot; if not present).&quot;);
+<span class="nc" id="L196">				return false;</span>
+			}
+<span class="nc bnc" id="L198" title="All 2 branches missed.">			if (Debug.VERSION.compareTo(version) &gt; 0) {</span>
+<span class="nc" id="L199">				logger.warn(&quot;Client version: &quot; + version);</span>
+			}
+<span class="nc" id="L201">			return true;</span>
+<span class="nc" id="L202">		} catch (IOException e) {</span>
+<span class="nc" id="L203">			logger.error(e, e);</span>
+<span class="nc" id="L204">			return false;</span>
+		}
+	}
+
+	/**
+	 * Kills an RPEntity.
+	 *
+	 * @param entity
+	 * @param killer
+	 */
+	public void killRPEntity(final RPEntity entity, final Entity killer) {
+<span class="fc" id="L215">		entityToKill.add(new Pair&lt;RPEntity, Entity&gt;(entity, killer));</span>
+<span class="fc" id="L216">	}</span>
+
+	/**
+	 * Checks whether the given RPEntity has been killed this turn.
+	 *
+	 * @param entity
+	 *            The entity to check.
+	 * @return pair of killed, killer if the specified entity did logout while dying, &lt;code&gt;null&lt;/code&gt; otherwise.
+	 */
+	private Pair&lt;RPEntity, Entity&gt; removedKilled(final RPEntity entity) {
+<span class="nc" id="L226">		Iterator&lt;Pair&lt;RPEntity, Entity&gt;&gt; itr = entityToKill.iterator();</span>
+<span class="nc bnc" id="L227" title="All 2 branches missed.">		while (itr.hasNext()) {</span>
+<span class="nc" id="L228">			Pair&lt;RPEntity, Entity&gt; entry = itr.next();</span>
+<span class="nc bnc" id="L229" title="All 2 branches missed.">			if (entity.equals(entry.first())) {</span>
+<span class="nc" id="L230">				itr.remove();</span>
+<span class="nc" id="L231">				return entry;</span>
+			}
+<span class="nc" id="L233">		}</span>
+<span class="nc" id="L234">		return null;</span>
+	}
+
+	public void removePlayerText(final Player player) {
+<span class="fc" id="L238">		playersRmText.add(player);</span>
+<span class="fc" id="L239">	}</span>
+
+	/**
+	 * Finds an online player with a specific name.
+	 *
+	 * @param name
+	 *            The player's name
+	 * @return The player, or null if no player with the given name is currently
+	 *         online.
+	 */
+	public Player getPlayer(final String name) {
+<span class="fc" id="L250">		return onlinePlayers.getOnlinePlayer(name);</span>
+	}
+
+	@Override
+	public boolean onActionAdd(final RPObject caster, final RPAction action, final List&lt;RPAction&gt; actionList) {
+<span class="nc" id="L255">		return true;</span>
+	}
+
+	@Override
+	public void execute(final RPObject caster, final RPAction action) {
+<span class="nc bnc" id="L260" title="All 2 branches missed.">		if (caster instanceof Player) {</span>
+<span class="nc" id="L261">			((Player) caster).setLastClientActionTimestamp(System.currentTimeMillis());</span>
+		}
+<span class="nc" id="L263">		CommandCenter.execute(caster, action);</span>
+<span class="nc" id="L264">	}</span>
+
+	public int getTurn() {
+<span class="nc" id="L267">		return rpman.getTurn();</span>
+	}
+
+	/** Notify it when a new turn happens. */
+	@Override
+	public synchronized void beginTurn() {
+<span class="fc" id="L273">		final long start = System.nanoTime();</span>
+
+		try {
+<span class="fc" id="L276">			destroyObsoleteZones();</span>
+<span class="nc" id="L277">		} catch (final Exception e) {</span>
+<span class="nc" id="L278">			logger.error(&quot;error in beginTurn&quot;, e);</span>
+<span class="fc" id="L279">		}</span>
+
+		try {
+<span class="fc" id="L282">			logNumberOfPlayersOnline();</span>
+<span class="nc" id="L283">		} catch (final Exception e) {</span>
+<span class="nc" id="L284">			logger.error(&quot;error in beginTurn&quot;, e);</span>
+<span class="fc" id="L285">		}</span>
+
+		try {
+<span class="fc" id="L288">			handleKilledEntities();</span>
+<span class="nc" id="L289">		} catch (final Exception e) {</span>
+<span class="nc" id="L290">			logger.error(&quot;error in beginTurn&quot;, e);</span>
+<span class="fc" id="L291">		}</span>
+
+		try {
+<span class="fc" id="L294">			executePlayerLogic();</span>
+<span class="nc" id="L295">		} catch (final Exception e) {</span>
+<span class="nc" id="L296">			logger.error(&quot;error in beginTurn&quot;, e);</span>
+<span class="fc" id="L297">		}</span>
+
+		try {
+<span class="fc" id="L300">			executeNPCsPreLogic();</span>
+<span class="nc" id="L301">		} catch (final Exception e) {</span>
+<span class="nc" id="L302">			logger.error(&quot;error in beginTurn&quot;, e);</span>
+<span class="fc" id="L303">		}</span>
+
+		try {
+<span class="fc" id="L306">			handlePlayersRmTexts();</span>
+<span class="nc" id="L307">		} catch (final Exception e) {</span>
+<span class="nc" id="L308">			logger.error(&quot;error in beginTurn&quot;, e);</span>
+<span class="fc" id="L309">		}</span>
+<span class="fc" id="L310">		logger.debug(&quot;Begin turn: &quot; + (System.nanoTime() - start) / 1000000.0);</span>
+<span class="fc" id="L311">	}</span>
+
+	private void destroyObsoleteZones() {
+<span class="fc" id="L314">		StendhalRPWorld world = SingletonRepository.getRPWorld();</span>
+<span class="pc bpc" id="L315" title="1 of 2 branches missed.">		for (StendhalRPZone zone : zonesToRemove) {</span>
+<span class="nc" id="L316">			zone.onRemoved();</span>
+<span class="nc" id="L317">			world.removeZone(zone);</span>
+<span class="nc" id="L318">		}</span>
+<span class="fc" id="L319">		zonesToRemove.clear();</span>
+
+<span class="fc" id="L321">	}</span>
+
+	protected void logNumberOfPlayersOnline() {
+		// We keep the number of players logged.
+<span class="fc" id="L325">		Statistics.getStatistics().set(&quot;Players logged&quot;, getOnlinePlayers().size());</span>
+<span class="fc" id="L326">	}</span>
+
+	protected void handlePlayersRmTexts() {
+<span class="fc bfc" id="L329" title="All 2 branches covered.">		for (final Player player : playersRmText) {</span>
+<span class="fc bfc" id="L330" title="All 2 branches covered.">			if (player.has(&quot;text&quot;)) {</span>
+<span class="fc" id="L331">				player.remove(&quot;text&quot;);</span>
+<span class="fc" id="L332">				player.notifyWorldAboutChanges();</span>
+			}
+<span class="fc" id="L334">		}</span>
+<span class="fc" id="L335">		playersRmText.clear();</span>
+<span class="fc" id="L336">	}</span>
+
+	protected void executeNPCsPreLogic() {
+		// SpeakerNPC logic
+<span class="fc" id="L340">		final NPCList npcList = SingletonRepository.getNPCList();</span>
+<span class="fc" id="L341">		final Set&lt;String&gt; npcs = npcList.getNPCs();</span>
+<span class="fc bfc" id="L342" title="All 2 branches covered.">		for (final String npc : npcs) {</span>
+<span class="fc" id="L343">			npcList.get(npc).preLogic();</span>
+<span class="fc" id="L344">		}</span>
+<span class="fc" id="L345">	}</span>
+
+	protected void executePlayerLogic() {
+<span class="fc" id="L348">		getOnlinePlayers().forAllPlayersExecute(new Task&lt;Player&gt;() {</span>
+			@Override
+			public void execute(final Player player) {
+				try {
+<span class="fc" id="L352">					player.logic();</span>
+<span class="nc" id="L353">				} catch (final Exception e) {</span>
+<span class="nc" id="L354">					logger.error(&quot;Error in player logic&quot;, e);</span>
+<span class="fc" id="L355">				}</span>
+<span class="fc" id="L356">			}</span>
+		});
+<span class="fc" id="L358">	}</span>
+
+	protected void handleKilledEntities() {
+		/*
+		 * This is here because there is a split between last hit and the moment
+		 * a entity die so that the last hit is visible on client.
+		 */
+		// In order for the last hit to be visible dead happens at two
+		// steps.
+<span class="fc bfc" id="L367" title="All 2 branches covered.">		for (final Pair&lt;RPEntity, Entity&gt; entry : entityToKill) {</span>
+			try {
+<span class="fc" id="L369">				entry.first().onDead(entry.second());</span>
+<span class="nc" id="L370">			} catch (final Exception e) {</span>
+<span class="nc" id="L371">				logger.error(&quot;error while handling killed entities&quot;, e);</span>
+<span class="fc" id="L372">			}</span>
+<span class="fc" id="L373">		}</span>
+<span class="fc" id="L374">		entityToKill.clear();</span>
+<span class="fc" id="L375">	}</span>
+
+
+	@Override
+	public synchronized void endTurn() {
+<span class="fc" id="L380">		final int currentTurn = getTurn();</span>
+		try {
+
+<span class="fc" id="L383">			SingletonRepository.getTurnNotifier().logic(currentTurn);</span>
+
+<span class="fc bfc" id="L385" title="All 2 branches covered.">			for (final IRPZone zoneI : SingletonRepository.getRPWorld()) {</span>
+<span class="fc" id="L386">				final StendhalRPZone zone = (StendhalRPZone) zoneI;</span>
+<span class="fc" id="L387">				zone.logic();</span>
+<span class="fc" id="L388">			}</span>
+
+			// run registered object's logic method for this turn
+
+<span class="nc" id="L392">		} catch (final Exception e) {</span>
+<span class="nc" id="L393">			logger.error(&quot;error in endTurn&quot;, e);</span>
+<span class="fc" id="L394">		}</span>
+<span class="fc" id="L395">	}</span>
+
+	/**
+	 * reads the admins from admins.list.
+	 *
+	 * @param player
+	 *            Player to check for super admin status.
+	 */
+	private static void readAdminsFromFile(final Player player) {
+<span class="nc" id="L404">		synchronized(StendhalRPRuleProcessor.class) {</span>
+<span class="nc bnc" id="L405" title="All 2 branches missed.">			if (adminNames == null) {</span>
+<span class="nc" id="L406">				Map&lt;String, String&gt; tempAdminNames = new HashMap&lt;String, String&gt;();</span>
+
+<span class="nc" id="L408">				String adminFilename = &quot;data/conf/admins.txt&quot;;</span>
+
+				try {
+<span class="nc" id="L411">					InputStream is = player.getClass().getClassLoader().getResourceAsStream(</span>
+							adminFilename);
+
+<span class="nc bnc" id="L414" title="All 2 branches missed.">					if (is == null) {</span>
+<span class="nc" id="L415">						logger.info(adminFilename + &quot; does not exist.&quot;);</span>
+<span class="nc" id="L416">						return;</span>
+					}
+
+<span class="nc" id="L419">					final BufferedReader in = new BufferedReader(</span>
+							new UnicodeSupportingInputStreamReader(is));
+					try {
+						String line;
+<span class="nc bnc" id="L423" title="All 2 branches missed.">						while ((line = in.readLine()) != null) {</span>
+<span class="nc" id="L424">							String[] tokens = line.split(&quot;=&quot;);</span>
+<span class="nc bnc" id="L425" title="All 2 branches missed.">							if (tokens.length &gt;= 2) {</span>
+<span class="nc" id="L426">								tempAdminNames.put(tokens[0].trim(), tokens[1].trim());</span>
+							} else {
+<span class="nc" id="L428">								tempAdminNames.put(tokens[0].trim(), Integer.toString(AdministrationAction.REQUIRED_ADMIN_LEVEL_FOR_SUPER));</span>
+							}
+<span class="nc" id="L430">						}</span>
+<span class="nc" id="L431">					} catch (final Exception e) {</span>
+<span class="nc" id="L432">						logger.error(&quot;Error loading admin names from: &quot;+ adminFilename, e);</span>
+					} finally {
+<span class="nc" id="L434">						in.close();</span>
+<span class="nc" id="L435">					}</span>
+
+<span class="nc" id="L437">					adminNames = tempAdminNames;</span>
+<span class="nc" id="L438">				} catch (final IOException e) {</span>
+<span class="nc" id="L439">					logger.error(&quot;Error loading admin names from: &quot; + adminFilename, e);</span>
+<span class="nc" id="L440">				}</span>
+			}
+<span class="nc" id="L442">		}</span>
+
+<span class="nc bnc" id="L444" title="All 2 branches missed.">		if (adminNames.get(player.getName()) != null) {</span>
+<span class="nc" id="L445">			player.setAdminLevel(Integer.parseInt(adminNames.get(player.getName())));</span>
+		}
+<span class="nc" id="L447">	}</span>
+
+	@Override
+	public synchronized boolean onInit(final RPObject object) {
+		try {
+<span class="nc bnc" id="L452" title="All 2 branches missed.">			if (object == null) {</span>
+<span class="nc" id="L453">				logger.error(&quot;onInit: object = null&quot;, new Throwable());</span>
+<span class="nc" id="L454">				return false;</span>
+			}
+
+<span class="nc bnc" id="L457" title="All 2 branches missed.">			if (object instanceof Player) {</span>
+<span class="nc" id="L458">				Player player = (Player) object;</span>
+
+<span class="nc" id="L460">				playersRmText.add(player);</span>
+
+				// place the player and his pets into the world
+<span class="nc" id="L463">				PlayerTransformer.placePlayerIntoWorldOnLogin(object, player);</span>
+<span class="nc" id="L464">				PlayerTransformer.placeSheepAndPetIntoWorld(player);</span>
+<span class="nc" id="L465">				player.notifyWorldAboutChanges();</span>
+<span class="nc" id="L466">				StendhalRPAction.transferContent(player);</span>
+
+<span class="nc" id="L468">				getOnlinePlayers().add(player);</span>
+
+<span class="nc bnc" id="L470" title="All 2 branches missed.">				if (!player.isGhost()) {</span>
+<span class="nc" id="L471">					notifyOnlineStatus(true, player);</span>
+<span class="nc" id="L472">					DBCommand command = new SetOnlineStatusCommand(player.getName(), true);</span>
+<span class="nc" id="L473">					DBCommandQueue.get().enqueue(command);</span>
+				}
+<span class="nc" id="L475">				updatePlayerNameListForPlayersOnLogin(player);</span>
+<span class="nc" id="L476">				String[] params = {};</span>
+
+<span class="nc" id="L478">				new GameEvent(player.getName(), &quot;login&quot;, params).raise();</span>
+<span class="nc" id="L479">				SingletonRepository.getLoginNotifier().onPlayerLoggedIn(player);</span>
+<span class="nc" id="L480">				TutorialNotifier.login(player);</span>
+
+<span class="nc" id="L482">				readAdminsFromFile(player);</span>
+<span class="nc" id="L483">				welcome(player);</span>
+
+				// expire outfits
+<span class="nc bnc" id="L486" title="All 2 branches missed.">				if (player.has(&quot;outfit_expire_age&quot;)) {</span>
+<span class="nc" id="L487">					int expire = player.getInt(&quot;outfit_expire_age&quot;) - player.getAge();</span>
+<span class="nc" id="L488">					ExpireOutfit expireOutfit = new ExpireOutfit(player.getName());</span>
+<span class="nc" id="L489">					SingletonRepository.getTurnNotifier().dontNotify(expireOutfit);</span>
+<span class="nc" id="L490">					SingletonRepository.getTurnNotifier().notifyInSeconds(Math.max(0, expire * 60), expireOutfit);</span>
+				}
+<span class="nc" id="L492">				return true;</span>
+			} else {
+<span class="nc" id="L494">				logger.error(&quot;onInit: object is not an instance of Player: &quot; + object, new Throwable());</span>
+<span class="nc" id="L495">				return false;</span>
+			}
+<span class="nc" id="L497">		} catch (final Exception e) {</span>
+			final String id;
+<span class="nc bnc" id="L499" title="All 2 branches missed.">			if (object != null) {</span>
+<span class="nc" id="L500">				id = object.get(&quot;#db_id&quot;);</span>
+			} else {
+<span class="nc" id="L502">				 id = &quot;&lt;object is null&gt;&quot;;</span>
+			}
+<span class="nc" id="L504">			logger.error(&quot;There has been a severe problem loading player &quot; + id, e);</span>
+<span class="nc" id="L505">			return false;</span>
+		}
+	}
+	/**
+	 * send a welcome message to the player which can be configured in
+	 * marauroa.ini file as &quot;server_welcome&quot;. If the value is an http:// address,
+	 * the first line of that address is read and used as the message
+	 *
+	 * @param player
+	 *            Player
+	 */
+	static void welcome(final Player player) {
+<span class="nc" id="L517">		String msg = welcomeMessage;</span>
+		try {
+<span class="nc" id="L519">			final Configuration config = Configuration.getConfiguration();</span>
+<span class="nc bnc" id="L520" title="All 2 branches missed.">			if (config.has(&quot;server_welcome&quot;)) {</span>
+<span class="nc" id="L521">				msg = config.get(&quot;server_welcome&quot;);</span>
+<span class="nc bnc" id="L522" title="All 2 branches missed.">				if (msg.startsWith(&quot;http://&quot;)) {</span>
+<span class="nc" id="L523">					final URL url = new URL(msg);</span>
+<span class="nc" id="L524">					HttpURLConnection.setFollowRedirects(false);</span>
+<span class="nc" id="L525">					final HttpURLConnection connection = (HttpURLConnection) url.openConnection();</span>
+                    try {
+<span class="nc" id="L527">                        final BufferedReader br = new BufferedReader(</span>
+							new InputStreamReader(connection.getInputStream(), &quot;UTF-8&quot;));
+                        try {
+<span class="nc" id="L530">                            msg = br.readLine();</span>
+                        } finally {
+<span class="nc" id="L532">                            br.close();</span>
+<span class="nc" id="L533">                        }</span>
+                    } finally {
+<span class="nc" id="L535">				        connection.disconnect();</span>
+<span class="nc" id="L536">                    }</span>
+				}
+			}
+<span class="nc" id="L539">		} catch (final IOException e) {</span>
+<span class="nc bnc" id="L540" title="All 2 branches missed.">			if (firstWelcomeException) {</span>
+<span class="nc" id="L541">				logger.warn(&quot;Can't read server_welcome from marauroa.ini&quot;, e);</span>
+<span class="nc" id="L542">				firstWelcomeException = false;</span>
+			}
+<span class="nc" id="L544">		}</span>
+<span class="nc bnc" id="L545" title="All 2 branches missed.">		if (msg != null) {</span>
+			/*
+			 * Avoid spamming all client channels. Very old clients do not
+			 * recognize SERVER type, but they just log an error. Client version
+			 * information has not been received yet.
+			 */
+<span class="nc" id="L551">			player.sendPrivateText(NotificationType.SERVER, msg);</span>
+		}
+<span class="nc" id="L553">	}</span>
+
+	@Override
+	public synchronized boolean onExit(final RPObject object) {
+<span class="nc" id="L557">		return onLogout(object, &quot;logout&quot;);</span>
+	}
+
+	private boolean onLogout(final RPObject object, String reason) {
+<span class="nc bnc" id="L561" title="All 2 branches missed.">		if (object instanceof Player) {</span>
+			try {
+<span class="nc" id="L563">				final Player player = (Player) object;</span>
+
+<span class="nc" id="L565">				Pair&lt;RPEntity, Entity&gt; entry = removedKilled(player);</span>
+<span class="nc bnc" id="L566" title="All 2 branches missed.">				if (entry != null) {</span>
+<span class="nc" id="L567">					logger.info(object.get(&quot;name&quot;) + &quot; logged out shortly before death: Killing it now :)&quot;);</span>
+<span class="nc" id="L568">					entry.first().onDead(entry.second());</span>
+				}
+
+<span class="nc bnc" id="L571" title="All 2 branches missed.">				if (!player.isGhost()) {</span>
+<span class="nc" id="L572">					notifyOnlineStatus(false, player);</span>
+				}
+<span class="nc" id="L574">				updatePlayerNameListForPlayersOnLogout(player);</span>
+
+<span class="nc" id="L576">				Player.destroy(player);</span>
+<span class="nc" id="L577">				getOnlinePlayers().remove(player);</span>
+
+<span class="nc" id="L579">				DBCommand command = new SetOnlineStatusCommand(player.getName(), false);</span>
+<span class="nc" id="L580">				DBCommandQueue.get().enqueue(command);</span>
+
+<span class="nc" id="L582">				new GameEvent(player.getName(), &quot;logout&quot;, reason).raise();</span>
+<span class="nc" id="L583">				logger.debug(&quot;removed player &quot; + player);</span>
+
+<span class="nc" id="L585">				return true;</span>
+<span class="nc" id="L586">			} catch (final Exception e) {</span>
+<span class="nc" id="L587">				logger.error(&quot;error in onExit&quot;, e);</span>
+<span class="nc" id="L588">				return true;</span>
+			}
+		} else {
+<span class="nc" id="L591">			logger.error(&quot;object is no Player, but: &quot; + object, new Throwable());</span>
+<span class="nc" id="L592">			return true;</span>
+		}
+	}
+
+	@Override
+	public synchronized void onTimeout(final RPObject object) {
+<span class="nc" id="L598">		onLogout(object, &quot;timeout&quot;);</span>
+<span class="nc" id="L599">	}</span>
+
+	@Override
+	public AccountResult createAccount(final String username, final String password, final String email) {
+<span class="nc" id="L603">		final AccountCreator creator = new AccountCreator(username, password, email);</span>
+<span class="nc" id="L604">		return creator.create();</span>
+	}
+
+	@Override
+	public CharacterResult createCharacter(final String username, final String character, final RPObject template) {
+<span class="nc" id="L609">		final CharacterCreator creator = new CharacterCreator(username, character, template);</span>
+<span class="nc" id="L610">		return creator.create();</span>
+	}
+
+	public RPServerManager getRPManager() {
+<span class="nc" id="L614">		return rpman;</span>
+	}
+
+	/**
+	 * Tell this message all players.
+	 *
+	 * @param notificationType type of notification message, usually NotificationType.PRIVMSG
+	 * @param message
+	 *            Message to tell all players
+	 */
+	public void tellAllPlayers(NotificationType notificationType, final String message) {
+<span class="fc" id="L625">		onlinePlayers.tellAllOnlinePlayers(notificationType, message);</span>
+<span class="fc" id="L626">	}</span>
+
+	/**
+	 * Sends a message to all supporters.
+	 *
+	 * @param message Support message
+	 */
+	public void sendMessageToSupporters(final String message) {
+<span class="fc" id="L634">		getOnlinePlayers().forFilteredPlayersExecute(</span>
+
+<span class="fc" id="L636">		new Task&lt;Player&gt;() {</span>
+
+			@Override
+			public void execute(final Player player) {
+<span class="fc" id="L640">				player.sendPrivateText(NotificationType.SUPPORT, message);</span>
+<span class="fc" id="L641">				player.notifyWorldAboutChanges();</span>
+<span class="fc" id="L642">			}</span>
+
+		},
+
+<span class="fc" id="L646">		new FilterCriteria&lt;Player&gt;() {</span>
+
+			@Override
+			public boolean passes(final Player p) {
+<span class="fc bfc" id="L650" title="All 2 branches covered.">				return p.getAdminLevel() &gt;= AdministrationAction.REQUIRED_ADMIN_LEVEL_FOR_SUPPORT;</span>
+			}
+
+		});
+
+<span class="fc" id="L655">		logger.log(Level.toLevel(System.getProperty(&quot;stendhal.support.loglevel&quot;), Level.DEBUG), message);</span>
+<span class="fc" id="L656">	}</span>
+
+	/**
+	 * Sends a message to all supporters.
+	 *
+	 * @param source
+	 *            a player or script name
+	 * @param message
+	 *            Support message
+	 */
+	public void sendMessageToSupporters(final String source, final String message) {
+<span class="fc" id="L667">		final String text = source + &quot; asks for support to ADMIN: &quot; + message;</span>
+<span class="fc" id="L668">		sendMessageToSupporters(text);</span>
+<span class="fc" id="L669">	}</span>
+
+	public static int getAmountOfOnlinePlayers() {
+<span class="fc" id="L672">		return SingletonRepository.getRuleProcessor().onlinePlayers.size();</span>
+	}
+
+	/**
+	 * Notifies buddies about going online/offline.
+	 *
+	 * @param isOnline did the player login?
+	 * @param playerToNotifyAbout name of the player
+	 */
+	public void notifyOnlineStatus(final boolean isOnline, final Player playerToNotifyAbout) {
+<span class="pc bpc" id="L682" title="1 of 2 branches missed.">		if (instance != null) {</span>
+<span class="fc bfc" id="L683" title="All 2 branches covered.">			if (isOnline) {</span>
+<span class="fc" id="L684">				SingletonRepository.getRuleProcessor().getOnlinePlayers().forAllPlayersExecute(new Task&lt;Player&gt;() {</span>
+					@Override
+					public void execute(final Player player) {
+<span class="fc" id="L687">						player.notifyOnline(playerToNotifyAbout.getName());</span>
+<span class="fc" id="L688">					}</span>
+				});
+
+			} else {
+<span class="fc" id="L692">				SingletonRepository.getRuleProcessor().getOnlinePlayers().forAllPlayersExecute(new Task&lt;Player&gt;() {</span>
+					@Override
+					public void execute(final Player player) {
+<span class="fc" id="L695">						player.notifyOffline(playerToNotifyAbout.getName());</span>
+<span class="fc" id="L696">					}</span>
+				});
+			}
+		}
+<span class="fc" id="L700">	}</span>
+
+	/**
+	 * Update all player's lists of online player names on login of a new player
+	 *
+	 * @param playerToNotifyAbout
+	 */
+	private void updatePlayerNameListForPlayersOnLogin(final Player playerToNotifyAbout) {
+<span class="nc" id="L708">		SingletonRepository.getRuleProcessor().getOnlinePlayers().forAllPlayersExecute(new Task&lt;Player&gt;() {</span>
+			@Override
+			public void execute(final Player player) {
+<span class="nc bnc" id="L711" title="All 2 branches missed.">				if(playerToNotifyAbout.isGhost()) {</span>
+<span class="nc" id="L712">					playerToNotifyAbout.addEvent(new PlayerLoggedOnEvent(player.getName()));</span>
+<span class="nc" id="L713">					playerToNotifyAbout.notifyWorldAboutChanges();</span>
+<span class="nc bnc" id="L714" title="All 2 branches missed.">					if (player.isGhost()) {</span>
+<span class="nc" id="L715">						player.addEvent(new PlayerLoggedOnEvent(playerToNotifyAbout.getName()));</span>
+<span class="nc" id="L716">						player.notifyWorldAboutChanges();</span>
+					}
+				} else {
+<span class="nc" id="L719">					player.addEvent(new PlayerLoggedOnEvent(playerToNotifyAbout.getName()));</span>
+<span class="nc" id="L720">					player.notifyWorldAboutChanges();</span>
+<span class="nc bnc" id="L721" title="All 2 branches missed.">					if (!player.isGhost()) {</span>
+<span class="nc" id="L722">						playerToNotifyAbout.addEvent(new PlayerLoggedOnEvent(player.getName()));</span>
+<span class="nc" id="L723">						playerToNotifyAbout.notifyWorldAboutChanges();</span>
+					}
+				}
+<span class="nc" id="L726">			}</span>
+		});
+<span class="nc" id="L728">	}</span>
+
+	/**
+	 * Update all player's lists of online player names on login of a new player
+	 *
+	 * @param playerToNotifyAbout
+	 */
+	private void updatePlayerNameListForPlayersOnLogout(final Player playerToNotifyAbout) {
+<span class="nc" id="L736">		SingletonRepository.getRuleProcessor().getOnlinePlayers().forAllPlayersExecute(new Task&lt;Player&gt;() {</span>
+			@Override
+			public void execute(final Player player) {
+<span class="nc" id="L739">				player.addEvent(new PlayerLoggedOutEvent(playerToNotifyAbout.getName()));</span>
+<span class="nc" id="L740">				player.notifyWorldAboutChanges();</span>
+<span class="nc" id="L741">			}</span>
+		});
+<span class="nc" id="L743">	}</span>
+
+	/**
+	 * Removes a zone (like a personalized vault).
+	 *
+	 * @param zone StendhalRPZone to remove
+	 */
+	public void removeZone(final StendhalRPZone zone) {
+<span class="nc" id="L751">		zonesToRemove.add(zone);</span>
+<span class="nc" id="L752">	}</span>
+
+	/**
+	 * Sets the welcome message.
+	 *
+	 * @param msg welcome message
+	 */
+	public static void setWelcomeMessage(String msg) {
+<span class="nc" id="L760">		StendhalRPRuleProcessor.welcomeMessage = msg;</span>
+<span class="nc" id="L761">	}</span>
+
+	/**
+	 * gets the content type for the requested resource
+	 *
+	 * @param resource name of resource
+	 * @return mime content/type or &lt;code&gt;null&lt;/code&gt;
+	 */
+	@Override
+	public String getMimeTypeForResource(String resource) {
+<span class="nc bnc" id="L771" title="All 2 branches missed.">		if (resource.endsWith(&quot;.tmx&quot;)) {</span>
+<span class="nc" id="L772">			return &quot;text/xml&quot;;</span>
+<span class="nc bnc" id="L773" title="All 2 branches missed.">		} else if (resource.endsWith(&quot;.tmx&quot;)) {</span>
+<span class="nc" id="L774">			return &quot;audio/ogg&quot;;</span>
+<span class="nc bnc" id="L775" title="All 2 branches missed.">		} else if (resource.endsWith(&quot;.png&quot;)) {</span>
+<span class="nc" id="L776">			return &quot;image/png&quot;;</span>
+		}
+<span class="nc" id="L778">		return null;</span>
+	}
+
+	/**
+	 * gets an input stream to the requested resource
+	 *
+	 * @param resource name of resource
+	 * @return InputStream or &lt;code&gt;null&lt;/code&gt;
+	 */
+	@Override
+	public InputStream getResource(String resource) {
+<span class="nc bnc" id="L789" title="All 4 branches missed.">		if (resource.startsWith(&quot;/tiled&quot;) || resource.startsWith(&quot;/data&quot;)) {</span>
+<span class="nc" id="L790">			return StendhalRPRuleProcessor.class.getClassLoader().getResourceAsStream(resource.substring(1));</span>
+		}
+<span class="nc bnc" id="L792" title="All 2 branches missed.">		if (resource.startsWith(&quot;/tileset&quot;)) {</span>
+<span class="nc" id="L793">			return StendhalRPRuleProcessor.class.getClassLoader().getResourceAsStream(&quot;tiled&quot; + resource);</span>
+		}
+<span class="nc" id="L795">		return null;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

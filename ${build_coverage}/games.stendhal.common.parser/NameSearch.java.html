@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>NameSearch.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.common.parser</a> &gt; <span class="el_source">NameSearch.java</span></div><h1>NameSearch.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.common.parser;
+
+import games.stendhal.common.grammar.Grammar;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+
+/**
+ * Returns structure for Sentence.findMatchingName().
+ *
+ * @author Martin Fuchs
+ */
+public final class NameSearch {
+<span class="fc" id="L27">    NameSearch(final Set&lt;String&gt; names) {</span>
+<span class="fc bfc" id="L28" title="All 4 branches covered.">        for(String name : names) {</span>
+<span class="fc" id="L29">        	parsedNames.put(name, ConversationParser.parse(name));</span>
+<span class="fc" id="L30">        }</span>
+
+<span class="fc" id="L32">        this.name = null;</span>
+<span class="fc" id="L33">        this.amount = 1;</span>
+<span class="fc" id="L34">    }</span>
+
+<span class="fc" id="L36">    private final Map&lt;String, Sentence&gt; parsedNames = new HashMap&lt;String, Sentence&gt;(); // map of parsed names to search for</span>
+
+    private String name;	// name we found as matching
+    private int amount;		// item count from the matching expression
+
+    /**
+     * Searches for item to match the given Expression.
+     *
+     * @param item
+     * @return true if we found a match
+     */
+    public boolean search(final Expression item) {
+        // see if the word matches an item in our list
+<span class="fc" id="L49">        boolean found = false;</span>
+
+<span class="fc" id="L51">        final String itemName = item.getNormalized();</span>
+        
+<span class="fc bfc" id="L53" title="All 4 branches covered.">        for(Map.Entry&lt;String, Sentence&gt; e : parsedNames.entrySet()) {</span>
+<span class="fc bfc" id="L54" title="All 4 branches covered.">        	if (e.getValue().matchesNormalized(itemName)) {</span>
+<span class="fc" id="L55">                name = e.getKey();</span>
+<span class="fc" id="L56">        		found = true;</span>
+<span class="fc" id="L57">        		break;</span>
+        	}
+<span class="fc" id="L59">        }</span>
+
+<span class="fc bfc" id="L61" title="All 4 branches covered.">        if (!found) {</span>
+	    	// see if instead the end matches, this is deliberately done afterwards because of bug #3285554 
+<span class="fc" id="L63">        	found = searchEndMatch(itemName);</span>
+        }
+
+    	// see if instead the plural matches
+<span class="fc bfc" id="L67" title="All 4 branches covered.">        if (!found) {</span>
+<span class="fc" id="L68">	        final String pluralName = Grammar.plural(itemName);</span>
+<span class="fc bfc" id="L69" title="All 4 branches covered.">	    	if (!pluralName.equals(itemName)) {</span>
+<span class="fc bfc" id="L70" title="All 4 branches covered.">	            for(Map.Entry&lt;String, Sentence&gt; e : parsedNames.entrySet()) {</span>
+<span class="fc bfc" id="L71" title="All 4 branches covered.">	            	if (e.getValue().matchesStartNormalized(pluralName)) {</span>
+<span class="fc" id="L72">		                name = e.getKey();</span>
+<span class="fc" id="L73">		        		found = true;</span>
+<span class="fc" id="L74">		        		break;</span>
+		        	}
+<span class="fc" id="L76">	            }</span>
+            }
+
+	    	// now check for end matches with the plural
+<span class="fc bfc" id="L80" title="All 8 branches covered.">	    	if (!found &amp;&amp; !pluralName.equals(itemName)) {</span>
+<span class="fc" id="L81">	        	found = searchEndMatch(pluralName);</span>
+            }
+        }
+
+<span class="fc bfc" id="L85" title="All 4 branches covered.">        if (!found) {</span>
+        	// see if instead the singular matches
+<span class="fc" id="L87">	        final String singularName = Grammar.singular(itemName);</span>
+<span class="fc bfc" id="L88" title="All 4 branches covered.">	    	if (!singularName.equals(itemName)) {</span>
+<span class="fc bfc" id="L89" title="All 4 branches covered.">	            for(Map.Entry&lt;String, Sentence&gt; e : parsedNames.entrySet()) {</span>
+<span class="fc bfc" id="L90" title="All 4 branches covered.">	            	if (e.getValue().matchesStartNormalized(singularName)) {</span>
+<span class="fc" id="L91">		                name = e.getKey();</span>
+<span class="fc" id="L92">		        		found = true;</span>
+<span class="fc" id="L93">		        		break;</span>
+		        	}
+<span class="fc" id="L95">	        	}</span>
+
+		    	// now check for end matches with the singular
+<span class="pc bpc" id="L98" title="2 of 8 branches missed.">		    	if (!found &amp;&amp; !singularName.equals(itemName)) {</span>
+<span class="fc" id="L99">			        found = searchEndMatch(singularName);</span>
+		    	}
+	    	}
+
+<span class="fc bfc" id="L103" title="All 4 branches covered.">	        if (!found) {</span>
+	        	// special case to handle misspelled &quot;double&quot; plurals
+<span class="fc" id="L105">		        final String singular2 = Grammar.singular(singularName);</span>
+<span class="pc bpc" id="L106" title="2 of 4 branches missed.">		    	if (!singular2.equals(singularName)) {</span>
+<span class="nc bnc" id="L107" title="All 4 branches missed.">		            for(Map.Entry&lt;String, Sentence&gt; e : parsedNames.entrySet()) {</span>
+<span class="nc bnc" id="L108" title="All 4 branches missed.">		            	if (e.getValue().matchesStartNormalized(singular2)) {</span>
+<span class="nc" id="L109">			                name = e.getKey();</span>
+<span class="nc" id="L110">			        		found = true;</span>
+<span class="nc" id="L111">			        		break;</span>
+			        	}
+<span class="nc" id="L113">		        	}</span>
+		    	}
+
+		    	// now check for end matches with the &quot;double singular&quot;
+<span class="pc bpc" id="L117" title="2 of 8 branches missed.">		    	if (!found &amp;&amp; !singular2.equals(itemName)) {</span>
+<span class="fc" id="L118">		        	found = searchEndMatch(singular2);</span>
+		    	}
+	        }
+    	}
+
+<span class="fc bfc" id="L123" title="All 4 branches covered.">    	if (found) {</span>
+<span class="fc" id="L124">            amount = item.getAmount();</span>
+<span class="fc" id="L125">            return true;</span>
+    	} else
+<span class="fc" id="L127">    		return false;</span>
+    }
+
+    /**
+     * Check for end matches while searching for item names.
+     * @param itemName
+     * @return &lt;code&gt;true&lt;/true&gt; if a match was found
+     */
+	private boolean searchEndMatch(final String itemName) {
+<span class="fc bfc" id="L136" title="All 4 branches covered.">		for(Map.Entry&lt;String, Sentence&gt; e : parsedNames.entrySet()) {</span>
+<span class="fc" id="L137">			Sentence parsed = e.getValue();</span>
+			
+<span class="pc bpc" id="L139" title="2 of 8 branches missed.">			if (itemName.endsWith(parsed.getOriginalText()) || </span>
+					itemName.endsWith(parsed.getNormalized())) {
+<span class="fc" id="L141">		        name = e.getKey();</span>
+<span class="fc" id="L142">				return true;</span>
+			}
+<span class="fc" id="L144">		}</span>
+
+<span class="fc" id="L146">		return false;</span>
+	}
+
+    /**
+     * Return true if matching name found.
+     *
+     * @return boolean find flag
+     */
+    public boolean found() {
+<span class="fc bfc" id="L155" title="All 4 branches covered.">        return name != null;</span>
+    }
+
+    /**
+     *
+     * @return the name
+     */
+    public String getName() {
+<span class="fc" id="L163">        return name;</span>
+    }
+
+    /**
+     *
+     * @return amount of items
+     */
+    public int getAmount() {
+<span class="fc" id="L171">        return amount;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

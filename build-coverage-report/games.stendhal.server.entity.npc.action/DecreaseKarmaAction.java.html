@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>DecreaseKarmaAction.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.npc.action</a> &gt; <span class="el_source">DecreaseKarmaAction.java</span></div><h1>DecreaseKarmaAction.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.npc.action;
+
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.core.config.annotations.Dev;
+import games.stendhal.server.core.config.annotations.Dev.Category;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.player.Player;
+
+/**
+ * Decreases the karma of the current player.
+ */
+@Dev(category=Category.STATS, label=&quot;Karma-&quot;)
+public class DecreaseKarmaAction implements ChatAction {
+
+	private final double karmaDiff;
+
+	/**
+	 * Creates a new DecreaseKarmaAction.
+	 *
+	 * @param karmaDiff
+	 *            amount of karma to subtract
+	 */
+<span class="fc" id="L36">	public DecreaseKarmaAction(final double karmaDiff) {</span>
+<span class="fc" id="L37">		this.karmaDiff = karmaDiff;</span>
+<span class="fc" id="L38">	}</span>
+
+	@Override
+	public void fire(final Player player, final Sentence sentence, final EventRaiser raiser) {
+<span class="fc" id="L42">		player.addKarma(-1 * karmaDiff);</span>
+<span class="fc" id="L43">	}</span>
+
+	@Override
+	public String toString() {
+<span class="nc" id="L47">		return &quot;DecreaseKarma&lt;&quot; + karmaDiff + &quot;&gt;&quot;;</span>
+	}
+
+	@Override
+	public int hashCode() {
+		final int PRIME = 31;
+<span class="nc" id="L53">		int result = 1;</span>
+		long temp;
+<span class="nc" id="L55">		temp = Double.doubleToLongBits(karmaDiff);</span>
+<span class="nc" id="L56">		result = PRIME * result + (int) (temp ^ (temp &gt;&gt;&gt; 32));</span>
+<span class="nc" id="L57">		return result;</span>
+	}
+
+	@Override
+	public boolean equals(final Object obj) {
+<span class="pc bpc" id="L62" title="1 of 2 branches missed.">		if (!(obj instanceof DecreaseKarmaAction)) {</span>
+<span class="nc" id="L63">			return false;</span>
+		}
+<span class="fc" id="L65">		DecreaseKarmaAction other = (DecreaseKarmaAction) obj;</span>
+<span class="pc bpc" id="L66" title="1 of 2 branches missed.">		return (Double.doubleToLongBits(karmaDiff) == Double.doubleToLongBits(other.karmaDiff));</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

@@ -1,0 +1,379 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>StendhalRPWorld.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.core.engine</a> &gt; <span class="el_source">StendhalRPWorld.java</span></div><h1>StendhalRPWorld.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                      (C) Copyright 2003 - Marauroa                      *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.core.engine;
+
+import games.stendhal.common.parser.WordList;
+import games.stendhal.server.core.config.ZoneGroupsXMLLoader;
+import games.stendhal.server.entity.Entity;
+import games.stendhal.server.entity.mapstuff.portal.OneWayPortalDestination;
+import games.stendhal.server.entity.mapstuff.portal.Portal;
+
+import java.net.URI;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
+import marauroa.common.game.IRPZone;
+import marauroa.common.game.IRPZone.ID;
+import marauroa.server.game.rp.RPWorld;
+
+import org.apache.log4j.Logger;
+
+public class StendhalRPWorld extends RPWorld {
+	/** the logger instance. */
+<span class="fc" id="L36">	private static final Logger logger = Logger.getLogger(StendhalRPWorld.class);</span>
+
+	public final static String MAPS_FOLDER;
+
+	static {
+<span class="pc bpc" id="L41" title="1 of 2 branches missed.">		if (StendhalRPWorld.class.getClassLoader().getResource(</span>
+				&quot;tiled/tileset/README&quot;) == null) {
+<span class="nc" id="L43">			MAPS_FOLDER = &quot;data/maps/&quot;;</span>
+		} else {
+<span class="fc" id="L45">			logger.warn(&quot;Developing mode, loading maps from tiled/ instead of data/maps&quot;);</span>
+<span class="fc" id="L46">			MAPS_FOLDER = &quot;tiled/&quot;;</span>
+		}
+<span class="fc" id="L48">	}</span>
+
+	/**
+	 * A common place for milliseconds per turn.
+	 */
+	public static final int MILLISECONDS_PER_TURN = 300;
+	
+<span class="fc" id="L55">	private final RPClassGenerator genRPClass = new RPClassGenerator();</span>
+
+	/** The Singleton instance. */
+	protected static StendhalRPWorld instance;
+
+	// /** The pathfinder thread. */
+	// private PathfinderThread pathfinderThread;
+
+<span class="fc" id="L63">	private final Map&lt;String, Set&lt;StendhalRPZone&gt;&gt; regionMap = new HashMap&lt;String, Set&lt;StendhalRPZone&gt;&gt;();</span>
+
+
+	protected StendhalRPWorld() {
+<span class="fc" id="L67">		super();</span>
+<span class="fc" id="L68">	}</span>
+
+	@Override
+	public IRPZone removeRPZone(final ID zoneid) throws Exception {
+<span class="fc" id="L72">		final StendhalRPZone zone = (StendhalRPZone) super.getRPZone(zoneid);</span>
+<span class="pc bpc" id="L73" title="1 of 2 branches missed.">		for(final Set&lt;StendhalRPZone&gt; zones : regionMap.values()) {</span>
+<span class="nc bnc" id="L74" title="All 2 branches missed.">			if(zones.contains(zone)) {</span>
+<span class="nc" id="L75">				zones.remove(zone);</span>
+			}
+<span class="nc" id="L77">		}</span>
+<span class="fc" id="L78">		return super.removeRPZone(zoneid);</span>
+	}
+	
+	public void removeZone(final StendhalRPZone toBeRemoved) {
+		try {
+<span class="fc" id="L83">			removeRPZone(toBeRemoved.getID());</span>
+<span class="nc" id="L84">		} catch (final Exception e) {</span>
+<span class="nc" id="L85">			logger.error(e, e);</span>
+<span class="fc" id="L86">		}</span>
+<span class="fc" id="L87">	}</span>
+
+
+	public static StendhalRPWorld get() {
+<span class="fc" id="L91">		synchronized(StendhalRPWorld.class) {</span>
+<span class="fc bfc" id="L92" title="All 2 branches covered.">			if (instance == null) {</span>
+<span class="fc" id="L93">				instance = new StendhalRPWorld();</span>
+<span class="fc" id="L94">				instance.initialize();</span>
+			}
+<span class="pc" id="L96">		}</span>
+
+<span class="fc" id="L98">		return instance;</span>
+	}
+
+	
+	@Override
+	protected void initialize() {
+<span class="fc" id="L104">		super.initialize();</span>
+<span class="fc" id="L105">		genRPClass.createRPClasses();</span>
+<span class="fc" id="L106">	}</span>
+	
+	/**
+	 * This method is a workaround for a groovy bug:
+	 * http://jira.codehaus.org/browse/GROOVY-1484
+	 * 
+	 * Don't use it in Java code, only in Groovy. Remove this method once the
+	 * Groovy bug has been resolved.
+	 * 
+	 * @return StendhalRPWorld
+	 * @deprecated use StendhalRPWorld.get()
+	 */
+	@Deprecated
+	public static StendhalRPWorld getInstance() {
+<span class="nc" id="L120">		return SingletonRepository.getRPWorld();</span>
+	}
+
+	/**
+	 * Gives the number of turns that will take place during a given number of
+	 * seconds.
+	 * 
+	 * @param seconds
+	 *            The number of seconds.
+	 * 
+	 * @return The number of turns.
+	 */
+	public int getTurnsInSeconds(final int seconds) {
+<span class="fc" id="L133">		return seconds * 10 / 3; // prevent overflows: 1000 / MILLISECONDS_PER_TURN;</span>
+	}
+
+	
+
+	@Override
+	public void onInit() {
+		try {
+<span class="nc" id="L141">			super.onInit();</span>
+
+			// Create the NPC parser word list.
+<span class="nc" id="L144">			WordList.getInstance();</span>
+
+			// create the pathfinder thread and start it
+			// pathfinderThread = new PathfinderThread(this);
+			// pathfinderThread.start();
+
+<span class="nc" id="L150">			final ZoneGroupsXMLLoader loader = new ZoneGroupsXMLLoader(new URI(</span>
+					&quot;/data/conf/zones.xml&quot;));
+
+<span class="nc" id="L153">			loader.load();</span>
+
+<span class="nc" id="L155">			validatePortals();</span>
+<span class="nc" id="L156">			SingletonRepository.getAchievementNotifier().initialize();</span>
+<span class="nc" id="L157">			SingletonRepository.getGagManager();</span>
+<span class="nc" id="L158">			SingletonRepository.getJail();</span>
+<span class="nc" id="L159">		} catch (final Exception e) {</span>
+<span class="nc" id="L160">			logger.error(&quot;Error on Init the server.&quot;, e);</span>
+<span class="nc" id="L161">		}</span>
+<span class="nc" id="L162">	}</span>
+
+	/**
+	 * Checks for unpaired portals.
+	 */
+	private void validatePortals() {
+<span class="nc bnc" id="L168" title="All 2 branches missed.">		for (final IRPZone zone : this) {</span>
+<span class="nc bnc" id="L169" title="All 2 branches missed.">			for (final Portal portal : ((StendhalRPZone) zone).getPortals()) {</span>
+<span class="nc" id="L170">				validatePortal(portal);</span>
+<span class="nc" id="L171">			}</span>
+<span class="nc" id="L172">		}</span>
+<span class="nc" id="L173">	}</span>
+
+	@Override
+	public void onFinish() {
+<span class="nc" id="L177">		super.onFinish();</span>
+<span class="nc" id="L178">		new GameEvent(&quot;server system&quot;, &quot;shutdown&quot;).raise();</span>
+		try {
+			//TODO: find a more appropriate way to do this
+			// give gameevents a chance to be processed;
+<span class="nc" id="L182">			Thread.sleep(500);</span>
+<span class="nc" id="L183">		} catch (final InterruptedException e) {</span>
+			//do nothing
+<span class="nc" id="L185">		}</span>
+		
+<span class="nc" id="L187">	}</span>
+
+	protected void validatePortal(final Portal portal) {
+<span class="nc bnc" id="L190" title="All 2 branches missed.">		if (!portal.loaded()) {</span>
+<span class="nc" id="L191">			logger.warn(portal + &quot; has no destination&quot;);</span>
+<span class="nc" id="L192">			return;</span>
+		}
+
+<span class="nc bnc" id="L195" title="All 2 branches missed.">		if (portal instanceof OneWayPortalDestination) {</span>
+<span class="nc" id="L196">			return;</span>
+		}
+
+<span class="nc" id="L199">		final String id = portal.getDestinationZone();</span>
+
+<span class="nc bnc" id="L201" title="All 2 branches missed.">		if (id == null) {</span>
+<span class="nc" id="L202">			logger.warn(portal + &quot; has no destination zone&quot;);</span>
+<span class="nc" id="L203">			return;</span>
+		}
+
+<span class="nc" id="L206">		final StendhalRPZone zone = getZone(id);</span>
+
+<span class="nc bnc" id="L208" title="All 2 branches missed.">		if (zone == null) {</span>
+<span class="nc" id="L209">			logger.warn(portal + &quot; has an invalid destination zone: &quot; + id);</span>
+<span class="nc" id="L210">			return;</span>
+		}
+
+<span class="nc" id="L213">		final Object ref = portal.getDestinationReference();</span>
+
+<span class="nc bnc" id="L215" title="All 2 branches missed.">		if (ref == null) {</span>
+<span class="nc" id="L216">			logger.warn(portal + &quot; has no destination reference&quot;);</span>
+<span class="nc" id="L217">			return;</span>
+		}
+
+<span class="nc bnc" id="L220" title="All 2 branches missed.">		if (zone.getPortal(ref) == null) {</span>
+<span class="nc" id="L221">			logger.warn(portal + &quot; has an invalid destination reference: &quot; + id</span>
+					+ &quot;[&quot; + ref + &quot;]&quot;);
+		}
+<span class="nc" id="L224">	}</span>
+
+	public IRPZone getRPZone(final String zone) {
+<span class="fc" id="L227">		return getRPZone(new IRPZone.ID(zone));</span>
+	}
+
+	/**
+	 * Finds a zone by its id.
+	 * 
+	 * @param id
+	 *            The zone's id
+	 * 
+	 * @return The matching zone, or &lt;code&gt;null&lt;/code&gt; if not found.
+	 */
+	public StendhalRPZone getZone(final String id) {
+<span class="fc" id="L239">		return (StendhalRPZone) getRPZone(new IRPZone.ID(id));</span>
+	}
+
+	/**
+	 * Find the zone that would contain an entity at global coordinates.
+	 * 
+	 * TODO: This is likely broken for entity larger than 2x2, because parts of
+	 * them will exist in multiple zones (and not in collision)
+	 * 
+	 * @param level
+	 *            The level.
+	 * @param wx
+	 *            The global X coordinate.
+	 * @param wy
+	 *            The global Y coordinate.
+	 * @param entity
+	 *            The entity.
+	 * 
+	 * @return The matching zone, or &lt;code&gt;null&lt;/code&gt; if not found.
+	 */
+	public StendhalRPZone getZoneAt(final int level, final int wx, final int wy, final Entity entity) {
+<span class="nc bnc" id="L260" title="All 2 branches missed.">		for (final IRPZone izone : this) {</span>
+<span class="nc" id="L261">			final StendhalRPZone zone = (StendhalRPZone) izone;</span>
+
+<span class="nc bnc" id="L263" title="All 2 branches missed.">			if (zone.isInterior()) {</span>
+<span class="nc" id="L264">				continue;</span>
+			}
+
+<span class="nc bnc" id="L267" title="All 2 branches missed.">			if (zone.getLevel() != level) {</span>
+<span class="nc" id="L268">				continue;</span>
+			}
+
+<span class="nc bnc" id="L271" title="All 2 branches missed.">			if (zone.intersects(entity.getArea(wx, wy))) {</span>
+<span class="nc" id="L272">				logger.debug(&quot;Contained at :&quot; + zone.getID());</span>
+<span class="nc" id="L273">				return zone;</span>
+			}
+<span class="nc" id="L275">		}</span>
+
+<span class="nc" id="L277">		return null;</span>
+	}
+	
+	/**
+	 * Adds a zone to a certain region in this world
+	 * @param region
+	 * @param zone
+	 */
+	public void addRPZone(final String region, final StendhalRPZone zone) {
+<span class="fc" id="L286">		super.addRPZone(zone);</span>
+<span class="fc bfc" id="L287" title="All 2 branches covered.">		if(!regionMap.containsKey(region)) {</span>
+<span class="fc" id="L288">			regionMap.put(region, new HashSet&lt;StendhalRPZone&gt;());</span>
+		}
+<span class="fc" id="L290">		regionMap.get(region).add(zone);</span>
+<span class="fc" id="L291">	}</span>
+	
+	/**
+	 * Retrieves all zones from a specified region with the given flags
+	 * 
+	 * @param region the name of the region to search for
+	 * @param exterior only exterior zones(true), interior zones(false) or all zones (null)
+	 * @param aboveGround only zones above ground(true), zones below ground(false) or all (null) 
+	 * @param accessible use true to filter out zones that are not accessible for everyone 
+	 * @return a list of zones
+	 */
+	public Collection&lt;StendhalRPZone&gt; getAllZonesFromRegion(final String region, final Boolean exterior, final Boolean aboveGround, final Boolean accessible) {
+<span class="fc" id="L303">		final Set&lt;StendhalRPZone&gt; zonesInRegion = new HashSet&lt;StendhalRPZone&gt;();</span>
+<span class="pc bpc" id="L304" title="1 of 2 branches missed.">		if(regionMap.containsKey(region)) {</span>
+<span class="fc" id="L305">			zonesInRegion.addAll(regionMap.get(region));</span>
+<span class="pc bpc" id="L306" title="1 of 2 branches missed.">			if(exterior != null) {</span>
+<span class="fc" id="L307">				filterOutInteriorOrExteriorZones(zonesInRegion, exterior);</span>
+			}
+<span class="pc bpc" id="L309" title="2 of 6 branches missed.">			if(aboveGround != null &amp;&amp; exterior != null &amp;&amp; exterior) {</span>
+<span class="fc" id="L310">				filterOutAboveOrBelowGround(zonesInRegion, aboveGround);</span>
+			}
+<span class="pc bpc" id="L312" title="1 of 2 branches missed.">			if(accessible != null) {</span>
+<span class="fc" id="L313">				filterByAccessibility(zonesInRegion, accessible);</span>
+			}
+		}
+<span class="fc" id="L316">		return zonesInRegion;</span>
+	}
+
+	/**
+	 * Filter out exterior or interior zones from the given set
+	 * @param zonesInRegion the set to filter
+	 * @param exterior if true only exterior zones stay in the set
+	 */
+	private void filterOutInteriorOrExteriorZones(final Set&lt;StendhalRPZone&gt; zonesInRegion, final Boolean exterior) {
+<span class="fc" id="L325">		final Set&lt;StendhalRPZone&gt; removals = new HashSet&lt;StendhalRPZone&gt;();</span>
+<span class="fc bfc" id="L326" title="All 2 branches covered.">		for (StendhalRPZone zone : zonesInRegion) {</span>
+<span class="fc bfc" id="L327" title="All 2 branches covered.">			if(exterior) {</span>
+<span class="fc bfc" id="L328" title="All 2 branches covered.">				if(zone.isInterior()) {</span>
+<span class="fc" id="L329">					removals.add(zone);</span>
+				}
+			} else {
+<span class="fc bfc" id="L332" title="All 2 branches covered.">				if(!zone.isInterior()) {</span>
+<span class="fc" id="L333">					removals.add(zone);</span>
+				}
+			}
+<span class="fc" id="L336">		}</span>
+<span class="fc" id="L337">		zonesInRegion.removeAll(removals);</span>
+<span class="fc" id="L338">	}</span>
+	
+	/**
+	 * Filter out zones above or below ground
+	 * 
+	 * @param zonesInRegion
+	 * @param aboveGround
+	 */
+	private void filterOutAboveOrBelowGround(final Set&lt;StendhalRPZone&gt; zonesInRegion, final Boolean aboveGround) {
+<span class="fc" id="L347">		final Set&lt;StendhalRPZone&gt; removals = new HashSet&lt;StendhalRPZone&gt;();</span>
+<span class="fc bfc" id="L348" title="All 2 branches covered.">		for (StendhalRPZone zone : zonesInRegion) {</span>
+<span class="pc bpc" id="L349" title="1 of 2 branches missed.">			if(aboveGround.booleanValue()) {</span>
+<span class="nc bnc" id="L350" title="All 2 branches missed.">				if(zone.getLevel() &lt; 0) {</span>
+<span class="nc" id="L351">					removals.add(zone);</span>
+				}
+			} else {
+<span class="pc bpc" id="L354" title="1 of 2 branches missed.">				if(zone.getLevel() &gt;= 0) {</span>
+<span class="nc" id="L355">					removals.add(zone);</span>
+				}
+			}
+<span class="fc" id="L358">		}</span>
+<span class="fc" id="L359">		zonesInRegion.removeAll(removals);</span>
+<span class="fc" id="L360">	}</span>
+
+	private void filterByAccessibility(final Set&lt;StendhalRPZone&gt; zonesInRegion, final Boolean accessible) {
+<span class="fc" id="L363">		final Set&lt;StendhalRPZone&gt; removals = new HashSet&lt;StendhalRPZone&gt;();</span>
+<span class="fc bfc" id="L364" title="All 2 branches covered.">		for (StendhalRPZone zone : zonesInRegion) {</span>
+<span class="fc" id="L365">			boolean addToRemovals = false;</span>
+<span class="pc bpc" id="L366" title="1 of 2 branches missed.">			if(accessible.booleanValue()) {</span>
+<span class="fc bfc" id="L367" title="All 2 branches covered.">				addToRemovals = !zone.isPublicAccessible();</span>
+			} else {
+<span class="nc" id="L369">				addToRemovals = zone.isPublicAccessible();</span>
+			}
+<span class="fc bfc" id="L371" title="All 2 branches covered.">			if (addToRemovals) {</span>
+<span class="fc" id="L372">				removals.add(zone);</span>
+			}
+<span class="fc" id="L374">		}</span>
+<span class="fc" id="L375">		zonesInRegion.removeAll(removals);</span>
+<span class="fc" id="L376">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

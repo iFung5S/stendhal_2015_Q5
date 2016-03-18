@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SeedSellerBehaviour.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.npc.behaviour.impl</a> &gt; <span class="el_source">SeedSellerBehaviour.java</span></div><h1>SeedSellerBehaviour.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.npc.behaviour.impl;
+
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.entity.item.Item;
+import games.stendhal.server.entity.item.StackableItem;
+
+import java.util.HashMap;
+import java.util.Map;
+
+public class SeedSellerBehaviour extends SellerBehaviour {
+
+<span class="fc" id="L24">	private static Map&lt;String, Integer&gt; pricelist = new HashMap&lt;String, Integer&gt;();</span>
+	static {
+        /*
+         * flower names should be one word, no blank characters
+         */
+<span class="fc" id="L29">		pricelist.put(&quot;lilia seed&quot;, 10);</span>
+<span class="fc" id="L30">		pricelist.put(&quot;daisies seed&quot;, 20);</span>
+<span class="fc" id="L31">		pricelist.put(&quot;zantedeschia bulb&quot;, 15);</span>
+<span class="fc" id="L32">		pricelist.put(&quot;pansy seed&quot;, 10);</span>
+<span class="fc" id="L33">	}</span>
+
+	public SeedSellerBehaviour() {
+<span class="fc" id="L36">		this(pricelist);</span>
+<span class="fc" id="L37">	}</span>
+
+	public SeedSellerBehaviour(final Map&lt;String, Integer&gt; priceList) {
+<span class="fc" id="L40">		super(priceList);</span>
+<span class="fc" id="L41">	}</span>
+
+	@Override
+	public Item getAskedItem(final String askedItem) {
+<span class="fc" id="L45">		final String[] tokens = askedItem.split(&quot; &quot;);</span>
+<span class="fc" id="L46">		final StackableItem item = (StackableItem) SingletonRepository.getEntityManager().getItem(tokens[1]);</span>
+<span class="fc" id="L47">		item.setInfoString(tokens[0]);</span>
+<span class="fc" id="L48">		return item;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

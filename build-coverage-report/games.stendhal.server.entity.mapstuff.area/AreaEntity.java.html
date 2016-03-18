@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>AreaEntity.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.mapstuff.area</a> &gt; <span class="el_source">AreaEntity.java</span></div><h1>AreaEntity.java</h1><pre class="source lang-java linenums">/*
+ * @(#) src/games/stendhal/server/entity/area/AreaEntity.java
+ *
+ * $Id$
+ */
+
+package games.stendhal.server.entity.mapstuff.area;
+
+//
+//
+
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.entity.Entity;
+
+import java.util.LinkedList;
+import java.util.List;
+
+import marauroa.common.game.Definition.Type;
+import marauroa.common.game.RPClass;
+
+/**
+ * A base area entity.
+ */
+public class AreaEntity extends Entity {
+
+	/**
+	 * The name attribute name.
+	 */
+	protected static final String ATTR_NAME = &quot;name&quot;;
+<span class="fc" id="L30">	private List&lt;AreaBehaviour&gt; behaviours = new LinkedList&lt;AreaBehaviour&gt;();</span>
+
+	/**
+	 * Creates a one by one area entity.
+	 */
+	public AreaEntity() {
+<span class="fc" id="L36">		this(1, 1);</span>
+<span class="fc" id="L37">	}</span>
+
+	/**
+	 * Create an area entity.
+	 * 
+	 * @param width
+	 *            Width of this area
+	 * @param height
+	 *            Height of this area
+	 */
+<span class="fc" id="L47">	public AreaEntity(final int width, final int height) {</span>
+<span class="fc" id="L48">		setRPClass(&quot;area&quot;);</span>
+<span class="fc" id="L49">		put(&quot;type&quot;, &quot;area&quot;);</span>
+
+<span class="fc" id="L51">		setSize(width, height);</span>
+<span class="fc" id="L52">		setResistance(0);</span>
+<span class="fc" id="L53">	}</span>
+
+	//
+	// AreaEntity
+	//
+
+	/**
+	 * Define the RPClass.
+	 * 
+	 * @return The configured RPClass.
+	 */
+	private static RPClass createRPClass() {
+<span class="fc" id="L65">		final RPClass rpclass = new RPClass(&quot;area&quot;);</span>
+
+		// MAYBEDO: rpclass.isA(Entity.RPCLASS)
+<span class="fc" id="L68">		rpclass.isA(&quot;entity&quot;);</span>
+<span class="fc" id="L69">		rpclass.addAttribute(ATTR_NAME, Type.STRING);</span>
+
+<span class="fc" id="L71">		return rpclass;</span>
+	}
+
+	/**
+	 * Generate the RPClass (compatible with manual init/order).
+	 * 
+	 * NOTE: This MUST be called during environment initialization.
+	 */
+	public static void generateRPClass() {
+<span class="fc" id="L80">		createRPClass();</span>
+<span class="fc" id="L81">	}</span>
+
+	/**
+	 * Get the entity name.
+	 * 
+	 * @return The entity's name, or &lt;code&gt;null&lt;/code&gt; if undefined.
+	 */
+	@Override
+	public String getName() {
+<span class="nc bnc" id="L90" title="All 2 branches missed.">		if (has(ATTR_NAME)) {</span>
+<span class="nc" id="L91">			return get(ATTR_NAME);</span>
+		} else {
+<span class="nc" id="L93">			return null;</span>
+		}
+	}
+
+	/**
+	 * Set the name.
+	 * 
+	 * @param name
+	 *            The area name.
+	 */
+	public void setName(final String name) {
+<span class="nc" id="L104">		put(ATTR_NAME, name);</span>
+<span class="nc" id="L105">	}</span>
+
+	//
+	// Entity
+	//
+
+	/**
+	 * Returns the name or something that can be used to identify the entity for
+	 * the player.
+	 * 
+	 * @param definite
+	 *            &lt;code&gt;true&lt;/code&gt; for &quot;the&quot;, and &lt;code&gt;false&lt;/code&gt; for
+	 *            &quot;a/an&quot; in case the entity has no name.
+	 * 
+	 * @return The description name.
+	 */
+	@Override
+	public String getDescriptionName(final boolean definite) {
+<span class="nc" id="L123">		final String name = getName();</span>
+
+<span class="nc bnc" id="L125" title="All 2 branches missed.">		if (name != null) {</span>
+<span class="nc" id="L126">			return name;</span>
+		} else {
+<span class="nc" id="L128">			return super.getDescriptionName(definite);</span>
+		}
+	}
+
+	/**
+	 * Get the nicely formatted entity title/name.
+	 * 
+	 * @return The title, or &lt;code&gt;null&lt;/code&gt; if unknown.
+	 */
+	@Override
+	public String getTitle() {
+<span class="nc" id="L139">		final String name = getName();</span>
+
+<span class="nc bnc" id="L141" title="All 2 branches missed.">		if (name != null) {</span>
+<span class="nc" id="L142">			return name;</span>
+		} else {
+<span class="nc" id="L144">			return super.getTitle();</span>
+		}
+	}
+
+	/**
+	 * adds a Behaviour to this area
+	 *
+	 * @param behaviour behaviour to add
+	 */
+	public void addBehaviour(AreaBehaviour behaviour) {
+<span class="nc" id="L154">		this.behaviours.add(behaviour);</span>
+<span class="nc" id="L155">	}</span>
+
+	@Override
+	public void onAdded(StendhalRPZone zone) {
+<span class="fc" id="L159">		super.onAdded(zone);</span>
+<span class="pc bpc" id="L160" title="1 of 2 branches missed.">		for (AreaBehaviour behaviour : behaviours ) {</span>
+<span class="nc" id="L161">			behaviour.addToWorld(this);</span>
+<span class="nc" id="L162">		}</span>
+<span class="fc" id="L163">	}</span>
+
+	@Override
+	public void onRemoved(StendhalRPZone zone) {
+<span class="pc bpc" id="L167" title="1 of 2 branches missed.">		for (AreaBehaviour behaviour : behaviours) {</span>
+<span class="nc" id="L168">			behaviour.removeFromWorld();</span>
+<span class="nc" id="L169">		}</span>
+<span class="fc" id="L170">		super.onRemoved(zone);</span>
+<span class="fc" id="L171">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

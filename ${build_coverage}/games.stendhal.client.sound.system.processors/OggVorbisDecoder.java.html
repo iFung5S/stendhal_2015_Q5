@@ -1,0 +1,302 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>OggVorbisDecoder.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.sound.system.processors</a> &gt; <span class="el_source">OggVorbisDecoder.java</span></div><h1>OggVorbisDecoder.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.sound.system.processors;
+
+import games.stendhal.client.sound.system.SignalProcessor;
+import java.io.InputStream;
+import java.io.IOException;
+import com.jcraft.jogg.*;
+import com.jcraft.jorbis.*;
+import games.stendhal.common.memory.Field;
+/**
+ *
+ * @author silvio
+ */
+<span class="pc bpc" id="L25" title="1 of 2 branches missed.">public class OggVorbisDecoder extends SignalProcessor</span>
+{
+<span class="fc" id="L27">    private StreamState mOggStreamState = null;</span>
+<span class="fc" id="L28">    private SyncState   mOggSyncState   = null;</span>
+<span class="fc" id="L29">    private DspState    mVorbisDspState = null;</span>
+<span class="fc" id="L30">    private Block       mVorbisBlock    = null;</span>
+<span class="fc" id="L31">    private Comment     mVorbisComment  = null;</span>
+<span class="fc" id="L32">    private Info        mVorbisInfo     = null;</span>
+
+<span class="fc" id="L34">	private float[][][] mUniformPCMData  = new float[1][][];</span>
+<span class="fc" id="L35">	int[]               mPCMIndex        = null;</span>
+<span class="fc" id="L36">    private float[]     mOutputBuffer    = null;</span>
+<span class="fc" id="L37">    private byte[]      mInputBuffer     = null;</span>
+<span class="fc" id="L38">    private int         mInputBufferSize = 0;</span>
+<span class="fc" id="L39">    private int         mReadPos         = 0;</span>
+<span class="fc" id="L40">    private boolean     mEndOfStream     = true;</span>
+<span class="fc" id="L41">	private boolean     mLastPageWasRead = false;</span>
+<span class="fc" id="L42">    private boolean     mDecoderIsOpened = false;</span>
+<span class="fc" id="L43">	private InputStream mIStream         = null;</span>
+    
+    protected final void init(InputStream stream, int inputBufferSize, int outputNumSamplesPerChannel) throws IOException
+    {
+<span class="fc" id="L47">        mOggStreamState  = new StreamState();</span>
+<span class="fc" id="L48">        mOggSyncState    = new SyncState();</span>
+<span class="fc" id="L49">        mVorbisDspState  = new DspState();</span>
+<span class="fc" id="L50">        mVorbisBlock     = new Block(mVorbisDspState);</span>
+<span class="fc" id="L51">        mVorbisComment   = new Comment();</span>
+<span class="fc" id="L52">        mVorbisInfo      = new Info();</span>
+<span class="fc" id="L53">        mReadPos         = 0;</span>
+<span class="fc" id="L54">        mEndOfStream     = false;</span>
+<span class="fc" id="L55">		mLastPageWasRead = false;</span>
+        
+<span class="fc" id="L57">        mOggSyncState.init();</span>
+<span class="fc" id="L58">        mOggSyncState.buffer(inputBufferSize);  // add &quot;inputBufferSize&quot; bytes to the buffer</span>
+<span class="fc" id="L59">        mInputBuffer      = mOggSyncState.data; // get a reference to the buffer</span>
+<span class="fc" id="L60">        mInputBufferSize  = inputBufferSize;</span>
+<span class="fc" id="L61">        mIStream          = stream;</span>
+
+<span class="pc bpc" id="L63" title="1 of 2 branches missed.">        if(!readHeader())</span>
+<span class="nc" id="L64">            throw new IOException(&quot;could not read ogg headers&quot;);</span>
+
+        // IMPORTANT: read the header first before setting up the buffers
+		//            or else getNumChannels() will not return the right number
+<span class="fc" id="L68">		mPCMIndex        = Field.expand(mPCMIndex    , getNumChannels()                               , false);</span>
+<span class="fc" id="L69">		mOutputBuffer    = Field.expand(mOutputBuffer, (outputNumSamplesPerChannel * getNumChannels()), false);</span>
+<span class="fc" id="L70">        mDecoderIsOpened = true;</span>
+<span class="fc" id="L71">    }</span>
+
+    protected Page readPage(boolean ignoreHoles, boolean updateStreamState) throws IOException
+    {
+<span class="fc" id="L75">        Page oggPage = new Page();</span>
+
+<span class="pc bpc" id="L77" title="1 of 2 branches missed.">        while(!mEndOfStream)</span>
+        {
+            // try to get a page from the buffer
+<span class="pc bpc" id="L80" title="2 of 4 branches missed.">            switch(mOggSyncState.pageout(oggPage))</span>
+            {
+            case -1: // the page couldn't be read, because the data has a hole
+<span class="nc bnc" id="L83" title="All 2 branches missed.">                if(!ignoreHoles)</span>
+<span class="nc" id="L84">                    return null;</span>
+                // if we ignore holes we continue to &quot;case 0:&quot;
+
+            case 0: // we read to few to get a page
+                {
+<span class="fc" id="L89">                    int numBytesRead = mIStream.read(mInputBuffer, mReadPos, mInputBufferSize); // read one data block into the buffer</span>
+
+<span class="fc bfc" id="L91" title="All 2 branches covered.">                    if(numBytesRead &lt;= 0) // it's the quit of the stream</span>
+                    {
+<span class="fc" id="L93">                        mEndOfStream = true;</span>
+<span class="fc" id="L94">                        return null;</span>
+                    }
+
+<span class="fc" id="L97">                    mOggSyncState.wrote(numBytesRead); // say syncState how many bytes we have read</span>
+                }
+<span class="fc" id="L99">                break;</span>
+
+            case 1: // we've got a page
+                {
+<span class="fc bfc" id="L103" title="All 2 branches covered.">                    if(updateStreamState)</span>
+<span class="pc bpc" id="L104" title="1 of 2 branches missed.">                        if(mOggStreamState.pagein(oggPage) == -1)</span>
+<span class="nc" id="L105">                            return null;</span>
+
+<span class="fc bfc" id="L107" title="All 2 branches covered.">                    if(oggPage.eos() != 0)</span>
+<span class="fc" id="L108">                        mLastPageWasRead = true;</span>
+
+<span class="fc" id="L110">                    return oggPage;</span>
+                }
+            }
+
+<span class="fc" id="L114">            mReadPos     = mOggSyncState.buffer(mInputBufferSize); // add &quot;mInputBufferSize&quot; bytes to the buffer</span>
+<span class="fc" id="L115">            mInputBuffer = mOggSyncState.data;                     // get a reference to the buffer</span>
+        }
+
+<span class="nc" id="L118">        return null;</span>
+    }
+    
+    protected Packet readPacket(boolean ignoreHoles) throws IOException
+    {
+<span class="fc" id="L123">        Packet oggPacket = new Packet();</span>
+
+        while(true)
+        {
+<span class="pc bpc" id="L127" title="2 of 4 branches missed.">            switch(mOggStreamState.packetout(oggPacket))</span>
+            {
+            case -1: // the packet couldn't be read, because the data has a hole
+<span class="nc bnc" id="L130" title="All 2 branches missed.">                if(!ignoreHoles)</span>
+<span class="nc" id="L131">                    return null;</span>
+                // if we ignore holes we continue to &quot;case 0:&quot;
+
+            case 0: // we read to few to get a packet
+<span class="fc bfc" id="L135" title="All 2 branches covered.">                if(readPage(ignoreHoles, true) == null)</span>
+<span class="fc" id="L136">                    return null;</span>
+                break;
+
+            case 1:
+<span class="fc" id="L140">                return oggPacket;</span>
+            }
+        }
+    }
+
+    protected boolean readHeader() throws IOException
+    {
+<span class="fc" id="L147">        Page firstOggPage = readPage(false, false);</span>
+
+<span class="pc bpc" id="L149" title="1 of 2 branches missed.">        if(firstOggPage == null)</span>
+<span class="nc" id="L150">            return false;</span>
+
+<span class="fc" id="L152">        mOggStreamState.init(firstOggPage.serialno());</span>
+<span class="fc" id="L153">        mOggStreamState.reset();</span>
+<span class="fc" id="L154">        mVorbisInfo.init();</span>
+<span class="fc" id="L155">        mVorbisComment.init();</span>
+
+<span class="pc bpc" id="L157" title="1 of 2 branches missed.">        if(mOggStreamState.pagein(firstOggPage) == -1)</span>
+<span class="nc" id="L158">            return false;</span>
+
+        // read three packets to get the header
+<span class="fc bfc" id="L161" title="All 2 branches covered.">        for(int i=0; i&lt;3; ++i)</span>
+        {
+<span class="fc" id="L163">            Packet oggPacket = readPacket(false);</span>
+
+<span class="pc bpc" id="L165" title="1 of 2 branches missed.">            if(oggPacket == null)</span>
+<span class="nc" id="L166">                return false;</span>
+
+<span class="pc bpc" id="L168" title="1 of 2 branches missed.">            if(mVorbisInfo.synthesis_headerin(mVorbisComment, oggPacket) &lt; 0)</span>
+<span class="nc" id="L169">                return false; // error while interpreting packet data</span>
+        }
+
+<span class="fc" id="L172">        mVorbisDspState.synthesis_init(mVorbisInfo);</span>
+<span class="fc" id="L173">        mVorbisBlock.init(mVorbisDspState);</span>
+<span class="fc" id="L174">        return true;</span>
+    }
+
+    protected int read() throws IOException
+    {
+<span class="pc bpc" id="L179" title="1 of 2 branches missed.">		if(reachedEndOfStream()) // no more pcm data to read</span>
+<span class="nc" id="L180">			return 0;</span>
+
+<span class="fc" id="L182">        int outputBufferSize           = mOutputBuffer.length;</span>
+<span class="fc" id="L183">        int outputNumSamplesPerChannel = outputBufferSize / mVorbisInfo.channels;</span>
+<span class="fc" id="L184">        int receivedNumSamples         = 0;</span>
+<span class="fc" id="L185">        int numSamplesReadPerChannel   = 0;</span>
+<span class="fc" id="L186">        int sampleIdx                  = 0;</span>
+
+<span class="pc bpc" id="L188" title="1 of 4 branches missed.">        while(!mEndOfStream &amp;&amp; numSamplesReadPerChannel &lt; outputNumSamplesPerChannel)</span>
+        {
+            // if we read all pcm data from &quot;uniformPCMData&quot;
+<span class="fc bfc" id="L191" title="All 2 branches covered.">            if(sampleIdx &gt;= receivedNumSamples)</span>
+            {
+<span class="fc" id="L193">                mVorbisDspState.synthesis_read(receivedNumSamples); // tell dsp-state that we read all samples</span>
+
+                // receive the next chunk of uniform pcm data
+<span class="fc" id="L196">                receivedNumSamples = mVorbisDspState.synthesis_pcmout(mUniformPCMData, mPCMIndex);</span>
+<span class="fc" id="L197">                sampleIdx          = 0; // reset sample index</span>
+
+                // if there are no more samples in the packet, we read in a new packet from the stream
+<span class="fc bfc" id="L200" title="All 2 branches covered.">                if(receivedNumSamples == 0)</span>
+                {
+<span class="fc" id="L202">                    Packet oggPacket = readPacket(true);</span>
+
+<span class="pc bpc" id="L204" title="1 of 4 branches missed.">					if(oggPacket == null &amp;&amp; mLastPageWasRead)</span>
+					{
+<span class="fc" id="L206">						mEndOfStream = true;</span>
+<span class="fc" id="L207">						return 0;</span>
+					}
+
+<span class="pc bpc" id="L210" title="2 of 4 branches missed.">                    if(oggPacket == null || mVorbisBlock.synthesis(oggPacket) != 0)</span>
+<span class="nc" id="L211">                        continue; // if the packet we read from the stream is corrupted or has no audio data, we ignore it</span>
+
+<span class="fc" id="L213">                    mVorbisDspState.synthesis_blockin(mVorbisBlock);</span>
+<span class="fc" id="L214">                }</span>
+            }
+            else
+            {
+<span class="fc" id="L218">                int outputIndex = numSamplesReadPerChannel * mVorbisInfo.channels;</span>
+
+<span class="fc bfc" id="L220" title="All 2 branches covered.">                for(int c=0; c&lt;mVorbisInfo.channels; ++c)</span>
+                {
+<span class="fc" id="L222">                    float outputValue = mUniformPCMData[0][c][mPCMIndex[c] + sampleIdx];</span>
+<span class="fc" id="L223">                    mOutputBuffer[outputIndex + c] = outputValue;</span>
+                }
+
+<span class="fc" id="L226">                ++numSamplesReadPerChannel;</span>
+<span class="fc" id="L227">                ++sampleIdx;</span>
+<span class="fc" id="L228">            }</span>
+        }
+		
+<span class="fc" id="L231">        mVorbisDspState.synthesis_read(sampleIdx);</span>
+<span class="fc" id="L232">        return numSamplesReadPerChannel;</span>
+    }
+
+    protected float[] getOutputBuffer()
+    {
+<span class="nc" id="L237">        return mOutputBuffer;</span>
+    }
+
+    @Override
+    protected boolean generate()
+    {
+        try
+        {
+<span class="fc" id="L245">            int numSamples = read();</span>
+
+<span class="fc bfc" id="L247" title="All 2 branches covered.">			if(reachedEndOfStream())</span>
+			{
+<span class="fc" id="L249">				super.quit();</span>
+<span class="fc" id="L250">				return false;</span>
+			}
+
+<span class="fc" id="L253">            super.propagate(mOutputBuffer, numSamples, getNumChannels(), getSampleRate());</span>
+        }
+<span class="nc" id="L255">        catch(IOException e)</span>
+        {
+<span class="nc" id="L257">            close();</span>
+<span class="fc" id="L258">        }</span>
+
+<span class="fc" id="L260">        return true;</span>
+    }
+
+    // --------------------- public interface ---------------------- //
+
+    public OggVorbisDecoder(InputStream stream, int inputBufferSize, int outputNumSamplesPerChannel) throws IOException
+<span class="fc" id="L266">    {</span>
+<span class="fc" id="L267">        init(stream, inputBufferSize, outputNumSamplesPerChannel);</span>
+<span class="fc" id="L268">    }</span>
+
+<span class="fc" id="L270">    public synchronized int     getNumChannels    () { return mVorbisInfo.channels; }</span>
+<span class="fc" id="L271">    public synchronized int     getSampleRate     () { return mVorbisInfo.rate;     }</span>
+<span class="fc" id="L272">    public synchronized boolean reachedEndOfStream() { return mEndOfStream;         }</span>
+
+    public synchronized void open(InputStream stream, int inputBufferSize, int outputNumSamplesPerChannel) throws IOException
+    {
+<span class="nc bnc" id="L276" title="All 2 branches missed.">        if(!mDecoderIsOpened)</span>
+<span class="nc" id="L277">            init(stream, inputBufferSize, outputNumSamplesPerChannel);</span>
+<span class="nc" id="L278">    }</span>
+
+    public synchronized void close()
+    {
+<span class="nc" id="L282">        mOggStreamState.clear();</span>
+<span class="nc" id="L283">        mOggSyncState.clear();</span>
+<span class="nc" id="L284">        mVorbisBlock.clear();</span>
+<span class="nc" id="L285">        mVorbisDspState.clear();</span>
+<span class="nc" id="L286">        mVorbisInfo.clear();</span>
+
+        try
+        {
+<span class="nc" id="L290">            mIStream.close();</span>
+        }
+<span class="nc" id="L292">        catch(IOException exception)</span>
+        {
+<span class="nc bnc" id="L294" title="All 2 branches missed.">            assert false: exception.toString();</span>
+<span class="nc" id="L295">        }</span>
+        
+<span class="nc" id="L297">        mIStream         = null;</span>
+<span class="nc" id="L298">        mDecoderIsOpened = false;</span>
+<span class="nc" id="L299">        mEndOfStream     = true;</span>
+<span class="nc" id="L300">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

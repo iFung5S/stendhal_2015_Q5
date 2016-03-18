@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>MakeupArtist.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests.revivalweeks</a> &gt; <span class="el_source">MakeupArtist.java</span></div><h1>MakeupArtist.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests.revivalweeks;
+
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.core.rp.StendhalQuestSystem;
+import games.stendhal.server.entity.npc.NPCList;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.maps.ados.city.MakeupArtistNPC;
+import games.stendhal.server.maps.quests.PaperChase;
+
+/**
+ * Make up Artist Fidorea during the Mine Town Revival Weeks
+ */
+<span class="fc" id="L26">public class MakeupArtist implements LoadableContent {</span>
+
+	/**
+	 * removes an NPC from the world and NPC list
+	 *
+	 * @param name name of NPC
+	 */
+	private void removeNPC(String name) {
+<span class="nc" id="L34">		SpeakerNPC npc = NPCList.get().get(name);</span>
+<span class="nc bnc" id="L35" title="All 2 branches missed.">		if (npc == null) {</span>
+<span class="nc" id="L36">			return;</span>
+		}
+<span class="nc" id="L38">		npc.getZone().remove(npc);</span>
+<span class="nc" id="L39">	}</span>
+
+	@Override
+	public void addToWorld() {
+<span class="nc" id="L43">		removeNPC(&quot;Fidorea&quot;);</span>
+
+<span class="nc" id="L45">		final StendhalRPZone zone = SingletonRepository.getRPWorld().getZone(&quot;0_semos_mountain_n2&quot;);</span>
+<span class="nc" id="L46">		new MakeupArtistNPC().buildFidorea(zone, 72, 103);</span>
+<span class="nc" id="L47">		PaperChase paperChase = (PaperChase) StendhalQuestSystem.get().getQuest(&quot;PaperChase&quot;);</span>
+<span class="nc bnc" id="L48" title="All 2 branches missed.">		if (paperChase != null) {</span>
+<span class="nc" id="L49">			paperChase.addToStarterNPCs();</span>
+		}
+<span class="nc" id="L51">	}</span>
+
+
+	/**
+	 * removes Fidorea from the Mine Town and places her back into her home in Ados.
+	 *
+	 * @return &lt;code&gt;true&lt;/code&gt;, if the content was removed, &lt;code&gt;false&lt;/code&gt; otherwise
+	 */
+	@Override
+	public boolean removeFromWorld() {
+<span class="nc" id="L61">		removeNPC(&quot;Fidorea&quot;);</span>
+
+<span class="nc" id="L63">		final StendhalRPZone zone = SingletonRepository.getRPWorld().getZone(&quot;0_ados_city_n&quot;);</span>
+<span class="nc" id="L64">		new MakeupArtistNPC().buildFidorea(zone, 20, 13);</span>
+
+<span class="nc" id="L66">		return true;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

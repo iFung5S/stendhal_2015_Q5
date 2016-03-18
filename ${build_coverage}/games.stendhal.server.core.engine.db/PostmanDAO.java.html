@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>PostmanDAO.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.core.engine.db</a> &gt; <span class="el_source">PostmanDAO.java</span></div><h1>PostmanDAO.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.core.engine.db;
+
+import games.stendhal.server.core.engine.ChatMessage;
+
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+
+import marauroa.server.db.DBTransaction;
+import marauroa.server.db.TransactionPool;
+
+import org.apache.log4j.Logger;
+
+/**
+ * Database access for postman messages.
+ * 
+ * @author kymara
+ */
+<span class="fc" id="L34">public class PostmanDAO {</span>
+
+<span class="fc" id="L36">	private Logger logger = Logger.getLogger(PostmanDAO.class);</span>
+
+	/**
+	 * store a message from any named source
+	 * We do not specify it must be a player because NPCs use postman to send messages
+	 *
+	 * @param transaction DBTransaction
+	 * @param source  name of source 
+	 * @param target  name of player that the message is for
+	 * @param message 	message to be sent
+	 * @param messagetype	N for NPCs, S for support, P for player
+	 * @throws SQLException in case of an database error
+	 */
+	public void storeMessage(DBTransaction transaction, String source, String target, String message, String messagetype) throws SQLException {
+<span class="nc" id="L50">		String query = &quot;INSERT INTO postman(source, target, message, messagetype) values ('[source]', '[target]', '[message]', '[messagetype]')&quot;;</span>
+<span class="nc" id="L51">		logger.debug(&quot;postman is storing a message &quot; + query);</span>
+<span class="nc" id="L52">		Map&lt;String, Object&gt; params = new HashMap&lt;String, Object&gt;();</span>
+<span class="nc" id="L53">		params.put(&quot;source&quot;, source);</span>
+<span class="nc" id="L54">		params.put(&quot;target&quot;, target);</span>
+<span class="nc" id="L55">		params.put(&quot;message&quot;, message);</span>
+<span class="nc" id="L56">		params.put(&quot;messagetype&quot;, messagetype);</span>
+<span class="nc" id="L57">		transaction.execute(query, params);</span>
+<span class="nc" id="L58">	}</span>
+
+	/**
+	 * store a message from any named source
+	 * 
+	 * @param source  name of source 
+	 * @param target  name of player that the message is for
+	 * @param message 	message to be sent
+	 * @param messagetype type of the message
+	 */
+	public void storeMessage(String source, String target, String message, String messagetype) {
+<span class="nc" id="L69">		DBTransaction transaction = TransactionPool.get().beginWork();</span>
+		try {
+<span class="nc" id="L71">			storeMessage(transaction, source, target, message, messagetype);</span>
+<span class="nc" id="L72">			TransactionPool.get().commit(transaction);</span>
+<span class="nc" id="L73">		} catch (SQLException e) {</span>
+<span class="nc" id="L74">			TransactionPool.get().rollback(transaction);</span>
+<span class="nc" id="L75">			logger.error(e, e);</span>
+<span class="nc" id="L76">		}</span>
+<span class="nc" id="L77">	}</span>
+
+	/**
+	 * gets a list of ChatMessages for this character
+	 *
+	 * @param transaction DBTransaction
+	 * @param charname charname - name of character
+	 * @return list of ChatMessages
+	 * @throws SQLException in case of an database error
+	 */
+	public List&lt;ChatMessage&gt; getChatMessages(DBTransaction transaction, String charname) throws SQLException {
+		try {
+			// we do not yet use the delivered flag but I am being super careful and including the check for it already.
+<span class="fc" id="L90">			String query = &quot;SELECT source, message, timedate, messagetype FROM postman WHERE target='[charname]' and delivered = 0 ORDER BY timedate FOR UPDATE&quot;;</span>
+<span class="fc" id="L91">			Map&lt;String, Object&gt; params = new HashMap&lt;String, Object&gt;();</span>
+<span class="fc" id="L92">			params.put(&quot;charname&quot;, charname);</span>
+<span class="fc" id="L93">			logger.debug(&quot;getChatMessages is executing query &quot; + query);</span>
+
+<span class="fc" id="L95">			ResultSet chatMessagesSet = transaction.query(query, params);</span>
+<span class="fc" id="L96">			List&lt;ChatMessage&gt; list = new LinkedList&lt;ChatMessage&gt;();</span>
+
+<span class="pc bpc" id="L98" title="1 of 2 branches missed.">			while (chatMessagesSet.next()) {</span>
+<span class="nc" id="L99">				String source = chatMessagesSet.getString(&quot;source&quot;);</span>
+<span class="nc" id="L100">				String message = chatMessagesSet.getString(&quot;message&quot;);</span>
+<span class="nc" id="L101">				String timedate = chatMessagesSet.getString(&quot;timedate&quot;);</span>
+<span class="nc" id="L102">				String messagetype = chatMessagesSet.getString(&quot;messagetype&quot;);</span>
+<span class="nc" id="L103">				ChatMessage chatmessage = new ChatMessage(source, message, timedate, messagetype);</span>
+<span class="nc" id="L104">				list.add(chatmessage);</span>
+<span class="nc" id="L105">			}</span>
+
+<span class="fc" id="L107">			chatMessagesSet.close();</span>
+<span class="fc" id="L108">			return list;</span>
+<span class="nc" id="L109">		} catch (SQLException e) {</span>
+<span class="nc" id="L110">			logger.error(&quot;Can't query for character \&quot;&quot; + charname + &quot;\&quot;&quot;, e);</span>
+<span class="nc" id="L111">			throw e;</span>
+		}
+	}
+	
+	/**
+	 * gets a list of ChatMessages for this character
+	 *
+	 * @param charname charname - name of character
+	 * @return list of ChatMessages
+	 * @throws SQLException in case of an database error
+	 */
+	public List&lt;ChatMessage&gt; getChatMessages(String charname) throws SQLException {
+<span class="nc" id="L123">		DBTransaction transaction = TransactionPool.get().beginWork();</span>
+		try {
+<span class="nc" id="L125">			List&lt;ChatMessage&gt;  res = getChatMessages(transaction, charname);</span>
+<span class="nc" id="L126">			return res;</span>
+		} finally {
+<span class="nc" id="L128">			TransactionPool.get().commit(transaction);</span>
+		}
+	}
+	
+	/**
+	 * marks messages delivered for this character
+	 *
+	 * @param transaction DBTransaction
+	 * @param charname charname - name of character
+	 * @throws SQLException in case of an database error
+	 */
+	public void markMessagesDelivered(DBTransaction transaction, String charname) throws SQLException {
+		try {
+<span class="fc" id="L141">			String query = &quot;UPDATE postman SET delivered = 1 WHERE target = '[charname]'&quot;;</span>
+<span class="fc" id="L142">			Map&lt;String, Object&gt; params = new HashMap&lt;String, Object&gt;();</span>
+<span class="fc" id="L143">			params.put(&quot;charname&quot;, charname);</span>
+<span class="fc" id="L144">			logger.debug(&quot;markMessagesDelivered is using query: &quot; + query);</span>
+
+<span class="fc" id="L146">			transaction.execute(query, params);</span>
+<span class="nc" id="L147">		} catch (SQLException e) {</span>
+<span class="nc" id="L148">			logger.error(&quot;Can't mark messages delivered for character \&quot;&quot; + charname + &quot;\&quot;&quot;, e);</span>
+<span class="nc" id="L149">			throw e;</span>
+<span class="fc" id="L150">		}</span>
+<span class="fc" id="L151">	}</span>
+	
+	/**
+	 * marks messages delivered for this character
+	 *
+	 * @param charname charname - name of character
+	 * @throws SQLException in case of an database error
+	 */
+	public void markMessagesDelivered(String charname) throws SQLException {
+<span class="nc" id="L160">		DBTransaction transaction = TransactionPool.get().beginWork();</span>
+		try {
+<span class="nc" id="L162">			markMessagesDelivered(transaction, charname);</span>
+		} finally {
+<span class="nc" id="L164">			TransactionPool.get().commit(transaction);</span>
+<span class="nc" id="L165">		}</span>
+<span class="nc" id="L166">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

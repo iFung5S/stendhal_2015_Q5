@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>AbstractEffect.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.spell.effect</a> &gt; <span class="el_source">AbstractEffect.java</span></div><h1>AbstractEffect.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.spell.effect;
+
+import games.stendhal.common.constants.Nature;
+
+/**
+ * abstract super class for all effects to encapsulate common attributes here
+ * 
+ * @author madmetzger
+ */
+public abstract class AbstractEffect implements Effect {
+
+	private final int amount;
+	
+	private final int atk;
+	
+	private final int def;
+	
+	private final double lifesteal;
+	
+	private final Nature nature;
+	
+	private final int rate;
+	
+	private final int regen;
+	
+	private final double modifier;
+
+	/**
+	 * Create a new AbstractEffect.
+	 *  
+	 * @param nature 
+	 * @param amount
+	 * @param atk
+	 * @param def
+	 * @param lifesteal
+	 * @param rate
+	 * @param regen
+	 * @param modifier 
+	 */
+	public AbstractEffect(Nature nature, int amount, int atk, int def, double lifesteal,
+			int rate, int regen, double modifier) {
+<span class="fc" id="L54">		super();</span>
+<span class="fc" id="L55">		this.amount = amount;</span>
+<span class="fc" id="L56">		this.atk = atk;</span>
+<span class="fc" id="L57">		this.def = def;</span>
+<span class="fc" id="L58">		this.lifesteal = lifesteal;</span>
+<span class="fc" id="L59">		this.rate = rate;</span>
+<span class="fc" id="L60">		this.regen = regen;</span>
+<span class="fc" id="L61">		this.nature = nature;</span>
+<span class="fc" id="L62">		this.modifier = modifier;</span>
+<span class="fc" id="L63">	}</span>
+
+	/**
+	 * @return the atk
+	 */
+	protected int getAtk() {
+<span class="fc" id="L69">		return atk;</span>
+	}
+
+	/**
+	 * @return the def
+	 */
+	protected int getDef() {
+<span class="nc" id="L76">		return def;</span>
+	}
+
+	/**
+	 * @return the lifesteal
+	 */
+	protected double getLifesteal() {
+<span class="fc" id="L83">		return lifesteal;</span>
+	}
+
+	/**
+	 * @return the rate
+	 */
+	protected int getRate() {
+<span class="fc" id="L90">		return rate;</span>
+	}
+
+	/**
+	 * @return the regen
+	 */
+	protected int getRegen() {
+<span class="fc" id="L97">		return regen;</span>
+	}
+
+	protected int getAmount() {
+<span class="fc" id="L101">		return this.amount;</span>
+	}
+
+	public Nature getNature() {
+<span class="fc" id="L105">		return nature;</span>
+	}
+
+	protected double getModifier() {
+<span class="nc" id="L109">		return modifier;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

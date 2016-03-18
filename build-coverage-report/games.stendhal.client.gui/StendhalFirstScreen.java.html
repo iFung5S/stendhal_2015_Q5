@@ -1,0 +1,284 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>StendhalFirstScreen.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui</a> &gt; <span class="el_source">StendhalFirstScreen.java</span></div><h1>StendhalFirstScreen.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                      (C) Copyright 2003 - Marauroa                      *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui;
+
+import static games.stendhal.client.gui.layout.SBoxLayout.COMMON_PADDING;
+import games.stendhal.client.StendhalClient;
+import games.stendhal.client.stendhal;
+import games.stendhal.client.gui.login.CreateAccountDialog;
+import games.stendhal.client.gui.login.LoginDialog;
+import games.stendhal.client.sprite.DataLoader;
+import games.stendhal.client.update.ClientGameConfiguration;
+
+import java.awt.Font;
+import java.awt.Graphics2D;
+import java.awt.GraphicsConfiguration;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Image;
+import java.awt.Insets;
+import java.awt.MouseInfo;
+import java.awt.PointerInfo;
+import java.awt.Rectangle;
+import java.awt.RenderingHints;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
+import java.awt.image.BufferedImage;
+import java.net.URL;
+
+import javax.swing.AbstractAction;
+import javax.swing.Action;
+import javax.swing.Box;
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JComponent;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+/**
+ * Summary description for LoginGUI.
+ *
+ */
+@SuppressWarnings(&quot;serial&quot;)
+public class StendhalFirstScreen extends JFrame {
+	private static final long serialVersionUID = -7825572598938892220L;
+
+	/** Name of the font used for the html areas. Should match the file name without .ttf */
+	private static final String FONT_NAME = &quot;BlackChancery&quot;;
+	private static final int FONT_SIZE = 16;
+
+	private final StendhalClient client;
+
+	private JButton loginButton;
+	private JButton createAccountButton;
+	private JButton helpButton;
+	private JButton creditButton;
+
+	static {
+		// This is the initial window, when loaded at all.
+<span class="nc" id="L68">		Initializer.init();</span>
+<span class="nc" id="L69">	}</span>
+
+	/**
+	 * Creates the first screen.
+	 *
+	 * @param client
+	 *            StendhalClient
+	 */
+	public StendhalFirstScreen(final StendhalClient client) {
+<span class="nc" id="L78">		super(detectScreen());</span>
+<span class="nc" id="L79">		setLocationByPlatform(true);</span>
+<span class="nc" id="L80">		WindowUtils.trackLocation(this, &quot;main&quot;, true);</span>
+<span class="nc" id="L81">		this.client = client;</span>
+<span class="nc" id="L82">		client.setSplashScreen(this);</span>
+
+<span class="nc" id="L84">		initializeComponent();</span>
+
+<span class="nc" id="L86">		setVisible(true);</span>
+<span class="nc" id="L87">	}</span>
+
+	/**
+	 * Detect the preferred screen by where the mouse is the moment the method
+	 * is called. This is for multi-monitor support.
+	 *
+	 * @return GraphicsEnvironment of the current screen
+	 */
+	private static GraphicsConfiguration detectScreen() {
+<span class="nc" id="L96">		PointerInfo pointer = MouseInfo.getPointerInfo();</span>
+<span class="nc bnc" id="L97" title="All 2 branches missed.">		if (pointer != null) {</span>
+<span class="nc" id="L98">			return pointer.getDevice().getDefaultConfiguration();</span>
+		}
+<span class="nc" id="L100">		return null;</span>
+	}
+
+	/**
+	 * Setup the window contents.
+	 */
+	private void initializeComponent() {
+<span class="nc" id="L107">		URL url = DataLoader.getResource(ClientGameConfiguration.get(&quot;GAME_SPLASH_BACKGROUND&quot;));</span>
+<span class="nc" id="L108">		ImageIcon icon = new ImageIcon(url);</span>
+		
+<span class="nc" id="L110">		JComponent contentPane = new ResizableLabel(icon);</span>
+<span class="nc" id="L111">		setContentPane(contentPane);</span>
+		
+<span class="nc" id="L113">		Font font = new Font(FONT_NAME, Font.PLAIN, FONT_SIZE);</span>
+
+		//
+		// Login
+		//
+<span class="nc" id="L118">		String gameName = ClientGameConfiguration.get(&quot;GAME_NAME&quot;);</span>
+<span class="nc" id="L119">		Action loginAction = new AbstractAction(&quot;Login to &quot; + gameName) {</span>
+			@Override
+			public void actionPerformed(ActionEvent e) {
+<span class="nc" id="L122">				new LoginDialog(StendhalFirstScreen.this, client).setVisible(true);</span>
+<span class="nc" id="L123">			}</span>
+		};
+<span class="nc" id="L125">		loginAction.putValue(Action.MNEMONIC_KEY, KeyEvent.VK_L);</span>
+<span class="nc" id="L126">		loginAction.putValue(Action.SHORT_DESCRIPTION, &quot;Press this button to login to a &quot;</span>
+				+ gameName + &quot; server&quot;);
+		
+<span class="nc" id="L129">		loginButton = new JButton();</span>
+<span class="nc" id="L130">		loginButton.setAction(loginAction);</span>
+<span class="nc" id="L131">		loginButton.setFont(font);</span>
+
+		//
+		// Create account
+		//
+<span class="nc" id="L136">		Action createAccountAction = new AbstractAction(&quot;Create an account&quot;) {</span>
+			@Override
+			public void actionPerformed(ActionEvent e) {
+<span class="nc" id="L139">				new CreateAccountDialog(StendhalFirstScreen.this, client);</span>
+<span class="nc" id="L140">			}</span>
+		};
+<span class="nc" id="L142">		createAccountAction.putValue(Action.MNEMONIC_KEY, KeyEvent.VK_A);</span>
+<span class="nc" id="L143">		createAccountAction.putValue(Action.SHORT_DESCRIPTION, &quot;Press this button to create an account on a &quot;</span>
+				+ gameName + &quot; server.&quot;);
+		
+<span class="nc" id="L146">		createAccountButton = new JButton();</span>
+<span class="nc" id="L147">		createAccountButton.setFont(font);</span>
+<span class="nc" id="L148">		createAccountButton.setAction(createAccountAction);</span>
+
+		//
+		// Help
+		//
+<span class="nc" id="L153">		Action helpAction = new AbstractAction(&quot;Help&quot;) {</span>
+			@Override
+			public void actionPerformed(ActionEvent e) {
+<span class="nc" id="L156">				BareBonesBrowserLaunch.openURL(&quot;http://stendhalgame.org/wiki/Stendhal_Manual&quot;);</span>
+<span class="nc" id="L157">			}</span>
+		};
+<span class="nc" id="L159">		helpAction.putValue(Action.MNEMONIC_KEY, KeyEvent.VK_H);</span>
+		
+<span class="nc" id="L161">		helpButton = new JButton();</span>
+<span class="nc" id="L162">		helpButton.setFont(font);</span>
+<span class="nc" id="L163">		helpButton.setAction(helpAction);</span>
+
+		//
+		// Credits
+		//
+<span class="nc" id="L168">		Action showCreditsAction = new AbstractAction(&quot;Credits&quot;) {</span>
+			@Override
+			public void actionPerformed(ActionEvent e) {
+<span class="nc" id="L171">				new CreditsDialog(StendhalFirstScreen.this);</span>
+<span class="nc" id="L172">			}</span>
+		};
+<span class="nc" id="L174">		showCreditsAction.putValue(Action.MNEMONIC_KEY, KeyEvent.VK_C);</span>
+
+<span class="nc" id="L176">		creditButton = new JButton();</span>
+<span class="nc" id="L177">		creditButton.setFont(font);</span>
+<span class="nc" id="L178">		creditButton.setAction(showCreditsAction);</span>
+
+<span class="nc" id="L180">		setDefaultCloseOperation(EXIT_ON_CLOSE);</span>
+
+		// Add the buttons
+<span class="nc" id="L183">		contentPane.setLayout(new GridBagLayout());</span>
+<span class="nc" id="L184">		GridBagConstraints gbc = new GridBagConstraints();</span>
+<span class="nc" id="L185">		gbc.gridx = 0;</span>
+<span class="nc" id="L186">		gbc.gridy = 0;</span>
+		// The buttons should be a bit larger than by default. We have enough
+		// space.
+<span class="nc" id="L189">		gbc.ipadx = 2 * COMMON_PADDING;</span>
+<span class="nc" id="L190">		gbc.ipady = 2;</span>
+		
+		// All extra space should be abobe
+<span class="nc" id="L193">		gbc.weighty = 1.0;</span>
+<span class="nc" id="L194">		contentPane.add(Box.createVerticalGlue(), gbc);</span>
+<span class="nc" id="L195">		gbc.weighty = 0.0;</span>
+		
+<span class="nc" id="L197">		gbc.gridy++;</span>
+<span class="nc" id="L198">		gbc.fill = GridBagConstraints.HORIZONTAL;</span>
+<span class="nc" id="L199">		gbc.insets = new Insets(COMMON_PADDING, COMMON_PADDING, COMMON_PADDING, COMMON_PADDING);</span>
+		
+<span class="nc" id="L201">		contentPane.add(loginButton, gbc);</span>
+<span class="nc" id="L202">		gbc.gridy++;</span>
+<span class="nc" id="L203">		contentPane.add(createAccountButton, gbc);</span>
+<span class="nc" id="L204">		gbc.gridy++;</span>
+<span class="nc" id="L205">		contentPane.add(helpButton, gbc);</span>
+<span class="nc" id="L206">		gbc.gridy++;</span>
+<span class="nc" id="L207">		contentPane.add(creditButton, gbc);</span>
+<span class="nc" id="L208">		gbc.gridy++;</span>
+<span class="nc" id="L209">		contentPane.add(Box.createVerticalStrut(2 * COMMON_PADDING), gbc);</span>
+
+<span class="nc" id="L211">		getRootPane().setDefaultButton(loginButton);</span>
+
+		//
+		// LoginGUI
+		//
+<span class="nc" id="L216">		setTitle(gameName + &quot; &quot; + stendhal.VERSION</span>
+				+ &quot; - a multiplayer online game using Arianne&quot;);
+
+<span class="nc" id="L219">		url = DataLoader.getResource(ClientGameConfiguration.get(&quot;GAME_ICON&quot;));</span>
+<span class="nc" id="L220">		this.setIconImage(new ImageIcon(url).getImage());</span>
+<span class="nc" id="L221">		pack();</span>
+<span class="nc" id="L222">	}</span>
+
+	@Override
+	public void setEnabled(boolean b) {
+<span class="nc" id="L226">		super.setEnabled(b);</span>
+<span class="nc" id="L227">		loginButton.setEnabled(b);</span>
+<span class="nc" id="L228">		createAccountButton.setEnabled(b);</span>
+<span class="nc" id="L229">		helpButton.setEnabled(b);</span>
+<span class="nc" id="L230">		creditButton.setEnabled(b);</span>
+<span class="nc" id="L231">	}</span>
+	
+	/**
+	 * A Resizable label with an icon.
+	 */
+	private static class ResizableLabel extends JLabel {
+		private final Image image;
+		private Rectangle bounds;
+		
+		/**
+		 * Create a new ResizableLabel.
+		 *  
+		 * @param icon initial icon. The image of the icon will be used as the
+		 *  template for any scaled versions
+		 */
+		ResizableLabel(ImageIcon icon) {
+<span class="nc" id="L247">			super(icon);</span>
+<span class="nc" id="L248">			this.image = icon.getImage();</span>
+<span class="nc" id="L249">		}</span>
+		
+		/*
+		 * A resize listener is run *after* the actual resizing happens, which
+		 * would result in layout being ready before the image is redrawn. The
+		 * effect looks ugly, so the resizing is done here instead for immediate
+		 * scaling.
+		 */
+		@Override
+		public void setBounds(int x, int y, int width, int height) {
+<span class="nc" id="L259">			super.setBounds(x, y, width, height);</span>
+<span class="nc" id="L260">			scale();</span>
+<span class="nc" id="L261">		}</span>
+		
+		/**
+		 * Scale the image to component size.
+		 */
+		private void scale() {
+<span class="nc" id="L267">			Rectangle newBounds = getBounds();</span>
+<span class="nc bnc" id="L268" title="All 2 branches missed.">			if (!newBounds.equals(bounds)) {</span>
+<span class="nc" id="L269">				bounds = newBounds;</span>
+<span class="nc" id="L270">				double scalingX = bounds.width / (double) image.getWidth(this);</span>
+<span class="nc" id="L271">				double scalingY = bounds.height / (double) image.getHeight(this);</span>
+<span class="nc" id="L272">				double scaling = Math.max(scalingX, scalingY);</span>
+<span class="nc" id="L273">				BufferedImage copy = getGraphicsConfiguration().createCompatibleImage(bounds.width, bounds.height);</span>
+<span class="nc" id="L274">				Graphics2D g = copy.createGraphics();</span>
+<span class="nc" id="L275">				g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);</span>
+<span class="nc" id="L276">				g.scale(scaling, scaling);</span>
+<span class="nc" id="L277">				g.drawImage(image, 0, 0, this);</span>
+<span class="nc" id="L278">				g.dispose();</span>
+<span class="nc" id="L279">				setIcon(new ImageIcon(copy));</span>
+			}
+<span class="nc" id="L281">		}</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

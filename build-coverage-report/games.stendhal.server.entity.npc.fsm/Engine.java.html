@@ -1,0 +1,619 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Engine.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.npc.fsm</a> &gt; <span class="el_source">Engine.java</span></div><h1>Engine.java</h1><pre class="source lang-java linenums">// $Id$
+package games.stendhal.server.entity.npc.fsm;
+
+import games.stendhal.common.Rand;
+import games.stendhal.common.parser.ConversationParser;
+import games.stendhal.common.parser.Expression;
+import games.stendhal.common.parser.ExpressionMatcher;
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ChatCondition;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.player.Player;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+
+import org.apache.log4j.Logger;
+
+/**
+ * a finite state machine.
+ */
+public class Engine {
+
+<span class="fc" id="L30">	private static final Logger logger = Logger.getLogger(Engine.class);</span>
+
+	// TODO remove this dependency cycle, this is just here to simplify refactoring
+	// TODO later: remove dependency on games.stendhal.server.entity.npc.* and Player
+	private final SpeakerNPC speakerNPC;
+
+	// FSM state transition table
+<span class="fc" id="L37">	private final List&lt;Transition&gt; stateTransitionTable = new LinkedList&lt;Transition&gt;();</span>
+
+	// current FSM state
+<span class="fc" id="L40">	private ConversationStates currentState = ConversationStates.IDLE;</span>
+
+	/**
+	 * Creates a new FSM.
+	 * 
+	 * @param speakerNPC
+	 *            the speaker NPC for which this FSM is created must not be null
+	 */
+<span class="fc" id="L48">	public Engine(final SpeakerNPC speakerNPC) {</span>
+<span class="fc bfc" id="L49" title="All 2 branches covered.">		if (speakerNPC == null) {</span>
+<span class="fc" id="L50">			throw new IllegalArgumentException(&quot;speakerNPC must not be null&quot;);</span>
+		}
+
+<span class="fc" id="L53">		this.speakerNPC = speakerNPC;</span>
+<span class="fc" id="L54">	}</span>
+
+	/**
+	 * Looks for an already registered exactly matching transition.
+	 *
+	 * @param state
+	 * @param trigger
+	 * @param condition
+	 * @return previous transition entry
+	 */
+	private Transition get(final ConversationStates state, final Expression trigger, final ChatCondition condition) {
+<span class="fc bfc" id="L65" title="All 2 branches covered.">		for (final Transition transition : stateTransitionTable) {</span>
+<span class="fc bfc" id="L66" title="All 2 branches covered.">			if (transition.matchesWithCondition(state, trigger, condition)) {</span>
+<span class="fc" id="L67">				return transition;</span>
+			}
+<span class="fc" id="L69">		}</span>
+
+<span class="fc" id="L71">		return null;</span>
+	}
+
+
+	/**
+	 * Adds a new transition to FSM.
+	 * 
+	 * @param state
+	 *            old state
+	 * @param triggerString
+	 *            input trigger
+	 * @param condition
+	 *            additional precondition
+	 * @param secondary
+	 * 			  flag to mark secondary transitions to be taken into account after preferred transitions
+	 * @param nextState
+	 *            state after the transition
+	 * @param reply
+	 *            output
+	 * @param action
+	 *            additional action after the condition
+	 */
+	public void add(final ConversationStates state, final String triggerString, final ChatCondition condition,
+			boolean secondary, final ConversationStates nextState, final String reply, final ChatAction action) {
+<span class="fc" id="L95">		Collection&lt;Expression&gt; triggerExpressions = createUniqueTriggerExpressions(</span>
+				state, Arrays.asList(triggerString), null, condition, reply, action);
+
+<span class="fc" id="L98">		add(triggerExpressions, state, condition, secondary, nextState, reply, action);</span>
+<span class="fc" id="L99">	}</span>
+
+
+	/**
+	 * Adds a new transition to FSM.
+	 * 
+	 * @param state
+	 *            old state
+	 * @param triggerString
+	 *            input trigger
+	 * @param condition
+	 *            additional precondition
+	 * @param secondary
+	 * 			  flag to mark secondary transitions to be taken into account after preferred transitions
+	 * @param nextState
+	 *            state after the transition
+	 * @param reply
+	 *            output
+	 * @param action
+	 *            additional action after the condition
+	 * @param label
+	 *            a label to find this transition at a later time
+	 */
+	public void add(final ConversationStates state, final String triggerString, final ChatCondition condition,
+			boolean secondary, final ConversationStates nextState, final String reply, final ChatAction action,
+			final String label) {
+<span class="fc" id="L125">		Collection&lt;Expression&gt; triggerExpressions = createUniqueTriggerExpressions(</span>
+				state, Arrays.asList(triggerString), null, condition, reply, action);
+
+<span class="fc" id="L128">		add(triggerExpressions, state, condition, secondary, nextState, reply, action, label);</span>
+<span class="fc" id="L129">	}</span>
+	
+	/**
+	 * Adds a new set of transitions to the FSM.
+	 * 
+	 * @param state
+	 *            the starting state of the FSM
+	 * @param triggerStrings
+	 *            a list of inputs for this transition, must not be null
+	 * @param condition
+	 *            null or condition that has to return true for this transition
+	 *            to be considered
+	 * @param secondary
+	 * 			  flag to mark secondary transitions to be taken into account after preferred transitions
+	 * @param nextState
+	 *            the new state of the FSM
+	 * @param reply
+	 *            a simple sentence reply (may be null for no reply)
+	 * @param action
+	 *            a special action to be taken (may be null)
+	 */
+	public void add(final ConversationStates state, final Collection&lt;String&gt; triggerStrings, final ChatCondition condition,
+			boolean secondary, final ConversationStates nextState, final String reply, final ChatAction action) {
+<span class="pc bpc" id="L152" title="1 of 2 branches missed.">		if (triggerStrings == null) {</span>
+<span class="nc" id="L153">			throw new IllegalArgumentException(&quot;trigger list must not be null&quot;);</span>
+		}
+
+<span class="fc" id="L156">		Collection&lt;Expression&gt; triggerExpressions = createUniqueTriggerExpressions(</span>
+				state, triggerStrings, null, condition, reply, action);
+
+<span class="fc" id="L159">		add(triggerExpressions, state, condition, secondary, nextState, reply, action);</span>
+<span class="fc" id="L160">	}</span>
+
+	
+	/**
+	 * Adds a new set of transitions to the FSM.
+	 * 
+	 * @param state
+	 *            the starting state of the FSM
+	 * @param triggerStrings
+	 *            a list of inputs for this transition, must not be null
+	 * @param condition
+	 *            null or condition that has to return true for this transition
+	 *            to be considered
+	 * @param secondary
+	 * 			  flag to mark secondary transitions to be taken into account after preferred transitions
+	 * @param nextState
+	 *            the new state of the FSM
+	 * @param reply
+	 *            a simple sentence reply (may be null for no reply)
+	 * @param action
+	 *            a special action to be taken (may be null)
+	 * @param label
+	 *            a label to find this transition at a later time
+	 */
+	public void add(final ConversationStates state, final Collection&lt;String&gt; triggerStrings, final ChatCondition condition,
+			boolean secondary, final ConversationStates nextState, final String reply, final ChatAction action, final String label) {
+<span class="fc bfc" id="L186" title="All 2 branches covered.">		if (triggerStrings == null) {</span>
+<span class="fc" id="L187">			throw new IllegalArgumentException(&quot;trigger list must not be null&quot;);</span>
+		}
+
+<span class="fc" id="L190">		Collection&lt;Expression&gt; triggerExpressions = createUniqueTriggerExpressions(</span>
+				state, triggerStrings, null, condition, reply, action);
+
+<span class="fc" id="L193">		add(triggerExpressions, state, condition, secondary, nextState, reply, action, label);</span>
+<span class="fc" id="L194">	}</span>
+	
+	/**
+	 * Adds a new transition with explicit ExpressionMatcher to FSM.
+	 *
+	 * @param state
+	 *            the starting state of the FSM
+	 * @param triggerString
+	 *            input for this transition, must not be null
+	 * @param matcher
+	 * @param condition
+	 *            null or condition that has to return true for this transition
+	 *            to be considered
+	 * @param secondary
+	 * 			  flag to mark secondary transitions to be taken into account after preferred transitions
+	 * @param nextState
+	 *            the new state of the FSM
+	 * @param reply
+	 *            a simple sentence reply (may be null for no reply)
+	 * @param action
+	 *            a special action to be taken (may be null)
+	 */
+	public void addMatching(final ConversationStates state, final String triggerString, final ExpressionMatcher matcher, final ChatCondition condition,
+			boolean secondary, final ConversationStates nextState, final String reply, final ChatAction action) {
+<span class="fc" id="L218">		Collection&lt;Expression&gt; triggerExpressions = createUniqueTriggerExpressions(</span>
+				state, Arrays.asList(triggerString), matcher, condition, reply, action);
+
+<span class="fc" id="L221">		add(triggerExpressions, state, condition, secondary, nextState, reply, action);</span>
+<span class="fc" id="L222">	}</span>
+
+	/**
+	 * Adds a new set of transitions to the FSM.
+	 * @param state
+	 *            the starting state of the FSM
+	 * @param triggerStrings
+	 *            a list of inputs for this transition, must not be null
+	 * @param matcher
+	 *			  Expression matcher
+	 * @param condition
+	 *            null or condition that has to return true for this transition
+	 *            to be considered
+	 * @param secondary
+	 * 			  flag to mark secondary transitions to be taken into account after preferred transitions
+	 * @param nextState
+	 *            the new state of the FSM
+	 * @param reply
+	 *            a simple sentence reply (may be null for no reply)
+	 * @param action
+	 *            a special action to be taken (may be null)
+	 */
+	public void addMatching(final ConversationStates state, final Collection&lt;String&gt; triggerStrings, final ExpressionMatcher matcher, final ChatCondition condition,
+			boolean secondary, final ConversationStates nextState, final String reply, final ChatAction action) {
+<span class="nc bnc" id="L246" title="All 2 branches missed.">		if (triggerStrings == null) {</span>
+<span class="nc" id="L247">			throw new IllegalArgumentException(&quot;trigger list must not be null&quot;);</span>
+		}
+
+<span class="nc" id="L250">		Collection&lt;Expression&gt; triggerExpressions = createUniqueTriggerExpressions(</span>
+				state, triggerStrings, matcher, condition, reply, action);
+
+<span class="nc" id="L253">		add(triggerExpressions, state, condition, secondary, nextState, reply, action);</span>
+<span class="nc" id="L254">	}</span>
+
+	/**
+	 * Adds a new set of transitions to the FSM.
+	 * @param triggerExpressions
+	 *            a list of trigger expressions for this transition, must not be null
+	 * @param state
+	 *            the starting state of the FSM
+	 * @param condition
+	 *            null or condition that has to return true for this transition
+	 *            to be considered
+	 * @param secondary
+	 * 			  flag to mark secondary transitions to be taken into account after preferred transitions
+	 * @param nextState
+	 *            the new state of the FSM
+	 * @param reply
+	 *            a simple sentence reply (may be null for no reply)
+	 * @param action
+	 *            a special action to be taken (may be null)
+	 * @param label
+	 *            a label to find this transition at a later time
+	 */
+	public void add(Collection&lt;Expression&gt; triggerExpressions, final ConversationStates state, final ChatCondition condition,
+			boolean secondary, final ConversationStates nextState, final String reply, final ChatAction action, final String label) {
+<span class="fc bfc" id="L278" title="All 4 branches covered.">		if (triggerExpressions!=null &amp;&amp; !triggerExpressions.isEmpty()) {</span>
+<span class="fc" id="L279">			stateTransitionTable.add(new Transition(state, triggerExpressions, condition, secondary, nextState, reply, action, label));</span>
+		}
+<span class="fc" id="L281">	}</span>
+
+	/**
+	 * Adds a new set of transitions to the FSM.
+	 * @param triggerExpressions
+	 *            a list of trigger expressions for this transition, must not be null
+	 * @param state
+	 *            the starting state of the FSM
+	 * @param condition
+	 *            null or condition that has to return true for this transition
+	 *            to be considered
+	 * @param secondary
+	 * 			  flag to mark secondary transitions to be taken into account after preferred transitions
+	 * @param nextState
+	 *            the new state of the FSM
+	 * @param reply
+	 *            a simple sentence reply (may be null for no reply)
+	 * @param action
+	 *            a special action to be taken (may be null)
+	 */
+	public void add(Collection&lt;Expression&gt; triggerExpressions, final ConversationStates state, final ChatCondition condition,
+			boolean secondary, final ConversationStates nextState, final String reply, final ChatAction action) {
+<span class="pc bpc" id="L303" title="1 of 4 branches missed.">		if (triggerExpressions!=null &amp;&amp; !triggerExpressions.isEmpty()) {</span>
+<span class="fc" id="L304">			stateTransitionTable.add(new Transition(state, triggerExpressions, condition, secondary, nextState, reply, action));</span>
+		}
+<span class="fc" id="L306">	}</span>
+	
+	/**
+	 * remove matches transition
+	 * 
+	 * @param label the label of transitions to remove
+	 * @return true, if at least one transition was removed
+	 */
+	public boolean remove(final String label) {
+<span class="pc bpc" id="L315" title="2 of 4 branches missed.">		if ((label == null) || (label.equals(&quot;&quot;))) {</span>
+<span class="nc" id="L316">			logger.debug(&quot;will not remove transitions with empty label&quot;);</span>
+<span class="nc" id="L317">			return false;</span>
+		}
+
+<span class="fc" id="L320">		boolean res = false;</span>
+<span class="fc" id="L321">		Iterator&lt;Transition&gt; itr = stateTransitionTable.iterator();</span>
+<span class="fc bfc" id="L322" title="All 2 branches covered.">		while (itr.hasNext()) {</span>
+<span class="fc" id="L323">			Transition transition = itr.next();</span>
+<span class="fc bfc" id="L324" title="All 2 branches covered.">			if (transition.checkLabel(label)) {</span>
+<span class="fc" id="L325">				itr.remove();</span>
+<span class="fc" id="L326">				res = true;</span>
+			}
+<span class="fc" id="L328">		}</span>
+<span class="fc" id="L329">		return res;</span>
+	}
+
+	/**
+	 * Create a collection of trigger expressions from trigger strings
+	 * while checking for duplicate transitions.
+	 * 
+	 * @param state
+	 * @param triggerStrings
+	 * @param matcher
+	 * @param condition
+	 * @param reply
+	 * @param action
+	 * @return trigger expressions
+	 */
+	private Collection&lt;Expression&gt; createUniqueTriggerExpressions(
+			final ConversationStates state,
+			final Collection&lt;String&gt; triggerStrings,
+			final ExpressionMatcher matcher, final ChatCondition condition,
+			final String reply, final ChatAction action) {
+<span class="fc" id="L349">		Collection&lt;Expression&gt; triggerExpressions = new ArrayList&lt;Expression&gt;();</span>
+
+<span class="fc bfc" id="L351" title="All 2 branches covered.">		for(final String triggerString : triggerStrings) {</span>
+			// normalise trigger expressions using the conversation parser
+<span class="fc" id="L353">			final Expression triggerExpression = ConversationParser.createTriggerExpression(triggerString, matcher);</span>
+
+			// look for already existing rule with identical input parameters
+<span class="fc" id="L356">			final Transition existing = get(state, triggerExpression, condition);</span>
+
+<span class="fc bfc" id="L358" title="All 2 branches covered.">			if (existing != null) {</span>
+<span class="fc" id="L359">				final String existingReply = existing.getReply();</span>
+<span class="fc" id="L360">				final PostTransitionAction existingAction = existing.getAction();</span>
+
+				// Concatenate the previous and the new reply texts if the new one is not there already.
+<span class="pc bpc" id="L363" title="1 of 6 branches missed.">				if ((existingReply != null) &amp;&amp; (reply != null) &amp;&amp; !existingReply.contains(reply)) {</span>
+<span class="fc" id="L364">					existing.setReply(existingReply + &quot; &quot; + reply);</span>
+				} else {
+<span class="fc" id="L366">					existing.setReply(reply);</span>
+				}
+
+				// check for ambiguous state transitions
+<span class="fc bfc" id="L370" title="All 8 branches covered.">				if (((action == null) &amp;&amp; (existingAction == null))</span>
+						|| ((action != null) &amp;&amp; action.equals(existingAction))) {
+<span class="fc" id="L372">					return null; // no action or equal to an already existing action</span>
+				} else {
+<span class="fc" id="L374">					logger.warn(speakerNPC.getName() + &quot;: Adding ambiguous state transition: &quot; + existing</span>
+					+ &quot; existingAction='&quot; + existingAction + &quot;' newAction='&quot; + action + &quot;'&quot;);
+				}
+			}
+
+<span class="fc" id="L379">			triggerExpressions.add(triggerExpression);</span>
+<span class="fc" id="L380">		}</span>
+
+<span class="fc" id="L382">		return triggerExpressions;</span>
+	}
+
+	/**
+	 * Gets the current state.
+	 * 
+	 * @return current state
+	 */
+	public ConversationStates getCurrentState() {
+<span class="fc" id="L391">		return currentState;</span>
+	}
+
+	/**
+	 * Sets the current State without doing a normal transition.
+	 * 
+	 * @param currentState
+	 *            new state
+	 */
+	public void setCurrentState(final ConversationStates currentState) {
+<span class="fc" id="L401">		this.currentState = currentState;</span>
+<span class="fc" id="L402">	}</span>
+
+	/**
+	 * Do one transition of the finite state machine.
+	 * 
+	 * @param player
+	 *            Player
+	 * @param text
+	 *            input
+	 * @return true if a transition was made, false otherwise
+	 */
+	public boolean step(final Player player, final String text) {
+<span class="fc" id="L414">		final Sentence sentence = ConversationParser.parse(text);</span>
+
+<span class="fc bfc" id="L416" title="All 2 branches covered.">		if (sentence.hasError()) {</span>
+<span class="fc" id="L417">			logger.warn(&quot;problem parsing the sentence '&quot; + text + &quot;': &quot;</span>
+					+ sentence.getErrorString());
+		}
+
+<span class="fc" id="L421">		return step(player, sentence);</span>
+	}
+
+	/**
+	 * Do one transition of the finite state machine.
+	 * 
+	 * @param player
+	 *            Player
+	 * @param sentence
+	 *            input
+	 * @return true if a transition was made, false otherwise
+	 */
+	public boolean step(final Player player, final Sentence sentence) {
+<span class="fc bfc" id="L434" title="All 2 branches covered.">		if (sentence.isEmpty()) {</span>
+<span class="fc" id="L435">			logger.debug(&quot;empty input sentence: &quot; + getCurrentState());</span>
+<span class="fc" id="L436">			return false;</span>
+		}
+
+<span class="fc bfc" id="L439" title="All 2 branches covered.">		if (matchTransition(MatchType.EXACT_MATCH, player, sentence)) {</span>
+<span class="fc" id="L440">			return true;</span>
+<span class="fc bfc" id="L441" title="All 2 branches covered.">		} else if (matchTransition(MatchType.NORMALIZED_MATCH, player, sentence)) {</span>
+<span class="fc" id="L442">			return true;</span>
+<span class="fc bfc" id="L443" title="All 2 branches covered.">		} else if (matchTransition(MatchType.SIMILAR_MATCH, player, sentence)) {</span>
+<span class="fc" id="L444">			return true;</span>
+<span class="fc bfc" id="L445" title="All 2 branches covered.">		} else if (matchTransition(MatchType.ABSOLUTE_JUMP, player, sentence)) {</span>
+<span class="fc" id="L446">			return true;</span>
+<span class="pc bpc" id="L447" title="1 of 2 branches missed.">		} else if (matchTransition(MatchType.NORMALIZED_JUMP, player, sentence)) {</span>
+<span class="nc" id="L448">			return true;</span>
+<span class="pc bpc" id="L449" title="1 of 2 branches missed.">		} else if (matchTransition(MatchType.SIMILAR_JUMP, player, sentence)) {</span>
+<span class="nc" id="L450">			return true;</span>
+		} else {
+			// Couldn't match the command with the current FSM state
+<span class="fc" id="L453">			logger.debug(&quot;Couldn't match any state: &quot; + getCurrentState() + &quot;:&quot;</span>
+					+ sentence);
+<span class="fc" id="L455">			return false;</span>
+		}
+	}
+
+	/**
+	 * Do one transition of the finite state machine with debugging output and
+	 * reset of the previous response.
+	 * 
+	 * @param player
+	 *            Player
+	 * @param text
+	 *            input
+	 * @return true if a transition was made, false otherwise
+	 */
+	public boolean stepTest(final Player player, final String text) {
+<span class="fc" id="L470">		logger.debug(&quot;&gt;&gt;&gt; &quot; + text);</span>
+<span class="fc" id="L471">		speakerNPC.remove(&quot;text&quot;);</span>
+
+<span class="fc" id="L473">		final Sentence sentence = ConversationParser.parse(text);</span>
+
+<span class="pc bpc" id="L475" title="1 of 2 branches missed.">		if (sentence.hasError()) {</span>
+<span class="nc" id="L476">			logger.warn(&quot;problem parsing the sentence '&quot; + text + &quot;': &quot;</span>
+					+ sentence.getErrorString());
+		}
+
+<span class="fc" id="L480">		final boolean res = step(player, sentence);</span>
+
+<span class="fc" id="L482">		logger.debug(&quot;&lt;&lt;&lt; &quot; + speakerNPC.get(&quot;text&quot;));</span>
+<span class="fc" id="L483">		return res;</span>
+	}
+
+	/**
+	 * List of Transition entries used to merge identical transitions in respect
+	 * to Transitions.matchesNormalizedWithCondition().
+	 */
+<span class="fc" id="L490">	private static class TransitionSet extends LinkedList&lt;Transition&gt; {</span>
+        private static final long serialVersionUID = 1L;
+
+		@Override
+		public boolean add(final Transition otherTrans) {
+<span class="fc bfc" id="L495" title="All 2 branches covered.">			for(final Transition transition : this) {</span>
+<span class="fc bfc" id="L496" title="All 2 branches covered.">				for(Expression otherTriggerExpr : otherTrans.getTriggers()) {</span>
+<span class="fc bfc" id="L497" title="All 2 branches covered.">					if (transition.matchesNormalizedWithCondition(otherTrans.getState(),</span>
+							otherTriggerExpr, otherTrans.getCondition())) {
+<span class="fc" id="L499">						return false;</span>
+					}
+<span class="fc" id="L501">				}</span>
+<span class="fc" id="L502">			}</span>
+
+			// No match, so add the new transition entry.
+<span class="fc" id="L505">			return super.add(otherTrans);</span>
+		}
+
+		public static void advance(final Iterator&lt;Transition&gt; it, final int i) {
+<span class="fc bfc" id="L509" title="All 2 branches covered.">			for (int x = i; x &gt; 0; --x) {</span>
+<span class="fc" id="L510">				it.next();</span>
+			}
+<span class="fc" id="L512">		}</span>
+	}
+
+	private boolean matchTransition(final MatchType type, final Player player,
+			final Sentence sentence) {
+		// We are using sets instead of plain lists to merge identical transitions.
+<span class="fc" id="L518">		final TransitionSet preferredTransitions = new TransitionSet();</span>
+<span class="fc" id="L519">		final TransitionSet secondaryTransitions = new TransitionSet();</span>
+
+		// match with all the registered transitions
+<span class="fc bfc" id="L522" title="All 2 branches covered.">		for (final Transition transition : stateTransitionTable) {</span>
+<span class="fc bfc" id="L523" title="All 2 branches covered.">			if (matchesTransition(type, sentence, transition)) {</span>
+<span class="fc bfc" id="L524" title="All 2 branches covered.">				if (transition.isConditionFulfilled(player, sentence, speakerNPC)) {</span>
+<span class="fc bfc" id="L525" title="All 2 branches covered.">					if (transition.isPreferred()) {</span>
+<span class="fc" id="L526">						preferredTransitions.add(transition);</span>
+					} else {
+<span class="fc" id="L528">						secondaryTransitions.add(transition);</span>
+					}
+				}
+			}
+<span class="fc" id="L532">		}</span>
+
+<span class="fc" id="L534">		Iterator&lt;Transition&gt; it = null;</span>
+
+		// First we try to use one of the a preferred transitions (mainly with existing condition).
+<span class="fc bfc" id="L537" title="All 2 branches covered.">		if (preferredTransitions.size() &gt; 0) {</span>
+<span class="fc" id="L538">			it = preferredTransitions.iterator();</span>
+
+<span class="fc bfc" id="L540" title="All 2 branches covered.">			if (preferredTransitions.size() &gt; 1) {</span>
+<span class="fc" id="L541">				logger.info(&quot;Choosing random action because of &quot;</span>
+						+ preferredTransitions.size() + &quot; entries in preferredTransitions: &quot;
+						+ preferredTransitions);
+
+<span class="fc" id="L545">				TransitionSet.advance(it, Rand.rand(preferredTransitions.size()));</span>
+			}
+		}
+
+		// Then look for the remaining transitions.
+<span class="fc bfc" id="L550" title="All 4 branches covered.">		if ((it == null) &amp;&amp; (secondaryTransitions.size() &gt; 0)) {</span>
+<span class="fc" id="L551">			it = secondaryTransitions.iterator();</span>
+
+<span class="pc bpc" id="L553" title="1 of 2 branches missed.">			if (secondaryTransitions.size() &gt; 1) {</span>
+<span class="nc" id="L554">				logger.info(&quot;Choosing random action because of &quot;</span>
+						+ secondaryTransitions.size()
+						+ &quot; entries in secondaryTransitions: &quot; + secondaryTransitions);
+
+<span class="nc" id="L558">				TransitionSet.advance(it, Rand.rand(secondaryTransitions.size()));</span>
+			}
+		}
+
+<span class="fc bfc" id="L562" title="All 2 branches covered.">		if (it != null) {</span>
+<span class="fc" id="L563">			final Transition transition = it.next();</span>
+
+<span class="fc" id="L565">			executeTransition(player, sentence, transition);</span>
+
+<span class="fc" id="L567">			return true;</span>
+		} else {
+<span class="fc" id="L569">			return false;</span>
+		}
+	}
+
+	/**
+	 * Look for a match between given sentence and transition in the current state.
+	 * TODO mf - refactor match type handling
+	 * 
+	 * @param type
+	 * @param sentence
+	 * @param transition
+	 * @return true if transition has been found
+	 */
+	private boolean matchesTransition(final MatchType type, final Sentence sentence, final Transition transition) {
+<span class="fc" id="L583">		return type.match(transition, currentState, sentence);</span>
+	}
+
+	private void executeTransition(final Player player, final Sentence sentence, final Transition trans) {
+<span class="fc" id="L587">		final ConversationStates nextState = trans.getNextState();</span>
+
+<span class="fc bfc" id="L589" title="All 2 branches covered.">		if (trans.getReply() != null) {</span>
+<span class="fc" id="L590">			speakerNPC.say(trans.getReply());</span>
+		}
+
+<span class="fc" id="L593">		currentState = nextState;</span>
+<span class="fc bfc" id="L594" title="All 2 branches covered.">        if (currentState == ConversationStates.ATTENDING) {</span>
+<span class="fc" id="L595">        	speakerNPC.setIdea(&quot;attending&quot;);</span>
+<span class="fc bfc" id="L596" title="All 2 branches covered.">        } else if (currentState != ConversationStates.IDLE) {</span>
+<span class="fc" id="L597">        	speakerNPC.setIdea(&quot;awaiting&quot;);</span>
+        }
+<span class="fc bfc" id="L599" title="All 2 branches covered.">		if (trans.getAction() != null) {</span>
+<span class="fc" id="L600">			trans.getAction().fire(player, sentence, new EventRaiser(speakerNPC));</span>
+		}
+		
+<span class="fc" id="L603">		speakerNPC.notifyWorldAboutChanges();</span>
+<span class="fc" id="L604">	}</span>
+
+	/**
+	 * Returns a copy of the transition table.
+	 * 
+	 * @return list of transitions
+	 */
+	public List&lt;Transition&gt; getTransitions() {
+		// return a copy so that the caller cannot mess up our internal
+		// structure
+<span class="fc" id="L614">		return new LinkedList&lt;Transition&gt;(stateTransitionTable);</span>
+	}
+
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

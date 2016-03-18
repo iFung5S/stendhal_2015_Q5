@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ToneGenerator.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.sound.system.processors</a> &gt; <span class="el_source">ToneGenerator.java</span></div><h1>ToneGenerator.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.sound.system.processors;
+
+import games.stendhal.client.sound.system.SignalProcessor;
+import java.util.ArrayList;
+
+/**
+ * Generates a PCM audio signal consisting of sine waveforms
+ * with specified frequency and volume.
+ * @author silvio
+ */
+public class ToneGenerator extends SignalProcessor
+{
+    public static class Tone
+    {
+        private float mVolume;
+        private float mFrequency;
+<span class="fc" id="L29">        private long  mPosition = 0;</span>
+
+        public Tone(float volume, float frequency)
+<span class="fc" id="L32">        {</span>
+<span class="fc" id="L33">            mVolume    = volume;</span>
+<span class="fc" id="L34">            mFrequency = frequency;</span>
+<span class="fc" id="L35">        }</span>
+    }
+
+    private int                   mSampleRate;
+    private int                   mNumChannels;
+    private float[]               mSamples;
+<span class="fc" id="L41">    private final ArrayList&lt;Tone&gt; mTones = new ArrayList&lt;Tone&gt;();</span>
+
+    public ToneGenerator(int channels, int rate, int numFramesToBuffer)
+<span class="fc" id="L44">    {</span>
+<span class="fc" id="L45">        mNumChannels = channels;</span>
+<span class="fc" id="L46">        mSampleRate  = rate;</span>
+<span class="fc" id="L47">        mSamples     = new float[numFramesToBuffer * mNumChannels];</span>
+<span class="fc" id="L48">    }</span>
+
+    public synchronized void addTone(Tone tone)
+    {
+<span class="fc" id="L52">        mTones.add(tone);</span>
+<span class="fc" id="L53">    }</span>
+
+    @Override
+    protected boolean generate()
+    {
+<span class="fc" id="L58">        int index = 0;</span>
+
+<span class="fc bfc" id="L60" title="All 2 branches covered.">        for(Tone tone: mTones)</span>
+        {
+<span class="pc bpc" id="L62" title="1 of 2 branches missed.">            makeTone(tone, mSamples, (mSamples.length / mNumChannels), mNumChannels, (index != 0));</span>
+<span class="fc" id="L63">            ++index;</span>
+<span class="fc" id="L64">        }</span>
+
+<span class="fc" id="L66">        super.propagate(mSamples, (mSamples.length / mNumChannels), mNumChannels, mSampleRate);</span>
+<span class="fc" id="L67">        return true;</span>
+    }
+
+    @Override
+    protected synchronized void modify(float[] data, int samples, int channels, int rate)
+    {
+<span class="nc bnc" id="L73" title="All 2 branches missed.">        for(Tone tone: mTones)</span>
+<span class="nc" id="L74">            makeTone(tone, data, samples, channels, true);</span>
+
+<span class="nc" id="L76">        super.propagate(data, samples, channels, rate);</span>
+<span class="nc" id="L77">    }</span>
+
+    private void makeTone(Tone tone, float[] data, int samples, int channels, boolean mixSound)
+    {
+        final double RAD                      = 2.0 * Math.PI;
+<span class="fc" id="L82">        final float  frequencySampleRateRatio = tone.mFrequency / mSampleRate;</span>
+
+<span class="pc bpc" id="L84" title="1 of 2 branches missed.">        if(mixSound)</span>
+        {
+<span class="nc bnc" id="L86" title="All 2 branches missed.">            for(int i=0; i&lt;samples; ++i)</span>
+            {
+<span class="nc" id="L88">                int   index = i * channels;</span>
+<span class="nc" id="L89">                float value = (float)Math.sin(RAD * frequencySampleRateRatio * tone.mPosition);</span>
+
+<span class="nc" id="L91">                value *= tone.mVolume;</span>
+
+<span class="nc bnc" id="L93" title="All 2 branches missed.">                for(int c=0; c&lt;channels; ++c)</span>
+<span class="nc" id="L94">                    data[index + c] = data[index + c] + value - data[index + c] * value;	//MF: mix using amplitude modulation between the generated tones?</span>
+                
+<span class="nc" id="L96">                ++tone.mPosition;</span>
+            }
+        }
+        else
+        {
+<span class="fc bfc" id="L101" title="All 2 branches covered.">            for(int i=0; i&lt;samples; ++i)</span>
+            {
+<span class="fc" id="L103">                int   index = i * channels;</span>
+<span class="fc" id="L104">                float value = (float)Math.sin(RAD * frequencySampleRateRatio * tone.mPosition);</span>
+
+<span class="fc" id="L106">                value *= tone.mVolume;</span>
+
+<span class="fc bfc" id="L108" title="All 2 branches covered.">                for(int c=0; c&lt;channels; ++c)</span>
+<span class="fc" id="L109">                    data[index + c] = value;</span>
+
+<span class="fc" id="L111">                ++tone.mPosition;</span>
+            }
+        }
+<span class="fc" id="L114">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

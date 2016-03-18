@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>UnknownAction.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.actions</a> &gt; <span class="el_source">UnknownAction.java</span></div><h1>UnknownAction.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2013 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.actions;
+
+import games.stendhal.common.NotificationType;
+import games.stendhal.server.entity.player.Player;
+
+import java.util.Collections;
+import java.util.List;
+
+import marauroa.common.game.RPAction;
+
+import org.apache.log4j.Logger;
+
+/**
+ * Default action if the client sends something the server does not understand.
+ *
+ * @author hendrik
+ */
+class UnknownAction implements ActionListener {
+<span class="fc" id="L30">	private static Logger logger = Logger.getLogger(UnknownAction.class);</span>
+	private final List&lt;String&gt; suggestions;
+
+	/**
+	 * Create an UnknownAction with no suggestions for commands.
+	 */
+<span class="fc" id="L36">	UnknownAction() {</span>
+<span class="fc" id="L37">		suggestions = null;</span>
+<span class="fc" id="L38">	}</span>
+
+	/**
+	 * Create an UnknownAction with suggestions for possibly intended commands.
+	 *
+	 * @param suggestions
+	 */
+<span class="fc" id="L45">	UnknownAction(List&lt;String&gt; suggestions) {</span>
+<span class="fc" id="L46">		Collections.sort(suggestions);</span>
+<span class="fc" id="L47">		this.suggestions = suggestions;</span>
+<span class="fc" id="L48">	}</span>
+
+	@Override
+	public void onAction(final Player player, final RPAction action) {
+<span class="fc" id="L52">		String type = &quot;null&quot;;</span>
+<span class="pc bpc" id="L53" title="1 of 2 branches missed.">		if (action != null) {</span>
+<span class="fc" id="L54">			type = action.get(&quot;type&quot;);</span>
+		}
+<span class="fc" id="L56">		logger.warn(player + &quot; tried to execute unknown action &quot; + type);</span>
+<span class="pc bpc" id="L57" title="1 of 2 branches missed.">		if (player != null) {</span>
+<span class="fc" id="L58">			StringBuilder msg = new StringBuilder(&quot;Unknown command /&quot;);</span>
+<span class="fc" id="L59">			msg.append(type);</span>
+<span class="fc bfc" id="L60" title="All 2 branches covered.">			if (suggestions != null) {</span>
+<span class="fc" id="L61">				int size = suggestions.size();</span>
+<span class="fc" id="L62">				msg.append(&quot;. Did you mean&quot;);</span>
+<span class="fc bfc" id="L63" title="All 2 branches covered.">				if (size == 1) {</span>
+<span class="fc" id="L64">					msg.append(&quot; #/&quot;);</span>
+<span class="fc" id="L65">					msg.append(suggestions.get(0));</span>
+				}
+<span class="fc bfc" id="L67" title="All 2 branches covered.">				if (size &gt; 1) {</span>
+<span class="fc bfc" id="L68" title="All 2 branches covered.">					for (int i = 0; i &lt; (size - 2); i++) {</span>
+<span class="fc" id="L69">						msg.append(&quot; #/&quot;);</span>
+<span class="fc" id="L70">						msg.append(suggestions.get(i));</span>
+<span class="fc" id="L71">						msg.append(&quot;,&quot;);</span>
+					}
+<span class="fc" id="L73">					msg.append(&quot; #/&quot;);</span>
+<span class="fc" id="L74">					msg.append(suggestions.get(size - 2));</span>
+<span class="fc" id="L75">					msg.append(&quot; or #/&quot;);</span>
+<span class="fc" id="L76">					msg.append(suggestions.get(size - 1));</span>
+				}
+<span class="fc" id="L78">				msg.append(&quot;? Or type #/help to get a list.&quot;);</span>
+<span class="fc" id="L79">			} else {</span>
+<span class="fc" id="L80">				msg.append(&quot;. Please type #/help to get a list.&quot;);</span>
+			}
+<span class="fc" id="L82">			player.sendPrivateText(NotificationType.ERROR, msg.toString());</span>
+		}
+<span class="fc" id="L84">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

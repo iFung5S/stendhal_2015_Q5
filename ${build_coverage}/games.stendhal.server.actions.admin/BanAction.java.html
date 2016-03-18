@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>BanAction.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.actions.admin</a> &gt; <span class="el_source">BanAction.java</span></div><h1>BanAction.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2013 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.actions.admin;
+
+import games.stendhal.common.NotificationType;
+import games.stendhal.server.actions.CommandCenter;
+import games.stendhal.server.core.engine.GameEvent;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.entity.player.Player;
+
+import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.util.Calendar;
+import java.util.GregorianCalendar;
+import java.util.LinkedList;
+import java.util.List;
+
+import marauroa.common.game.RPAction;
+import marauroa.server.game.container.PlayerEntry;
+import marauroa.server.game.container.PlayerEntryContainer;
+import marauroa.server.game.db.AccountDAO;
+import marauroa.server.game.db.CharacterDAO;
+import marauroa.server.game.db.DAORegister;
+
+/**
+ * Bans an account
+ *
+ * @author hendrik
+ */
+<span class="fc" id="L39">public class BanAction extends AdministrationAction {</span>
+
+	@Override
+	protected void perform(final Player player, final RPAction action) {
+<span class="nc bnc" id="L43" title="All 2 branches missed.">		if (action.has(&quot;target&quot;)) {</span>
+<span class="nc" id="L44">			String bannedName = action.get(&quot;target&quot;);</span>
+<span class="nc" id="L45">			String reason = &quot;&quot;;</span>
+<span class="nc bnc" id="L46" title="All 2 branches missed.">			if (action.has(&quot;reason&quot;)) {</span>
+<span class="nc" id="L47">				reason = action.get(&quot;reason&quot;);</span>
+			}
+<span class="nc" id="L49">			int hours = 1;</span>
+
+			try {
+<span class="nc" id="L52">				hours = Integer.parseInt(action.get(&quot;hours&quot;));</span>
+<span class="nc" id="L53">			} catch (final NumberFormatException e) {</span>
+<span class="nc" id="L54">				player.sendPrivateText(NotificationType.ERROR, &quot;Please ban for a whole number of hours, or -1 hours for a permanent ban. Shorter times than 1 hour can use /jail.&quot;);</span>
+<span class="nc" id="L55">				return;</span>
+<span class="nc" id="L56">			}</span>
+
+<span class="nc" id="L58">			String sender = player.getName();</span>
+<span class="nc bnc" id="L59" title="All 4 branches missed.">			if (action.has(&quot;sender&quot;) &amp;&amp; (player.getName().equals(&quot;postman&quot;))) {</span>
+<span class="nc" id="L60">				sender = action.get(&quot;sender&quot;);</span>
+			}
+
+
+			try {
+
+				// look up username
+<span class="nc" id="L67">				String username = DAORegister.get().get(CharacterDAO.class).getAccountName(bannedName);</span>
+<span class="nc bnc" id="L68" title="All 2 branches missed.">				if (username == null) {</span>
+<span class="nc" id="L69">					player.sendPrivateText(NotificationType.ERROR, &quot;No such character&quot;);</span>
+<span class="nc" id="L70">					return;</span>
+				}
+
+				// parse expire
+<span class="nc" id="L74">				Timestamp expire = null;</span>
+<span class="nc" id="L75">				String expireStr = &quot;end of time&quot;;</span>
+<span class="nc bnc" id="L76" title="All 2 branches missed.">				if (hours &gt; 0) {</span>
+<span class="nc" id="L77">					Calendar date = new GregorianCalendar();</span>
+<span class="nc" id="L78">					date.add(Calendar.HOUR, hours);</span>
+<span class="nc" id="L79">					expire = new Timestamp(date.getTimeInMillis());</span>
+<span class="nc" id="L80">					expireStr = expire.toString();</span>
+				}
+
+<span class="nc" id="L83">				DAORegister.get().get(AccountDAO.class).addBan(username, reason, expire);</span>
+<span class="nc" id="L84">				player.sendPrivateText(&quot;You have banned account &quot; + username + &quot; (character: &quot; + bannedName + &quot;) until &quot; + expireStr + &quot; for: &quot; + reason);</span>
+
+				// logging
+<span class="nc" id="L87">				logger.info(sender + &quot; has banned  account &quot; + username + &quot; (character: &quot; + bannedName + &quot;) until &quot; + expireStr + &quot; for: &quot; + reason);</span>
+<span class="nc" id="L88">				new GameEvent(sender, &quot;ban&quot;,  bannedName, expireStr, reason).raise();</span>
+
+<span class="nc" id="L90">				SingletonRepository.getRuleProcessor().sendMessageToSupporters(&quot;JailKeeper&quot;,</span>
+						sender + &quot; banned account &quot; + username + &quot; (character: &quot; + bannedName + &quot;) until &quot; + expireStr
+						+ &quot;. Reason: &quot; + reason	+ &quot;.&quot;);
+<span class="nc" id="L93">				logoutAccount(username);</span>
+<span class="nc" id="L94">			} catch (SQLException e) {</span>
+<span class="nc" id="L95">				logger.error(&quot;Error while trying to ban user&quot;, e);</span>
+<span class="nc" id="L96">			}</span>
+		}
+<span class="nc" id="L98">	}</span>
+
+	private void logoutAccount(String username) {
+<span class="nc" id="L101">		List&lt;String&gt; characters = new LinkedList&lt;String&gt;();</span>
+<span class="nc" id="L102">		final PlayerEntryContainer playerContainer = PlayerEntryContainer.getContainer();</span>
+<span class="nc bnc" id="L103" title="All 2 branches missed.">		for (PlayerEntry entry : playerContainer) {</span>
+<span class="nc bnc" id="L104" title="All 2 branches missed.">			if (username.equalsIgnoreCase(entry.username)) {</span>
+<span class="nc" id="L105">				characters.add(entry.character);</span>
+			}
+<span class="nc" id="L107">		}</span>
+
+<span class="nc bnc" id="L109" title="All 2 branches missed.">		for (String character : characters) {</span>
+<span class="nc" id="L110">			final Player player = SingletonRepository.getRuleProcessor().getPlayer(character);</span>
+<span class="nc bnc" id="L111" title="All 2 branches missed.">			if (player != null) {</span>
+<span class="nc" id="L112">				SingletonRepository.getRuleProcessor().getRPManager().disconnectPlayer(player);</span>
+			}
+<span class="nc" id="L114">		}</span>
+<span class="nc" id="L115">	}</span>
+
+	/**
+	 * registers the ban action
+	 */
+	public static void register() {
+<span class="fc" id="L121">		CommandCenter.register(&quot;ban&quot;, new BanAction(), 1000);</span>
+<span class="fc" id="L122">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

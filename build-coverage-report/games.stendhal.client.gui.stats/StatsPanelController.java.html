@@ -1,0 +1,677 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>StatsPanelController.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui.stats</a> &gt; <span class="el_source">StatsPanelController.java</span></div><h1>StatsPanelController.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui.stats;
+
+import games.stendhal.client.entity.StatusID;
+import games.stendhal.common.Level;
+import games.stendhal.common.MathHelper;
+import games.stendhal.common.constants.Testing;
+
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.beans.PropertyChangeSupport;
+import java.util.HashMap;
+
+import javax.swing.SwingUtilities;
+
+import marauroa.common.game.RPObject;
+import marauroa.common.game.RPSlot;
+
+import org.apache.log4j.Logger;
+
+/**
+ * Object for listening for various user state changes that should
+ * be show.
+ */
+public final class StatsPanelController {
+<span class="nc" id="L37">	private static final String[] MONEY_SLOTS = { &quot;bag&quot;, &quot;lhand&quot;, &quot;rhand&quot; };</span>
+	/**
+	 * A string used as a white space at the status labels. This is a
+	 * combination of carriage return and no-break space, so that a possible
+	 * automatic line break is inserted at the CR, and the next line starts with
+	 * a leading space so that it is clear it belongs together with the previous
+	 * line. In case the text fits in one line, it looks like a normal space.
+	 */
+	private static final String SPC = &quot;\r\u00a0&quot;;
+	private final StatsPanel panel;
+	private static	StatsPanelController instance;
+	
+	/**
+	 * The money objects.
+	 * First level keys are the slot name. Second level is the object id.
+	 */
+<span class="nc" id="L53">	private final HashMap&lt;String, HashMap&lt;String, RPObject&gt;&gt; money = new HashMap&lt;String, HashMap&lt;String, RPObject&gt;&gt;();</span>
+	
+	private int level;
+	private int xp;
+	private int hp;
+	private int maxhp;
+	private int maxhpModified;
+	
+	private int atk;
+	private int atkxp;
+	private int weaponAtk;
+	
+	private int def;
+	private int defxp;
+	private int itemDef;
+	
+	private int ratk;
+	private int ratkxp;
+	private int weaponRatk;
+	
+	private int mana;
+	private int baseMana;
+	
+	/**
+	 * Create a new &lt;code&gt;StatsPanelController&lt;/code&gt;. There
+	 * should be only one, so the constructor is hidden.
+	 */
+<span class="nc" id="L80">	private StatsPanelController() {</span>
+<span class="nc" id="L81">		panel = new StatsPanel();</span>
+<span class="nc" id="L82">	}</span>
+	
+	/**
+	 * Get the &lt;code&gt;StatsPanelController&lt;/code&gt; instance.
+	 * 
+	 * @return the StatsPanelController instance
+	 */
+	public static synchronized StatsPanelController get() {
+<span class="nc bnc" id="L90" title="All 2 branches missed.">		if (instance == null) {</span>
+<span class="nc" id="L91">			instance = new StatsPanelController();</span>
+		}
+<span class="nc" id="L93">		return instance;</span>
+	}
+	
+	/**
+	 * Get the &lt;code&gt;StatsPanel&lt;/code&gt; component this controller
+	 * is keeping updated.
+	 * 
+	 * @return StatsPanel
+	 */
+	public StatsPanel getComponent() {
+<span class="nc" id="L103">		return panel;</span>
+	}
+	
+	/**
+	 * Add listeners for all the properties this object follows.
+	 * 
+	 * @param pcs property change support of the user
+	 */
+	public void registerListeners(PropertyChangeSupport pcs) {
+<span class="nc" id="L112">		PropertyChangeListener listener = new HPChangeListener(); </span>
+<span class="nc" id="L113">		addPropertyChangeListenerWithModifiedSupport(pcs, &quot;base_hp&quot;, listener);</span>
+<span class="nc" id="L114">		addPropertyChangeListenerWithModifiedSupport(pcs, &quot;hp&quot;, listener);</span>
+		
+<span class="nc" id="L116">		listener = new ATKChangeListener();</span>
+<span class="nc" id="L117">		addPropertyChangeListenerWithModifiedSupport(pcs, &quot;atk&quot;, listener);</span>
+<span class="nc" id="L118">		pcs.addPropertyChangeListener(&quot;atk_xp&quot;, listener);</span>
+		
+<span class="nc" id="L120">		listener = new DEFChangeListener();</span>
+<span class="nc" id="L121">		addPropertyChangeListenerWithModifiedSupport(pcs, &quot;def&quot;, listener);</span>
+<span class="nc" id="L122">		pcs.addPropertyChangeListener(&quot;def_xp&quot;, listener);</span>
+		
+		/* TODO: Remove condition after ranged stat testing is finished. */
+<span class="nc bnc" id="L125" title="All 2 branches missed.">		if (Testing.COMBAT) {</span>
+<span class="nc" id="L126">			listener = new RATKChangeListener();</span>
+<span class="nc" id="L127">			addPropertyChangeListenerWithModifiedSupport(pcs, &quot;ratk&quot;, listener);</span>
+<span class="nc" id="L128">			pcs.addPropertyChangeListener(&quot;ratk_xp&quot;, listener);</span>
+		}
+		
+<span class="nc" id="L131">		listener = new XPChangeListener();</span>
+<span class="nc" id="L132">		pcs.addPropertyChangeListener(&quot;xp&quot;, listener);</span>
+		
+<span class="nc" id="L134">		listener = new LevelChangeListener();</span>
+<span class="nc" id="L135">		addPropertyChangeListenerWithModifiedSupport(pcs, &quot;level&quot;, listener);</span>
+		
+<span class="nc" id="L137">		listener = new WeaponChangeListener();</span>
+<span class="nc" id="L138">		pcs.addPropertyChangeListener(&quot;atk_item&quot;, listener);</span>
+		
+<span class="nc" id="L140">		listener = new ArmorChangeListener();</span>
+<span class="nc" id="L141">		pcs.addPropertyChangeListener(&quot;def_item&quot;, listener);</span>
+		
+		/* FIXME: ranged stat is disabled by default until fully implemented */
+<span class="nc bnc" id="L144" title="All 2 branches missed.">		if (Testing.COMBAT) {</span>
+<span class="nc" id="L145">			listener = new RangedWeaponChangeListener();</span>
+<span class="nc" id="L146">			pcs.addPropertyChangeListener(&quot;ratk_item&quot;, listener);</span>
+		}
+		
+<span class="nc" id="L149">		listener = new MoneyChangeListener();</span>
+<span class="nc bnc" id="L150" title="All 2 branches missed.">		for (String slot : MONEY_SLOTS) {</span>
+<span class="nc" id="L151">			pcs.addPropertyChangeListener(slot, listener);</span>
+		}
+		
+<span class="nc" id="L154">		listener = new EatingChangeListener();</span>
+<span class="nc" id="L155">		pcs.addPropertyChangeListener(&quot;eating&quot;, listener);</span>
+<span class="nc" id="L156">		pcs.addPropertyChangeListener(&quot;choking&quot;, listener);</span>
+		
+<span class="nc" id="L158">		listener = new StatusChangeListener();</span>
+<span class="nc bnc" id="L159" title="All 2 branches missed.">		for (StatusID id : StatusID.values()) {</span>
+<span class="nc" id="L160">			pcs.addPropertyChangeListener(id.getAttribute(), listener);</span>
+		}
+		
+<span class="nc" id="L163">		listener = new AwayChangeListener();</span>
+<span class="nc" id="L164">		pcs.addPropertyChangeListener(&quot;away&quot;, listener);</span>
+		
+<span class="nc" id="L166">		listener = new GrumpyChangeListener();</span>
+<span class="nc" id="L167">		pcs.addPropertyChangeListener(&quot;grumpy&quot;, listener);</span>
+		
+<span class="nc" id="L169">		listener = new KarmaChangeListener();</span>
+<span class="nc" id="L170">		pcs.addPropertyChangeListener(&quot;karma&quot;, listener);</span>
+		
+<span class="nc" id="L172">		listener = new ManaChangeListener();</span>
+<span class="nc" id="L173">		addPropertyChangeListenerWithModifiedSupport(pcs, &quot;base_mana&quot;, listener);</span>
+<span class="nc" id="L174">		addPropertyChangeListenerWithModifiedSupport(pcs, &quot;mana&quot;, listener);</span>
+<span class="nc" id="L175">	}</span>
+	
+	private void addPropertyChangeListenerWithModifiedSupport(PropertyChangeSupport pcs, String attribute, PropertyChangeListener listener) {
+<span class="nc" id="L178">		pcs.addPropertyChangeListener(attribute, listener);</span>
+<span class="nc" id="L179">		pcs.addPropertyChangeListener(&quot;modified_&quot; + attribute, listener);</span>
+<span class="nc" id="L180">	}</span>
+	
+	/**
+	 * Called when xp or level has changed.
+	 */
+	private void updateLevel() {
+<span class="nc" id="L186">		final int next = Level.getXP(level + 1) - xp;</span>
+		// Show &quot;em-dash&quot; for max level players rather than 
+		// a confusing negative required xp.
+<span class="nc bnc" id="L189" title="All 2 branches missed.">		final String nextS = (next &lt; 0) ? &quot;\u2014&quot; : Integer.toString(next);</span>
+			
+<span class="nc" id="L191">		final String text = &quot;Level:&quot; + SPC + level + SPC + &quot;(&quot; + nextS + &quot;)&quot;;</span>
+<span class="nc" id="L192">		SwingUtilities.invokeLater(new Runnable() {</span>
+			@Override
+			public void run() {
+<span class="nc" id="L195">				panel.setLevel(text);</span>
+<span class="nc" id="L196">			}</span>
+		});
+<span class="nc" id="L198">	}</span>
+	
+	/**
+	 * Called when HP or max HP has changed.
+	 */
+	private void updateHP() {
+		
+<span class="nc" id="L205">		int maxhpvalue = maxhp;</span>
+<span class="nc bnc" id="L206" title="All 2 branches missed.">		if (maxhpModified != 0) {</span>
+<span class="nc" id="L207">			maxhpvalue = maxhpModified;</span>
+		}
+<span class="nc" id="L209">		final String text = &quot;HP:&quot; + SPC + hp + &quot;/&quot; + maxhpvalue;</span>
+<span class="nc" id="L210">		SwingUtilities.invokeLater(new Runnable() {</span>
+			@Override
+			public void run() {
+<span class="nc" id="L213">				panel.setHP(text);</span>
+<span class="nc" id="L214">			}</span>
+		});
+<span class="nc" id="L216">	}</span>
+	
+	/**
+	 * Called when atk, atkxp, or weaponAtk changes.
+	 */
+	private void updateAtk() {
+		// atk uses 10 levels shifted starting point
+<span class="nc" id="L223">		final int next = Level.getXP(atk - 9) - atkxp;</span>
+<span class="nc" id="L224">		final String text = &quot;ATK:&quot; + SPC + atk + &quot;×&quot; + (1 + weaponAtk) + SPC + &quot;(&quot; + next + &quot;)&quot;;</span>
+<span class="nc" id="L225">		SwingUtilities.invokeLater(new Runnable() {</span>
+			@Override
+			public void run() {
+<span class="nc" id="L228">				panel.setAtk(text);</span>
+<span class="nc" id="L229">			}</span>
+		});
+<span class="nc" id="L231">	}</span>
+	
+	/**
+	 * Called when def, defxp, or itemDef changes.
+	 */
+	private void updateDef() {
+		// def uses 10 levels shifted starting point
+<span class="nc" id="L238">		final int next = Level.getXP(def - 9) - defxp;</span>
+<span class="nc" id="L239">		final String text = &quot;DEF:&quot; + SPC + def + &quot;×&quot; + (1 + itemDef) + SPC + &quot;(&quot; + next + &quot;)&quot;;</span>
+<span class="nc" id="L240">		SwingUtilities.invokeLater(new Runnable() {</span>
+			@Override
+			public void run() {
+<span class="nc" id="L243">				panel.setDef(text);</span>
+<span class="nc" id="L244">			}</span>
+		});
+<span class="nc" id="L246">	}</span>
+	
+	/**
+	 * Called when ratk, ratkxp, or weaponRatk changes.
+	 */
+	private void updateRatk() {
+		// ratk uses 10 levels shifted starting point
+<span class="nc" id="L253">		final int next = Level.getXP(ratk - 9) - ratkxp;</span>
+<span class="nc" id="L254">		final String text = &quot;RATK:&quot; + SPC + ratk + &quot;×&quot; + (1 + weaponRatk) + SPC + &quot;(&quot; + next + &quot;)&quot;;</span>
+<span class="nc" id="L255">		SwingUtilities.invokeLater(new Runnable() {</span>
+			@Override
+			public void run() {
+<span class="nc" id="L258">				panel.setRatk(text);</span>
+<span class="nc" id="L259">			}</span>
+		});
+<span class="nc" id="L261">	}</span>
+	
+	/**
+	 * Listener for HP and base_hp changes.
+	 */
+<span class="nc" id="L266">	private class HPChangeListener implements PropertyChangeListener {</span>
+		@Override
+		public void propertyChange(final PropertyChangeEvent event) {
+<span class="nc bnc" id="L269" title="All 2 branches missed.">			if (event == null) {</span>
+<span class="nc" id="L270">				return;</span>
+			}
+			
+<span class="nc" id="L273">			String newValue = (String) event.getNewValue();</span>
+<span class="nc bnc" id="L274" title="All 2 branches missed.">			if (event.getPropertyName().equals(&quot;base_hp&quot;)) {</span>
+<span class="nc" id="L275">				maxhp = Integer.parseInt(newValue);</span>
+<span class="nc bnc" id="L276" title="All 2 branches missed.">			} else if (event.getPropertyName().equals(&quot;base_hp_modified&quot;)) {</span>
+<span class="nc bnc" id="L277" title="All 2 branches missed.">				if (newValue != null) {</span>
+<span class="nc" id="L278">					maxhpModified = Integer.parseInt(newValue);</span>
+				} else {
+<span class="nc" id="L280">					maxhpModified = 0;</span>
+				}
+<span class="nc bnc" id="L282" title="All 2 branches missed.">			} else if (event.getPropertyName().equals(&quot;hp&quot;)) {</span>
+<span class="nc" id="L283">				hp = Integer.parseInt(newValue);</span>
+			}
+<span class="nc" id="L285">			updateHP();</span>
+<span class="nc" id="L286">		}</span>
+	}
+	
+	/**
+	 * Called when there are additions to a potential money slot.
+	 * 
+	 * @param slot
+	 * @param object
+	 */
+	private void addMoney(String slot, RPObject object) {
+<span class="nc" id="L296">		HashMap&lt;String, RPObject&gt; set = money.get(slot);</span>
+<span class="nc" id="L297">		String id = object.get(&quot;id&quot;); </span>
+		
+<span class="nc" id="L299">		boolean add = false;</span>
+<span class="nc bnc" id="L300" title="All 2 branches missed.">		if (&quot;money&quot;.equals(object.get(&quot;class&quot;))) {</span>
+<span class="nc" id="L301">			add = true;</span>
+		}
+<span class="nc bnc" id="L303" title="All 2 branches missed.">		if (set == null) {</span>
+<span class="nc bnc" id="L304" title="All 2 branches missed.">			if (add) {</span>
+<span class="nc" id="L305">				set = new HashMap&lt;String, RPObject&gt;();</span>
+<span class="nc" id="L306">				money.put(slot, set);</span>
+			}
+<span class="nc bnc" id="L308" title="All 4 branches missed.">		} else if (set.containsKey(id) &amp;&amp; object.has(&quot;quantity&quot;)) {</span>
+			// Has been checked to be money before. Add only if there's 
+			// quantity though. Adding to empty slots can create add events without.
+			// Then the quantity has arrived in previous event
+<span class="nc" id="L312">			add = true;</span>
+		}
+
+<span class="nc bnc" id="L315" title="All 2 branches missed.">		if (add) {</span>
+<span class="nc" id="L316">			set.put(object.get(&quot;id&quot;), object);</span>
+<span class="nc" id="L317">			updateMoney();</span>
+		}
+<span class="nc" id="L319">	}</span>
+	
+	/**
+	 * Remove all the money objects. Called at zone change.
+	 */
+	private void clearMoney() {
+<span class="nc" id="L325">		money.clear();</span>
+<span class="nc" id="L326">		updateMoney();</span>
+<span class="nc" id="L327">	}</span>
+
+	/**
+	 * Called when items are removed from a potential money slot.
+	 * 
+	 * @param slot
+	 * @param obj
+	 */
+	private void removeMoney(String slot, RPObject obj) {
+<span class="nc" id="L336">		HashMap&lt;String, RPObject&gt; set = money.get(slot);</span>
+<span class="nc bnc" id="L337" title="All 4 branches missed.">		if ((set != null) &amp;&amp; (set.remove(obj.get(&quot;id&quot;)) != null)) {</span>
+<span class="nc" id="L338">			updateMoney();</span>
+		}
+<span class="nc" id="L340">	}</span>
+	
+	/**
+	 * Count the money, and update the label text.
+	 */
+	private void updateMoney() {
+<span class="nc" id="L346">		int amount = 0;</span>
+		
+<span class="nc bnc" id="L348" title="All 2 branches missed.">		for (HashMap&lt;String, RPObject&gt; stack : money.values()) {</span>
+<span class="nc bnc" id="L349" title="All 2 branches missed.">			for (RPObject obj : stack.values()) {</span>
+<span class="nc" id="L350">				amount += obj.getInt(&quot;quantity&quot;);</span>
+<span class="nc" id="L351">			}</span>
+<span class="nc" id="L352">		}</span>
+<span class="nc" id="L353">		final String text = &quot;Money:&quot; + SPC + amount;</span>
+<span class="nc" id="L354">		SwingUtilities.invokeLater(new Runnable() {</span>
+			@Override
+			public void run() {
+<span class="nc" id="L357">				panel.setMoney(text);</span>
+<span class="nc" id="L358">			}</span>
+		});
+<span class="nc" id="L360">	}</span>
+	
+	/**
+	 * Listener for atk and atk_xp changes.
+	 */
+<span class="nc" id="L365">	private class ATKChangeListener implements PropertyChangeListener {</span>
+		@Override
+		public void propertyChange(final PropertyChangeEvent event) {
+<span class="nc bnc" id="L368" title="All 2 branches missed.">			if (event == null) {</span>
+<span class="nc" id="L369">				return;</span>
+			}
+			
+<span class="nc bnc" id="L372" title="All 2 branches missed.">			if (&quot;atk_xp&quot;.equals(event.getPropertyName())) {</span>
+<span class="nc" id="L373">				atkxp = Integer.parseInt((String) event.getNewValue());</span>
+<span class="nc bnc" id="L374" title="All 2 branches missed.">			} else if (&quot;atk&quot;.equals(event.getPropertyName())) {</span>
+<span class="nc" id="L375">				atk = Integer.parseInt((String) event.getNewValue());</span>
+			}
+<span class="nc" id="L377">			updateAtk();</span>
+<span class="nc" id="L378">		}</span>
+	}
+	
+	/**
+	 * Listener for def and def_xp changes.
+	 */
+<span class="nc" id="L384">	private class DEFChangeListener implements PropertyChangeListener {</span>
+		@Override
+		public void propertyChange(final PropertyChangeEvent event) {
+<span class="nc bnc" id="L387" title="All 2 branches missed.">			if (event == null) {</span>
+<span class="nc" id="L388">				return;</span>
+			}
+			
+<span class="nc bnc" id="L391" title="All 2 branches missed.">			if (&quot;def_xp&quot;.equals(event.getPropertyName())) {</span>
+<span class="nc" id="L392">				defxp = Integer.parseInt((String) event.getNewValue());</span>
+<span class="nc bnc" id="L393" title="All 2 branches missed.">			} else if (&quot;def&quot;.equals(event.getPropertyName())) {</span>
+<span class="nc" id="L394">				def =  Integer.parseInt((String) event.getNewValue());</span>
+			}
+<span class="nc" id="L396">			updateDef();</span>
+<span class="nc" id="L397">		}</span>
+	}
+	
+	/**
+	 * Listener for ratk and ratk_xp changes.
+	 */
+<span class="nc" id="L403">	private class RATKChangeListener implements PropertyChangeListener {</span>
+		@Override
+		public void propertyChange(final PropertyChangeEvent event) {
+<span class="nc bnc" id="L406" title="All 2 branches missed.">			if (event == null) {</span>
+<span class="nc" id="L407">				return;</span>
+			}
+			
+<span class="nc bnc" id="L410" title="All 2 branches missed.">			if (&quot;ratk_xp&quot;.equals(event.getPropertyName())) {</span>
+<span class="nc" id="L411">				ratkxp = Integer.parseInt((String) event.getNewValue());</span>
+<span class="nc bnc" id="L412" title="All 2 branches missed.">			} else if (&quot;ratk&quot;.equals(event.getPropertyName())) {</span>
+<span class="nc" id="L413">				ratk = Integer.parseInt((String) event.getNewValue());</span>
+			}
+<span class="nc" id="L415">			updateRatk();</span>
+<span class="nc" id="L416">		}</span>
+	}
+	
+	/**
+	 * Listener for xp changes.
+	 */
+<span class="nc" id="L422">	private class XPChangeListener implements PropertyChangeListener {</span>
+		@Override
+		public void propertyChange(final PropertyChangeEvent event) {
+<span class="nc bnc" id="L425" title="All 2 branches missed.">			if (event == null) {</span>
+<span class="nc" id="L426">				return;</span>
+			}
+<span class="nc" id="L428">			xp = Integer.parseInt((String) event.getNewValue());</span>
+<span class="nc" id="L429">			updateLevel();</span>
+<span class="nc" id="L430">			final String text = &quot;XP:&quot; + SPC + xp;</span>
+<span class="nc" id="L431">			SwingUtilities.invokeLater(new Runnable() {</span>
+				@Override
+				public void run() {
+<span class="nc" id="L434">					panel.setXP(text);</span>
+<span class="nc" id="L435">				}</span>
+			});
+<span class="nc" id="L437">		}</span>
+	}
+	
+	/**
+	 * Listener for level changes.
+	 */
+<span class="nc" id="L443">	private class LevelChangeListener implements PropertyChangeListener {</span>
+		@Override
+		public void propertyChange(final PropertyChangeEvent event) {
+<span class="nc bnc" id="L446" title="All 2 branches missed.">			if (event == null) {</span>
+<span class="nc" id="L447">				return;</span>
+			}
+<span class="nc bnc" id="L449" title="All 2 branches missed.">			if (event.getPropertyName().equals(&quot;level&quot;)) {</span>
+<span class="nc" id="L450">				level = Integer.parseInt((String) event.getNewValue());</span>
+			}
+<span class="nc" id="L452">			updateLevel();</span>
+<span class="nc" id="L453">		}</span>
+	}
+	
+	/**
+	 * Listener for weapon atk changes.
+	 */
+<span class="nc" id="L459">	private class WeaponChangeListener implements PropertyChangeListener {</span>
+		@Override
+		public void propertyChange(final PropertyChangeEvent event) {
+<span class="nc bnc" id="L462" title="All 2 branches missed.">			if (event == null) {</span>
+<span class="nc" id="L463">				return;</span>
+			}
+<span class="nc" id="L465">			weaponAtk = Integer.parseInt((String) event.getNewValue());</span>
+<span class="nc" id="L466">			updateAtk();</span>
+<span class="nc" id="L467">		}</span>
+	}
+	
+	/**
+	 * Listener for armor def changes.
+	 */
+<span class="nc" id="L473">	private class ArmorChangeListener implements PropertyChangeListener {</span>
+		@Override
+		public void propertyChange(final PropertyChangeEvent event) {
+<span class="nc bnc" id="L476" title="All 2 branches missed.">			if (event == null) {</span>
+<span class="nc" id="L477">				return;</span>
+			}
+<span class="nc" id="L479">			itemDef = Integer.parseInt((String) event.getNewValue());</span>
+<span class="nc" id="L480">			updateDef();</span>
+<span class="nc" id="L481">		}</span>
+	}
+	
+	/**
+	 * Listener for ranged weapon atk changes.
+	 */
+<span class="nc" id="L487">	private class RangedWeaponChangeListener implements PropertyChangeListener {</span>
+		@Override
+		public void propertyChange(final PropertyChangeEvent event) {
+<span class="nc bnc" id="L490" title="All 2 branches missed.">			if (event == null) {</span>
+<span class="nc" id="L491">				return;</span>
+			}
+<span class="nc" id="L493">			weaponRatk = Integer.parseInt((String) event.getNewValue());</span>
+<span class="nc" id="L494">			updateRatk();</span>
+<span class="nc" id="L495">		}</span>
+	}
+	
+	/**
+	 * Listener for eating and choking changes.
+	 */
+<span class="nc" id="L501">	private class EatingChangeListener implements PropertyChangeListener {</span>
+		@Override
+		public void propertyChange(final PropertyChangeEvent event) {
+			// Deleted attribute can raise a null event
+<span class="nc bnc" id="L505" title="All 2 branches missed.">			if (event == null) {</span>
+<span class="nc" id="L506">				SwingUtilities.invokeLater(new Runnable() {</span>
+					@Override
+					public void run() {
+<span class="nc" id="L509">						panel.setEating(false);</span>
+<span class="nc" id="L510">						panel.setChoking(false);</span>
+<span class="nc" id="L511">					}</span>
+				});
+<span class="nc" id="L513">				return;</span>
+			}
+			
+<span class="nc bnc" id="L516" title="All 2 branches missed.">			final boolean newStatus = event.getNewValue() != null;</span>
+<span class="nc bnc" id="L517" title="All 2 branches missed.">			if (&quot;eating&quot;.equals(event.getPropertyName())) {</span>
+<span class="nc" id="L518">				SwingUtilities.invokeLater(new Runnable() {</span>
+					@Override
+					public void run() {
+<span class="nc" id="L521">						panel.setEating(newStatus);</span>
+<span class="nc" id="L522">					}</span>
+				});
+			} else {
+<span class="nc" id="L525">				SwingUtilities.invokeLater(new Runnable() {</span>
+					@Override
+					public void run() {
+<span class="nc" id="L528">						panel.setChoking(newStatus);</span>
+<span class="nc" id="L529">					}</span>
+				});
+			}
+<span class="nc" id="L532">		}</span>
+	}
+	
+	/**
+	 * Listener for status changes.
+	 */
+<span class="nc" id="L538">	private class StatusChangeListener implements PropertyChangeListener {</span>
+		@Override
+		public void propertyChange(final PropertyChangeEvent event) {
+<span class="nc bnc" id="L541" title="All 2 branches missed.">			if (event == null) {</span>
+<span class="nc" id="L542">				return;</span>
+			}
+<span class="nc" id="L544">			Object value = event.getNewValue();</span>
+<span class="nc" id="L545">	        final StatusID ID = StatusID.getStatusID(event.getPropertyName());</span>
+<span class="nc bnc" id="L546" title="All 2 branches missed.">	        final boolean enabled = value != null;</span>
+<span class="nc" id="L547">	        SwingUtilities.invokeLater(new Runnable() {</span>
+	            @Override
+	            public void run() {
+<span class="nc" id="L550">	                panel.setStatus(ID, enabled);</span>
+<span class="nc" id="L551">	            }</span>
+	        });
+<span class="nc" id="L553">	    }</span>
+	}
+	
+	/**
+	 * Listener for away status changes.
+	 */
+<span class="nc" id="L559">	private class AwayChangeListener implements PropertyChangeListener {</span>
+		@Override
+		public void propertyChange(final PropertyChangeEvent event) {
+			// Deleted attribute can raise a null event
+<span class="nc" id="L563">			String value = null;</span>
+<span class="nc bnc" id="L564" title="All 2 branches missed.">			if (event != null) {</span>
+<span class="nc" id="L565">				Object obj = event.getNewValue();</span>
+<span class="nc bnc" id="L566" title="All 2 branches missed.">				if (obj != null) {</span>
+<span class="nc" id="L567">					value = obj.toString();</span>
+				}
+			}
+<span class="nc" id="L570">			final String message = value;</span>
+<span class="nc" id="L571">			SwingUtilities.invokeLater(new Runnable() {</span>
+				@Override
+				public void run() {
+<span class="nc" id="L574">					panel.setAway(message);</span>
+<span class="nc" id="L575">				}</span>
+			});
+<span class="nc" id="L577">		}</span>
+	}
+	
+	/**
+	 * Listener for karma changes.
+	 */
+<span class="nc" id="L583">	private class KarmaChangeListener implements PropertyChangeListener {</span>
+		@Override
+		public void propertyChange(final PropertyChangeEvent event) {
+<span class="nc bnc" id="L586" title="All 2 branches missed.">			if (event == null) {</span>
+<span class="nc" id="L587">				return;</span>
+			}
+		
+<span class="nc" id="L590">			panel.setKarma(MathHelper.parseDouble((String) event.getNewValue()));</span>
+<span class="nc" id="L591">		}</span>
+	}
+	
+	/**
+	 * Listener for mana changes.
+	 */
+<span class="nc" id="L597">	private class ManaChangeListener implements PropertyChangeListener {</span>
+		@Override
+		public void propertyChange(final PropertyChangeEvent event) {
+<span class="nc bnc" id="L600" title="All 2 branches missed.">			if (event == null) {</span>
+<span class="nc" id="L601">				return;</span>
+			}
+		
+			try {
+<span class="nc bnc" id="L605" title="All 2 branches missed.">				if (event.getPropertyName().endsWith(&quot;base_mana&quot;)) {</span>
+<span class="nc" id="L606">					baseMana = Integer.parseInt((String) event.getNewValue());</span>
+<span class="nc" id="L607">					panel.setBaseMana(baseMana);</span>
+				} else {
+<span class="nc" id="L609">					mana = Integer.parseInt((String) event.getNewValue());</span>
+<span class="nc" id="L610">					panel.setMana(mana);</span>
+				}
+<span class="nc" id="L612">			} catch (NumberFormatException e) {</span>
+<span class="nc" id="L613">				Logger.getLogger(ManaChangeListener.class).error(&quot;Invalid mana value&quot;, e);</span>
+<span class="nc" id="L614">			}</span>
+<span class="nc" id="L615">		}</span>
+	}
+	
+	/**
+	 * Listener for grumpy status changes.
+	 */
+<span class="nc" id="L621">	private class GrumpyChangeListener implements PropertyChangeListener {</span>
+		@Override
+		public void propertyChange(final PropertyChangeEvent event) {
+			// Deleted attribute can raise a null event
+<span class="nc" id="L625">			String value = null;</span>
+<span class="nc bnc" id="L626" title="All 2 branches missed.">			if (event != null) {</span>
+<span class="nc" id="L627">				Object obj = event.getNewValue();</span>
+<span class="nc bnc" id="L628" title="All 2 branches missed.">				if (obj != null) {</span>
+<span class="nc" id="L629">					value = obj.toString();</span>
+				}
+			}
+<span class="nc" id="L632">			final String message = value;</span>
+<span class="nc" id="L633">			SwingUtilities.invokeLater(new Runnable() {</span>
+				@Override
+				public void run() {
+<span class="nc" id="L636">					panel.setGrumpy(message);</span>
+<span class="nc" id="L637">				}</span>
+			});
+<span class="nc" id="L639">		}</span>
+	}
+	
+	/**
+	 * Listener for money changes.
+	 * Due to there being no &quot;money&quot; property for the player, this
+	 * need to listen to all the slots where it's possible to store money.
+	 */
+<span class="nc" id="L647">	private class MoneyChangeListener implements PropertyChangeListener {</span>
+		@Override
+		public void propertyChange(final PropertyChangeEvent event) {
+<span class="nc bnc" id="L650" title="All 2 branches missed.">			if (event == null) {</span>
+				/*
+				 * We get a null event when the player object is deleted. Clear
+				 * the money. For the situations where a zone change is
+				 * combined with a complete removal of a money stack.
+				 */
+<span class="nc" id="L656">				clearMoney();</span>
+<span class="nc" id="L657">				return;</span>
+			}
+			
+<span class="nc" id="L660">			RPSlot slot = (RPSlot) event.getOldValue();</span>
+<span class="nc bnc" id="L661" title="All 2 branches missed.">			if (slot != null) {</span>
+<span class="nc bnc" id="L662" title="All 2 branches missed.">				for (final RPObject object : slot) {</span>
+<span class="nc" id="L663">					removeMoney(slot.getName(), object);</span>
+<span class="nc" id="L664">				}</span>
+			}
+			
+<span class="nc" id="L667">			slot = (RPSlot) event.getNewValue();</span>
+<span class="nc bnc" id="L668" title="All 2 branches missed.">			if (slot != null) {</span>
+<span class="nc bnc" id="L669" title="All 2 branches missed.">				for (final RPObject object : slot) {</span>
+					// add everything. let the panel figure out if it's money
+<span class="nc" id="L671">					addMoney(slot.getName(), object);</span>
+<span class="nc" id="L672">				}</span>
+			}
+<span class="nc" id="L674">		}</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

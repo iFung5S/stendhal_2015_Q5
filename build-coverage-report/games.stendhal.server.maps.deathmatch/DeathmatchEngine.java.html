@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>DeathmatchEngine.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.deathmatch</a> &gt; <span class="el_source">DeathmatchEngine.java</span></div><h1>DeathmatchEngine.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.deathmatch;
+
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.events.TurnListener;
+import games.stendhal.server.entity.creature.DeathMatchCreature;
+import games.stendhal.server.entity.item.Item;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.player.Player;
+
+import java.util.Date;
+
+import org.apache.log4j.Logger;
+
+/**
+ * this is the internal class which handles an active deathmatch session.
+ */
+class DeathmatchEngine implements TurnListener {
+	/** The amount of milliseconds to wait before bail takes effect. */
+	private static final long BAIL_DELAY = 600; 
+
+<span class="nc" id="L34">	private static Logger logger = Logger.getLogger(DeathmatchEngine.class);</span>
+
+	private final Player player;
+	private final EventRaiser raiser;
+	
+	private final DeathmatchInfo dmInfo;
+
+	private CreatureSpawner spawner;
+
+<span class="nc" id="L43">	private boolean keepRunning = true;</span>
+	
+
+	/**
+	 * Creates a new ScriptAction to handle the deathmatch logic.
+	 * 
+	 * @param player
+	 *            Player for whom this match is created
+	 * @param deathmatchInfo
+	 *            Information about the place of the deathmatch
+	 * @param raiser 
+	 */
+<span class="nc" id="L55">	public DeathmatchEngine(final Player player, final DeathmatchInfo deathmatchInfo, final EventRaiser raiser) {</span>
+<span class="nc" id="L56">		this.dmInfo = deathmatchInfo;</span>
+<span class="nc" id="L57">		this.player = player;</span>
+<span class="nc" id="L58">		this.raiser = raiser;</span>
+<span class="nc" id="L59">		initialize();</span>
+<span class="nc" id="L60">	}</span>
+
+	protected void initialize() {
+<span class="nc" id="L63">		spawner = new CreatureSpawner();</span>
+<span class="nc" id="L64">	}</span>
+
+	private boolean condition() {
+<span class="nc bnc" id="L67" title="All 2 branches missed.">		if (&quot;cancel&quot;.equals(player.getQuest(&quot;deathmatch&quot;))) {</span>
+<span class="nc" id="L68">			return false;</span>
+		}
+<span class="nc bnc" id="L70" title="All 2 branches missed.">		if (player.getQuest(&quot;deathmatch&quot;).startsWith(&quot;done&quot;)) {</span>
+<span class="nc" id="L71">			return false;</span>
+		}
+
+<span class="nc bnc" id="L74" title="All 2 branches missed.">		if (dmInfo.isInArena(player)) {</span>
+<span class="nc" id="L75">			return true;</span>
+		} else {
+<span class="nc" id="L77">			player.setQuest(&quot;deathmatch&quot;, &quot;cancel&quot;);</span>
+<span class="nc" id="L78">			return true;</span>
+		}
+	}
+
+	@Override
+	public void onTurnReached(final int currentTurn) {
+<span class="nc bnc" id="L84" title="All 2 branches missed.">		if (condition()) {</span>
+<span class="nc" id="L85">			action();</span>
+		}
+<span class="nc bnc" id="L87" title="All 2 branches missed.">		if (keepRunning) {</span>
+<span class="nc" id="L88">			SingletonRepository.getTurnNotifier().notifyInTurns(0, this);</span>
+		}
+<span class="nc" id="L90">	}</span>
+
+	private void action() {
+
+<span class="nc" id="L94">		final DeathmatchState deathmatchState = DeathmatchState.createFromQuestString(player.getQuest(&quot;deathmatch&quot;));</span>
+
+<span class="nc bnc" id="L96" title="All 3 branches missed.">		switch (deathmatchState.getLifecycleState()) {</span>
+
+		case BAIL:
+<span class="nc bnc" id="L99" title="All 2 branches missed.">			if (((new Date()).getTime() - deathmatchState.getStateTime() &gt; BAIL_DELAY)) {</span>
+<span class="nc" id="L100">				handleBail();</span>
+
+<span class="nc" id="L102">				keepRunning = false;</span>
+<span class="nc" id="L103">				return;</span>
+			}
+			break;
+
+		case CANCEL:
+<span class="nc" id="L108">			spawner.removePlayersMonsters();</span>
+
+			// and finally remove this ScriptAction
+<span class="nc" id="L111">			keepRunning = false;</span>
+<span class="nc" id="L112">			return;</span>
+			
+		default: 
+			//cannot happen we switch on a enum
+
+		}
+
+		// check whether the deathmatch was completed
+<span class="nc bnc" id="L120" title="All 2 branches missed.">		if (deathmatchState.getQuestLevel() &gt;= player.getLevel()</span>
+				+ CreatureSpawner.NUMBER_OF_CREATURES - 2) {
+			// logger.info(&quot;May be done&quot;);
+<span class="nc bnc" id="L123" title="All 2 branches missed.">			if (spawner.areAllCreaturesDead()) {</span>
+<span class="nc" id="L124">				logger.info(&quot;Player &quot; + player.getName()</span>
+						+ &quot; completed deathmatch&quot;);
+<span class="nc" id="L126">				spawner.spawnDailyMonster(player, dmInfo);</span>
+<span class="nc" id="L127">				deathmatchState.setLifecycleState(DeathmatchLifecycle.VICTORY);</span>
+<span class="nc" id="L128">				player.setQuest(&quot;deathmatch&quot;, deathmatchState.toQuestString());</span>
+
+				// make the npc attend the player so they can say victory
+<span class="nc" id="L131">				raiser.say(player.getName() + &quot;, you have completed this deathmatch and can now claim #victory.&quot;);</span>
+<span class="nc" id="L132">			    raiser.setCurrentState(ConversationStates.ATTENDING);</span>
+<span class="nc" id="L133">				raiser.setAttending(player);</span>
+				
+				// remove this ScriptAction since we're done
+<span class="nc" id="L136">				keepRunning = false;</span>
+			}
+			// all creature are there
+<span class="nc" id="L139">			return; </span>
+		}
+
+<span class="nc" id="L142">		int numberPlayers = dmInfo.getArena().getPlayers().size();</span>
+		// spawn new monster, with the spawn delay proportional to player level
+		// and inversely proportional to the number of players in the ring
+		// and always spawning if there is no creature
+		// for level 20 players it is always just 20 seconds
+<span class="nc bnc" id="L147" title="All 4 branches missed.">		if (((new Date()).getTime() - deathmatchState.getStateTime() &gt; (300*(player.getLevel()-20)/(1+numberPlayers) + CreatureSpawner.SPAWN_DELAY)) || spawner.areAllCreaturesDead()) {</span>
+<span class="nc" id="L148">			final DeathMatchCreature mycreature = spawner.spawnNewCreature(</span>
+					deathmatchState.getQuestLevel(), player, dmInfo);
+			// in case there is not enough space to place the creature,
+			// mycreature is null
+<span class="nc bnc" id="L152" title="All 2 branches missed.">			if (mycreature != null) {</span>
+
+<span class="nc" id="L154">				deathmatchState.increaseQuestlevel();</span>
+			}
+
+<span class="nc" id="L157">			deathmatchState.refreshTimestamp();</span>
+		}
+
+<span class="nc" id="L160">		player.setQuest(&quot;deathmatch&quot;, deathmatchState.toQuestString());</span>
+<span class="nc" id="L161">	}</span>
+
+	private void handleBail() {
+<span class="nc" id="L164">		player.setQuest(&quot;deathmatch&quot;, &quot;cancel&quot;);</span>
+<span class="nc" id="L165">		final Item helmet = player.getFirstEquipped(&quot;trophy helmet&quot;);</span>
+<span class="nc bnc" id="L166" title="All 2 branches missed.">		if (helmet != null) {</span>
+<span class="nc" id="L167">			int defense = 1;</span>
+<span class="nc bnc" id="L168" title="All 2 branches missed.">			if (helmet.has(&quot;def&quot;)) {</span>
+<span class="nc" id="L169">				defense = helmet.getInt(&quot;def&quot;);</span>
+			}
+<span class="nc bnc" id="L171" title="All 2 branches missed.">			if (defense &gt; 1) {</span>
+<span class="nc" id="L172">				defense--;</span>
+			} else {
+<span class="nc" id="L174">				defense = 1;</span>
+			}
+<span class="nc" id="L176">			helmet.put(&quot;def&quot;, &quot;&quot; + defense);</span>
+<span class="nc" id="L177">			player.updateItemAtkDef();</span>
+<span class="nc" id="L178">		} else {</span>
+<span class="nc" id="L179">			int xp = player.getLevel() * 80;</span>
+<span class="nc bnc" id="L180" title="All 2 branches missed.">			if (xp &gt; player.getXP()) {</span>
+<span class="nc" id="L181">				xp = player.getXP();</span>
+			}
+<span class="nc" id="L183">			player.subXP(xp);</span>
+		}
+
+		// send the player back to the entrance area
+<span class="nc" id="L187">		player.teleport(dmInfo.getEntranceSpot().getZone(),</span>
+				dmInfo.getEntranceSpot().getX(),
+				dmInfo.getEntranceSpot().getY(), null, null);
+
+<span class="nc" id="L191">		spawner.removePlayersMonsters();</span>
+<span class="nc" id="L192">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

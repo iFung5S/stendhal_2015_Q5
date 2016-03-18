@@ -1,0 +1,736 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SentenceImplementation.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.common.parser</a> &gt; <span class="el_source">SentenceImplementation.java</span></div><h1>SentenceImplementation.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.common.parser;
+
+import games.stendhal.common.ErrorDrain;
+import games.stendhal.common.grammar.Grammar;
+
+import java.util.Iterator;
+
+/**
+ * SentenceImplementation contains the implementation details of building Sentence objects.
+ *
+ * @author Martin Fuchs
+ */
+<span class="pc bpc" id="L25" title="2 of 4 branches missed.">public final class SentenceImplementation extends Sentence {</span>
+
+    /**
+     * Create a SentenceImplementation object in preparation to parse a text phrase.
+     *
+     * @param ctx
+     * @param text phrase
+     */
+    SentenceImplementation(final ConversationContext ctx, String text) {
+<span class="fc" id="L34">        super(ctx);</span>
+
+<span class="fc" id="L36">        originalText = text;</span>
+<span class="fc" id="L37">    }</span>
+
+    /**
+     * Create a SentenceImplementation object for testing purposes.
+     * note: This constructor does not set originalText.
+     * 
+     * @param exprs
+     */
+    public SentenceImplementation(final Expression... exprs) {
+<span class="fc" id="L46">        super(new ConversationContext());</span>
+
+<span class="fc bfc" id="L48" title="All 4 branches covered.">        for (final Expression e : exprs) {</span>
+<span class="fc" id="L49">            expressions.add(e);</span>
+        }
+<span class="fc" id="L51">    }</span>
+
+    /**
+     * Build sentence by using the given parser object.
+     *
+     * @param parser
+     */
+    void parse(final ConversationParser parser) {
+<span class="fc" id="L59">        Expression prevWord = null;</span>
+
+<span class="fc bfc" id="L61" title="All 4 branches covered.">        for (String ws; (ws = parser.readNextWord()) != null;) {</span>
+            // replace &quot;and&quot; by enumerations separated by break flags
+<span class="fc bfc" id="L63" title="All 4 branches covered.">            if (ws.equals(&quot;and&quot;)) {</span>
+<span class="pc bpc" id="L64" title="2 of 4 branches missed.">                if (prevWord != null) {</span>
+<span class="fc" id="L65">                    prevWord.setBreakFlag();</span>
+                }
+            } else {
+<span class="fc" id="L68">                final PunctuationParser punct = new PunctuationParser(ws);</span>
+
+<span class="fc" id="L70">                final String precedingPunct = punct.getPrecedingPunctuation();</span>
+<span class="fc" id="L71">                String text = punct.getText();</span>
+
+                // avoid to trim leading decimal points from numbers
+<span class="pc bpc" id="L74" title="2 of 8 branches missed.">                if ((precedingPunct.length() &gt; 0) &amp;&amp; text.matches(&quot;[0-9.,]+&quot;)) {</span>
+<span class="nc" id="L75">                    text = ws;</span>
+                }
+
+                // handle preceding comma characters
+<span class="pc bpc" id="L79" title="2 of 4 branches missed.">                if (precedingPunct.contains(&quot;,&quot;)) {</span>
+<span class="nc bnc" id="L80" title="All 4 branches missed.">                    if (prevWord != null) {</span>
+                        // break sentence after the previous word
+<span class="nc" id="L82">                        prevWord.setBreakFlag();</span>
+                    }
+                }
+
+<span class="fc" id="L86">                final Expression word = new Expression(text);</span>
+<span class="fc" id="L87">                expressions.add(word);</span>
+
+                // handle trailing comma characters
+<span class="fc bfc" id="L90" title="All 4 branches covered.">                if (punct.getTrailingPunctuation().contains(&quot;,&quot;)) {</span>
+                    // break sentence after the current word
+<span class="fc" id="L92">                    word.setBreakFlag();</span>
+                }
+
+<span class="fc" id="L95">                prevWord = word;</span>
+<span class="fc" id="L96">            }</span>
+        }
+<span class="fc" id="L98">    }</span>
+
+    /**
+     * Classify word types and normalize words.
+     *
+     * @param errors
+     */
+    void classifyWords(final ErrorDrain errors) {
+<span class="fc" id="L106">        final WordList wl = WordList.getInstance();</span>
+
+<span class="fc bfc" id="L108" title="All 4 branches covered.">        for (final Expression w : expressions) {</span>
+<span class="fc" id="L109">            final String original = w.getOriginal();</span>
+
+            // If the parsed Sentence will be used for matching, look for ExpressionType specifiers.
+<span class="fc bfc" id="L112" title="All 4 branches covered.">            if (context.isForMatching()) {</span>
+<span class="fc bfc" id="L113" title="All 4 branches covered.">                if (ExpressionType.isTypeString(original)) {</span>
+<span class="fc" id="L114">                    w.setType(new ExpressionType(original));</span>
+<span class="fc" id="L115">                    w.setNormalized(Expression.JOKER);</span>
+                }
+            }
+
+<span class="fc bfc" id="L119" title="All 4 branches covered.">            boolean wordFound = w.getType()!=null;</span>
+<span class="fc" id="L120">            boolean entryMissing = false;</span>
+
+<span class="fc bfc" id="L122" title="All 4 branches covered.">            if (!wordFound) {</span>
+<span class="fc" id="L123">            	WordEntry entry = wl.find(original);</span>
+
+<span class="fc bfc" id="L125" title="All 4 branches covered.">            	if (entry == null) {</span>
+<span class="fc" id="L126">            		entryMissing = true;</span>
+<span class="pc bpc" id="L127" title="2 of 4 branches missed.">            	} else if (entry.getType() != null) {</span>
+<span class="fc" id="L128">            		ExpressionType type = entry.getType();</span>
+
+<span class="fc" id="L130">	                w.setType(type);</span>
+<span class="fc" id="L131">	                wordFound = true;</span>
+
+<span class="fc bfc" id="L133" title="All 4 branches covered.">	                if (type.isNumeral()) {</span>
+	                    // evaluate numeric expressions
+<span class="fc" id="L135">	                    w.setAmount(entry.getValue());</span>
+<span class="fc" id="L136">	                    w.setNormalized(Integer.toString(w.getAmount()));</span>
+<span class="fc bfc" id="L137" title="All 4 branches covered.">	                } else if (type.isPlural()) {</span>
+	                    // normalise to the singular form
+	                    // If getPlurSing() is null, there is no unique singular form, so use the original string.
+<span class="fc bfc" id="L140" title="All 4 branches covered.">	                    if (entry.getPlurSing() != null) {</span>
+<span class="fc" id="L141">	                        w.setNormalized(entry.getPlurSing());</span>
+	                    } else {
+<span class="fc" id="L143">	                        w.setNormalized(original);</span>
+	                    }
+	                } else {
+<span class="fc" id="L146">	                    w.setNormalized(entry.getNormalized());</span>
+	                }
+	            }
+            }
+
+<span class="fc bfc" id="L151" title="All 4 branches covered.">            if (!wordFound) {</span>
+                // handle numeric expressions
+<span class="fc bfc" id="L153" title="All 4 branches covered.">                if (original.matches(&quot;^[+-]?[0-9.,]+&quot;)) {</span>
+<span class="fc" id="L154">                    w.parseAmount(original, errors);</span>
+<span class="fc" id="L155">                    final int amount = w.getAmount();</span>
+<span class="fc bfc" id="L156" title="All 4 branches covered.">                    if (amount &lt; 0) {</span>
+<span class="fc" id="L157">                        errors.setError(&quot;negative amount: &quot; + amount);</span>
+                    }
+<span class="fc bfc" id="L159" title="All 4 branches covered.">                    wordFound = w.getType()!=null;</span>
+                }
+            }
+
+            // handle unknown words
+<span class="fc bfc" id="L164" title="All 4 branches covered.">            if (!wordFound) {</span>
+                // recognise declined verbs, e.g. &quot;swimming&quot;
+<span class="fc" id="L166">                final WordList.Verb verb = wl.normalizeVerb(original);</span>
+
+<span class="fc bfc" id="L168" title="All 4 branches covered.">                if (verb != null) {</span>
+<span class="fc bfc" id="L169" title="All 4 branches covered.">                    if (verb.isGerund) {</span>
+<span class="fc" id="L170">                        w.setType(new ExpressionType(verb.entry.getTypeString() + ExpressionType.SUFFIX_GERUND));</span>
+<span class="fc" id="L171">                        wordFound = true;</span>
+<span class="pc bpc" id="L172" title="2 of 8 branches missed.">                    } else if ((verb.entry.getType() != null) &amp;&amp; verb.entry.getType().isVerb()) {</span>
+<span class="fc" id="L173">                        w.setType(verb.entry.getType());</span>
+<span class="fc" id="L174">                        wordFound = true;</span>
+<span class="fc bfc" id="L175" title="All 4 branches covered.">                    } else if (!verb.isPast) { // avoid cases like &quot;rounded&quot;</span>
+<span class="fc" id="L176">                    	w.setType(new ExpressionType(ExpressionType.VERB));</span>
+<span class="fc" id="L177">                        wordFound = true;</span>
+                    }
+
+<span class="fc bfc" id="L180" title="All 4 branches covered.">                    if (wordFound) {</span>
+<span class="fc" id="L181">                    	w.setNormalized(verb.entry.getNormalized());</span>
+                    }
+                }
+            }
+
+<span class="fc bfc" id="L186" title="All 4 branches covered.">            if (!wordFound) {</span>
+                // recognise derived adjectives, e.g. &quot;magical&quot;, &quot;nomadic&quot; or &quot;rounded&quot;
+<span class="fc" id="L188">                final WordEntry adjective = wl.normalizeAdjective(original);</span>
+
+<span class="fc bfc" id="L190" title="All 4 branches covered.">                if (adjective != null) {</span>
+<span class="fc" id="L191">                	w.setType(new ExpressionType(ExpressionType.ADJECTIVE));</span>
+<span class="fc" id="L192">                    w.setNormalized(adjective.getNormalized());</span>
+<span class="fc" id="L193">                    wordFound = true;</span>
+                }
+            }
+
+<span class="fc bfc" id="L197" title="All 4 branches covered.">            if (!wordFound) {</span>
+<span class="fc" id="L198">                w.setType(new ExpressionType(&quot;&quot;));</span>
+<span class="fc" id="L199">                w.setNormalized(original.toLowerCase());</span>
+
+<span class="pc bpc" id="L201" title="2 of 4 branches missed.">                if (entryMissing) {</span>
+                    // Add the unknown word to the word list.
+<span class="fc" id="L203">                    wl.addNewWord(original);</span>
+                }
+            }
+
+<span class="pc bpc" id="L207" title="6 of 8 branches missed.">            assert w.getType()!=null;</span>
+<span class="fc" id="L208">        }</span>
+<span class="fc" id="L209">    }</span>
+
+    /**
+     * Standardise sentence type.
+     */
+    void standardizeSentenceType() {
+        // Look for a &quot;me&quot; without any preceding other subject.
+<span class="fc" id="L216">        Expression prevVerb = null;</span>
+
+<span class="fc bfc" id="L218" title="All 4 branches covered.">        for (final Expression w : expressions) {</span>
+<span class="fc bfc" id="L219" title="All 4 branches covered.">            if (w.getBreakFlag()) {</span>
+<span class="fc" id="L220">                break;</span>
+            }
+
+<span class="pc bpc" id="L223" title="2 of 4 branches missed.">            if (w.getType() != null) {</span>
+<span class="fc bfc" id="L224" title="All 4 branches covered.">                if (w.getType().isVerb()) {</span>
+<span class="fc bfc" id="L225" title="All 4 branches covered.">                    if (prevVerb == null) {</span>
+<span class="fc" id="L226">                        prevVerb = w;</span>
+                    } else {
+                        break;
+                    }
+<span class="fc bfc" id="L230" title="All 4 branches covered.">                } else if (w.getType().isSubject()) {</span>
+<span class="fc bfc" id="L231" title="All 4 branches covered.">                    if (w.getOriginal().equalsIgnoreCase(&quot;me&quot;)) {</span>
+                        // If we already found a verb, we prepend &quot;you&quot; as
+                        // first subject and mark the sentence as imperative.
+<span class="fc bfc" id="L234" title="All 4 branches covered.">                        if (prevVerb != null) {</span>
+<span class="fc" id="L235">                            final Expression you = new Expression(&quot;you&quot;, ExpressionType.SUBJECT);</span>
+<span class="fc" id="L236">                            expressions.add(0, you);</span>
+<span class="fc" id="L237">                            sentenceType = SentenceType.IMPERATIVE;</span>
+<span class="fc" id="L238">                        }</span>
+                    }
+
+                    break;
+                }
+            }
+<span class="fc" id="L244">        }</span>
+<span class="fc" id="L245">    }</span>
+
+    /**
+     * replace grammatical constructs with simpler ones with the same meaning, so that they can be understood by the FSM
+     * rules TODO mf - This grammatical aliasing is only a first step to more flexible NPC conversation. It should be
+     * integrated with the FSM engine so that quest writers can specify the conversation syntax on their own.
+     */
+    void performaAliasing() {
+<span class="fc" id="L253">        final Expression verb1 = getVerb(0);</span>
+<span class="fc" id="L254">        final Expression verb2 = getVerb(1);</span>
+<span class="fc" id="L255">        final Expression subject1 = getSubject(0);</span>
+<span class="fc" id="L256">        final Expression subject2 = getSubject(1);</span>
+
+        // Does the Sentence start with a &quot;will/would SUBJECT VERB&quot; construct?
+<span class="fc bfc" id="L259" title="All 4 branches covered.">        if (matchesNormalizedStart(&quot;will SUB VER&quot;)) {</span>
+            // merge the second verb with &quot;will/would&quot;, removing the first one
+<span class="fc" id="L261">            verb2.mergeLeft(verb1, false);</span>
+<span class="fc" id="L262">            expressions.remove(verb1);</span>
+<span class="fc" id="L263">            sentenceType = SentenceType.QUESTION;</span>
+<span class="fc bfc" id="L264" title="All 4 branches covered.">        } else if (matchesNormalized(&quot;you have OBJ for me&quot;)) {</span>
+        	// the Sentence matches &quot;do you have OBJ for me?&quot;
+            // remove &quot;you&quot;
+<span class="fc" id="L267">            expressions.remove(subject1);</span>
+            // remove &quot;for&quot;
+<span class="fc" id="L269">            expressions.remove(getPreposition(0));</span>
+            // remove &quot;me&quot;
+<span class="fc" id="L271">            expressions.remove(subject2);</span>
+            // replace &quot;have&quot; by &quot;buy&quot;
+<span class="fc" id="L273">            verb1.setNormalized(&quot;buy&quot;);</span>
+<span class="fc" id="L274">            sentenceType = SentenceType.IMPERATIVE;</span>
+<span class="fc bfc" id="L275" title="All 4 branches covered.">        } else if (isYouGiveMe(subject1, verb1, subject2)) {</span>
+        	// the sentence matches &quot;[you] give me(i)&quot; -&gt; &quot;[I] buy&quot;
+        	
+            // remove the subjects and replace the verb with &quot;buy&quot; as first word
+            // remove &quot;you&quot;
+<span class="fc" id="L280">            expressions.remove(subject1);</span>
+            // remove &quot;me&quot;
+<span class="fc" id="L282">            expressions.remove(subject2);</span>
+            // replace &quot;give&quot; by &quot;buy&quot;
+<span class="fc" id="L284">            verb1.setNormalized(&quot;buy&quot;);</span>
+<span class="fc" id="L285">            sentenceType = SentenceType.IMPERATIVE;</span>
+        }
+
+        // &quot;[SUBJECT] (would like to have)&quot; -&gt; &quot;[SUBJECT] buy&quot;
+<span class="fc bfc" id="L289" title="All 4 branches covered.">        if (isLikeToHave()) {</span>
+            // replace the verb with &quot;buy&quot;
+<span class="fc" id="L291">            getVerb().setNormalized(&quot;buy&quot;);</span>
+<span class="fc" id="L292">            sentenceType = SentenceType.IMPERATIVE;</span>
+        }
+<span class="fc" id="L294">    }</span>
+
+    /**
+     * Is the sentence in the form &quot;[you] give me(i)&quot; ?
+     *
+     * @param subject1
+     * @param verb
+     * @param subject2
+     * @return true for match
+     */
+    private static boolean isYouGiveMe(final Expression subject1, final Expression verb, final Expression subject2) {
+<span class="fc bfc" id="L305" title="All 12 branches covered.">        if ((verb != null) &amp;&amp; (subject1 != null) &amp;&amp; (subject2 != null)) {</span>
+            // Note: The second subject &quot;me&quot; is replaced by &quot;i&quot; in the WordList normalisation.
+<span class="pc bpc" id="L307" title="2 of 12 branches missed.">            if (subject1.getNormalized().equals(&quot;you&quot;) &amp;&amp; verb.getNormalized().equals(&quot;give&quot;)</span>
+                    &amp;&amp; subject2.getNormalized().equals(&quot;i&quot;)) {
+<span class="fc" id="L309">                return true;</span>
+            }
+        }
+
+<span class="fc" id="L313">        return false;</span>
+    }
+
+    /**
+     * Is the sentence in the form &quot;[SUBJECT] (would like to have)&quot;?
+     *
+     * @return true for match
+     */
+    private boolean isLikeToHave() {
+<span class="fc" id="L322">        final Expression verb = getVerb();</span>
+
+<span class="fc bfc" id="L324" title="All 4 branches covered.">        if (verb != null) {</span>
+<span class="fc bfc" id="L325" title="All 8 branches covered.">            if (verb.getNormalized().equals(&quot;have&quot;) &amp;&amp; verb.getOriginal().contains(&quot;like&quot;)) {</span>
+<span class="fc" id="L326">                final Expression subject1 = getSubject(0);</span>
+<span class="fc" id="L327">                final Expression firstExpression = expressions.get(0);</span>
+<span class="fc" id="L328">                final Expression secondExpression = expressions.get(1);</span>
+
+                // &quot;(would like to have)&quot; ?
+<span class="pc bpc" id="L331" title="6 of 8 branches missed.">                if ((subject1 == null) &amp;&amp; (verb == firstExpression)) {</span>
+<span class="nc" id="L332">                    return true;</span>
+                }
+
+                // &quot;SUBJECT (would like to have)&quot; ?
+<span class="pc bpc" id="L336" title="4 of 8 branches missed.">                if ((subject1 == firstExpression) &amp;&amp; (verb == secondExpression)) {</span>
+<span class="fc" id="L337">                    return true;</span>
+                }
+            }
+        }
+
+<span class="fc" id="L342">        return false;</span>
+    }
+
+    /**
+     * Evaluate the sentence type from word order and
+     * remove do/don't expressions from questions.
+     *
+     * @return SentenceType
+     */
+    SentenceType evaluateSentenceType() {
+<span class="fc" id="L352">        final Iterator&lt;Expression&gt; it = expressions.iterator();</span>
+<span class="fc" id="L353">        SentenceType type = SentenceType.UNDEFINED;</span>
+<span class="fc" id="L354">        boolean negate = false;</span>
+        
+        // As words are not yet merged together at this stage, we have to use Expression.nextValid()
+        // in this function to jump over words to ignore.
+<span class="fc" id="L358">        Expression first = nextValid(it);</span>
+
+<span class="fc bfc" id="L360" title="All 4 branches covered.">        if (first != null) {</span>
+<span class="fc bfc" id="L361" title="All 12 branches covered.">            while ((first != null) &amp;&amp; first.isQuestion() &amp;&amp; it.hasNext()) {</span>
+<span class="pc bpc" id="L362" title="2 of 4 branches missed.">                if (type == SentenceType.UNDEFINED) {</span>
+<span class="fc" id="L363">                    type = SentenceType.QUESTION;</span>
+                }
+
+<span class="fc" id="L366">                first = nextValid(it);</span>
+            }
+
+<span class="fc" id="L369">            Expression second = null;</span>
+<span class="fc" id="L370">            Expression third = null;</span>
+
+<span class="fc" id="L372">            second = nextValid(it);</span>
+<span class="fc" id="L373">            third = nextValid(it);</span>
+
+<span class="fc bfc" id="L375" title="All 4 branches covered.">            if (second != null) {</span>
+                // questions beginning with &quot;is&quot;/&quot;are&quot;
+<span class="fc bfc" id="L377" title="All 4 branches covered.">                if (first.getNormalized().equals(&quot;is&quot;)) {</span>
+<span class="pc bpc" id="L378" title="2 of 4 branches missed.">                    if (type == SentenceType.UNDEFINED) {</span>
+<span class="nc" id="L379">                        type = SentenceType.QUESTION;</span>
+                    }
+<span class="fc bfc" id="L381" title="All 8 branches covered.">                } else if (first.getNormalized().equals(&quot;do&quot;)</span>
+                        &amp;&amp; (!second.getOriginal().equalsIgnoreCase(&quot;me&quot;))) {
+                    // question begins with &quot;do&quot;, but no &quot;do me&quot; sentence
+<span class="pc bpc" id="L384" title="2 of 4 branches missed.">                    if (type == SentenceType.UNDEFINED) {</span>
+<span class="fc" id="L385">                        type = SentenceType.QUESTION;</span>
+                    }
+
+                    // Remove all verbs meaning &quot;do&quot; from the expression list,
+                    // since they don't change the sentence meaning.
+<span class="fc bfc" id="L390" title="All 4 branches covered.">                    if (first.isNegated()) {</span>
+                    	// If the question uses a &quot;don't&quot; expression and there is another verb in the
+                    	// sentence, negate this and drop the &quot;don't&quot;.
+<span class="pc bpc" id="L393" title="2 of 4 branches missed.">                    	if (getVerbCount() &gt; 1) {</span>
+<span class="fc" id="L394">                    		negate = true;</span>
+<span class="fc" id="L395">                    		expressions.remove(first);</span>
+                    	}
+                    } else
+<span class="fc" id="L398">                    	expressions.remove(first);</span>
+<span class="pc bpc" id="L399" title="8 of 20 branches missed.">                } else if (first.getNormalized().equals(&quot;it&quot;) &amp;&amp; second.getNormalized().equals(&quot;is&quot;)</span>
+                        &amp;&amp; ((third != null) &amp;&amp; (third.getType() != null) &amp;&amp; third.getType().isGerund())) {
+                    // statement begins with &quot;it is &lt;VER-GER&gt;&quot;
+<span class="pc bpc" id="L402" title="2 of 4 branches missed.">                    if (type == SentenceType.UNDEFINED) {</span>
+<span class="fc" id="L403">                        type = SentenceType.STATEMENT;</span>
+                    }
+
+<span class="fc" id="L406">                    expressions.remove(first);</span>
+<span class="fc" id="L407">                    expressions.remove(second);</span>
+                }
+            }
+        }
+
+<span class="fc bfc" id="L412" title="All 4 branches covered.">        if (negate) {</span>
+        	// negate the first verb if the sentence did contain a &quot;don't&quot; expression
+<span class="fc" id="L414">        	Expression firstVerb = getVerb(0);</span>
+
+<span class="pc bpc" id="L416" title="2 of 4 branches missed.">        	if (firstVerb != null) {</span>
+<span class="fc" id="L417">        		firstVerb.negate();</span>
+        	}
+        }
+
+<span class="fc bfc" id="L421" title="All 8 branches covered.">        if ((type != SentenceType.UNDEFINED) &amp;&amp; (sentenceType == SentenceType.UNDEFINED)) {</span>
+<span class="fc" id="L422">            sentenceType = type;</span>
+        }
+
+<span class="fc" id="L425">        return type;</span>
+    }
+
+    /**
+     * Merge words to form a simpler sentence structure.
+     */
+    void mergeWords() {
+        // use WordList.compoundNames to merge compound names
+<span class="fc" id="L433">    	mergeCompoundNames();</span>
+ 
+        // first merge three word expressions of the form &quot;... of ...&quot;
+<span class="fc" id="L436">        mergeThreeWordExpressions();</span>
+
+        // now merge two word expressions from left to right
+<span class="fc bfc" id="L439" title="All 4 branches covered.">        if (mergeTwoWordExpressions() &gt; 0) {</span>
+	        // retry finding three word expressions
+<span class="fc" id="L441">	        mergeThreeWordExpressions();</span>
+        }
+<span class="fc" id="L443">    }</span>
+
+    /**
+     * Merge compound names.
+     * @return number of merges performed
+     */
+	public int mergeCompoundNames() {
+<span class="fc" id="L450">    	final WordList wl = WordList.getInstance();</span>
+<span class="fc" id="L451">        int changes = 0;</span>
+
+        // loop until no more simplifications can be made
+    	boolean changed;
+        do {
+<span class="fc" id="L456">            changed = false;</span>
+
+            // loop over all words of the sentence starting from left
+<span class="fc bfc" id="L459" title="All 4 branches covered.">            for(int idx=0; idx&lt;expressions.size()-1; ++idx) {</span>
+                // search for matching compound names
+<span class="fc" id="L461">                CompoundName compName = wl.searchCompoundName(expressions, idx);</span>
+
+<span class="fc bfc" id="L463" title="All 4 branches covered.">                if (compName != null) {</span>
+<span class="fc" id="L464">                    Expression first = expressions.get(idx);</span>
+
+<span class="fc" id="L466">        			int wordsMatched = compName.size();</span>
+<span class="fc bfc" id="L467" title="All 4 branches covered.">        			for(int i=1; i&lt;wordsMatched; ++i) {</span>
+<span class="fc" id="L468">        				Expression next = expressions.get(idx+1);</span>
+
+<span class="fc" id="L470">            			first.mergeName(next, compName.getType());</span>
+<span class="fc" id="L471">            	        expressions.remove(next);</span>
+        			}
+
+<span class="fc" id="L474">        	        changed = true;</span>
+<span class="fc" id="L475">                    break;</span>
+    			}
+        		
+<span class="pc bpc" id="L478" title="2 of 4 branches missed.">        		if (changed) {</span>
+<span class="nc" id="L479">        			++changes;</span>
+<span class="nc" id="L480">        			break;</span>
+        		}
+            }
+<span class="fc bfc" id="L483" title="All 4 branches covered.">        } while(changed);</span>
+
+<span class="fc" id="L485">        return changes;</span>
+    }
+
+    /**
+     * Merge two word expressions into single expressions.
+     * @return number of merges performed
+     */
+    private int mergeTwoWordExpressions() {
+
+        /*
+         * There are two possibilities for word merges: Left-merging means to
+         * prepend the left word before the following one, removing the first
+         * one. Right-merging means to append the right word to the preceding
+         * one, removing the second from the word list.
+         */
+
+<span class="fc" id="L501">        int changes = 0;</span>
+
+        // loop until no more simplifications can be made
+        boolean changed;
+        do {
+<span class="fc" id="L506">            changed = false;</span>
+
+<span class="fc" id="L508">            final Iterator&lt;Expression&gt; it = expressions.iterator();</span>
+
+<span class="fc" id="L510">            boolean prevConditional = false;</span>
+<span class="fc" id="L511">            boolean precedingVerb = false;</span>
+
+<span class="fc bfc" id="L513" title="All 4 branches covered.">            if (it.hasNext()) {</span>
+<span class="fc" id="L514">                Expression next = it.next();</span>
+//				Expression prev = null;
+
+                // loop over all words of the sentence starting from left
+<span class="fc bfc" id="L518" title="All 4 branches covered.">                while (it.hasNext()) {</span>
+                    // Now look at two consecutive words.
+<span class="fc" id="L520">                    final Expression curr = next;</span>
+<span class="fc" id="L521">                    next = it.next();</span>
+
+                    // don't merge if the break flag is set
+<span class="fc bfc" id="L524" title="All 4 branches covered.">                    if (curr.getBreakFlag()) {</span>
+<span class="fc" id="L525">                        continue;</span>
+                    }
+
+                    // don't merge if there are joker expressions
+<span class="fc bfc" id="L529" title="All 4 branches covered.">                    if (context.isForMatching()) {</span>
+<span class="fc bfc" id="L530" title="All 8 branches covered.">                        if (curr.getNormalized().contains(Expression.JOKER)</span>
+                                || next.getNormalized().contains(Expression.JOKER)) {
+<span class="fc" id="L532">                            continue;</span>
+                        }
+                    }
+
+<span class="fc" id="L536">                    final ExpressionType curType = curr.getType();</span>
+<span class="fc" id="L537">                    final ExpressionType nextType = next.getType();</span>
+
+<span class="pc bpc" id="L539" title="2 of 8 branches missed.">                    if ((curType != null) &amp;&amp; curType.isConditional()) {</span>
+<span class="fc" id="L540">                        prevConditional = true;</span>
+                    }
+
+<span class="pc bpc" id="L543" title="4 of 8 branches missed.">                    if ((curType != null) &amp;&amp; (nextType != null)) {</span>
+                        // left-merge composite nouns and nouns with preceding adjectives or verbs
+<span class="fc bfc" id="L545" title="All 4 branches covered.">                        if (isCompoundNoun(curType, nextType, precedingVerb)) {</span>
+<span class="fc bfc" id="L546" title="All 4 branches covered.">                        	if (Grammar.mergeCompoundNoun(curr, next) == curr) {</span>
+<span class="fc" id="L547">                        		expressions.remove(next);</span>
+                        	} else {
+<span class="fc" id="L549">                        		expressions.remove(curr);</span>
+                        	}
+<span class="fc" id="L551">                            changed = true;</span>
+<span class="fc" id="L552">                            break;</span>
+                        }
+                        // left-merge nouns with preceding amounts, dropping the numerals from the
+                        // merged normalized expression
+<span class="fc bfc" id="L556" title="All 12 branches covered.">                        else if (curType.isNumeral() &amp;&amp; (nextType.isObject() || nextType.isSubject())) {</span>
+<span class="fc" id="L557">                            next.mergeLeft(curr, false);</span>
+<span class="fc" id="L558">                            expressions.remove(curr);</span>
+<span class="fc" id="L559">                            changed = true;</span>
+<span class="fc" id="L560">                            break;</span>
+                        }
+                        // check consecutive verbs
+<span class="fc bfc" id="L563" title="All 8 branches covered.">                        else if (curType.isVerb() &amp;&amp; nextType.isVerb()) {</span>
+                            // merge &quot;do&quot; and &quot;don't&quot; expressions with the following verb
+<span class="fc bfc" id="L565" title="All 4 branches covered.">                            if (curr.getNormalized().equals(&quot;do&quot;)) {</span>
+<span class="fc" id="L566">                            	next.mergeSimple(curr);</span>
+<span class="fc" id="L567">                                expressions.remove(curr);</span>
+<span class="fc" id="L568">                                changed = true;</span>
+<span class="fc" id="L569">                                break;</span>
+                            }
+                            // left-merge &quot;would like&quot;, preserving only the main verb
+<span class="fc bfc" id="L572" title="All 4 branches covered.">                            else if (prevConditional) {</span>
+<span class="fc" id="L573">                                next.mergeLeft(curr, false);</span>
+<span class="fc" id="L574">                                expressions.remove(curr);</span>
+<span class="fc" id="L575">                                changed = true;</span>
+<span class="fc" id="L576">                                break;</span>
+                            }
+                        }
+                        // right-merge consecutive words of all other same main types,
+                        // while merging the normalized expressions
+<span class="fc bfc" id="L581" title="All 4 branches covered.">                        else if (curType.getMainType().equals(nextType.getMainType())) {</span>
+<span class="fc" id="L582">                            curr.mergeRight(next, true);</span>
+<span class="fc" id="L583">                            expressions.remove(next);</span>
+<span class="fc" id="L584">                            changed = true;</span>
+<span class="fc" id="L585">                            break;</span>
+                        }
+                        // left-merge question words with following verbs and adjectives,
+                        // dropping question words from the normalized form
+<span class="pc bpc" id="L589" title="2 of 12 branches missed.">                        else if (curType.isQuestion() &amp;&amp; (nextType.isVerb() || nextType.isAdjective())) {</span>
+<span class="fc" id="L590">                            next.mergeLeft(curr, false);</span>
+<span class="fc" id="L591">                            expressions.remove(curr);</span>
+<span class="fc" id="L592">                            changed = true;</span>
+<span class="fc" id="L593">                            break;</span>
+                        }
+                     }
+
+                    // left-merge words to ignore
+<span class="fc bfc" id="L598" title="All 4 branches covered.">                    if (context.getIgnoreIgnorable()) {</span>
+<span class="pc bpc" id="L599" title="2 of 8 branches missed.">                        if ((curType != null) &amp;&amp; isIgnorable(curr)) {</span>
+<span class="fc" id="L600">                            next.mergeLeft(curr, false);</span>
+<span class="fc" id="L601">                            expressions.remove(curr);</span>
+<span class="fc" id="L602">                            changed = true;</span>
+<span class="fc" id="L603">                            break;</span>
+                        }
+                    }
+
+                    // manage the precedingVerb flag to detect compound verb/noun constructs
+<span class="pc bpc" id="L608" title="2 of 4 branches missed.">                    if (curr.getBreakFlag()) {</span>
+<span class="nc" id="L609">                        precedingVerb = false;</span>
+<span class="pc bpc" id="L610" title="2 of 4 branches missed.">                    } else if (curType != null) {</span>
+<span class="fc bfc" id="L611" title="All 4 branches covered.">                        if (curType.isVerb()) {</span>
+<span class="fc" id="L612">                            precedingVerb = true;</span>
+<span class="fc bfc" id="L613" title="All 4 branches covered.">                        } else if (curType.isSubject()) {</span>
+<span class="fc" id="L614">                            precedingVerb = false;</span>
+                        }
+                    }
+
+//                  prev = curr;
+<span class="fc" id="L619">                }</span>
+            }
+
+<span class="fc bfc" id="L622" title="All 4 branches covered.">            if (changed) {</span>
+<span class="fc" id="L623">            	++changes;</span>
+            }
+<span class="fc bfc" id="L625" title="All 4 branches covered.">        } while (changed);</span>
+
+<span class="fc" id="L627">        return changes;</span>
+    }
+
+    /**
+     * Decide if the given two expressions form a compound noun.
+     *
+     * @param curType
+     * @param nextType
+     * @param precedingVerb
+     * @return true if so
+     */
+    private static boolean isCompoundNoun(final ExpressionType curType, final ExpressionType nextType,
+            final boolean precedingVerb) {
+        // check the next expression type for concrete subject or object expressions (no pronouns)
+<span class="fc bfc" id="L641" title="All 12 branches covered.">        final boolean nextIsSubjObjName = nextType.isObject() || (nextType.isSubject() &amp;&amp; !nextType.isPronoun());</span>
+
+        // left-merge composite nouns and nouns with preceding adjectives or verbs
+<span class="fc bfc" id="L644" title="All 4 branches covered.">        if (nextIsSubjObjName) {</span>
+            // check the current expression type for concrete subject or object expressions (no pronouns), excluding subject names
+<span class="fc bfc" id="L646" title="All 16 branches covered.">            final boolean currIsSubjObj = curType.isObject() || (curType.isSubject() &amp;&amp; !curType.isPronoun() &amp;&amp; !curType.isName());</span>
+
+            // handle compound words like &quot;fire sword&quot;
+<span class="fc bfc" id="L649" title="All 4 branches covered.">            if (currIsSubjObj) {</span>
+<span class="fc" id="L650">                return true;</span>
+            }
+            // handle compound words like &quot;golden sword&quot;
+<span class="fc bfc" id="L653" title="All 4 branches covered.">            else if (curType.isAdjective()) {</span>
+<span class="fc" id="L654">                return true;</span>
+            }
+            // handle compound words like &quot;summon scroll&quot;
+<span class="fc bfc" id="L657" title="All 8 branches covered.">            else if (curType.isVerb() &amp;&amp; precedingVerb) {</span>
+<span class="fc" id="L658">                return true;</span>
+            }
+        }
+
+<span class="fc" id="L662">        return false;</span>
+    }
+
+    /**
+     * Merge three word expressions of the form &quot;... of ...&quot; into single expressions.
+     * @return number of merges performed
+     */
+    private int mergeThreeWordExpressions() {
+<span class="fc" id="L670">        int changes = 0;</span>
+
+        // loop until no more simplifications can be made
+        boolean changed;
+        do {
+<span class="fc" id="L675">            final Iterator&lt;Expression&gt; it = expressions.iterator();</span>
+
+<span class="fc" id="L677">            changed = false;</span>
+
+<span class="fc bfc" id="L679" title="All 4 branches covered.">            if (it.hasNext()) {</span>
+<span class="fc" id="L680">                Expression third = it.next();</span>
+
+<span class="fc bfc" id="L682" title="All 4 branches covered.">                if (it.hasNext()) {</span>
+<span class="fc" id="L683">                    Expression first = null;</span>
+<span class="fc" id="L684">                    Expression second = third;</span>
+<span class="fc" id="L685">                    third = it.next();</span>
+
+                    // loop over all words of the sentence starting from left
+<span class="fc bfc" id="L688" title="All 4 branches covered.">                    while (it.hasNext()) {</span>
+                        // Now look at three consecutive words.
+<span class="fc" id="L690">                        first = second;</span>
+<span class="fc" id="L691">                        second = third;</span>
+<span class="fc" id="L692">                        third = it.next();</span>
+
+                        // don't merge if the break flag is set
+<span class="fc bfc" id="L695" title="All 8 branches covered.">                        if (first.getBreakFlag() || second.getBreakFlag()) {</span>
+<span class="fc" id="L696">                            continue;</span>
+                        }
+
+                        // don't merge if there are joker expressions
+<span class="fc bfc" id="L700" title="All 4 branches covered.">                        if (context.isForMatching()) {</span>
+<span class="fc bfc" id="L701" title="All 12 branches covered.">                            if (first.getNormalized().contains(Expression.JOKER)</span>
+                                    || second.getNormalized().contains(Expression.JOKER)
+                                    || third.getNormalized().contains(Expression.JOKER)) {
+<span class="fc" id="L704">                                continue;</span>
+                            }
+                        }
+
+                        // merge &quot;... of ...&quot; expressions into one expression, preserving
+                        // only the main word as merged normalized expression
+<span class="fc bfc" id="L710" title="All 12 branches covered.">                        if (first.isObject() &amp;&amp; second.getNormalized().equals(&quot;of&quot;) &amp;&amp; third.isObject()) {</span>
+<span class="fc" id="L711">                            final String expr = first.getNormalized() + &quot; of &quot; + third.getNormalized();</span>
+
+                            // see if the expression has been normalized
+<span class="pc bpc" id="L714" title="2 of 4 branches missed.">                            if (!Grammar.isNormalized(expr)) {</span>
+<span class="fc" id="L715">                                first.mergeRight(second, false);</span>
+<span class="fc" id="L716">                                expressions.remove(second);</span>
+<span class="fc" id="L717">                                third.mergeLeft(first, false);</span>
+<span class="fc" id="L718">                                expressions.remove(first);</span>
+<span class="fc" id="L719">                                changed = true;</span>
+<span class="fc" id="L720">                                break;</span>
+                            }
+<span class="nc" id="L722">                        }</span>
+                    }
+                }
+            }
+
+<span class="fc bfc" id="L727" title="All 4 branches covered.">            if (changed) {</span>
+<span class="fc" id="L728">            	++changes;</span>
+            }
+<span class="fc bfc" id="L730" title="All 4 branches covered.">        } while (changed);</span>
+
+<span class="fc" id="L732">        return changes;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

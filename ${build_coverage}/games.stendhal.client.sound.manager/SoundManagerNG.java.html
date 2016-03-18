@@ -1,0 +1,463 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SoundManagerNG.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.sound.manager</a> &gt; <span class="el_source">SoundManagerNG.java</span></div><h1>SoundManagerNG.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.sound.manager;
+
+import games.stendhal.client.sound.facade.AudibleArea;
+import games.stendhal.client.sound.facade.InfiniteAudibleArea;
+import games.stendhal.client.sound.facade.SoundFileType;
+import games.stendhal.client.sound.facade.SoundHandle;
+import games.stendhal.client.sound.facade.Time;
+import games.stendhal.client.sound.manager.DeviceEvaluator.Device;
+import games.stendhal.client.sound.system.SignalProcessor;
+import games.stendhal.client.sound.system.SoundSystemNG;
+import games.stendhal.client.sound.system.processors.DirectedSound;
+import games.stendhal.client.sound.system.processors.Interruptor;
+import games.stendhal.client.sound.system.processors.VolumeAdjustor;
+import games.stendhal.common.math.Algebra;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.SourceDataLine;
+
+import org.apache.log4j.Logger;
+
+/**
+ * New implementation of the sound manager.
+ *
+ * @author silvio
+ */
+public class SoundManagerNG {
+<span class="fc" id="L47">	private final static Logger logger = Logger.getLogger(SoundManagerNG.class);</span>
+	private final static int SOUND_CHANNEL_LIMIT = 50;
+	private final static int DIMENSION = 2;
+<span class="fc" id="L50">	private final static float[] HEARER_LOOKONG_DIRECTION = { 0.0f, 1.0f };</span>
+<span class="fc" id="L51">	private final static InfiniteAudibleArea INFINITE_AUDIBLE_AREA = new InfiniteAudibleArea();</span>
+<span class="fc" id="L52">	private final static Time BUFFER_DURATION = new Time(15, Time.Unit.MILLI);</span>
+<span class="fc" id="L53">	private final static Time ZERO_DURATION = new Time();</span>
+
+<span class="fc" id="L55">	public final static class Sound implements SoundHandle, Cloneable {</span>
+<span class="fc" id="L56">		final AtomicReference&lt;SoundFile&gt; file = new AtomicReference&lt;SoundFile&gt;(</span>
+				null);
+<span class="fc" id="L58">		final AtomicReference&lt;SoundChannel&gt; channel = new AtomicReference&lt;SoundChannel&gt;(</span>
+				null);
+<span class="fc" id="L60">		Object object = null;</span>
+
+		@Override
+		public Sound clone() {
+<span class="nc" id="L64">			Sound sound = new Sound();</span>
+<span class="nc" id="L65">			sound.file.set(file.get().clone());</span>
+<span class="nc" id="L66">			sound.object = object;</span>
+<span class="nc" id="L67">			return sound;</span>
+		}
+
+		@SuppressWarnings(&quot;unchecked&quot;)
+		public &lt;T&gt; T getAttachment(Class&lt;T&gt; clazz) {
+<span class="nc bnc" id="L72" title="All 2 branches missed.">			if (clazz.isInstance(object)) {</span>
+<span class="nc" id="L73">				return (T) object;</span>
+			}
+
+<span class="nc" id="L76">			return null;</span>
+		}
+
+		public Object getAttachment() {
+<span class="nc" id="L80">			return object;</span>
+		}
+
+		public boolean isActive() {
+<span class="nc bnc" id="L84" title="All 4 branches missed.">			return channel.get() != null &amp;&amp; channel.get().isActive();</span>
+		}
+
+		public void setAttachment(Object obj) {
+<span class="nc" id="L88">			object = obj;</span>
+<span class="nc" id="L89">		}</span>
+	}
+
+	private final class SoundChannel extends SignalProcessor {
+<span class="nc" id="L93">		final float[] mSoundPosition = new float[DIMENSION];</span>
+<span class="nc" id="L94">		final AtomicBoolean mAutoRepeat = new AtomicBoolean(false);</span>
+<span class="nc" id="L95">		final AtomicBoolean mIsActive = new AtomicBoolean(false);</span>
+<span class="nc" id="L96">		final AtomicReference&lt;AudibleArea&gt; mAudibleArea = new AtomicReference&lt;AudibleArea&gt;(</span>
+				INFINITE_AUDIBLE_AREA);
+<span class="nc" id="L98">		final Interruptor mInterruptor = new Interruptor();</span>
+<span class="nc" id="L99">		final DirectedSound mDirectedSound = new DirectedSound();</span>
+<span class="nc" id="L100">		final VolumeAdjustor mGlobalVolume = new VolumeAdjustor();</span>
+		final SoundSystemNG.Output mOutput;
+<span class="nc" id="L102">		Sound mSound = null;</span>
+
+<span class="nc" id="L104">		SoundChannel() {</span>
+<span class="nc" id="L105">			mOutput = mSoundSystem.openOutput(0, mInterruptor, this,</span>
+					mGlobalVolume, mDirectedSound);
+<span class="nc" id="L107">		}</span>
+
+		boolean isActive() {
+<span class="nc" id="L110">			return mIsActive.get();</span>
+		}
+
+		void setAutoRepeat(boolean repeat) {
+<span class="nc" id="L114">			mAutoRepeat.set(repeat);</span>
+<span class="nc" id="L115">		}</span>
+
+		void setVolume(float volume) {
+<span class="nc" id="L118">			mGlobalVolume.setVolume(volume);</span>
+<span class="nc" id="L119">		}</span>
+
+		void startFading(float volume, Time duration) {
+<span class="nc" id="L122">			mGlobalVolume.startFading(volume, duration);</span>
+<span class="nc" id="L123">		}</span>
+
+		void startFading(Time duration) {
+<span class="nc" id="L126">			mGlobalVolume.startFading(duration);</span>
+<span class="nc" id="L127">		}</span>
+
+		void setLayer(int layer) { /* mOutput.setLayer(layer); */
+<span class="nc" id="L130">		}</span>
+
+		void resumePlayback() {
+<span class="nc" id="L133">			mInterruptor.play();</span>
+<span class="nc" id="L134">		}</span>
+
+		void close() {
+<span class="nc" id="L137">			mSoundSystem.closeOutput(mOutput);</span>
+<span class="nc" id="L138">		}</span>
+
+		Sound getSoundObject() {
+<span class="nc" id="L141">			return mSound;</span>
+		}
+
+		void setAudibleArea(AudibleArea area) {
+<span class="nc bnc" id="L145" title="All 2 branches missed.">			if (area == null) {</span>
+<span class="nc" id="L146">				area = INFINITE_AUDIBLE_AREA;</span>
+			}
+
+<span class="nc" id="L149">			mAudibleArea.set(area);</span>
+<span class="nc" id="L150">		}</span>
+
+		synchronized void playSound(Sound newSound, float volume, Time time) {
+<span class="nc bnc" id="L153" title="All 2 branches missed.">			if (mSound != null) {</span>
+<span class="nc" id="L154">				mSound.file.get().disconnect();</span>
+<span class="nc" id="L155">				mSound.file.get().restart();</span>
+<span class="nc" id="L156">				mSound.channel.set(null);</span>
+<span class="nc" id="L157">				mOutput.setIntensity(0.0f);</span>
+			}
+
+<span class="nc bnc" id="L160" title="All 2 branches missed.">			if (newSound != null) {</span>
+<span class="nc bnc" id="L161" title="All 2 branches missed.">				if (time == null) {</span>
+<span class="nc" id="L162">					time = ZERO_DURATION;</span>
+				}
+
+<span class="nc" id="L165">				mInterruptor.play();</span>
+<span class="nc" id="L166">				mGlobalVolume.setVolume(0.0f);</span>
+<span class="nc" id="L167">				mGlobalVolume.startFading(volume, time);</span>
+<span class="nc" id="L168">				newSound.channel.set(this);</span>
+<span class="nc" id="L169">				newSound.file.get().connectTo(mInterruptor, true);</span>
+			}
+
+<span class="nc" id="L172">			mSound = newSound;</span>
+<span class="nc bnc" id="L173" title="All 2 branches missed.">			mIsActive.set(newSound != null);</span>
+<span class="nc" id="L174">		}</span>
+
+		void stopPlayback(Time time) {
+<span class="nc bnc" id="L177" title="All 2 branches missed.">			if (time == null) {</span>
+<span class="nc" id="L178">				time = ZERO_DURATION;</span>
+			}
+
+<span class="nc" id="L181">			mAutoRepeat.set(false);</span>
+<span class="nc" id="L182">			mGlobalVolume.startFading(0.0f, time);</span>
+<span class="nc" id="L183">			mInterruptor.stop(time);</span>
+<span class="nc" id="L184">		}</span>
+
+		void update() {
+<span class="nc" id="L187">			float intensity = mAudibleArea.get().getHearingIntensity(</span>
+					mHearerPosition);
+<span class="nc" id="L189">			mAudibleArea.get().getClosestPoint(mSoundPosition, mHearerPosition);</span>
+<span class="nc" id="L190">			mDirectedSound.setPositions2D(mSoundPosition, mHearerPosition,</span>
+					HEARER_LOOKONG_DIRECTION, intensity);
+<span class="nc" id="L192">			mOutput.setIntensity(intensity);</span>
+<span class="nc" id="L193">		}</span>
+
+		@Override
+		protected void finished() {
+<span class="nc bnc" id="L197" title="All 2 branches missed.">			if (mAutoRepeat.get()) {</span>
+				try {
+<span class="nc" id="L199">					mSound.file.get().restart();</span>
+<span class="nc" id="L200">				} catch (NullPointerException e) {</span>
+<span class="nc" id="L201">					logger.error(e, e);</span>
+<span class="nc" id="L202">					logger.error(&quot;mSound: &quot; + mSound);</span>
+<span class="nc" id="L203">					logger.error(&quot;mSound.file: &quot; + mSound.file);</span>
+<span class="nc" id="L204">					logger.error(&quot;mSound.file.get: &quot; + mSound.file.get());</span>
+<span class="nc" id="L205">				}</span>
+			} else {
+<span class="nc" id="L207">				playSound(null, 0, null);</span>
+<span class="nc" id="L208">				super.quit();</span>
+			}
+<span class="nc" id="L210">		}</span>
+	}
+
+	private final Collection&lt;Device&gt; mDevices;
+	private final AudioFormat mAudioFormat;
+<span class="fc" id="L215">	private final LinkedList&lt;SoundChannel&gt; mChannels = new LinkedList&lt;SoundChannel&gt;();</span>
+<span class="fc" id="L216">	private final float[] mHearerPosition = new float[DIMENSION];</span>
+<span class="fc" id="L217">	private boolean mMute = false;</span>
+	private SoundSystemNG mSoundSystem;
+
+	protected SoundManagerNG(boolean mute, Collection&lt;Device&gt; devices,
+<span class="fc" id="L221">			AudioFormat audioFormat) {</span>
+<span class="fc" id="L222">		Algebra.mov_Vecf(mHearerPosition, 0.0f);</span>
+<span class="fc" id="L223">		mDevices = devices;</span>
+<span class="fc" id="L224">		mAudioFormat = audioFormat;</span>
+
+<span class="fc" id="L226">		logger.info(&quot;initializing sound system&quot;);</span>
+
+<span class="pc bpc" id="L228" title="1 of 2 branches missed.">		if (devices != null) {</span>
+<span class="fc bfc" id="L229" title="All 2 branches covered.">			for (Device device : devices) {</span>
+<span class="fc" id="L230">				logger.info(&quot;available device: &quot; + device.getName() + &quot; - &quot;</span>
+						+ device.getDescription() + &quot; (&quot; + device.getRating()
+						+ &quot;)&quot;);
+<span class="fc" id="L233">			}</span>
+		}
+
+<span class="pc bpc" id="L236" title="3 of 6 branches missed.">		if (mute || devices == null || devices.size() == 0) {</span>
+<span class="nc" id="L237">			mSoundSystem = new SoundSystemNG(mAudioFormat, BUFFER_DURATION);</span>
+<span class="nc" id="L238">			mMute = true;</span>
+		} else {
+<span class="fc" id="L240">			mSoundSystem = new SoundSystemNG(getOutputLine(), BUFFER_DURATION);</span>
+<span class="fc" id="L241">			mMute = false;</span>
+		}
+
+		// start the sound system thread in a separate method to take derived
+		// classes into account
+		// (not yet needed, but just in case - and to avoid the FindBugs
+		// warning)
+<span class="fc" id="L248">		startSoundsystem();</span>
+<span class="fc" id="L249">	}</span>
+
+	protected final void startSoundsystem() {
+<span class="fc" id="L252">		mSoundSystem.setDaemon(true);</span>
+<span class="fc" id="L253">		mSoundSystem.start();</span>
+<span class="fc" id="L254">	}</span>
+
+	public synchronized Sound openSound(AudioResource AudioResource,
+			SoundFileType fileType, int numSamplesPerChunk,
+			boolean enableStreaming) {
+<span class="fc" id="L259">		Sound sound = null;</span>
+
+		try {
+<span class="fc" id="L262">			SoundFile file = new SoundFile(AudioResource, fileType,</span>
+					numSamplesPerChunk, enableStreaming);
+<span class="fc" id="L264">			sound = new Sound();</span>
+<span class="fc" id="L265">			sound.file.set(file);</span>
+<span class="nc" id="L266">		} catch (IOException exception) {</span>
+<span class="nc" id="L267">			logger.warn(exception);</span>
+<span class="nc" id="L268">			return null;</span>
+<span class="fc" id="L269">		}</span>
+
+<span class="fc" id="L271">		return sound;</span>
+	}
+
+	public synchronized void setHearerPosition(float[] position) {
+<span class="nc" id="L275">		Algebra.mov_Vecf(mHearerPosition, position);</span>
+<span class="nc" id="L276">	}</span>
+
+	public synchronized void update() {
+<span class="pc bpc" id="L279" title="1 of 2 branches missed.">		for (SoundChannel channel : mChannels) {</span>
+<span class="nc bnc" id="L280" title="All 2 branches missed.">			if (channel.isActive()) {</span>
+<span class="nc" id="L281">				channel.update();</span>
+			}
+<span class="nc" id="L283">		}</span>
+<span class="fc" id="L284">	}</span>
+
+	public synchronized void play(Sound sound, float volume, int layerLevel,
+			AudibleArea area, boolean autoRepeat, Time fadeInDuration) {
+<span class="nc bnc" id="L288" title="All 2 branches missed.">		if (sound == null) {</span>
+<span class="nc" id="L289">			return;</span>
+		}
+
+<span class="nc bnc" id="L292" title="All 2 branches missed.">		if (sound.isActive()) {</span>
+<span class="nc" id="L293">			SoundChannel channel = sound.channel.get();</span>
+<span class="nc" id="L294">			channel.setAutoRepeat(autoRepeat);</span>
+<span class="nc" id="L295">			channel.startFading(1.0f, fadeInDuration);</span>
+<span class="nc" id="L296">			channel.setVolume(volume);</span>
+<span class="nc" id="L297">			channel.setLayer(layerLevel);</span>
+<span class="nc" id="L298">			channel.setAudibleArea(area);</span>
+<span class="nc" id="L299">			channel.resumePlayback();</span>
+<span class="nc" id="L300">			channel.update();</span>
+<span class="nc" id="L301">		} else {</span>
+<span class="nc bnc" id="L302" title="All 4 branches missed.">			if (!mMute &amp;&amp; mSoundSystem.isRunning()) {</span>
+<span class="nc" id="L303">				SoundChannel channel = getInactiveChannel();</span>
+<span class="nc" id="L304">				channel.setAutoRepeat(autoRepeat);</span>
+<span class="nc" id="L305">				channel.setLayer(layerLevel);</span>
+<span class="nc" id="L306">				channel.setAudibleArea(area);</span>
+<span class="nc" id="L307">				channel.playSound(sound, volume, fadeInDuration);</span>
+<span class="nc" id="L308">				channel.update();</span>
+
+<span class="nc" id="L310">				closeInactiveChannels(SOUND_CHANNEL_LIMIT);</span>
+			}
+		}
+<span class="nc" id="L313">	}</span>
+
+	public synchronized void stop(Sound sound, Time fadeOutDuration) {
+<span class="nc bnc" id="L316" title="All 4 branches missed.">		if (sound != null &amp;&amp; sound.isActive()) {</span>
+<span class="nc" id="L317">			sound.channel.get().stopPlayback(fadeOutDuration);</span>
+		}
+<span class="nc" id="L319">	}</span>
+
+	public synchronized void changeVolume(Sound sound, float volume) {
+<span class="nc bnc" id="L322" title="All 4 branches missed.">		if (sound != null &amp;&amp; sound.isActive()) {</span>
+<span class="nc" id="L323">			sound.channel.get().setVolume(volume);</span>
+		}
+<span class="nc" id="L325">	}</span>
+
+	public synchronized void changeLayer(Sound sound, int layerLevel) {
+<span class="nc bnc" id="L328" title="All 4 branches missed.">		if (sound != null &amp;&amp; sound.isActive()) {</span>
+<span class="nc" id="L329">			sound.channel.get().setLayer(layerLevel);</span>
+		}
+<span class="nc" id="L331">	}</span>
+
+	public synchronized void changeAudibleArea(Sound sound, AudibleArea area) {
+<span class="nc bnc" id="L334" title="All 4 branches missed.">		if (sound != null &amp;&amp; sound.isActive()) {</span>
+<span class="nc" id="L335">			sound.channel.get().setAudibleArea(area);</span>
+		}
+<span class="nc" id="L337">	}</span>
+
+	public synchronized void mute(boolean turnOffSound, boolean useFading,
+			Time delay) {
+<span class="nc bnc" id="L341" title="All 4 branches missed.">		if (turnOffSound &amp;&amp; !mMute) {</span>
+<span class="nc" id="L342">			logger.info(&quot;turning off audio&quot;);</span>
+<span class="nc" id="L343">			mSoundSystem.suspend(delay, true);</span>
+
+<span class="nc bnc" id="L345" title="All 2 branches missed.">			if (useFading) {</span>
+<span class="nc bnc" id="L346" title="All 2 branches missed.">				for (SoundChannel channel : mChannels) {</span>
+<span class="nc bnc" id="L347" title="All 2 branches missed.">					if (channel.isActive()) {</span>
+<span class="nc" id="L348">						channel.startFading(0, delay);</span>
+					}
+<span class="nc" id="L350">				}</span>
+			}
+		}
+
+<span class="nc bnc" id="L354" title="All 4 branches missed.">		if (!turnOffSound &amp;&amp; mMute) {</span>
+<span class="nc" id="L355">			logger.info(&quot;turning on audio&quot;);</span>
+<span class="nc" id="L356">			mSoundSystem.proceed(null, getOutputLine());</span>
+
+<span class="nc bnc" id="L358" title="All 2 branches missed.">			if (useFading) {</span>
+<span class="nc bnc" id="L359" title="All 2 branches missed.">				for (SoundChannel channel : mChannels) {</span>
+<span class="nc bnc" id="L360" title="All 2 branches missed.">					if (channel.isActive()) {</span>
+<span class="nc" id="L361">						channel.startFading(delay);</span>
+					}
+<span class="nc" id="L363">				}</span>
+			}
+		}
+
+<span class="nc" id="L367">		mMute = turnOffSound;</span>
+<span class="nc" id="L368">	}</span>
+
+	public synchronized Collection&lt;Sound&gt; getActiveSounds() {
+<span class="fc" id="L371">		ArrayList&lt;Sound&gt; sounds = new ArrayList&lt;Sound&gt;(mChannels.size());</span>
+
+<span class="pc bpc" id="L373" title="1 of 2 branches missed.">		for (SoundChannel channel : mChannels) {</span>
+<span class="nc" id="L374">			Sound sound = channel.getSoundObject();</span>
+
+<span class="nc bnc" id="L376" title="All 4 branches missed.">			if (sound != null &amp;&amp; sound.isActive()) {</span>
+<span class="nc" id="L377">				sounds.add(sound);</span>
+			}
+<span class="nc" id="L379">		}</span>
+
+<span class="fc" id="L381">		sounds.trimToSize();</span>
+<span class="fc" id="L382">		return sounds;</span>
+	}
+
+	public synchronized void exit() {
+<span class="nc" id="L386">		mSoundSystem.exit(null);</span>
+
+		try {
+<span class="nc" id="L389">			mSoundSystem.join();</span>
+<span class="nc" id="L390">		} catch (InterruptedException exception) {</span>
+<span class="nc" id="L391">			logger.warn(&quot;joining sound system thread was interrupted: &quot;</span>
+					+ exception);
+<span class="nc" id="L393">		}</span>
+<span class="nc" id="L394">	}</span>
+
+	private void closeInactiveChannels(int leaveNumChannelsOpen) {
+<span class="nc" id="L397">		int numChannels = mChannels.size();</span>
+<span class="nc" id="L398">		Iterator&lt;SoundChannel&gt; iChannel = mChannels.iterator();</span>
+
+<span class="nc bnc" id="L400" title="All 2 branches missed.">		while (iChannel.hasNext()) {</span>
+<span class="nc bnc" id="L401" title="All 2 branches missed.">			if (mChannels.size() &lt;= leaveNumChannelsOpen) {</span>
+<span class="nc" id="L402">				break;</span>
+			}
+
+<span class="nc" id="L405">			SoundChannel currChannel = iChannel.next();</span>
+
+<span class="nc bnc" id="L407" title="All 2 branches missed.">			if (!currChannel.isActive()) {</span>
+<span class="nc" id="L408">				currChannel.close();</span>
+<span class="nc" id="L409">				iChannel.remove();</span>
+			}
+<span class="nc" id="L411">		}</span>
+
+<span class="nc" id="L413">		numChannels -= mChannels.size();</span>
+
+<span class="nc bnc" id="L415" title="All 2 branches missed.">		if (numChannels &gt; 0) {</span>
+<span class="nc" id="L416">			logger.debug(&quot;close &quot; + numChannels + &quot; inactive sound channels&quot;);</span>
+		}
+<span class="nc" id="L418">	}</span>
+
+	private SoundChannel getInactiveChannel() {
+<span class="nc" id="L421">		SoundChannel foundChannel = null;</span>
+
+<span class="nc bnc" id="L423" title="All 2 branches missed.">		for (SoundChannel channel : mChannels) {</span>
+<span class="nc bnc" id="L424" title="All 2 branches missed.">			if (!channel.isActive()) {</span>
+<span class="nc" id="L425">				foundChannel = channel;</span>
+<span class="nc" id="L426">				break;</span>
+			}
+<span class="nc" id="L428">		}</span>
+
+<span class="nc bnc" id="L430" title="All 2 branches missed.">		if (foundChannel == null) {</span>
+<span class="nc" id="L431">			logger.debug(&quot;open new sound channel (number &quot; + mChannels.size()</span>
+					+ &quot;)&quot;);
+
+<span class="nc" id="L434">			foundChannel = new SoundChannel();</span>
+<span class="nc" id="L435">			mChannels.add(foundChannel);</span>
+		}
+
+<span class="nc" id="L438">		return foundChannel;</span>
+	}
+
+	private SourceDataLine getOutputLine() {
+<span class="pc bpc" id="L442" title="1 of 2 branches missed.">		for (Device device : mDevices) {</span>
+<span class="fc" id="L443">			SourceDataLine line = device.getLine(SourceDataLine.class,</span>
+					mAudioFormat);
+
+<span class="pc bpc" id="L446" title="1 of 2 branches missed.">			if (line != null) {</span>
+<span class="fc" id="L447">				return line;</span>
+			}
+<span class="nc" id="L449">		}</span>
+
+<span class="nc" id="L451">		return null;</span>
+	}
+
+	/**
+	 * gets the list of devices
+	 *
+	 * @return devices
+	 */
+	public Collection&lt;Device&gt; getDevices() {
+<span class="nc" id="L460">		return new LinkedList&lt;Device&gt;(mDevices);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

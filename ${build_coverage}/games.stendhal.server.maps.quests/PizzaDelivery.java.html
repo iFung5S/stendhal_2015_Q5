@@ -1,0 +1,677 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>PizzaDelivery.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests</a> &gt; <span class="el_source">PizzaDelivery.java</span></div><h1>PizzaDelivery.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2011 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests;
+
+import games.stendhal.common.Rand;
+import games.stendhal.common.grammar.Grammar;
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.entity.Outfit;
+import games.stendhal.server.entity.item.Item;
+import games.stendhal.server.entity.item.StackableItem;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.action.InflictStatusOnNPCAction;
+import games.stendhal.server.entity.npc.condition.AndCondition;
+import games.stendhal.server.entity.npc.condition.NotCondition;
+import games.stendhal.server.entity.npc.condition.OutfitCompatibleWithClothesCondition;
+import games.stendhal.server.entity.npc.condition.QuestActiveCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotActiveCondition;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.maps.Region;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.log4j.Logger;
+
+/**
+ * QUEST: Pizza Delivery
+ * &lt;p&gt;
+ * PARTICIPANTS:
+ * &lt;ul&gt;
+ * &lt;li&gt; Leander (the baker in Semos)
+ * &lt;li&gt; NPC's all over the world (as customers)
+ * &lt;/ul&gt;
+ * 
+ * STEPS:
+ * &lt;ul&gt;
+ * &lt;li&gt; Leander gives you a pizza and tells you who ordered it, and how much
+ * time you have to deliver.
+ * &lt;li&gt; As a gimmick, you get a pizza delivery uniform.
+ * &lt;li&gt; You walk to the customer and say &quot;pizza&quot;.
+ * &lt;li&gt; The customer takes the pizza. If you were fast enough, you get a tip.
+ * &lt;li&gt; You put on your original clothes automatically.
+ * &lt;/ul&gt;
+ * REWARD:
+ * &lt;ul&gt;
+ * &lt;li&gt; XP (Amount varies depending on customer. You only get half of the XP if
+ * the pizza has become cold.)
+ * &lt;li&gt; some karma if delivered on time (5)
+ * &lt;li&gt; gold coins (As a tip, if you were fast enough; amount varies depending
+ * on customer.)
+ * &lt;/ul&gt;
+ * 
+ * REPETITIONS:
+ * &lt;ul&gt;
+ * &lt;li&gt; As many as wanted, but you can't get a new task while you still have the
+ * chance to do the current delivery on time.
+ * &lt;/ul&gt;
+ */
+public class PizzaDelivery extends AbstractQuest {
+<span class="fc" id="L78">	private static final Logger logger = Logger.getLogger(PizzaDelivery.class);</span>
+	// FIXME: return to &quot;final&quot; after outfit testing is finished
+	private static Outfit UNIFORM;
+	
+<span class="fc" id="L82">	public PizzaDelivery() {</span>
+<span class="fc" id="L83">		UNIFORM = new Outfit(null, null, null, Integer.valueOf(90), null);</span>
+<span class="fc" id="L84">	}</span>
+	
+	/**
+	 * A customer data object.
+	 */
+	static class CustomerData {
+		/** A hint where to find the customer. */
+		private final String npcDescription;
+
+		/** The pizza style the customer likes. */
+		private final String flavor;
+
+		/** The time until the pizza should be delivered. */
+		private final int expectedMinutes;
+
+		/** The money the player should get on fast delivery. */
+		private final int tip;
+
+		/**
+		 * The experience the player should gain for delivery. When the pizza
+		 * has already become cold, the player will gain half of this amount.
+		 */
+		private final int xp;
+
+		/**
+		 * The text that the customer should say upon quick delivery. It should
+		 * contain %d as a placeholder for the tip, and can optionally contain
+		 * %s as a placeholder for the pizza flavor.
+		 */
+		private final String messageOnHotPizza;
+
+		/**
+		 * The text that the customer should say upon quick delivery. It can
+		 * optionally contain %s as a placeholder for the pizza flavor.
+		 */
+		private final String messageOnColdPizza;
+
+		/**
+		 * The min level player who can get to this NPC
+		 */
+		private final int level ;
+
+		/**
+		 * Creates a CustomerData object.
+		 *
+		 * @param npcDescription
+		 * @param flavor
+		 * @param expectedTime
+		 * @param tip
+		 * @param xp
+		 * @param messageHot
+		 * @param messageCold
+		 * @param level
+		 */
+		CustomerData(final String npcDescription, final String flavor,
+				final int expectedTime, final int tip, final int xp, final String messageHot,
+<span class="fc" id="L140">				final String messageCold, final int level) {</span>
+<span class="fc" id="L141">			this.npcDescription = npcDescription;</span>
+<span class="fc" id="L142">			this.flavor = flavor;</span>
+<span class="fc" id="L143">			this.expectedMinutes = expectedTime;</span>
+<span class="fc" id="L144">			this.tip = tip;</span>
+<span class="fc" id="L145">			this.xp = xp;</span>
+<span class="fc" id="L146">			this.messageOnHotPizza = messageHot;</span>
+<span class="fc" id="L147">			this.messageOnColdPizza = messageCold;</span>
+<span class="fc" id="L148">			this.level = level;</span>
+<span class="fc" id="L149">		}</span>
+		
+		/**
+		 * Get the minimum level needed for the NPC
+		 * 
+		 * @return minimum level
+		 */
+		public int getLevel() {
+<span class="fc" id="L157">			return level;</span>
+		}
+	}
+
+	private static final String QUEST_SLOT = &quot;pizza_delivery&quot;;
+
+	private static Map&lt;String, CustomerData&gt; customerDB;
+
+
+
+	@Override
+	public String getSlotName() {
+<span class="nc" id="L169">		return QUEST_SLOT;</span>
+	}
+	
+	@Override
+	public List&lt;String&gt; getHistory(final Player player) {
+<span class="nc" id="L174">		final List&lt;String&gt; res = new ArrayList&lt;String&gt;();</span>
+<span class="nc bnc" id="L175" title="All 2 branches missed.">		if (!player.hasQuest(QUEST_SLOT)) {</span>
+<span class="nc" id="L176">			return res;</span>
+		}
+<span class="nc" id="L178">		final String questState = player.getQuest(QUEST_SLOT);</span>
+<span class="nc" id="L179">		res.add(&quot;I met Leander and agreed to help with pizza delivery.&quot;);</span>
+<span class="nc bnc" id="L180" title="All 2 branches missed.">		if (!&quot;done&quot;.equals(questState)) {</span>
+<span class="nc" id="L181">			final String[] questData = questState.split(&quot;;&quot;);</span>
+<span class="nc" id="L182">			final String customerName = questData[0];</span>
+<span class="nc" id="L183">			final CustomerData customerData = customerDB.get(customerName);</span>
+<span class="nc" id="L184">			res.add(&quot;Leander gave me a &quot; + customerData.flavor + &quot; for &quot; + customerName + &quot;.&quot;);</span>
+<span class="nc" id="L185">			res.add(&quot;Leander told me: \&quot;&quot; + customerData.npcDescription + &quot;\&quot;&quot;);</span>
+<span class="nc bnc" id="L186" title="All 2 branches missed.">			if (!isDeliveryTooLate(player)) {</span>
+<span class="nc" id="L187">				res.add(&quot;If I hurry I might still get there with the pizza hot.&quot;);</span>
+			} else {
+<span class="nc" id="L189">				res.add(&quot;The pizza has already gone cold.&quot;);</span>
+			}
+<span class="nc" id="L191">		} else {</span>
+<span class="nc" id="L192">			res.add(&quot;I delivered the last pizza Leander gave me.&quot;);</span>
+		}
+<span class="nc" id="L194">		return res;</span>
+	}
+
+	// Don't add Sally here, as it would conflict with Leander telling
+	// about his daughter.
+	private static void buildCustomerDatabase() {
+<span class="fc" id="L200">		customerDB = new HashMap&lt;String, CustomerData&gt;();</span>
+
+<span class="fc" id="L202">		customerDB.put(&quot;Balduin&quot;,</span>
+			new CustomerData(
+				&quot;Balduin is a hermit who's living on a mountain between Semos and Ados. It's called Ados Rock. Walk east from here.&quot;,
+				&quot;Pizza Prosciutto&quot;,
+				// minutes to deliver. Tested by mort: 6:30
+				// min, with killing some orcs.
+				7,  
+				// tip when delivered on time. Quite
+				// high because you can't do much
+				// senseful on top of the hill and must
+				// walk down again.
+				200,
+				// experience gain for delivery
+				300, 
+				&quot;Thanks! I wonder how you managed to bring it up here so fast. Take these %d pieces of gold as a tip, I can't spend it up here anyway!&quot;,
+				&quot;Brrr. This %s is no longer hot. Well, thanks for the effort anyway.&quot;,
+				10));
+
+<span class="fc" id="L220">		customerDB.put(&quot;Cyk&quot;,</span>
+			new CustomerData(
+				&quot;Cyk is currently on holiday on Athor Island. You'll easily recognize him by his blue hair. Go South East to find Athor ferry.&quot;,
+				&quot;Pizza Hawaii&quot;,
+				// minutes to deliver. You need about 6 min
+				// to Eliza, up to 12 min to wait for the
+				// ferry, 5 min for the crossing, and 0.5
+				// min from the docks to the beach, so you
+				// need a bit of luck for this one.
+				20, 
+				// tip when delivered on time
+				300, 
+				// experience gain for delivery
+				500, 
+				&quot;Wow, I never believed you would really deliver this half over the world! Here, take these %s bucks!&quot;,
+				&quot;It has become cold, but what do I expect when I order a pizza from a bakery so far away... So thanks anyway.&quot;,
+				20));
+
+<span class="fc" id="L238">		customerDB.put(&quot;Eliza&quot;,</span>
+			new CustomerData(
+				&quot;Eliza works for the Athor Island ferry service. You'll find her at the docks south of the Ados swamps.&quot;,
+				&quot;Pizza del Mare&quot;,
+				// minutes to deliver. Tested by mort: 6
+				// min, ignoring slow animals and not
+				// walking through the swamps.
+				7, 
+				// tip when delivered on time.
+				170, 
+				// experience gain for delivery
+				300, 
+				&quot;Incredible! It's still hot! Here, buy something nice from these %d pieces of gold!&quot;,
+				&quot;What a pity. It has become cold. Nevertheless, thank you!&quot;,
+				20));
+
+<span class="fc" id="L254">		customerDB.put(&quot;Fidorea&quot;,</span>
+			new CustomerData(
+				&quot;Fidorea lives in Ados city. She is a makeup artist. You'll need to walk east from here.&quot;,
+				&quot;Pizza Napoli&quot;,
+				// minutes to deliver. Tested by mort: about
+				// 6 min, outrunning all enemies.
+				7,  
+				// tip when delivered on time
+				150, 
+				// experience gain for delivery
+				200, 
+				&quot;Thanks a lot! You're a born pizza deliverer. You can have these %d pieces of gold as a tip!&quot;,
+				&quot;Bummer. Cold pizza.&quot;,
+				15));
+
+<span class="fc" id="L269">		customerDB.put(&quot;Haizen&quot;,</span>
+			new CustomerData(
+				&quot;Haizen is a magician who lives in a hut near the road to Ados. You'll need to walk east and north from here.&quot;,
+				&quot;Pizza Diavolo&quot;,
+				// minutes to deliver. Tested by kymara:
+				// exactly 3 min.
+				4,  
+				// tip when delivered on time
+				80, 
+				// experience gain for delivery
+				150, 
+				&quot;Ah, my %s! And it's fresh out of the oven! Take these %d coins as a tip!&quot;,
+				&quot;I hope next time I order a pizza it's still hot.&quot;,
+				10));
+
+<span class="fc" id="L284">		customerDB.put(</span>
+			&quot;Jenny&quot;,
+			new CustomerData(
+				&quot;Jenny owns a mill in the plains north and a little east of Semos.&quot;,
+				&quot;Pizza Margherita&quot;,
+				// minutes to deliver. Tested by mort: can
+				// be done in 1:15 min, with no real danger.
+				2,  
+				// tip when delivered on time
+				20, 
+				// experience gain for delivery
+				50, 
+				&quot;Ah, you brought my %s! Very nice of you! Here, take %d coins as a tip!&quot;,
+				&quot;It's a shame. Your pizza service can't deliver a hot pizza although the bakery is just around the corner.&quot;,
+				2));
+
+<span class="fc" id="L300">		customerDB.put(&quot;Jynath&quot;,</span>
+			new CustomerData(
+				&quot;Jynath is a witch who lives in a small house south of Or'ril castle. You'll need to walk south west from Semos, all the way through the forest, then follow the path west till you see her hut.&quot;,
+				&quot;Pizza Funghi&quot;,
+				// minutes to deliver. Tested by mort: 5:30
+				// min, leaving the slow monsters on the way
+				// behind.
+				6,  
+				// tip when delivered on time
+				140, 
+				// experience gain for delivery
+				200, 
+				&quot;Oh, I didn't expect you so early. Great! Usually I don't give tips, but for you I'll make an exception. Here are %d pieces of gold.&quot;,
+				&quot;Too bad... I will have to use an extra strong spell to get this pizza hot again.&quot;,
+				5));
+
+<span class="fc" id="L316">		customerDB.put(&quot;Katinka&quot;,</span>
+			new CustomerData(
+				&quot;Katinka takes care of the animals at the Ados Wildlife Refuge. That's north east of here, on the way to Ados city.&quot;,
+				&quot;Pizza Vegetale&quot;,
+				// minutes to deliver. Tested by kymara in
+				// 3:25 min, leaving behind the orcs.
+				4,  
+				// tip when delivered on time
+				100, 
+				// experience gain for delivery
+				200, 
+				&quot;Yay! My %s! Here, you can have %d pieces of gold as a tip!&quot;,
+				&quot;Eek. I hate cold pizza. I think I'll feed it to the animals.&quot;,
+				10));
+
+<span class="fc" id="L331">		customerDB.put(&quot;Marcus&quot;, </span>
+			new CustomerData(
+				&quot;Marcus is a guard in the Semos jail. That is due west from here, beyond Semos village.&quot;, &quot;Pizza Tonno&quot;,
+				// minutes to deliver. Tested by kymara: takes longer than before due to fence in village
+				3, 
+				// tip when delivered on time. A bit higher than Jenny
+				// because you can't do anything else in the jail and need
+				// to walk out again.
+				25, 
+				// experience gain for delivery
+				100, 
+				&quot;Ah, my %s! Here's your tip: %d pieces of gold.&quot;,
+				&quot;Finally! Why did that take so long?&quot;,
+				2));
+
+<span class="fc" id="L346">		customerDB.put(&quot;Nishiya&quot;,</span>
+			new CustomerData(
+				&quot;Nishiya sells sheep. You'll find him west of here, in Semos village.&quot;,
+				&quot;Pizza Pasta&quot;,
+				// minutes to deliver. Tested by mort: easy
+				// to do in less than 1 min.
+				1,  
+				// tip when delivered on time
+				10, 
+				// experience gain for delivery
+				25,  
+				&quot;Thank you! That was fast. Here, take %d pieces of gold as a tip!&quot;,
+				&quot;Too bad. It has become cold. Thank you anyway.&quot;,
+				0));
+
+<span class="fc" id="L361">		customerDB.put(&quot;Ouchit&quot;,</span>
+			new CustomerData(
+				&quot;Ouchit is a weapons trader. He has currently rented a room upstairs in Semos tavern, just around the corner.&quot;,
+				&quot;Pizza Quattro Stagioni&quot;,
+				// minutes to deliver. Tested by mort: can
+				// be done in 45 sec with no danger.
+				1,  
+				// tip when delivered on time
+				10, 
+				// experience gain for delivery
+				25,  
+				&quot;Thank you! It's nice to have a pizza service right around the corner. Here, you can have %d coins!&quot;,
+				&quot;I should have rather picked it up myself at the bakery, that would have been faster.&quot;,
+				0));
+
+<span class="fc" id="L376">		customerDB.put(&quot;Ramon&quot;,</span>
+			new CustomerData(
+				&quot;Ramon works as a blackjack dealer on the ferry to Athor Island. The ferry terminal is south east from here - it's a long way!&quot;,
+				&quot;Pizza Bolognese&quot;,
+				// minutes to deliver. You need about 6 mins
+				// to Eliza, and once you board the ferry,
+				// about 15 sec to deliver. If you have bad
+				// luck, you need to wait up to 12 mins for
+				// the ferry to arrive at the mainland, so
+				// you need a bit of luck for this one.
+				14, 
+				// tip when delivered on time
+				250, 
+				// experience gain for delivery
+				400, 
+				&quot;Thank you so much! Finally I get something better than the terrible food that Laura cooks. Take these %d pieces of gold as a tip!&quot;,
+				&quot;Too bad. It is cold. And I had hoped to get something better than that galley food.&quot;,
+				20));
+
+<span class="fc" id="L395">		customerDB.put(&quot;Tor'Koom&quot;,</span>
+			new CustomerData(
+				&quot;Tor'Koom is an orc who lives in the dungeon below this town, Semos. Sheep are his favourite food. He lives at the 4th level below the ground. Be careful!&quot;,
+				// &quot;Pizza sheep&quot; in Italian ;)
+				&quot;Pizza Pecora&quot;, 
+				// minutes to deliver. Tested by kymara:
+				// done in about 8 min, with lots of monsters getting in your way.
+				9, 
+				// tip when delivered on time
+				170,
+				// experience gain for delivery
+				300, 
+				&quot;Yummy %s! Here, take %d moneys!&quot;,
+				&quot;Grrr. Pizza cold. You walking slow like sheep.&quot;,
+				15));
+		
+<span class="fc" id="L411">		customerDB.put(&quot;Martin Farmer&quot;,</span>
+				new CustomerData(
+					&quot;Martin Farmer is holidaying in Ados City. You'll need to walk east from here.&quot;,
+					&quot;Pizza Fiorentina&quot;,
+					// minutes to deliver. Time for Fidorea was 7, so 8 should be ok for martin
+					8,  
+					// tip when delivered on time
+					160, 
+					// experience gain for delivery
+					220, 
+					&quot;Ooooh, I loove fresh hot pizza, thanks. take this %d money...!&quot;,
+					&quot;Hmpf.. a cold pizza.. ok.. I will take it. But hurry up next time.&quot;,
+					10));
+<span class="fc" id="L424">	}</span>
+
+	private void startDelivery(final Player player, final EventRaiser npc) {
+
+<span class="fc" id="L428">		final String name = Rand.rand(getAllowedCustomers(player));</span>
+<span class="fc" id="L429">		final CustomerData data = customerDB.get(name);</span>
+
+<span class="fc" id="L431">		final Item pizza = SingletonRepository.getEntityManager().getItem(&quot;pizza&quot;);</span>
+<span class="fc" id="L432">		pizza.setInfoString(data.flavor);</span>
+<span class="fc" id="L433">		pizza.setDescription(&quot;You see a &quot; + data.flavor + &quot;.&quot;);</span>
+<span class="fc" id="L434">		pizza.setBoundTo(name);</span>
+        
+<span class="pc bpc" id="L436" title="1 of 2 branches missed.">		if (player.equipToInventoryOnly(pizza)) {</span>
+<span class="fc" id="L437">    		npc.say(&quot;You must bring this &quot;</span>
+    			+ data.flavor
+    			+ &quot; to &quot;
+    			+ Grammar.quoteHash(&quot;#&quot; + name)
+    			+ &quot; within &quot;
+    			+ Grammar.quantityplnoun(data.expectedMinutes, &quot;minute&quot;, &quot;one&quot;)
+    			+ &quot;. Say \&quot;pizza\&quot; so that &quot;
+    			+ name
+    			+ &quot; knows that I sent you. Oh, and please wear this uniform on your way and don't drop this &quot; + data.flavor + &quot; on the ground! Our customers want it fresh.&quot;);
+<span class="fc" id="L446">    		player.setOutfit(UNIFORM, true);</span>
+<span class="fc" id="L447">    		player.setQuest(QUEST_SLOT, name + &quot;;&quot; + System.currentTimeMillis());</span>
+		} else {
+<span class="nc" id="L449">			npc.say(&quot;Come back when you have space to carry the pizza!&quot;);</span>
+		}
+<span class="fc" id="L451">	}</span>
+	
+	/**
+	 * Get a list of customers appropriate for a player
+	 * 
+	 * @param player the player doing the quest
+	 * @return list of customer data
+	 */
+	private List&lt;String&gt; getAllowedCustomers(Player player) {
+<span class="fc" id="L460">		List&lt;String&gt; allowed = new LinkedList&lt;String&gt;();</span>
+<span class="fc" id="L461">		int level = player.getLevel();</span>
+<span class="fc bfc" id="L462" title="All 2 branches covered.">		for (Map.Entry&lt;String, CustomerData&gt; entry : customerDB.entrySet()) {</span>
+<span class="fc bfc" id="L463" title="All 2 branches covered.">			if (level &gt;= entry.getValue().getLevel()) {</span>
+<span class="fc" id="L464">				allowed.add(entry.getKey());</span>
+			}
+<span class="fc" id="L466">		}		</span>
+<span class="fc" id="L467">		return allowed;</span>
+	}
+
+	/**
+	 * Checks whether the player has failed to fulfil his current delivery job
+	 * in time.
+	 * 
+	 * @param player
+	 *            The player.
+	 * @return true if the player is too late. false if the player still has
+	 *         time, or if he doesn't have a delivery to do currently.
+	 */
+	private boolean isDeliveryTooLate(final Player player) {
+<span class="pc bpc" id="L480" title="2 of 4 branches missed.">		if (player.hasQuest(QUEST_SLOT) &amp;&amp; !player.isQuestCompleted(QUEST_SLOT)) {</span>
+<span class="fc" id="L481">			final String[] questData = player.getQuest(QUEST_SLOT).split(&quot;;&quot;);</span>
+<span class="fc" id="L482">			final String customerName = questData[0];</span>
+<span class="fc" id="L483">			final CustomerData customerData = customerDB.get(customerName);</span>
+<span class="fc" id="L484">			final long bakeTime = Long.parseLong(questData[1]);</span>
+<span class="fc" id="L485">			final long expectedTimeOfDelivery = bakeTime </span>
+				+ (long) 60 * 1000 * customerData.expectedMinutes;
+<span class="fc bfc" id="L487" title="All 2 branches covered.">			if (System.currentTimeMillis() &gt; expectedTimeOfDelivery) {</span>
+<span class="fc" id="L488">				return true;</span>
+			}
+		}
+<span class="fc" id="L491">		return false;</span>
+
+	}
+
+	private void handOverPizza(final Player player, final EventRaiser npc) {
+<span class="fc bfc" id="L496" title="All 2 branches covered.">		if (player.isEquipped(&quot;pizza&quot;)) {</span>
+<span class="fc" id="L497">			final CustomerData data = customerDB.get(npc.getName());</span>
+<span class="fc bfc" id="L498" title="All 2 branches covered.">			for (final Item pizza : player.getAllEquipped(&quot;pizza&quot;)) {</span>
+<span class="fc" id="L499">				final String flavor = pizza.getInfoString();</span>
+<span class="fc bfc" id="L500" title="All 2 branches covered.">				if (data.flavor.equals(flavor)) {</span>
+<span class="fc" id="L501">					player.drop(pizza);</span>
+					// Check whether the player was supposed to deliver the
+					// pizza.
+<span class="pc bpc" id="L504" title="2 of 4 branches missed.">					if (player.hasQuest(QUEST_SLOT) &amp;&amp; !player.isQuestCompleted(QUEST_SLOT)) {</span>
+<span class="fc bfc" id="L505" title="All 2 branches covered.">						if (isDeliveryTooLate(player)) {</span>
+<span class="pc bpc" id="L506" title="1 of 2 branches missed.">							if (data.messageOnColdPizza.contains(&quot;%s&quot;)) {</span>
+<span class="nc" id="L507">								npc.say(String.format(data.messageOnColdPizza, data.flavor));</span>
+							} else {
+<span class="fc" id="L509">								npc.say(data.messageOnColdPizza);</span>
+							}
+<span class="fc" id="L511">							player.addXP(data.xp / 2);</span>
+						} else {
+<span class="fc bfc" id="L513" title="All 2 branches covered.">							if (data.messageOnHotPizza.contains(&quot;%s&quot;)) {</span>
+<span class="fc" id="L514">								npc.say(String.format(data.messageOnHotPizza,</span>
+										data.flavor, data.tip));
+							} else {
+<span class="fc" id="L517">								npc.say(String.format(data.messageOnHotPizza,</span>
+										data.tip));
+							}
+<span class="fc" id="L520">							final StackableItem money = (StackableItem) SingletonRepository.getEntityManager().getItem(&quot;money&quot;);</span>
+<span class="fc" id="L521">							money.setQuantity(data.tip);</span>
+<span class="fc" id="L522">							player.equipOrPutOnGround(money);</span>
+<span class="fc" id="L523">							player.addXP(data.xp);</span>
+<span class="fc" id="L524">							player.addKarma(5);</span>
+						}
+<span class="fc" id="L526">						new InflictStatusOnNPCAction(&quot;pizza&quot;).fire(player, null, npc);</span>
+<span class="fc" id="L527">						player.setQuest(QUEST_SLOT, &quot;done&quot;);</span>
+<span class="fc" id="L528">						putOffUniform(player);</span>
+					} else {
+						// This should not happen: a player cannot pick up a pizza from the ground 
+						// that did have a flavor, those are bound. If a pizza has flavor the player
+						// should only have got it from the quest.
+<span class="nc" id="L533">						npc.say(&quot;Eek! This pizza is all dirty! Did you find it on the ground?&quot;);</span>
+					}
+<span class="fc" id="L535">					return;</span>
+				}
+<span class="fc" id="L537">			}</span>
+			// The player has brought the pizza to the wrong NPC, or it's a plain pizza.
+<span class="fc" id="L539">			npc.say(&quot;No, thanks. I like &quot; + data.flavor + &quot; better.&quot;);</span>
+<span class="fc" id="L540">		} else {</span>
+<span class="fc" id="L541">			npc.say(&quot;A pizza? Where?&quot;);</span>
+		}
+<span class="fc" id="L543">	}</span>
+
+	/** Takes away the player's uniform, if the he is wearing it. 
+	 * @param player to remove uniform from*/
+	private void putOffUniform(final Player player) {
+<span class="fc bfc" id="L548" title="All 2 branches covered.">		if (UNIFORM.isPartOf(player.getOutfit())) {</span>
+<span class="fc" id="L549">			player.returnToOriginalOutfit();</span>
+		}
+<span class="fc" id="L551">	}</span>
+
+	private void prepareBaker() {
+<span class="fc" id="L554">		final SpeakerNPC leander = npcs.get(&quot;Leander&quot;);</span>
+
+		// haven't done the pizza quest before or already delivered the last one, ok to wear pizza outfit
+<span class="fc" id="L557">		leander.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.QUEST_MESSAGES,
+				new AndCondition(new OutfitCompatibleWithClothesCondition(), new QuestNotActiveCondition(QUEST_SLOT)),
+				ConversationStates.QUEST_OFFERED, 
+				&quot;I need you to quickly deliver a hot pizza. If you're fast enough, you might get quite a nice tip. So, will you do it?&quot;,
+				null);
+		
+		// haven't done the pizza quest before or already delivered the last one, outfit would be incompatible with pizza outfit
+<span class="fc" id="L565">		leander.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.QUEST_MESSAGES,
+				new AndCondition(new NotCondition(new OutfitCompatibleWithClothesCondition()), new QuestNotActiveCondition(QUEST_SLOT)),
+				ConversationStates.ATTENDING, 
+				&quot;Sorry, you can't wear our pizza delivery uniform looking like that. If you get changed, you can ask about the #task again.&quot;,
+				null);
+		
+		// pizza quest is active: check if the delivery is too late already or not
+<span class="fc" id="L573">		leander.add(ConversationStates.ATTENDING,</span>
+			ConversationPhrases.QUEST_MESSAGES, new QuestActiveCondition(QUEST_SLOT),
+			ConversationStates.QUEST_OFFERED, null,
+<span class="fc" id="L576">			new ChatAction() {</span>
+				@Override
+				public void fire(final Player player, final Sentence sentence, final EventRaiser npc) {
+<span class="fc" id="L579">						final String[] questData = player.getQuest(QUEST_SLOT)</span>
+								.split(&quot;;&quot;);
+<span class="fc" id="L581">						final String customerName = questData[0];</span>
+<span class="fc bfc" id="L582" title="All 2 branches covered.">						if (isDeliveryTooLate(player)) {</span>
+							// If the player still carries any pizza due for an NPC,
+							// take it away because the baker is angry,
+							// and because the player probably won't
+							// deliver it anymore anyway.
+<span class="fc bfc" id="L587" title="All 2 branches covered.">							for (final Item pizza : player.getAllEquipped(&quot;pizza&quot;)) {</span>
+<span class="fc bfc" id="L588" title="All 2 branches covered.">								if (pizza.getInfoString()!=null) {</span>
+<span class="fc" id="L589">									player.drop(pizza);</span>
+								}
+<span class="fc" id="L591">							}</span>
+<span class="fc" id="L592">							npc.say(&quot;I see you failed to deliver the pizza to &quot;</span>
+								+ customerName
+								+ &quot; in time. Are you sure you will be more reliable this time?&quot;);
+						} else {
+<span class="fc" id="L596">							npc.say(&quot;You still have to deliver a pizza to &quot;</span>
+									+ customerName + &quot;, and hurry!&quot;);
+<span class="fc" id="L598">							npc.setCurrentState(ConversationStates.ATTENDING);</span>
+						}
+<span class="fc" id="L600">				}</span>
+			});
+
+<span class="fc" id="L603">		leander.add(ConversationStates.QUEST_OFFERED,</span>
+			ConversationPhrases.YES_MESSAGES, null,
+			ConversationStates.ATTENDING, null,
+<span class="fc" id="L606">			new ChatAction() {</span>
+				@Override
+				public void fire(final Player player, final Sentence sentence, final EventRaiser npc) {
+<span class="fc" id="L609">					startDelivery(player, npc);</span>
+<span class="fc" id="L610">				}</span>
+			});
+
+<span class="fc" id="L613">		leander.add(</span>
+			ConversationStates.QUEST_OFFERED,
+			ConversationPhrases.NO_MESSAGES,
+			null,
+			ConversationStates.ATTENDING,
+			&quot;Too bad. I hope my daughter #Sally will soon come back from her camp to help me with the deliveries.&quot;,
+<span class="fc" id="L619">			new ChatAction() {</span>
+				@Override
+				public void fire(final Player player, final Sentence sentence, final EventRaiser npc) {
+<span class="fc" id="L622">					putOffUniform(player);</span>
+<span class="fc" id="L623">				}</span>
+			});
+
+<span class="fc bfc" id="L626" title="All 2 branches covered.">		for (final String name : customerDB.keySet()) {</span>
+<span class="fc" id="L627">			final CustomerData data = customerDB.get(name);</span>
+<span class="fc" id="L628">			leander.addReply(name, data.npcDescription);</span>
+<span class="fc" id="L629">		}</span>
+<span class="fc" id="L630">	}</span>
+
+	private void prepareCustomers() {
+<span class="fc bfc" id="L633" title="All 2 branches covered.">		for (final String name : customerDB.keySet()) {</span>
+<span class="fc" id="L634">			final SpeakerNPC npc = npcs.get(name);</span>
+<span class="pc bpc" id="L635" title="1 of 2 branches missed.">			if (npc == null) {</span>
+<span class="nc" id="L636">				logger.error(&quot;NPC &quot; + name + &quot; is used in the Pizza Delivery quest but does not exist in game.&quot;, new Throwable());</span>
+<span class="nc" id="L637">				continue;</span>
+			}
+
+<span class="fc" id="L640">			npc.add(ConversationStates.ATTENDING, &quot;pizza&quot;, null,</span>
+				ConversationStates.ATTENDING, null,
+<span class="fc" id="L642">				new ChatAction() {</span>
+					@Override
+					public void fire(final Player player, final Sentence sentence, final EventRaiser npc) {
+<span class="fc" id="L645">						handOverPizza(player, npc);</span>
+<span class="fc" id="L646">					}</span>
+				});
+<span class="fc" id="L648">		}</span>
+<span class="fc" id="L649">	}</span>
+
+	@Override
+	public void addToWorld() {
+<span class="fc" id="L653">		fillQuestInfo(</span>
+				&quot;Pizza Delivery&quot;,
+				&quot;Leander's pizza business is doing so well that he now recruits delivery boys and girls.&quot;,
+				false);
+<span class="fc" id="L657">		buildCustomerDatabase();</span>
+<span class="fc" id="L658">		prepareBaker();</span>
+<span class="fc" id="L659">		prepareCustomers();</span>
+<span class="fc" id="L660">	}</span>
+
+	@Override
+	public String getName() {
+<span class="nc" id="L664">		return &quot;PizzaDelivery&quot;;</span>
+	}
+	
+	@Override
+	public String getRegion() {
+<span class="nc" id="L669">		return Region.SEMOS_CITY;</span>
+	}
+
+	@Override
+	public String getNPCName() {
+<span class="nc" id="L674">		return &quot;Leander&quot;;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

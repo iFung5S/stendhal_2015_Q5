@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>StateEntity2DView.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui.j2d.entity</a> &gt; <span class="el_source">StateEntity2DView.java</span></div><h1>StateEntity2DView.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui.j2d.entity;
+
+//
+//
+
+import games.stendhal.client.entity.IEntity;
+import games.stendhal.client.sprite.Sprite;
+import games.stendhal.client.sprite.SpriteStore;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import org.apache.log4j.Logger;
+
+/**
+ * The 2D view of an animated entity.
+ * 
+ * @param &lt;T&gt; entity type 
+ */
+<span class="nc" id="L32">abstract class StateEntity2DView&lt;T extends IEntity&gt; extends Entity2DView&lt;T&gt; {</span>
+	/**
+	 * Log4J.
+	 */
+<span class="nc" id="L36">	private static final Logger logger = Logger</span>
+			.getLogger(StateEntity2DView.class);
+
+	/**
+	 * Map of named sprites.
+	 */
+<span class="nc" id="L42">	protected Map&lt;Object, Sprite&gt; sprites = new HashMap&lt;Object, Sprite&gt;();</span>
+
+	//
+	// StateEntity2DView
+	//
+
+	/**
+	 * Build animations.
+	 *  
+	 * @param entity the entity to build animations for 
+	 */
+	private void buildAnimations(T entity) {
+<span class="nc" id="L54">		buildSprites(entity, sprites);</span>
+<span class="nc" id="L55">	}</span>
+
+	/**
+	 * Populate named state sprites.
+	 * 
+	 * @param entity The entity to build sprites for
+	 * @param map
+	 *            The map to populate. 
+	 */
+	protected abstract void buildSprites(T entity, final Map&lt;Object, Sprite&gt; map);
+	
+	/**
+	 * Get a keyed state sprite.
+	 * 
+	 * @param state
+	 *            The state.
+	 * 
+	 * @return The appropriate sprite for the given state.
+	 */
+	protected Sprite getSprite(final Object state) {
+<span class="nc" id="L75">		return sprites.get(state);</span>
+	}
+
+	/**
+	 * Get the current model state.
+	 * 
+	 * @param entity 
+	 * @return The model state.
+	 */
+	protected abstract Object getState(T entity);
+
+	/**
+	 * Get the current animated sprite.
+	 * 
+	 * @param entity 
+	 * @return The appropriate sprite for the current state.
+	 */
+	private Sprite getStateSprite(T entity) {
+<span class="nc" id="L93">		final Object state = getState(entity);</span>
+<span class="nc" id="L94">		final Sprite sprite = getSprite(state);</span>
+
+<span class="nc bnc" id="L96" title="All 2 branches missed.">		if (sprite == null) {</span>
+<span class="nc" id="L97">			logger.debug(&quot;No sprite found for: &quot; + state);</span>
+<span class="nc" id="L98">			return SpriteStore.get().getFailsafe();</span>
+		}
+
+<span class="nc" id="L101">		return sprite;</span>
+	}
+
+	//
+	// Entity2DView
+	//
+
+	/**
+	 * Build the visual representation of this entity. This builds all the
+	 * animation sprites and sets the default frame.
+	 */
+	@Override
+	protected void buildRepresentation(T entity) {
+<span class="nc" id="L114">		buildAnimations(entity);</span>
+
+<span class="nc" id="L116">		setSprite(getStateSprite(entity));</span>
+<span class="nc" id="L117">	}</span>
+
+	/**
+	 * Update sprite state of the entity.
+	 * 
+	 * @param entity
+	 */
+	protected void proceedChangedState(T entity) {
+<span class="nc" id="L125">		setSprite(getStateSprite(entity));</span>
+<span class="nc" id="L126">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

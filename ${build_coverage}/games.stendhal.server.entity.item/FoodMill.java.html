@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>FoodMill.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.item</a> &gt; <span class="el_source">FoodMill.java</span></div><h1>FoodMill.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.item;
+
+import games.stendhal.common.grammar.Grammar;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.entity.RPEntity;
+
+import java.util.Map;
+
+import marauroa.common.game.RPObject;
+
+public class FoodMill extends Item {
+
+	/** The item to be processed */
+	private String input;
+	/** The required container for processing */
+	private String container;
+	/** The resulting processed item */
+	private String output;
+	
+    public FoodMill(final String name, final String clazz,
+            final String subclass, final Map&lt;String, String&gt; attributes) {
+<span class="fc" id="L34">        super(name, clazz, subclass, attributes);</span>
+<span class="fc" id="L35">        init();</span>
+<span class="fc" id="L36">    }</span>
+
+    public FoodMill(final FoodMill item) {
+<span class="fc" id="L39">        super(item);</span>
+<span class="fc" id="L40">        init();</span>
+<span class="fc" id="L41">    }</span>
+    
+    /** Sets up the input, output and container based on item name */
+    private void init() {
+<span class="fc bfc" id="L45" title="All 2 branches covered.">    	if (&quot;sugar mill&quot;.equals(getName())) {</span>
+<span class="fc" id="L46">    		input = &quot;sugar cane&quot;;</span>
+<span class="fc" id="L47">    		container = &quot;empty sack&quot;;</span>
+<span class="fc" id="L48">    		output = &quot;sugar&quot;;</span>
+<span class="fc bfc" id="L49" title="All 2 branches covered.">    	} else if (&quot;scroll eraser&quot;.equals(getName())) {</span>
+<span class="fc" id="L50">    		input = &quot;marked scroll&quot;;</span>
+<span class="fc" id="L51">    		container = &quot;money&quot;;</span>
+<span class="fc" id="L52">    		output = &quot;empty scroll&quot;;</span>
+    	} else {
+<span class="fc" id="L54">    		input = &quot;apple&quot;;</span>
+<span class="fc" id="L55">    		container = &quot;bottle&quot;;</span>
+<span class="fc" id="L56">    		output = &quot;apple juice&quot;;</span>
+    	}
+<span class="fc" id="L58">    }</span>
+
+    @Override
+	public boolean onUsed(final RPEntity user) {
+    	/* is the mill equipped at all? */
+<span class="fc bfc" id="L63" title="All 2 branches covered.">    	if (!isContained()) {</span>
+<span class="fc" id="L64">    		user.sendPrivateText(&quot;You should be carrying the &quot; + getName() + &quot; in order to use it.&quot;);</span>
+<span class="fc" id="L65">    		return false;</span>
+    	}
+
+<span class="fc" id="L68">    	final String slotName = getContainerSlot().getName();</span>
+
+    	/* is it in a hand? */
+<span class="fc bfc" id="L71" title="All 2 branches covered.">    	if (!slotName.endsWith(&quot;hand&quot;)) {</span>
+<span class="fc" id="L72">    		user.sendPrivateText(&quot;You should hold the &quot; + getName() + &quot; in either hand in order to use it.&quot;);</span>
+<span class="fc" id="L73">    		return false;</span>
+    	}
+
+<span class="fc" id="L76">    	String otherhand = getOtherHand(slotName);</span>
+
+<span class="fc" id="L78">    	final RPObject first = user.getSlot(otherhand).getFirst();</span>
+
+    	/* is anything in the other hand? */
+<span class="fc bfc" id="L81" title="All 2 branches covered.">    	if (first == null) {</span>
+<span class="fc" id="L82">    		user.sendPrivateText(&quot;Your other hand looks empty.&quot;);</span>
+<span class="fc" id="L83">    		return false;</span>
+    	}
+
+    	/*
+    	 * the player needs to equip at least the input in his other hand
+    	 * and have the correct container in his inventory
+    	 */
+<span class="fc bfc" id="L90" title="All 2 branches covered.">    	if (!input.equals(first.get(&quot;name&quot;))) {</span>
+<span class="fc" id="L91">    		user.sendPrivateText(&quot;You need to have at least &quot; + Grammar.a_noun(input) + &quot; in your other hand&quot;);</span>
+<span class="fc" id="L92">    		return false;</span>
+    	}
+
+<span class="fc bfc" id="L95" title="All 2 branches covered.">    	if (!user.isEquipped(container)) {</span>
+<span class="fc" id="L96">    		user.sendPrivateText(&quot;You don't have &quot; + Grammar.a_noun(container) + &quot; with you&quot;);</span>
+<span class="fc" id="L97">    		return false;</span>
+    	}
+
+        /* all is okay, lets process this item */
+<span class="fc" id="L101">    	final Item item = SingletonRepository.getEntityManager().getItem(output);</span>
+    	
+<span class="pc bpc" id="L103" title="1 of 2 branches missed.">    	if (first instanceof StackableItem) {</span>
+<span class="fc" id="L104">			StackableItem dropOneOfMe = (StackableItem) first;</span>
+<span class="fc" id="L105">			dropOneOfMe.removeOne();</span>
+<span class="fc" id="L106">		} else {</span>
+<span class="nc" id="L107">			user.drop((Item) first);</span>
+		}
+<span class="fc" id="L109">    	user.drop(container);</span>
+<span class="fc" id="L110">    	user.equipOrPutOnGround(item);</span>
+
+<span class="fc" id="L112">    	return true;</span>
+    } 
+
+    
+    /**
+     * @param handSlot should be rhand or lhand
+     * @return the opposite hand to handSlot 
+     */
+    private String getOtherHand(final String handSlot) {
+<span class="pc bpc" id="L121" title="1 of 2 branches missed.">        if (&quot;rhand&quot;.equals(handSlot)) {</span>
+<span class="nc" id="L122">            return &quot;lhand&quot;;</span>
+        } else {
+<span class="fc" id="L124">            return &quot;rhand&quot;;</span>
+        }
+    }
+    
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

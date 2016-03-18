@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>BalloonScroll.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.item.scroll</a> &gt; <span class="el_source">BalloonScroll.java</span></div><h1>BalloonScroll.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.item.scroll;
+
+import games.stendhal.common.MathHelper;
+import games.stendhal.server.core.events.DelayedPlayerTextSender;
+import games.stendhal.server.entity.player.Player;
+
+import java.util.Map;
+
+/**
+ * Represents the balloon that takes the player to 7 kikareukin clouds,
+ * after which it will teleport player to a random location in 6 kikareukin islands.
+ */
+public class BalloonScroll extends TimedTeleportScroll {
+
+	private static final long DELAY = 6 * MathHelper.MILLISECONDS_IN_ONE_HOUR;
+	private static final int NEWTIME = 540;
+	
+	/**
+	 * Creates a new timed marked BalloonScroll scroll.
+	 * 
+	 * @param name
+	 * @param clazz
+	 * @param subclass
+	 * @param attributes
+	 */
+	public BalloonScroll(final String name, final String clazz, final String subclass,
+			final Map&lt;String, String&gt; attributes) {
+<span class="fc" id="L40">		super(name, clazz, subclass, attributes);</span>
+<span class="fc" id="L41">	}</span>
+
+	/**
+	 * Copy constructor.
+	 * 
+	 * @param item
+	 *            item to copy
+	 */
+	public BalloonScroll(final BalloonScroll item) {
+<span class="fc" id="L50">		super(item);</span>
+<span class="fc" id="L51">	}</span>
+
+	@Override
+	protected String getBeforeReturnMessage() {
+<span class="nc" id="L55">		return &quot;It feels like the clouds won't take your weight much longer ... &quot;;</span>
+	}
+
+	@Override
+	protected String getAfterReturnMessage() {
+<span class="nc" id="L60">		return &quot;You fell through a hole in the clouds, back to solid ground.&quot;;</span>
+	}
+
+	// Only let player use balloon from 6 kika clouds
+	// Balloons used more frequently than every 6 hours only last 5 minutes
+	@Override
+	protected boolean useTeleportScroll(final Player player) {
+<span class="nc bnc" id="L67" title="All 2 branches missed.">		if (!&quot;6_kikareukin_islands&quot;.equals(player.getZone().getName())) {</span>
+<span class="nc bnc" id="L68" title="All 2 branches missed.">			if (&quot;7_kikareukin_clouds&quot;.equals(player.getZone().getName())) {</span>
+<span class="nc" id="L69">				player.sendPrivateText(&quot;Another balloon does not seem to lift you any higher.&quot;);</span>
+			} else {
+<span class="nc" id="L71">				player.sendPrivateText(&quot;The balloon tried to float you away but the altitude was too low for it to even lift you. &quot; </span>
+						+ &quot;Try from somewhere higher up.&quot;);
+			}
+<span class="nc" id="L74">			return false; </span>
+		}
+<span class="nc" id="L76">		long lastuse = -1;</span>
+<span class="nc bnc" id="L77" title="All 2 branches missed.">		if (player.hasQuest(&quot;balloon&quot;)) {</span>
+<span class="nc" id="L78">			lastuse = Long.parseLong(player.getQuest(&quot;balloon&quot;));		</span>
+		}
+		
+<span class="nc" id="L81">		player.setQuest(&quot;balloon&quot;, Long.toString(System.currentTimeMillis()));</span>
+		
+<span class="nc" id="L83">		final long timeRemaining = (lastuse + DELAY) - System.currentTimeMillis();</span>
+<span class="nc bnc" id="L84" title="All 2 branches missed.">		if (timeRemaining &gt; 0) {</span>
+			// player used the balloon within the last DELAY hours
+			// so this use of balloon is going to be shortened 
+			// (the clouds can't take so much weight on them)
+			// delay message for 1 turn for technical reasons
+<span class="nc" id="L89">			new DelayedPlayerTextSender(player, &quot;The clouds are weakened from your recent time on them, and will not hold you for long.&quot;, 1);</span>
+			
+<span class="nc" id="L91">			return super.useTeleportScroll(player, &quot;7_kikareukin_clouds&quot;, 31, 21, NEWTIME);</span>
+		}
+		
+<span class="nc" id="L94">		return super.useTeleportScroll(player);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

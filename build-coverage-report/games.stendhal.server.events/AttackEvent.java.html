@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>AttackEvent.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.events</a> &gt; <span class="el_source">AttackEvent.java</span></div><h1>AttackEvent.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.events;
+
+import games.stendhal.common.constants.Nature;
+import games.stendhal.common.constants.Events;
+import marauroa.common.game.RPClass;
+import marauroa.common.game.RPEvent;
+import marauroa.common.game.Definition.Type;
+
+/**
+ * An RPEntity attacks another
+ */
+public class AttackEvent extends RPEvent {
+	private static final String HIT_ATTR = &quot;hit&quot;;
+	private static final String DAMAGE_ATTR = &quot;damage&quot;;
+	private static final String DAMAGE_TYPE_ATTR = &quot;type&quot;;
+	private static final String TARGET_ATTR = &quot;target&quot;;
+	private static final String RANGED_ATTR = &quot;ranged&quot;;
+	private static final String WEAPON_ATTR = &quot;weapon&quot;;
+
+	/**
+	 * Creates the rpclass.
+	 */
+	public static void generateRPClass() {
+<span class="fc" id="L36">		final RPClass rpclass = new RPClass(Events.ATTACK);</span>
+<span class="fc" id="L37">		rpclass.addAttribute(HIT_ATTR, Type.FLAG);</span>
+<span class="fc" id="L38">		rpclass.addAttribute(DAMAGE_ATTR, Type.INT);</span>
+<span class="fc" id="L39">		rpclass.addAttribute(DAMAGE_TYPE_ATTR, Type.INT);</span>
+<span class="fc" id="L40">		rpclass.addAttribute(RANGED_ATTR, Type.FLAG);</span>
+<span class="fc" id="L41">		rpclass.addAttribute(WEAPON_ATTR, Type.STRING);</span>
+
+		// there is a name clash with the attack event
+<span class="fc" id="L44">		rpclass.addAttribute(TARGET_ATTR, Type.STRING);</span>
+<span class="fc" id="L45">	}</span>
+
+	/**
+	 * Construct a new &lt;code&gt;AttackEvent&lt;/code&gt;
+	 * 
+	 * @param canHit &lt;code&gt;false&lt;/code&gt; for missed hits, &lt;code&gt;true&lt;/code&gt; for wounding or blocked hits
+	 * @param damage damage done
+	 * @param type damage type of the attack
+	 * @param weapon the used weapon. Can be &lt;code&gt;null&lt;/code&gt;
+	 * @param ranged &lt;code&gt;true&lt;/code&gt; if the attack is ranged, otherwise
+	 * 	&lt;code&gt;false&lt;/code&gt;
+	 */
+	public AttackEvent(boolean canHit, int damage, Nature type, String weapon, boolean ranged) {
+<span class="fc" id="L58">		super(Events.ATTACK);</span>
+<span class="fc bfc" id="L59" title="All 2 branches covered.">		if (canHit) {</span>
+<span class="fc" id="L60">			put(HIT_ATTR, &quot;&quot;);</span>
+		}
+<span class="fc" id="L62">		put(DAMAGE_ATTR, damage);</span>
+<span class="fc" id="L63">		put(DAMAGE_TYPE_ATTR, type.ordinal());</span>
+<span class="fc bfc" id="L64" title="All 2 branches covered.">		if (ranged) {</span>
+<span class="fc" id="L65">			put(RANGED_ATTR, &quot;&quot;);</span>
+		}
+<span class="pc bpc" id="L67" title="1 of 2 branches missed.">		if (weapon != null) {</span>
+<span class="nc" id="L68">			put(WEAPON_ATTR, weapon);</span>
+		}
+<span class="fc" id="L70">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

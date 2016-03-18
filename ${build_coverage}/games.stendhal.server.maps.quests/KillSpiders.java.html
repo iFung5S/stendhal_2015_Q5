@@ -1,0 +1,287 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>KillSpiders.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests</a> &gt; <span class="el_source">KillSpiders.java</span></div><h1>KillSpiders.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests;
+
+import games.stendhal.common.MathHelper;
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.entity.item.Item;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.action.MultipleActions;
+import games.stendhal.server.entity.npc.action.SetQuestAction;
+import games.stendhal.server.entity.npc.action.SetQuestAndModifyKarmaAction;
+import games.stendhal.server.entity.npc.condition.AndCondition;
+import games.stendhal.server.entity.npc.condition.GreetingMatchesNameCondition;
+import games.stendhal.server.entity.npc.condition.QuestInStateCondition;
+import games.stendhal.server.entity.npc.condition.QuestStateStartsWithCondition;
+import games.stendhal.server.entity.npc.condition.TimePassedCondition;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.maps.Region;
+
+import java.util.LinkedList;
+import java.util.List;
+
+/**
+ * QUEST: Kill Spiders
+ * &lt;p&gt;
+ * PARTICIPANTS:
+ * &lt;ul&gt;
+ * &lt;li&gt; Morgrin
+ * &lt;/ul&gt;
+ * 
+ * STEPS:
+ * &lt;ul&gt;
+ * &lt;li&gt; Groundskeeper Morgrin ask you to clean up the school basement
+ * &lt;li&gt; You go kill the spiders in the basement and you get the reward from Morgrin
+ * &lt;/ul&gt;
+ * &lt;p&gt;
+ * REWARD:
+ * &lt;ul&gt;
+ * &lt;li&gt; magical egg
+ * &lt;li&gt; 5000 XP
+ * &lt;li&gt; 10 karma in total
+ * &lt;/ul&gt;
+ * 
+ * REPETITIONS:
+ * &lt;ul&gt;
+ * &lt;li&gt; after 7 days.
+ * &lt;/ul&gt;
+ */
+
+<span class="fc" id="L65">public class KillSpiders extends AbstractQuest {</span>
+
+	private static final String QUEST_SLOT = &quot;kill_all_spiders&quot;;
+
+	@Override
+	public String getSlotName() {
+<span class="nc" id="L71">		return QUEST_SLOT;</span>
+	}
+	
+	private void step_1() {
+<span class="fc" id="L75">		final SpeakerNPC npc = npcs.get(&quot;Morgrin&quot;);</span>
+
+<span class="fc" id="L77">		npc.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.QUEST_MESSAGES, 
+				null,
+				ConversationStates.ATTENDING, 
+				null,
+<span class="fc" id="L82">				new ChatAction() {</span>
+					@Override
+					public void fire(final Player player, final Sentence sentence, final EventRaiser raiser) {
+<span class="fc bfc" id="L85" title="All 4 branches covered.">						if (!player.hasQuest(QUEST_SLOT) || player.getQuest(QUEST_SLOT).equals(&quot;rejected&quot;)) {</span>
+<span class="fc" id="L86">							raiser.say(&quot;Have you ever been to the basement of the school? The room is full of spiders and some could be dangerous, since the students do experiments! Would you like to help me with this 'little' problem?&quot;);</span>
+<span class="fc" id="L87">							raiser.setCurrentState(ConversationStates.QUEST_OFFERED);</span>
+<span class="pc bpc" id="L88" title="1 of 2 branches missed.">						}  else if (player.isQuestCompleted(QUEST_SLOT)) {</span>
+<span class="nc" id="L89">							raiser.say(&quot;I already asked you to kill all creatures in the basement!&quot;);</span>
+<span class="pc bpc" id="L90" title="1 of 2 branches missed.">						}  else if (player.getQuest(QUEST_SLOT).startsWith(&quot;killed;&quot;)) {</span>
+<span class="fc" id="L91">							final String[] tokens = player.getQuest(QUEST_SLOT).split(&quot;;&quot;);</span>
+							final long delay = MathHelper.MILLISECONDS_IN_ONE_WEEK;
+<span class="fc" id="L93">							final long timeRemaining = Long.parseLong(tokens[1]) + delay - System.currentTimeMillis();</span>
+<span class="fc bfc" id="L94" title="All 2 branches covered.">							if (timeRemaining &gt; 0) {</span>
+<span class="fc" id="L95">								raiser.say(&quot;Sorry there is nothing to do for you yet. But maybe you could come back later. I have to clean the school once a week.&quot;);</span>
+<span class="fc" id="L96">								return;</span>
+							}
+<span class="fc" id="L98">							raiser.say(&quot;Would you like to help me again?&quot;);</span>
+<span class="fc" id="L99">							raiser.setCurrentState(ConversationStates.QUEST_OFFERED);</span>
+<span class="fc" id="L100">						} else {</span>
+<span class="nc" id="L101">							raiser.say(&quot;Thanks for your help. Now I'm sleeping well again.&quot;);</span>
+						}
+<span class="fc" id="L103">					}</span>
+				});
+
+<span class="fc" id="L106">		final List&lt;ChatAction&gt; actions = new LinkedList&lt;ChatAction&gt;();</span>
+<span class="fc" id="L107">		actions.add(new SetQuestAction(QUEST_SLOT, &quot;started&quot;));</span>
+		//actions.add(new StartRecordingKillsAction(QUEST_SLOT,1,&quot;spider&quot;, &quot;poisonous spider&quot;, &quot;giant spider&quot;));
+
+		
+<span class="fc" id="L111">		npc.add(ConversationStates.QUEST_OFFERED,</span>
+				ConversationPhrases.YES_MESSAGES,
+				null,
+				ConversationStates.ATTENDING,
+				&quot;Fine. Go down to the basement and kill all the creatures there!&quot;,
+				new MultipleActions(actions));
+
+<span class="fc" id="L118">		npc.add(ConversationStates.QUEST_OFFERED, </span>
+				ConversationPhrases.NO_MESSAGES, 
+				null,
+				ConversationStates.ATTENDING,
+				&quot;Ok, I have to find someone else to do this 'little' job!&quot;,
+				new SetQuestAndModifyKarmaAction(QUEST_SLOT, &quot;rejected&quot;, -5.0));
+<span class="fc" id="L124">	}</span>
+
+	private void step_2() {
+		/* Player has to kill the creatures*/
+<span class="fc" id="L128">	}</span>
+
+	private void step_3() {
+<span class="fc" id="L131">		final SpeakerNPC npc = npcs.get(&quot;Morgrin&quot;);</span>
+		// support for old-style quests
+<span class="fc" id="L133">		npc.add(ConversationStates.IDLE, ConversationPhrases.GREETING_MESSAGES,</span>
+				new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+						new QuestInStateCondition(QUEST_SLOT, &quot;start&quot;)),
+				ConversationStates.ATTENDING, 
+				null,
+<span class="fc" id="L138">				new ChatAction() {</span>
+					@Override
+					public void fire(final Player player, final Sentence sentence, final EventRaiser raiser) {
+<span class="fc bfc" id="L141" title="All 6 branches covered.">						if (player.hasKilled(&quot;spider&quot;)</span>
+								&amp;&amp; player.hasKilled(&quot;poisonous spider&quot;)
+								&amp;&amp; player.hasKilled(&quot;giant spider&quot;)) {
+<span class="fc" id="L144">							raiser.say(&quot;Oh thank you my friend. Here you have something special, I got it from a Magican. Who he was I do not know. What the egg's good for, I do not know. I only know, it could be useful for you.&quot;);</span>
+<span class="fc" id="L145">							final Item mythegg = SingletonRepository.getEntityManager()</span>
+									.getItem(&quot;mythical egg&quot;);
+<span class="fc" id="L147">							mythegg.setBoundTo(player.getName());</span>
+<span class="fc" id="L148">							player.equipOrPutOnGround(mythegg);</span>
+<span class="fc" id="L149">							player.addKarma(5.0);</span>
+<span class="fc" id="L150">							player.addXP(5000);</span>
+<span class="fc" id="L151">							player.setQuest(QUEST_SLOT, &quot;killed;&quot; + System.currentTimeMillis());</span>
+<span class="fc" id="L152">						} else {</span>
+<span class="fc" id="L153">							raiser.say(&quot;Go down and kill the creatures, no time left.&quot;);</span>
+						}
+<span class="fc" id="L155">		 			}</span>
+				});
+		
+		// support for new quests.
+<span class="fc" id="L159">		npc.add(ConversationStates.IDLE, ConversationPhrases.GREETING_MESSAGES,</span>
+				new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+						new QuestInStateCondition(QUEST_SLOT, 0, &quot;started&quot;)),
+				ConversationStates.ATTENDING, 
+				null,
+<span class="fc" id="L164">				new ChatAction() {</span>
+					@Override
+					public void fire(final Player player, final Sentence sentence, final EventRaiser raiser) {
+<span class="pc bpc" id="L167" title="2 of 6 branches missed.">						if (player.getQuest(QUEST_SLOT, 1).equals(&quot;spider&quot;) &amp;&amp;</span>
+							player.getQuest(QUEST_SLOT, 2).equals(&quot;poisonous spider&quot;) &amp;&amp;
+							player.getQuest(QUEST_SLOT, 3).equals(&quot;giant spider&quot;)
+							) {
+<span class="fc" id="L171">							raiser.say(&quot;Oh thank you my friend. Here you have something special, I got it from a Magican. Who he was I do not know. What the egg's good for, I do not know. I only know, it could be useful for you.&quot;);</span>
+<span class="fc" id="L172">							final Item mythegg = SingletonRepository.getEntityManager()</span>
+									.getItem(&quot;mythical egg&quot;);
+<span class="fc" id="L174">							mythegg.setBoundTo(player.getName());</span>
+<span class="fc" id="L175">							player.equipOrPutOnGround(mythegg);</span>
+<span class="fc" id="L176">							player.addKarma(5.0);</span>
+<span class="fc" id="L177">							player.addXP(5000);</span>
+<span class="fc" id="L178">							player.setQuest(QUEST_SLOT, &quot;killed;&quot; + System.currentTimeMillis());</span>
+<span class="fc" id="L179">						} else {</span>
+<span class="fc" id="L180">							raiser.say(&quot;Go down and kill the creatures, no time left.&quot;);</span>
+						}
+<span class="fc" id="L182">		 			}</span>
+				});
+<span class="fc" id="L184">	}</span>
+
+	@Override
+	public void addToWorld() {
+<span class="fc" id="L188">		fillQuestInfo(</span>
+				&quot;Kill spiders&quot;,
+				&quot;Morgrin, groundskeeper of magic school, is concerned about spiders in the school basement.&quot;,
+				true);
+<span class="fc" id="L192">		step_1();</span>
+<span class="fc" id="L193">		step_2();</span>
+<span class="fc" id="L194">		step_3();</span>
+<span class="fc" id="L195">	}</span>
+
+	@Override
+	public String getName() {
+<span class="nc" id="L199">		return &quot;KillSpiders&quot;;</span>
+	}
+	
+	@Override
+	public int getMinLevel() {
+<span class="fc" id="L204">		return 70;</span>
+	}
+	
+	@Override
+	public List&lt;String&gt; getHistory(final Player player) {
+<span class="fc" id="L209"> 		LinkedList&lt;String&gt; history = new LinkedList&lt;String&gt;();</span>
+<span class="fc bfc" id="L210" title="All 2 branches covered.">		if (!player.hasQuest(QUEST_SLOT)) {</span>
+<span class="fc" id="L211">			return history;</span>
+		}
+<span class="fc" id="L213">		final String questState = player.getQuest(QUEST_SLOT, 0);</span>
+
+<span class="fc bfc" id="L215" title="All 2 branches covered.">		if (&quot;rejected&quot;.equals(questState)) {</span>
+<span class="fc" id="L216">			history.add(&quot;I do not agree to help Morgrin.&quot;);</span>
+<span class="fc" id="L217">			return history;</span>
+		}
+<span class="fc bfc" id="L219" title="All 2 branches covered.">		if (&quot;killed&quot;.equals(questState)) {</span>
+<span class="fc" id="L220">			history.add(&quot;I have killed all spiders in the magic school basement and got a mythical egg.&quot;);</span>
+<span class="fc" id="L221">			return history;</span>
+		}
+
+		// we can be here only if player accepted this quest.
+<span class="fc" id="L225">		history.add(&quot;I do agree to help Morgrin.&quot;);</span>
+		// checking which spiders player killed.
+<span class="fc" id="L227">		final boolean sp1 = &quot;spider&quot;.equals(player.getQuest(QUEST_SLOT, 1));</span>
+<span class="fc" id="L228">		final boolean sp2 = &quot;poisonous spider&quot;.equals(player.getQuest(QUEST_SLOT, 2));</span>
+<span class="fc" id="L229">		final boolean sp3 = &quot;giant spider&quot;.equals(player.getQuest(QUEST_SLOT, 3));</span>
+<span class="fc" id="L230">		final boolean sp = &quot;start&quot;.equals(player.getQuest(QUEST_SLOT, 0));</span>
+<span class="fc bfc" id="L231" title="All 2 branches covered.">		if (sp1) {</span>
+<span class="fc" id="L232">			history.add(&quot;I have killed a spider in the basement.&quot;);</span>
+		}
+<span class="fc bfc" id="L234" title="All 2 branches covered.">		if (sp2) {</span>
+<span class="fc" id="L235">			history.add(&quot;I have killed a poisonous spider in the basement.&quot;);</span>
+		}			
+<span class="fc bfc" id="L237" title="All 2 branches covered.">		if (sp3) {</span>
+<span class="fc" id="L238">			history.add(&quot;I have killed a giant spider in the basement.&quot;);</span>
+		}
+<span class="fc bfc" id="L240" title="All 6 branches covered.">		if (sp1 &amp;&amp; sp2 &amp;&amp; sp3) {</span>
+<span class="fc" id="L241">			history.add(&quot;I have killed all 3 spiders in the basement. Now I go back to Morgrin to fetch my reward.&quot;);</span>
+		}
+		
+		// here is support for old-style quest
+<span class="fc bfc" id="L245" title="All 2 branches covered.">		if (sp) {</span>
+<span class="fc" id="L246">			final boolean osp1 = player.hasKilled(&quot;spider&quot;);</span>
+<span class="fc" id="L247">			final boolean osp2 = player.hasKilled(&quot;poisonous spider&quot;);</span>
+<span class="fc" id="L248">			final boolean osp3 = player.hasKilled(&quot;giant spider&quot;);</span>
+<span class="fc bfc" id="L249" title="All 2 branches covered.">			if (osp1) {</span>
+<span class="fc" id="L250">				history.add(&quot;I have killed a spider in the basement.&quot;);				</span>
+			}
+<span class="fc bfc" id="L252" title="All 2 branches covered.">			if (osp2) {</span>
+<span class="fc" id="L253">				history.add(&quot;I have killed a poisonous spider in the basement.&quot;);				</span>
+			}
+<span class="fc bfc" id="L255" title="All 2 branches covered.">			if (osp3) {</span>
+<span class="fc" id="L256">				history.add(&quot;I have killed a giant spider in the basement.&quot;);				</span>
+			}
+<span class="fc bfc" id="L258" title="All 6 branches covered.">			if (osp1 &amp;&amp; osp2 &amp;&amp; osp3) {</span>
+<span class="fc" id="L259">				history.add(&quot;I have killed all 3 spiders in the basement. Now I go back to Morgrin to fetch my reward.&quot;);				</span>
+			}
+		}
+		
+<span class="fc" id="L263">		return history;		</span>
+	}
+	
+	@Override
+	public boolean isRepeatable(final Player player) {
+<span class="nc" id="L268">		return new AndCondition(new QuestStateStartsWithCondition(QUEST_SLOT,&quot;killed;&quot;),</span>
+				 new TimePassedCondition(QUEST_SLOT, 1, MathHelper.MINUTES_IN_ONE_WEEK)).fire(player,null, null);
+	}
+	
+	@Override
+	public boolean isCompleted(final Player player) {
+<span class="nc" id="L274">		return new QuestStateStartsWithCondition(QUEST_SLOT,&quot;killed;&quot;).fire(player, null, null);</span>
+	}
+
+	@Override
+	public String getNPCName() {
+<span class="nc" id="L279">		return &quot;Morgrin&quot;;</span>
+	}
+	
+	@Override
+	public String getRegion() {
+<span class="nc" id="L284">		return Region.FADO_CAVES;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

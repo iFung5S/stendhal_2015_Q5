@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>MoveableObject.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.actions.equip</a> &gt; <span class="el_source">MoveableObject.java</span></div><h1>MoveableObject.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2016 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.actions.equip;
+
+import games.stendhal.server.entity.Entity;
+import games.stendhal.server.entity.item.Corpse;
+import games.stendhal.server.entity.player.Player;
+
+import java.util.List;
+
+/**
+ * source or destination object.
+ * 
+ * @author hendrik
+ */
+public abstract class MoveableObject {
+
+	/** optional, parent item .*/
+	protected Entity parent;
+	/** the slot this item is in or should be placed into. */
+	protected String slot;
+	/** Player to notify about problems. */
+	protected final Player player;
+
+	/**
+	 * Creates a new MoveableObject.
+	 * 
+	 * @param player
+	 *            Player to notify about problems
+	 */
+
+<span class="fc" id="L41">	public MoveableObject(final Player player) {</span>
+<span class="fc" id="L42">		this.player = player;</span>
+<span class="fc" id="L43">	}</span>
+
+	/**
+	 * is this object valid?
+	 * 
+	 * @return true, if the action may be performed, false otherwise
+	 */
+	public abstract boolean isValid();
+
+	/**
+	 * is the owner of the slot in reach?
+	 * 
+	 * @param entity
+	 *            entity to compare to
+	 * @param distance
+	 *            max distance
+	 * @return true, if it is reachable, false otherwise
+	 */
+	public abstract boolean checkDistance(Entity entity, double distance);
+
+	/**
+	 * gets the name of the slot or null if there is none.
+	 * 
+	 * @return slot name
+	 */
+	String getSlot() {
+<span class="fc" id="L69">		return slot;</span>
+	}
+
+	/**
+	 * returns log information.
+	 *
+	 * @return String[2]
+	 */
+	public abstract String[] getLogInfo();
+
+	/**
+	 * Checks if RPobject is one the valid classes.
+	 * @param validClasses
+	 * @return true if the rpobject is one of the classes in &lt;i&gt;validClasses&lt;/i&gt;.
+	 */
+	public boolean checkClass(final List&lt;Class&lt; ? &gt;&gt; validClasses) {
+<span class="fc bfc" id="L85" title="All 2 branches covered.">		if (parent != null) {</span>
+<span class="fc" id="L86">			return EquipUtil.isCorrectClass(validClasses, parent);</span>
+		}
+<span class="fc" id="L88">		return true;</span>
+	}
+
+	/**
+	 * Checks if container is a corpse.
+	 * @return true if container is a corpse.
+	 */
+	public boolean isContainerCorpse() {
+<span class="pc bpc" id="L96" title="1 of 2 branches missed.">		if (parent != null) {</span>
+<span class="fc" id="L97">			final Class&lt; ? &gt; clazz = Corpse.class;</span>
+<span class="fc" id="L98">			return (clazz.isInstance(parent));</span>
+		}
+<span class="nc" id="L100">		return false;</span>
+	}
+
+	boolean isInvalidMoveable(final Player player, final double maxDistance, final List&lt;Class&lt; ? &gt;&gt; containerClassesList) {
+<span class="pc bpc" id="L104" title="1 of 6 branches missed.">		return !isValid() || !checkDistance(player, maxDistance) || (!checkClass(containerClassesList));</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

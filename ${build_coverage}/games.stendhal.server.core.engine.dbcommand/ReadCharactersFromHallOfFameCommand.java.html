@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ReadCharactersFromHallOfFameCommand.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.core.engine.dbcommand</a> &gt; <span class="el_source">ReadCharactersFromHallOfFameCommand.java</span></div><h1>ReadCharactersFromHallOfFameCommand.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                    (C) Copyright 2007-2010 - Stendhal                   *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.core.engine.dbcommand;
+
+import games.stendhal.server.core.engine.db.StendhalHallOfFameDAO;
+
+import java.sql.SQLException;
+import java.util.LinkedList;
+import java.util.List;
+
+import marauroa.server.db.DBTransaction;
+import marauroa.server.db.command.AbstractDBCommand;
+import marauroa.server.game.db.DAORegister;
+
+/**
+ * Reads the points from the hall of fame.
+ *
+ * @author hendrik
+ */
+public class ReadCharactersFromHallOfFameCommand extends AbstractDBCommand {
+	private final String fametype;
+
+	private List&lt;String&gt; characterNames;
+<span class="fc" id="L33">	private int max = 10;</span>
+<span class="fc" id="L34">	private boolean ascending = true;</span>
+
+	/**
+	 * creates a new ReadHallOfFamePointsCommand
+	 *
+	 * @param fametype type of fame
+	 * @param max maximum number of returned characters
+	 * @param ascending sort ascending or descending
+	 */
+<span class="fc" id="L43">	public ReadCharactersFromHallOfFameCommand(String fametype, int max, boolean ascending) {</span>
+<span class="fc" id="L44">		this.fametype = fametype;</span>
+<span class="fc" id="L45">		this.max = max;</span>
+<span class="fc" id="L46">		this.ascending = ascending;</span>
+<span class="fc" id="L47">	}</span>
+
+	@Override
+	public void execute(DBTransaction transaction) throws SQLException {
+<span class="fc" id="L51">		StendhalHallOfFameDAO dao = DAORegister.get().get(StendhalHallOfFameDAO.class);</span>
+<span class="fc" id="L52">		characterNames = dao.getCharactersByFametype(transaction, fametype, max, ascending);</span>
+<span class="fc" id="L53">	}</span>
+
+	/**
+	 * gets the best characters.
+	 *
+	 * @return list of character names
+	 */
+	public List&lt;String&gt; getNames() {
+<span class="nc" id="L61">		return new LinkedList&lt;String&gt;(characterNames);</span>
+	}
+
+	/**
+	 * returns a string suitable for debug output of this DBCommand.
+	 *
+	 * @return debug string
+	 */
+	@Override
+	public String toString() {
+<span class="fc" id="L71">		return &quot;ReadCharactersFromHallOfFameCommand [fametype=&quot; + fametype</span>
+				+ &quot;, characterNames=&quot; + characterNames + &quot;, max=&quot; + max
+				+ &quot;, ascending=&quot; + ascending + &quot;]&quot;;
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

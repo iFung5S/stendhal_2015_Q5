@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>RatKidsNPCBase.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.npc</a> &gt; <span class="el_source">RatKidsNPCBase.java</span></div><h1>RatKidsNPCBase.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.npc;
+
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.entity.npc.condition.GreetingMatchesNameCondition;
+import games.stendhal.server.entity.player.Player;
+
+import java.util.Arrays;
+import java.util.List;
+
+// import org.apache.log4j.Logger;
+
+/**
+ * Base class for rat kid NPCs.
+ * 
+ * @author Norien
+ */
+
+// TODO: replace this base class with the normal way quests actions are written, join RatKidsNPCBase and GhostNPCBase, split XXXGreetingAction to use ChatConditions
+public abstract class RatKidsNPCBase extends SpeakerNPC {
+
+	//	private static Logger logger = Logger.getLogger(RatKidsBase.class);
+	private static final String QUEST_SLOT = &quot;find_rat_kids&quot;;
+
+	public RatKidsNPCBase(final String name) {
+<span class="fc" id="L37">		super(name);</span>
+<span class="fc" id="L38">	}</span>
+
+	@Override
+	protected abstract void createPath();
+
+	@Override
+	protected void createDialog() {
+<span class="fc" id="L45">		add(ConversationStates.IDLE, ConversationPhrases.GREETING_MESSAGES,</span>
+				new GreetingMatchesNameCondition(getName()), true,
+				ConversationStates.IDLE, null, new RatKidGreetingAction());
+<span class="fc" id="L48">	}</span>
+
+	/**
+	 * ChatAction common to all rat kid NPCs.
+	 * 
+	 * @author Norien
+	 */
+<span class="fc" id="L55">	private static class RatKidGreetingAction implements ChatAction {</span>
+		@Override
+		public void fire(final Player player, final Sentence sentence, final EventRaiser npc) {
+<span class="pc bpc" id="L58" title="1 of 4 branches missed.">			if (!player.hasQuest(QUEST_SLOT) || player.isQuestInState(QUEST_SLOT, &quot;rejected&quot;)) {</span>
+<span class="fc" id="L59">				npc.say(&quot;Mother says I mustn't talk to strangers.&quot;);</span>
+			} else {
+<span class="fc" id="L61">				final String npcQuestText = player.getQuest(QUEST_SLOT);</span>
+<span class="fc" id="L62">				final String[] npcDoneText = npcQuestText.split(&quot;:&quot;);</span>
+
+				final String lookStr;
+				final String saidStr;
+<span class="pc bpc" id="L66" title="1 of 2 branches missed.">				if (npcDoneText.length &gt; 1) {</span>
+<span class="fc" id="L67">					lookStr = npcDoneText[0].toLowerCase();</span>
+<span class="fc" id="L68">					saidStr = npcDoneText[1].toLowerCase();			 </span>
+
+<span class="fc" id="L70">					final List&lt;String&gt; list = Arrays.asList(lookStr.split(&quot;;&quot;));</span>
+<span class="fc" id="L71">					String npcName = npc.getName().toLowerCase();			</span>
+<span class="pc bpc" id="L72" title="1 of 4 branches missed.">					if (list.contains(npcName) || player.isQuestCompleted(QUEST_SLOT)) {</span>
+<span class="fc" id="L73">						npc.say(&quot;Oh hello again.&quot;);</span>
+<span class="pc bpc" id="L74" title="1 of 2 branches missed.">					} else if ( npcDoneText.length &gt; 1) {</span>
+<span class="fc" id="L75">						player.setQuest(QUEST_SLOT, lookStr + &quot;;&quot; + npcName</span>
+								+ &quot;:&quot; + saidStr);//
+<span class="fc" id="L77">						npc.say(&quot;Hello my name is &quot; + npc.getName() + &quot;. Please tell mother that I am ok.&quot;);</span>
+<span class="fc" id="L78">						player.addXP(500);</span>
+					} else {
+<span class="nc" id="L80">						npc.say(&quot;Mother says I mustn't talk to strangers.&quot;);</span>
+					}
+				}
+			}
+<span class="fc" id="L84">		}</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

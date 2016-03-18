@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Gate2DView.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui.j2d.entity</a> &gt; <span class="el_source">Gate2DView.java</span></div><h1>Gate2DView.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui.j2d.entity;
+
+import games.stendhal.client.ZoneInfo;
+import games.stendhal.client.entity.ActionType;
+import games.stendhal.client.entity.IEntity;
+import games.stendhal.client.sprite.Sprite;
+import games.stendhal.client.sprite.SpriteCache;
+import games.stendhal.client.sprite.SpriteStore;
+
+import java.awt.Graphics2D;
+import java.util.HashMap;
+import java.util.List;
+
+import marauroa.common.game.RPObject;
+
+import org.apache.log4j.Logger;
+
+<span class="nc" id="L30">class Gate2DView extends Entity2DView&lt;IEntity&gt; {</span>
+<span class="nc" id="L31">	private static final HashMap&lt;String, Sprite[]&gt; sprites = new HashMap&lt;String, Sprite[]&gt;();</span>
+
+	private Sprite openSprite, closedSprite;
+	
+	/**
+	 * Get the zone color adjusted sprite
+	 * 
+	 * @param base base sprite
+	 * @return color adjusted sprite, or original sprite if no adjusting is
+	 * 	needed
+	 */
+	private Sprite getModifiedSprite(Sprite base) {
+<span class="nc" id="L43">		ZoneInfo info = ZoneInfo.get();</span>
+<span class="nc bnc" id="L44" title="All 4 branches missed.">		if ((info.getColorMethod() == null) || (info.getZoneColor() == null)) {</span>
+<span class="nc" id="L45">			return base;</span>
+		}
+		
+<span class="nc" id="L48">		SpriteStore store = SpriteStore.get();</span>
+<span class="nc" id="L49">		String ref = store.createModifiedRef(base.getReference().toString(),</span>
+				info.getZoneColor(), info.getColorMethod());
+<span class="nc" id="L51">		Sprite rval = SpriteCache.get().get(ref);</span>
+<span class="nc bnc" id="L52" title="All 2 branches missed.">		if (rval == null) {</span>
+<span class="nc" id="L53">			rval = store.modifySprite(base, info.getZoneColor(),</span>
+					info.getColorMethod(), ref);
+		}
+		
+<span class="nc" id="L57">		return rval;</span>
+	}
+
+
+	@Override
+	protected void buildActions(final List&lt;String&gt; list) {
+<span class="nc" id="L63">		list.add(ActionType.USE.getRepresentation());</span>
+<span class="nc" id="L64">	}</span>
+
+	@Override
+	protected void buildRepresentation(IEntity entity) {
+<span class="nc" id="L68">		final RPObject rpobject = entity.getRPObject();</span>
+<span class="nc" id="L69">		final String baseImage = rpobject.get(&quot;image&quot;);</span>
+<span class="nc" id="L70">		final String orientation = rpobject.get(&quot;orientation&quot;); </span>
+		
+<span class="nc" id="L72">		SpriteStore store = SpriteStore.get();</span>
+		
+<span class="nc" id="L74">		String imageName = &quot;data/sprites/doors/&quot; + baseImage + &quot;_&quot; + orientation +&quot;.png&quot;;</span>
+<span class="nc" id="L75">		Sprite[] s = sprites.get(imageName);</span>
+<span class="nc bnc" id="L76" title="All 2 branches missed.">		if (s == null) {</span>
+<span class="nc" id="L77">			Sprite sprite = store.getSprite(imageName);</span>
+<span class="nc" id="L78">			s = new Sprite[2];</span>
+<span class="nc" id="L79">			s[0] = sprite.createRegion(0, 0, 96, 96, imageName + &quot;[0]&quot;);</span>
+<span class="nc" id="L80">			s[1] = sprite.createRegion(0, 96, 96, 96, imageName + &quot;[1]&quot;);</span>
+<span class="nc" id="L81">			sprites.put(imageName, s);</span>
+		}
+		
+<span class="nc" id="L84">		openSprite = getModifiedSprite(s[0]);</span>
+<span class="nc" id="L85">		closedSprite = getModifiedSprite(s[1]);</span>
+<span class="nc" id="L86">	}</span>
+
+	@Override
+	public void onAction() {
+<span class="nc" id="L90">		onAction(ActionType.USE);</span>
+<span class="nc" id="L91">	}</span>
+
+	@Override
+	public void onAction(final ActionType at) {
+<span class="nc bnc" id="L95" title="All 2 branches missed.">		if (isReleased()) {</span>
+<span class="nc" id="L96">			Logger.getLogger(Gate2DView.class).debug(</span>
+					&quot;View already released - action not processed: &quot; + at);
+<span class="nc" id="L98">			return;</span>
+		}
+
+<span class="nc bnc" id="L101" title="All 2 branches missed.">		switch (at) {</span>
+		case USE:
+<span class="nc" id="L103">			at.send(at.fillTargetInfo(entity));</span>
+<span class="nc" id="L104">			break;</span>
+		default:
+<span class="nc" id="L106">			super.onAction(at);</span>
+<span class="nc" id="L107">			break;</span>
+		}
+<span class="nc" id="L109">	}</span>
+	
+	/**
+	 * Check if the gate is open.
+	 * 
+	 * @return &lt;code&gt;true&lt;/code&gt; iff the gate is open
+	 */
+	private boolean isOpen() {
+<span class="nc bnc" id="L117" title="All 2 branches missed.">		return entity.getResistance() == 0;</span>
+	}
+	
+	@Override
+	protected void drawEntity(final Graphics2D g2d, final int x, final int y, final int width,
+			final int height) {
+<span class="nc bnc" id="L123" title="All 2 branches missed.">		if (isOpen()) {</span>
+<span class="nc" id="L124">			openSprite.draw(g2d, x - 32, y - 32);</span>
+		} else {
+<span class="nc" id="L126">			closedSprite.draw(g2d, x - 32, y - 32);</span>
+		}
+<span class="nc" id="L128">	}</span>
+
+
+	@Override
+	public int getZIndex() {
+<span class="nc" id="L133">		return 5000;</span>
+	}
+}
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

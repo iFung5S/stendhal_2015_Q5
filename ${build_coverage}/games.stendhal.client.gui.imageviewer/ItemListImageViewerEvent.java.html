@@ -1,0 +1,339 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ItemListImageViewerEvent.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui.imageviewer</a> &gt; <span class="el_source">ItemListImageViewerEvent.java</span></div><h1>ItemListImageViewerEvent.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui.imageviewer;
+
+import games.stendhal.client.GameScreen;
+import games.stendhal.client.gui.ScrolledViewport;
+import games.stendhal.client.gui.textformat.HTMLBuilder;
+import games.stendhal.client.gui.textformat.StringFormatter;
+import games.stendhal.client.gui.textformat.TextAttributeSet;
+import games.stendhal.client.sprite.Sprite;
+import games.stendhal.client.sprite.SpriteStore;
+
+import java.awt.BorderLayout;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.font.TextAttribute;
+import java.util.Arrays;
+import java.util.Enumeration;
+import java.util.List;
+import java.util.Map;
+
+import javax.swing.BorderFactory;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JTable;
+import javax.swing.border.Border;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.TableCellRenderer;
+import javax.swing.table.TableColumn;
+import javax.swing.table.TableColumnModel;
+
+import marauroa.common.game.RPEvent;
+import marauroa.common.game.RPObject;
+import marauroa.common.game.RPSlot;
+
+/**
+ * Opens a styled internal frame displaying an item list.
+ * 
+ * @author hendrik
+ */
+public final class ItemListImageViewerEvent extends ViewPanel {
+	private static final int PAD = 5;
+	private static final long serialVersionUID = -6114543463410539585L;
+	/** Formatter for item name underlining. */
+<span class="nc" id="L57">	private final StringFormatter&lt;Map&lt;TextAttribute, Object&gt;, TextAttributeSet&gt; formatter</span>
+		= new StringFormatter&lt;Map&lt;TextAttribute, Object&gt;, TextAttributeSet&gt;();
+	/** Default attributes for the item name formatter (empty). */
+<span class="nc" id="L60">	private final TextAttributeSet defaultAttrs = new TextAttributeSet();</span>
+
+	private final RPEvent event;
+
+	/**
+	 * Creates a new ItemListImageViewerEvent.
+	 *
+	 * @param event event
+	 */
+<span class="nc" id="L69">	public ItemListImageViewerEvent(RPEvent event) {</span>
+<span class="nc" id="L70">		this.event = event;</span>
+		
+		// Just formatting § for now. Nothing should currently use #
+<span class="nc" id="L73">		TextAttributeSet set = new TextAttributeSet();</span>
+<span class="nc" id="L74">		set.setAttribute(TextAttribute.UNDERLINE, &quot;u&quot;);</span>
+<span class="nc" id="L75">		formatter.addStyle('§', set);</span>
+<span class="nc" id="L76">	}</span>
+
+	/**
+	 * Shows the window.
+	 */
+	public void view() {
+<span class="nc" id="L82">		new ImageViewWindow(event.get(&quot;title&quot;), this);</span>
+<span class="nc" id="L83">	}</span>
+
+
+	@Override
+	public void prepareView(final Dimension maxSize) {
+<span class="nc" id="L88">		Dimension screenSize = GameScreen.get().getSize();</span>
+<span class="nc" id="L89">		int maxPreferredWidth = screenSize.width - 80;</span>
+<span class="nc bnc" id="L90" title="All 2 branches missed.">		if (event.has(&quot;caption&quot;)) {</span>
+<span class="nc" id="L91">			JLabel caption = new JLabel(&quot;&lt;html&gt;&lt;div width=&quot; + (maxPreferredWidth</span>
+					- 10) + &quot;&gt;&quot; + event.get(&quot;caption&quot;) + &quot;&lt;/div&gt;&lt;/html&gt;&quot;);
+<span class="nc" id="L93">			caption.setBorder(BorderFactory.createEmptyBorder(PAD, PAD, PAD, PAD));</span>
+<span class="nc" id="L94">			add(caption, BorderLayout.NORTH);</span>
+		}
+		
+<span class="nc" id="L97">		JTable table = createTable(maxPreferredWidth);</span>
+		// Prevents selection
+<span class="nc" id="L99">		table.setEnabled(false);</span>
+<span class="nc" id="L100">		table.setFillsViewportHeight(true);</span>
+<span class="nc" id="L101">		table.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);</span>
+<span class="nc" id="L102">		TableColumn col = table.getColumnModel().getColumn(0);</span>
+<span class="nc" id="L103">		col.setCellRenderer(new SpriteCellRenderer());</span>
+		
+<span class="nc" id="L105">		col = table.getColumnModel().getColumn(1);</span>
+<span class="nc" id="L106">		DefaultTableCellRenderer r = new DefaultTableCellRenderer();</span>
+<span class="nc" id="L107">		r.setHorizontalAlignment(JLabel.CENTER);</span>
+<span class="nc" id="L108">		col.setCellRenderer(r);</span>
+		
+<span class="nc" id="L110">		col = table.getColumnModel().getColumn(2);</span>
+<span class="nc" id="L111">		col.setCellRenderer(new DescriptionCellRenderer());</span>
+		
+<span class="nc" id="L113">		HeaderRenderer hr = new HeaderRenderer();</span>
+<span class="nc" id="L114">		Enumeration&lt;TableColumn&gt; cols = table.getColumnModel().getColumns();</span>
+<span class="nc bnc" id="L115" title="All 2 branches missed.">		while (cols.hasMoreElements()) {</span>
+<span class="nc" id="L116">			TableColumn c = cols.nextElement();</span>
+<span class="nc" id="L117">			c.setHeaderRenderer(hr);</span>
+<span class="nc" id="L118">		}</span>
+		
+<span class="nc" id="L120">		adjustColumnWidths(table);</span>
+<span class="nc" id="L121">		adjustRowHeights(table);</span>
+		
+<span class="nc" id="L123">		ScrolledViewport viewPort = new ScrolledViewport(table);</span>
+		/*
+		 * maxPreferredWidth is incorrect, but java does not seem to support
+		 * max-width property for div's, so all the cells report the same
+		 * preferred width anyway.
+		 */
+<span class="nc" id="L129">		viewPort.getComponent().setPreferredSize(new Dimension(maxPreferredWidth,</span>
+				Math.min(screenSize.height - 100, table.getPreferredSize().height
+						+ hr.getPreferredSize().height + 4 * PAD)));
+<span class="nc" id="L132">		viewPort.getComponent().setBackground(table.getBackground());</span>
+<span class="nc" id="L133">		add(viewPort.getComponent(), BorderLayout.CENTER);</span>
+		
+<span class="nc" id="L135">		setVisible(true);</span>
+<span class="nc" id="L136">	}</span>
+	
+	/**
+	 * Adjust the column widths of a table based on the table contents.
+	 * 
+	 * @param table adjusted table
+	 */
+	private void adjustColumnWidths(JTable table) {
+<span class="nc" id="L144">		TableColumnModel model = table.getColumnModel();</span>
+<span class="nc bnc" id="L145" title="All 2 branches missed.">		for (int column = 0; column &lt; table.getColumnCount(); column++) {</span>
+<span class="nc" id="L146">			TableColumn tc = model.getColumn(column);</span>
+<span class="nc" id="L147">			int width = tc.getWidth();</span>
+<span class="nc bnc" id="L148" title="All 2 branches missed.">			for (int row = 0; row &lt; table.getRowCount(); row++) {</span>
+<span class="nc" id="L149">				Component comp = table.prepareRenderer(table.getCellRenderer(row, column), row, column);</span>
+<span class="nc" id="L150">				width = Math.max(width, comp.getPreferredSize().width);</span>
+			}
+			
+<span class="nc" id="L153">			tc.setPreferredWidth(width);</span>
+		}
+<span class="nc" id="L155">	}</span>
+	
+	/**
+	 * Adjust the row heights of a table based on the table contents.
+	 * 
+	 * @param table adjusted table
+	 */
+	private void adjustRowHeights(JTable table) {
+<span class="nc bnc" id="L163" title="All 2 branches missed.">		for (int row = 0; row &lt; table.getRowCount(); row++) {</span>
+<span class="nc" id="L164">			int rowHeight = table.getRowHeight();</span>
+
+<span class="nc bnc" id="L166" title="All 2 branches missed.">			for (int column = 0; column &lt; table.getColumnCount(); column++) {</span>
+<span class="nc" id="L167">				Component comp = table.prepareRenderer(table.getCellRenderer(row, column), row, column);</span>
+<span class="nc" id="L168">				rowHeight = Math.max(rowHeight, comp.getPreferredSize().height);</span>
+			}
+
+<span class="nc" id="L171">			table.setRowHeight(row, rowHeight);</span>
+		}
+<span class="nc" id="L173">	}</span>
+	
+	/**
+	 * Renderer used for the header row items.
+	 */
+	private static class HeaderRenderer extends JPanel implements TableCellRenderer {
+<span class="nc" id="L179">		private final JLabel header = new JLabel();</span>
+		
+		/**
+		 * Create a new HeaderRenderer.
+		 */
+<span class="nc" id="L184">		HeaderRenderer() {</span>
+<span class="nc" id="L185">			add(header);</span>
+<span class="nc" id="L186">			header.setBorder(null);</span>
+<span class="nc" id="L187">		}</span>
+
+		@Override
+		public Component getTableCellRendererComponent(JTable table, 
+				Object value, boolean isSelected, boolean hasFocus, int row,
+				int column) {
+<span class="nc" id="L193">			header.setText(value.toString());</span>
+<span class="nc" id="L194">			return this;</span>
+		}	
+	}
+	
+	/**
+	 * Renderer used for the item description cells.
+	 */
+<span class="nc" id="L201">	private static class DescriptionCellRenderer extends DefaultTableCellRenderer {</span>
+<span class="nc" id="L202">		private final Border border = BorderFactory.createEmptyBorder(PAD, PAD, PAD, PAD);</span>
+		
+		@Override
+		public Component getTableCellRendererComponent(JTable table,
+				Object value, boolean isSelected, boolean hasFocus, int row,
+				int column) {
+<span class="nc" id="L208">			super.getTableCellRendererComponent(table, value, isSelected,</span>
+					hasFocus, row, column);
+<span class="nc" id="L210">			setBorder(border);</span>
+<span class="nc" id="L211">			return this;</span>
+		}
+	}
+	
+	/**
+	 * Renderer for the item sprite cells.
+	 */
+<span class="nc" id="L218">	private static class SpriteCellRenderer extends JComponent implements TableCellRenderer {</span>
+		private Sprite sprite;
+		
+		@Override
+		public Component getTableCellRendererComponent(JTable table, Object color,
+				boolean isSelected, boolean hasFocus, int row, int col) {
+<span class="nc" id="L224">			Object obj = table.getValueAt(row, col);</span>
+<span class="nc bnc" id="L225" title="All 2 branches missed.">			if (obj instanceof Sprite) {</span>
+<span class="nc" id="L226">				sprite = (Sprite) obj;</span>
+			} else {
+<span class="nc" id="L228">				sprite = null;</span>
+			}
+<span class="nc" id="L230">			return this;</span>
+		}
+		
+		@Override
+		public Dimension getPreferredSize() {
+<span class="nc" id="L235">			Dimension d = new Dimension();</span>
+<span class="nc bnc" id="L236" title="All 2 branches missed.">			if (sprite != null) {</span>
+<span class="nc" id="L237">				d.width = sprite.getWidth() + 2 * PAD;</span>
+<span class="nc" id="L238">				d.height = sprite.getHeight() + 2 * PAD;</span>
+			}
+<span class="nc" id="L240">			return d;</span>
+		}
+		
+		@Override
+		protected void paintComponent(Graphics g) {
+<span class="nc bnc" id="L245" title="All 2 branches missed.">			if (sprite != null) {</span>
+<span class="nc" id="L246">				sprite.draw(g, (getWidth() - sprite.getWidth()) / 2, (getHeight() - sprite.getHeight()) / 2);</span>
+			}
+<span class="nc" id="L248">		}</span>
+	}
+	
+	/**
+	 * Create a JTable based on the event contents.
+	 * 
+	 * @param maxPreferredWidth maximum preferred width of the entire table
+	 * @return new table
+	 */
+	private JTable createTable(int maxPreferredWidth) {
+<span class="nc" id="L258">		String[] columnNames = { &quot;Item&quot;, &quot;Price&quot;, &quot;Description&quot; };</span>
+<span class="nc" id="L259">		Object[][] data = new Object[event.getSlot(&quot;content&quot;).size()][];</span>
+<span class="nc" id="L260">		RPSlot slot = event.getSlot(&quot;content&quot;);</span>
+<span class="nc" id="L261">		int i = 0;</span>
+<span class="nc bnc" id="L262" title="All 2 branches missed.">		for (RPObject item : slot) {</span>
+<span class="nc" id="L263">			data[i] = createDataRow(item, maxPreferredWidth);</span>
+<span class="nc" id="L264">			i++;</span>
+<span class="nc" id="L265">		}</span>
+<span class="nc" id="L266">		return new JTable(data, columnNames);</span>
+	}
+	
+	/**
+	 * Create a table data row from item data.
+	 * 
+	 * @param item item to use for the row contents
+	 * @param maxPreferredWidth maximum preferred width of the entire table
+	 * @return table content row
+	 */
+	private Object[] createDataRow(RPObject item, int maxPreferredWidth) {
+<span class="nc" id="L277">		Object[] rval = new Object[3];</span>
+<span class="nc" id="L278">		rval[0] = getItemSprite(item);</span>
+<span class="nc" id="L279">		rval[1] = getFormattedPrice(item);</span>
+		
+<span class="nc" id="L281">		StringBuilder html = new StringBuilder(&quot;&lt;html&gt;&lt;div width=&quot;);</span>
+<span class="nc" id="L282">		html.append(maxPreferredWidth - 170);</span>
+<span class="nc" id="L283">		html.append('&gt;');</span>
+<span class="nc" id="L284">		String text = item.get(&quot;description_info&quot;);</span>
+<span class="nc" id="L285">		HTMLBuilder build = new HTMLBuilder();</span>
+<span class="nc" id="L286">		formatter.format(text, defaultAttrs, build);</span>
+<span class="nc" id="L287">		html.append(build.toHTML());</span>
+<span class="nc" id="L288">		html.append(&quot;&lt;/div&gt;&lt;/html&gt;&quot;);</span>
+<span class="nc" id="L289">		rval[2] = html.toString();</span>
+<span class="nc" id="L290">		return rval;</span>
+	}
+
+	/**
+	 * Formats the price depending on its sign.
+	 *
+	 * @param item representing an item to display 
+	 * @return html code to display price
+	 */
+	private String getFormattedPrice(RPObject item) {
+<span class="nc" id="L300">		String price = &quot;&quot;;</span>
+<span class="nc bnc" id="L301" title="All 2 branches missed.">		if (item.has(&quot;price&quot;)) {</span>
+<span class="nc" id="L302">			int priceInt = item.getInt(&quot;price&quot;);</span>
+<span class="nc" id="L303">			price = &quot;&lt;html&gt;&lt;span style=\&quot;color: &quot;;</span>
+<span class="nc bnc" id="L304" title="All 2 branches missed.">			if (priceInt &lt; 0) {</span>
+<span class="nc" id="L305">				price = price + &quot;#FFFFFF\&quot;&gt;&quot;;</span>
+			} else {
+<span class="nc" id="L307">				price = price + &quot;#00FF00\&quot;&gt;&quot;;</span>
+			}
+<span class="nc" id="L309">			price = price + Math.abs(priceInt) + &quot;&lt;/span&gt;&lt;/html&gt;&quot;;</span>
+		}
+<span class="nc" id="L311">		return price;</span>
+	}
+	
+	/**
+	 * Get a sprite for an item.
+	 * 
+	 * @param item item to fetch sprite for
+	 * @return item sprite
+	 */
+	private Sprite getItemSprite(RPObject item) {
+<span class="nc" id="L321">		List&lt;String&gt; fishes = Arrays.asList(&quot;arctic_char&quot;, &quot;clown-fish&quot;, &quot;cod&quot;,</span>
+				&quot;mackerel&quot;, &quot;perch&quot;, &quot;roach&quot;, &quot;surgeonfish&quot;, &quot;trout&quot;, &quot;red-lionfish&quot;, &quot;smoked cod&quot;, &quot;smoked trout&quot;);
+<span class="nc" id="L323">		String itemSubclass = item.get(&quot;subclass&quot;);</span>
+<span class="nc bnc" id="L324" title="All 2 branches missed.">		for (String t:fishes) {</span>
+<span class="nc bnc" id="L325" title="All 2 branches missed.">			if (t.equals(itemSubclass)) {</span>
+<span class="nc" id="L326">				itemSubclass = &quot;unknown_fish&quot;;</span>
+			}
+<span class="nc" id="L328">		}</span>
+<span class="nc" id="L329">		String itemName = item.get(&quot;class&quot;) + &quot;/&quot; + itemSubclass;</span>
+<span class="nc" id="L330">		String imagePath = &quot;/data/sprites/items/&quot; + itemName + &quot;.png&quot;;</span>
+		
+<span class="nc" id="L332">		Sprite sprite = SpriteStore.get().getSprite(imagePath);</span>
+<span class="nc bnc" id="L333" title="All 2 branches missed.">		if (sprite.getWidth() &gt; sprite.getHeight()) {</span>
+<span class="nc" id="L334">			sprite = SpriteStore.get().getAnimatedSprite(sprite, 100);</span>
+		}
+<span class="nc" id="L336">		return sprite;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

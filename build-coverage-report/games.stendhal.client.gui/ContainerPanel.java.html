@@ -1,0 +1,405 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ContainerPanel.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui</a> &gt; <span class="el_source">ContainerPanel.java</span></div><h1>ContainerPanel.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui;
+
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.LayoutManager;
+import java.awt.Point;
+import java.awt.Transparency;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
+
+import javax.swing.JComponent;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+
+import games.stendhal.client.entity.IEntity;
+import games.stendhal.client.entity.Inspector;
+import games.stendhal.client.entity.factory.EntityMap;
+import games.stendhal.client.gui.layout.AnimatedLayout;
+import games.stendhal.client.gui.layout.SBoxLayout;
+import games.stendhal.client.gui.wt.core.WtWindowManager;
+import marauroa.common.game.RPSlot;
+/**
+ * A wrapper container for WtPanels outside the game screen.
+ */
+class ContainerPanel extends JScrollPane implements Inspector, InternalManagedWindow.WindowDragListener {
+	/** Property name of the stored window order. */
+	private static final String WINDOW_ORDER_PROPERTY = &quot;ui.window_order&quot;;
+	/**
+	 * Window order by name, including any windows that the user might not
+	 * have open but have stored order.
+	 */
+	private final List&lt;String&gt; windowOrder;
+	
+	/** The actual content panel. */
+	private final PhantomLayoutPanel panel;
+	/**
+	 * Temporary position of a dragged internal window in the content panel.
+	 */
+	private int draggedPosition;
+
+	/**
+	 * Create a ContainerPanel.
+	 */
+<span class="nc" id="L58">	public ContainerPanel() {</span>
+<span class="nc" id="L59">		panel = new PhantomLayoutPanel();</span>
+		/*
+		 * An ugly way to turn off animations on slow systems. As a side effect
+		 * gets turned off also on systems where the tranlucency has been
+		 * explicitly disabled.
+		 */
+<span class="nc bnc" id="L65" title="All 2 branches missed.">		if (TransparencyMode.TRANSPARENCY == Transparency.TRANSLUCENT) {</span>
+<span class="nc" id="L66">			panel.setLayout(new AnimatedLayout(new SBoxLayout(SBoxLayout.VERTICAL)));</span>
+		} else {
+<span class="nc" id="L68">			panel.setLayout(new SBoxLayout(SBoxLayout.VERTICAL));</span>
+		}
+<span class="nc" id="L70">		setViewportView(panel);</span>
+<span class="nc" id="L71">		setBorder(null);</span>
+<span class="nc" id="L72">		String orderProp = WtWindowManager.getInstance().getProperty(WINDOW_ORDER_PROPERTY, &quot;character;bag;keyring&quot;);</span>
+<span class="nc" id="L73">		windowOrder = new ArrayList&lt;String&gt;(Arrays.asList(orderProp.split(&quot;;&quot;)));</span>
+<span class="nc" id="L74">		getVerticalScrollBar().setUnitIncrement(16);</span>
+<span class="nc" id="L75">	}</span>
+	
+	/**
+	 * Set whether the panel should animate layout changes.
+	 * 
+	 * @param animate &lt;code&gt;true&lt;/code&gt; if layout changes should be animated,
+	 * otherwise &lt;code&gt;false&lt;/code&gt;
+	 */
+	public void setAnimated(boolean animate) {
+<span class="nc" id="L84">		LayoutManager layout = panel.getLayout();</span>
+<span class="nc bnc" id="L85" title="All 2 branches missed.">		if (layout instanceof AnimatedLayout) {</span>
+<span class="nc" id="L86">			((AnimatedLayout) layout).setAnimated(animate);</span>
+		}
+<span class="nc" id="L88">	}</span>
+	
+	/**
+	 * Add a component that should be repainted in the drawing loop. This is
+	 * not a particularly pretty way to do it, but individual timers for item
+	 * slots end up being more expensive, and the RepaintManager merges the
+	 * draw request anyway.
+	 * 
+	 * @param child component to add
+	 */
+	void addRepaintable(JComponent child) {
+<span class="nc" id="L99">		int position = panel.getComponentCount();</span>
+<span class="nc bnc" id="L100" title="All 2 branches missed.">		if (child instanceof InternalManagedWindow) {</span>
+<span class="nc" id="L101">			InternalManagedWindow window = (InternalManagedWindow) child;</span>
+<span class="nc" id="L102">			window.addWindowDragListener(this);</span>
+<span class="nc" id="L103">			position = findWindowPosition(window.getName());</span>
+		}
+		
+<span class="nc bnc" id="L106" title="All 2 branches missed.">		if (child instanceof Inspectable) {</span>
+<span class="nc" id="L107">			((Inspectable) child).setInspector(this);</span>
+		}
+		
+<span class="nc" id="L110">		child.setIgnoreRepaint(true);</span>
+<span class="nc" id="L111">		child.setAlignmentX(LEFT_ALIGNMENT);</span>
+<span class="nc" id="L112">		panel.add(child, position);</span>
+<span class="nc" id="L113">		panel.revalidate();</span>
+<span class="nc" id="L114">	}</span>
+	
+	/**
+	 * Find the correct position to add a named component.
+	 * 
+	 * @param window component name
+	 * @return component position
+	 */
+	private int findWindowPosition(String window) {
+<span class="nc" id="L123">		int loc = windowOrder.indexOf(window);</span>
+<span class="nc bnc" id="L124" title="All 2 branches missed.">		if (loc != -1) {</span>
+<span class="nc" id="L125">			int i = 0;</span>
+<span class="nc bnc" id="L126" title="All 2 branches missed.">			for (Component c : panel.getComponents()) {</span>
+<span class="nc bnc" id="L127" title="All 2 branches missed.">				if (c instanceof ManagedWindow) {</span>
+<span class="nc" id="L128">					String name = c.getName();</span>
+					// Added windows always have a valid position (see below)
+<span class="nc bnc" id="L130" title="All 2 branches missed.">					if (loc &lt; windowOrder.indexOf(name)) {</span>
+<span class="nc" id="L131">						return i;</span>
+					}
+				}
+<span class="nc" id="L134">				i++;</span>
+			}
+<span class="nc" id="L136">		} else {</span>
+			// Ensure that all added windows have a valid position
+<span class="nc" id="L138">			windowOrder.add(window);</span>
+<span class="nc" id="L139">			fireWindowOrderChanged();</span>
+		}
+		
+<span class="nc" id="L142">		return panel.getComponentCount();</span>
+	}
+	
+	/**
+	 * Saves the window order as a window manager property. Called when the
+	 * stored window order has changed.
+	 */
+	private void fireWindowOrderChanged() {
+<span class="nc" id="L150">		StringBuilder builder = new StringBuilder();</span>
+<span class="nc" id="L151">		Iterator&lt;String&gt; it = windowOrder.iterator();</span>
+<span class="nc bnc" id="L152" title="All 2 branches missed.">		while (it.hasNext()) {</span>
+<span class="nc" id="L153">			builder.append(it.next());</span>
+<span class="nc bnc" id="L154" title="All 2 branches missed.">			if (it.hasNext()) {</span>
+<span class="nc" id="L155">				builder.append(';');</span>
+			}
+		}
+		
+<span class="nc" id="L159">		WtWindowManager.getInstance().setProperty(WINDOW_ORDER_PROPERTY, builder.toString());</span>
+<span class="nc" id="L160">	}</span>
+	
+	/**
+	 * Check if the stored window order has changed, and call
+	 * {@link #fireWindowOrderChanged} if needed.
+	 * 
+	 * @param movedWindow name of the moved window
+	 */
+	private void checkWindowOrder(String movedWindow) {
+		// Name of the component preceding the dragged window.
+<span class="nc" id="L170">		String previous = null;</span>
+<span class="nc bnc" id="L171" title="All 2 branches missed.">		for (Component c : panel.getComponents()) {</span>
+			/*
+			 * Ignore invisible components. These can appear both in the order
+			 * list and in the panel. Such as the spells window when spells are
+			 * not available. Checking the order relative to these can result in
+			 * incorrect saved window order. Any match is fake, as these
+			 * components do not exist as far as the user is concerned.
+			 */
+<span class="nc bnc" id="L179" title="All 4 branches missed.">			if (c.isVisible() &amp;&amp; c instanceof ManagedWindow) {</span>
+<span class="nc" id="L180">				String name = ((ManagedWindow) c).getName();</span>
+<span class="nc bnc" id="L181" title="All 2 branches missed.">				if (movedWindow.equals(name)) {</span>
+					int newIndex;
+<span class="nc bnc" id="L183" title="All 2 branches missed.">					if (previous == null) {</span>
+						// Moved to first position
+<span class="nc" id="L185">						newIndex = 0;</span>
+					} else {
+						// Move after the preceding component
+<span class="nc" id="L188">						newIndex = windowOrder.indexOf(previous) + 1;</span>
+					}
+					
+					// Move to new location. Be careful about removing the old
+					// to avoid breaking the order
+<span class="nc" id="L193">					int oldIndex = windowOrder.indexOf(name);</span>
+<span class="nc bnc" id="L194" title="All 2 branches missed.">					if (newIndex &gt; oldIndex) {</span>
+<span class="nc" id="L195">						windowOrder.add(newIndex, name);	</span>
+<span class="nc" id="L196">						windowOrder.remove(name);</span>
+<span class="nc" id="L197">						fireWindowOrderChanged();</span>
+<span class="nc bnc" id="L198" title="All 2 branches missed.">					} else if (newIndex &lt; oldIndex) {</span>
+<span class="nc" id="L199">						windowOrder.remove(name);</span>
+<span class="nc" id="L200">						windowOrder.add(newIndex, name);</span>
+<span class="nc" id="L201">						fireWindowOrderChanged();</span>
+					}
+					// else old location, no need to change
+<span class="nc" id="L204">					return;</span>
+				}
+<span class="nc" id="L206">				previous = name;</span>
+			}
+		}
+<span class="nc" id="L209">	}</span>
+	
+	/**
+	 * Request repainting of all the child panels.
+	 */
+	void repaintChildren() {
+<span class="nc bnc" id="L215" title="All 2 branches missed.">		for (Component child : panel.getComponents()) {</span>
+<span class="nc" id="L216">			child.repaint();</span>
+		}
+<span class="nc" id="L218">	}</span>
+	
+	@Override
+	public Dimension getPreferredSize() {
+<span class="nc" id="L222">		Dimension size = panel.getPreferredSize();</span>
+<span class="nc" id="L223">		JComponent scrollBar = getVerticalScrollBar();</span>
+<span class="nc bnc" id="L224" title="All 2 branches missed.">		if (scrollBar.isVisible()) {</span>
+			/*
+			 * Try to claim a bit more space if the user enlarges the window and
+			 * there's not enough space sidewise.
+			 */
+<span class="nc" id="L229">			size.width += scrollBar.getWidth();</span>
+		}
+<span class="nc" id="L231">		return size;</span>
+	}
+
+	/**
+	 * Inspect an entity slot. Show the result within the ContainerPanel.
+	 * 
+	 * @param entity the inspected entity
+	 * @param content slot to be inspected
+	 * @param container previously created slot window for the inspected slot,
+	 * 	or &lt;code&gt;null&lt;/code&gt; if there's no such window
+	 * @param width number of slot columns
+	 * @param height number of slot rows
+	 * 
+	 * @return inspect window
+	 */
+	@Override
+	public SlotWindow inspectMe(IEntity entity, RPSlot content,
+			SlotWindow container, int width, int height) {
+<span class="nc bnc" id="L249" title="All 4 branches missed.">		if ((container != null) &amp;&amp; container.isVisible()) {</span>
+			// Nothing to do. 
+<span class="nc" id="L251">			return container;</span>
+		} else {
+<span class="nc" id="L253">			SlotWindow window = new SlotWindow(entity.getName(), width, height);</span>
+<span class="nc" id="L254">			window.setSlot(entity, content.getName());</span>
+<span class="nc" id="L255">			window.setAcceptedTypes(EntityMap.getClass(&quot;item&quot;, null, null));</span>
+<span class="nc" id="L256">			window.setVisible(true);</span>
+<span class="nc" id="L257">			addRepaintable(window);</span>
+<span class="nc" id="L258">			return window;</span>
+		}
+	}
+	
+	/**
+	 * Get the vertical center point of a component.
+	 * 
+	 * @param component component to be checked
+	 * @return the Y coordinate of the component center point
+	 */
+	private int componentYCenter(Component component) {
+<span class="nc" id="L269">		return component.getY() + component.getHeight() / 2;</span>
+	}
+	
+	@Override
+	public void windowDragged(Component component, Point point) {
+<span class="nc" id="L274">		int centerY = point.y + component.getHeight() / 2;</span>
+<span class="nc bnc" id="L275" title="All 2 branches missed.">		for (int i = 0; i &lt; panel.getComponentCount(); i++) {</span>
+<span class="nc" id="L276">			Component tmp = panel.getComponent(i);</span>
+<span class="nc bnc" id="L277" title="All 4 branches missed.">			if (tmp != component &amp;&amp; tmp != panel.getPhantom()) {</span>
+<span class="nc bnc" id="L278" title="All 4 branches missed.">				if ((draggedPosition &lt; i) &amp;&amp; (centerY &gt; componentYCenter(tmp))) {</span>
+<span class="nc" id="L279">					draggedPosition = i;</span>
+<span class="nc" id="L280">					panel.setComponentZOrder(panel.getPhantom(), draggedPosition);</span>
+<span class="nc" id="L281">					panel.revalidate();</span>
+<span class="nc" id="L282">					break;</span>
+<span class="nc bnc" id="L283" title="All 4 branches missed.">				} else if ((draggedPosition &gt;= i) &amp;&amp; (centerY &lt; componentYCenter(tmp))) {</span>
+<span class="nc" id="L284">					draggedPosition = i;</span>
+<span class="nc" id="L285">					panel.setComponentZOrder(panel.getPhantom(), draggedPosition);</span>
+<span class="nc" id="L286">					panel.revalidate();</span>
+<span class="nc" id="L287">					break;</span>
+				}
+			}
+		}
+<span class="nc" id="L291">	}</span>
+
+	@Override
+	public void startDrag(Component component) {
+<span class="nc" id="L295">		draggedPosition = panel.getComponentZOrder(component);</span>
+<span class="nc" id="L296">		panel.hideComponent(component);</span>
+<span class="nc" id="L297">		panel.setComponentZOrder(component, 0);</span>
+<span class="nc" id="L298">	}</span>
+
+	@Override
+	public void endDrag(Component component) {
+<span class="nc" id="L302">		panel.setComponentZOrder(component, draggedPosition);</span>
+<span class="nc" id="L303">		panel.revealComponent();</span>
+<span class="nc" id="L304">		panel.revalidate();</span>
+<span class="nc bnc" id="L305" title="All 2 branches missed.">		if (component instanceof ManagedWindow) {</span>
+<span class="nc" id="L306">			checkWindowOrder(((ManagedWindow) component).getName());</span>
+		}
+<span class="nc" id="L308">	}</span>
+	
+	/**
+	 * A container that can hide a contained component from the layout manager,
+	 * or anything else that uses {@link #getComponents} to access the
+	 * subcomponents, and present a {@link PhantomComponent} in its place.
+	 */
+<span class="nc" id="L315">	private static class PhantomLayoutPanel extends JPanel {</span>
+		/**
+		 * Currently hidden component, or &lt;code&gt;null&lt;/code&gt; if nothing is
+		 * hidden.
+		 */
+		Component hidden;
+		/**
+		 * The phantom component, or &lt;code&gt;null&lt;/code&gt; if nothing is hidden.
+		 */
+		PhantomComponent phantom;
+		
+		/**
+		 * Hide a specific component in {@link #getComponents} and present a
+		 * PhantomComponent in its place.
+		 * 
+		 * @param component component to hide
+		 */
+		void hideComponent(Component component) {
+<span class="nc" id="L333">			hidden = component;</span>
+<span class="nc" id="L334">			phantom = new PhantomComponent(hidden);</span>
+<span class="nc" id="L335">			add(phantom, getComponentZOrder(hidden));</span>
+<span class="nc" id="L336">		}</span>
+		
+		/**
+		 * Restore the visibility of the previously hidden component.
+		 */
+		void revealComponent() {
+<span class="nc" id="L342">			remove(phantom);</span>
+<span class="nc" id="L343">			hidden = null;</span>
+<span class="nc" id="L344">			phantom = null;</span>
+<span class="nc" id="L345">		}</span>
+		
+		/**
+		 * Get the current phantom component.
+		 * 
+		 * @return current phantom or &lt;code&gt;null&lt;/code&gt; if nothing is hidden
+		 */
+		Component getPhantom() {
+<span class="nc" id="L353">			return phantom;</span>
+		}
+		
+		@Override
+		public Component[] getComponents() {
+<span class="nc" id="L358">			Component[] components = super.getComponents();</span>
+<span class="nc bnc" id="L359" title="All 2 branches missed.">			if (phantom == null) {</span>
+<span class="nc" id="L360">				return components;</span>
+			}
+			
+			// Very inefficient, but this is not performance critical code
+<span class="nc" id="L364">			List&lt;Component&gt; list = new ArrayList&lt;Component&gt;(Arrays.asList(components));</span>
+<span class="nc" id="L365">			list.remove(hidden);</span>
+			
+<span class="nc" id="L367">			return list.toArray(new Component[list.size()]);</span>
+		}
+	}
+	
+	/**
+	 * A component that does nothing except takes space, with the same minimum,
+	 * maximum and preferred sizes as another component.
+	 */
+	private static class PhantomComponent extends JComponent {
+		/** The mimicked component. */
+		private final Component component;
+		
+		/**
+		 * Create a PhantomComponent.
+		 * 
+		 * @param component parent component, whose size constraints this
+		 * 	component should mimic
+		 */
+<span class="nc" id="L385">		PhantomComponent(Component component) {</span>
+<span class="nc" id="L386">			this.component = component;</span>
+<span class="nc" id="L387">		}</span>
+		
+		@Override
+		public Dimension getPreferredSize() {
+<span class="nc" id="L391">			return component.getPreferredSize();</span>
+		}
+		
+		@Override
+		public Dimension getMinimumSize() {
+<span class="nc" id="L396">			return component.getMinimumSize();</span>
+		}
+		
+		@Override
+		public Dimension getMaximumSize() {
+<span class="nc" id="L401">			return component.getMinimumSize();</span>
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

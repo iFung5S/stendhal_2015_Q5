@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>GameLoop.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client</a> &gt; <span class="el_source">GameLoop.java</span></div><h1>GameLoop.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2011 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
+
+import org.apache.log4j.Logger;
+
+/**
+ * Game loop thread.
+ */
+public class GameLoop {
+<span class="nc" id="L25">	private static final Logger logger = Logger.getLogger(GameLoop.class);</span>
+	
+<span class="nc" id="L27">	private static class Holder {</span>
+<span class="nc" id="L28">		static GameLoop instance = new GameLoop();</span>
+	}
+	
+	/** The actual game loop thread. */
+	private final Thread loopThread;
+	/** Main game loop content. Run at every cycle.*/
+	private PersistentTask persistentTask;
+	/** Run once tasks, requested by other threads. */
+<span class="nc" id="L36">	private final Queue&lt;Runnable&gt; temporaryTasks = new ConcurrentLinkedQueue&lt;Runnable&gt;();</span>
+	/** Tasks to be run when the game loop exits. */
+<span class="nc" id="L38">	private final List&lt;Runnable&gt; cleanupTasks = new ArrayList&lt;Runnable&gt;();</span>
+	/**
+	 * &lt;code&gt;true&lt;/code&gt; when the game loop should keep looping,
+	 * &lt;code&gt;false&lt;/code&gt;, when it should continue to the cleanup tasks. 
+	 */
+	private volatile boolean running;
+	
+	/**
+	 * Create a new GameLoop.
+	 */
+<span class="nc" id="L48">	private GameLoop() {</span>
+<span class="nc" id="L49">		loopThread = new Thread(new Runnable() {</span>
+			@Override
+			public void run() {
+<span class="nc" id="L52">				loop();</span>
+				// gameLoop runs until the client quit
+<span class="nc bnc" id="L54" title="All 2 branches missed.">				for (Runnable cleanup : cleanupTasks) {</span>
+<span class="nc" id="L55">					cleanup.run();</span>
+<span class="nc" id="L56">				}</span>
+<span class="nc" id="L57">			}</span>
+		}, &quot;Game loop&quot;);
+<span class="nc" id="L59">	}</span>
+	
+	/**
+	 * Get the GameLoop instance.
+	 * 
+	 * @return game loop instance
+	 */
+	public static GameLoop get() {
+<span class="nc" id="L67">		return Holder.instance;</span>
+	}
+	
+	/**
+	 * Check if the code is running in the game loop.
+	 * 
+	 * @return &lt;code&gt;true&lt;/code&gt; if the called from the game loop thread,
+	 * 	&lt;code&gt;false&lt;/code&gt; otherwise.
+	 */
+	public static boolean isGameLoop() {
+<span class="nc bnc" id="L77" title="All 2 branches missed.">		return Thread.currentThread() == get().loopThread; </span>
+	}
+	
+	/**
+	 * Start the game loop. 
+	 */
+	public void start() {
+<span class="nc" id="L84">		running = true;</span>
+<span class="nc" id="L85">		loopThread.start();</span>
+<span class="nc" id="L86">	}</span>
+	
+	/**
+	 * Call at client quit. Tells the game loop to continue to the cleanup
+	 * tasks.
+	 */
+	public void stop() {
+<span class="nc" id="L93">		running = false;</span>
+<span class="nc" id="L94">	}</span>
+	
+	/**
+	 * Set the task that should be run at every loop iteration. This &lt;b&gt;must
+	 * not&lt;/b&gt; be called after the GameLoop has been started.
+	 * 
+	 * @param task
+	 */
+	public void runAllways(PersistentTask task) {
+<span class="nc" id="L103">		persistentTask = task;</span>
+<span class="nc" id="L104">	}</span>
+	
+	/**
+	 * Add a task that should be run when the client quits. This &lt;b&gt;must
+	 * not&lt;/b&gt; be called after the GameLoop has been started.
+	 * 
+	 * @param task
+	 */
+	public void runAtQuit(Runnable task) {
+<span class="nc" id="L113">		cleanupTasks.add(task);</span>
+<span class="nc" id="L114">	}</span>
+	
+	/**
+	 * Add a task that should be run once in the game loop thread.
+	 * 
+	 * @param task
+	 */
+	public void runOnce(Runnable task) {
+<span class="nc" id="L122">		temporaryTasks.add(task);</span>
+<span class="nc" id="L123">	}</span>
+	
+	/**
+	 * The actual game loop.
+	 */
+	private void loop() {
+		final int frameLength = (int) (1000.0 / stendhal.FPS_LIMIT);
+<span class="nc" id="L130">		int fps = 0;</span>
+
+		// keep looping until the game ends
+<span class="nc" id="L133">		long refreshTime = System.currentTimeMillis();</span>
+<span class="nc" id="L134">		long lastFpsTime = refreshTime;</span>
+
+<span class="nc bnc" id="L136" title="All 2 branches missed.">		while (running) {</span>
+			try {
+<span class="nc" id="L138">				fps++;</span>
+<span class="nc" id="L139">				final long now = System.currentTimeMillis();</span>
+<span class="nc" id="L140">				final int delta = (int) (now - refreshTime);</span>
+<span class="nc" id="L141">				refreshTime = now;</span>
+
+				// process the persistent task
+<span class="nc" id="L144">				persistentTask.run(delta);</span>
+
+				// process the temporary tasks queue
+<span class="nc" id="L147">				Runnable tempTask = temporaryTasks.poll();</span>
+<span class="nc bnc" id="L148" title="All 2 branches missed.">				while (tempTask != null) {</span>
+<span class="nc" id="L149">					tempTask.run();</span>
+<span class="nc" id="L150">					tempTask = temporaryTasks.poll();</span>
+				}
+				
+<span class="nc bnc" id="L153" title="All 2 branches missed.">				if (logger.isDebugEnabled()) {</span>
+<span class="nc" id="L154">					reportClientInfo(refreshTime, lastFpsTime, fps);</span>
+<span class="nc" id="L155">					fps = 0;</span>
+<span class="nc" id="L156">					lastFpsTime = refreshTime;</span>
+				}
+				
+<span class="nc" id="L159">				logger.debug(&quot;Start sleeping&quot;);</span>
+				// we know how long we want per screen refresh (40ms) then
+				// we add the refresh time and subtract the current time
+				// leaving us with the amount we still need to sleep.
+<span class="nc" id="L163">				long wait = frameLength + refreshTime - System.currentTimeMillis();</span>
+
+<span class="nc bnc" id="L165" title="All 2 branches missed.">				if (wait &gt; 0) {</span>
+<span class="nc bnc" id="L166" title="All 2 branches missed.">					if (wait &gt; 100L) {</span>
+<span class="nc" id="L167">						logger.info(&quot;Waiting &quot; + wait + &quot; ms&quot;);</span>
+<span class="nc" id="L168">						wait = 100L;</span>
+					}
+
+					try {
+<span class="nc" id="L172">						Thread.sleep(wait);</span>
+<span class="nc" id="L173">					} catch (final InterruptedException e) {</span>
+<span class="nc" id="L174">						logger.error(e, e);</span>
+<span class="nc" id="L175">					}</span>
+				}
+
+<span class="nc" id="L178">				logger.debug(&quot;End sleeping&quot;);</span>
+<span class="nc" id="L179">			} catch (RuntimeException e) {</span>
+<span class="nc" id="L180">				logger.error(e, e);</span>
+<span class="nc" id="L181">			}</span>
+		}
+<span class="nc" id="L183">	}</span>
+	
+	/**
+	 * Write debugging data about the client memory usage and running speed.
+	 * 
+	 * @param refreshTime
+	 * @param lastFpsTime
+	 * @param fps
+	 */
+	private void reportClientInfo(long refreshTime, long lastFpsTime, int fps) {
+<span class="nc bnc" id="L193" title="All 2 branches missed.">		if ((refreshTime - lastFpsTime) &gt;= 1000L) {</span>
+<span class="nc" id="L194">			logger.debug(&quot;FPS: &quot; + fps);</span>
+<span class="nc" id="L195">			final long freeMemory = Runtime.getRuntime().freeMemory() / 1024;</span>
+<span class="nc" id="L196">			final long totalMemory = Runtime.getRuntime().totalMemory() / 1024;</span>
+
+<span class="nc" id="L198">			logger.debug(&quot;Total/Used memory: &quot; + totalMemory + &quot;/&quot;</span>
+					+ (totalMemory - freeMemory));
+		}
+<span class="nc" id="L201">	}</span>
+	
+	/**
+	 * Interface for the main game loop task.
+	 */
+	public interface PersistentTask {
+		/**
+		 * Run the task.
+		 * 
+		 * @param delta time since the last run
+		 */
+		void run(int delta);
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

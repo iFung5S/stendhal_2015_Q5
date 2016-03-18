@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SequenceSprite.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.sprite</a> &gt; <span class="el_source">SequenceSprite.java</span></div><h1>SequenceSprite.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2012 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.sprite;
+
+import java.awt.Graphics;
+
+/**
+ * An animated sprite that draw the frames once, and then signals the attached
+ * listener.
+ */
+public class SequenceSprite extends AnimatedSprite {
+	private final SequenceSpriteListener listener;
+	/** A flag for book keeping so that the listener gets notified only once. */
+	private boolean done;
+	
+	/**
+	 * Create a new SequenceSprite with constant delay between the frames.
+	 * 
+	 * @param listener listener that gets notified when drawing the sprite
+	 * 	sequence has finished
+	 * @param frames animation frames
+	 * @param delay delay between frames in milliseconds
+	 */
+	public SequenceSprite(SequenceSpriteListener listener, Sprite[] frames, int delay) {
+<span class="nc" id="L34">		super(frames, delay);</span>
+<span class="nc" id="L35">		loop = false;</span>
+<span class="nc" id="L36">		lastUpdate = System.currentTimeMillis();</span>
+<span class="nc" id="L37">		this.listener = listener;</span>
+<span class="nc" id="L38">	}</span>
+	
+	@Override
+	public void draw(final Graphics g, final int x, final int y) {
+<span class="nc" id="L42">		super.draw(g, x, y);</span>
+<span class="nc bnc" id="L43" title="All 4 branches missed.">		if ((sprite == null) &amp;&amp; !done) {</span>
+<span class="nc" id="L44">			listener.endSequence();</span>
+<span class="nc" id="L45">			done = true;</span>
+		}
+<span class="nc" id="L47">	}</span>
+	
+	/**
+	 * Interface for objects that receive notifications at the end of the
+	 * sprite sequence.
+	 */
+	public interface SequenceSpriteListener {
+		/**
+		 * Called when all the image frames have been drawn.
+		 */
+		void endSequence();
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

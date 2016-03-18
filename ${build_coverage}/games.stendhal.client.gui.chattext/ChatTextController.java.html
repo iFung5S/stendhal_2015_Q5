@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ChatTextController.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui.chattext</a> &gt; <span class="el_source">ChatTextController.java</span></div><h1>ChatTextController.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2015 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui.chattext;
+
+import games.stendhal.client.ClientSingletonRepository;
+import games.stendhal.client.StendhalClient;
+import games.stendhal.client.stendhal;
+import games.stendhal.client.actions.SlashActionRepository;
+import games.stendhal.client.scripting.ChatLineParser;
+import games.stendhal.common.constants.SoundLayer;
+
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyListener;
+
+import javax.swing.AbstractAction;
+import javax.swing.ActionMap;
+import javax.swing.InputMap;
+import javax.swing.JTextField;
+import javax.swing.KeyStroke;
+import javax.swing.text.AbstractDocument;
+import javax.swing.text.AttributeSet;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.Document;
+import javax.swing.text.DocumentFilter;
+import javax.swing.text.JTextComponent;
+
+public class ChatTextController {
+	/** Maximum text length. Public chat is limited to 1000 server side. */
+	private static final int MAX_TEXT_LENGTH = 1000;
+	
+<span class="fc" id="L41">	private final JTextField playerChatText = new JTextField(&quot;&quot;);</span>
+
+	private ChatCache cache;
+<span class="fc" id="L44">	public ChatTextController() {</span>
+<span class="fc" id="L45">		playerChatText.setFocusTraversalKeysEnabled(false);</span>
+<span class="fc" id="L46">		Document doc = playerChatText.getDocument();</span>
+<span class="pc bpc" id="L47" title="1 of 2 branches missed.">		if (doc instanceof AbstractDocument) {</span>
+<span class="fc" id="L48">			((AbstractDocument) doc).setDocumentFilter(new SizeFilter(MAX_TEXT_LENGTH));</span>
+		}
+<span class="fc" id="L50">		setupKeys();</span>
+<span class="fc" id="L51">		playerChatText.addActionListener(new ParserHandler());</span>
+<span class="fc" id="L52">		StendhalClient client = StendhalClient.get();</span>
+<span class="fc" id="L53">		String logFile = null;</span>
+<span class="pc bpc" id="L54" title="1 of 2 branches missed.">		if (client != null) {</span>
+			// StendhalClient is null during test runs
+<span class="nc" id="L56">			logFile = stendhal.getGameFolder() + &quot;chat/out-&quot; + client.getCharacter() + &quot;.log&quot;;</span>
+		}
+<span class="fc" id="L58">		cache = new ChatCache(logFile);</span>
+<span class="fc" id="L59">		cache.loadChatCache();</span>
+<span class="fc" id="L60">		setCache(cache);</span>
+<span class="fc" id="L61">	}</span>
+
+	public JTextComponent getPlayerChatText() {
+<span class="nc" id="L64">		return playerChatText;</span>
+	}
+
+	public void setChatLine(final String text) {
+<span class="nc" id="L68">		playerChatText.setText(text);</span>
+<span class="nc" id="L69">	}</span>
+	
+	/**
+	 * Add the special key bindings.
+	 */
+	private void setupKeys() {
+<span class="fc" id="L75">		InputMap input = playerChatText.getInputMap();</span>
+<span class="fc" id="L76">		input.put(KeyStroke.getKeyStroke(&quot;shift UP&quot;), &quot;history_previous&quot;);</span>
+<span class="fc" id="L77">		input.put(KeyStroke.getKeyStroke(&quot;shift DOWN&quot;), &quot;history_next&quot;);</span>
+<span class="fc" id="L78">		input.put(KeyStroke.getKeyStroke(&quot;F1&quot;), &quot;manual&quot;);</span>
+		
+<span class="fc" id="L80">		ActionMap actions = playerChatText.getActionMap();</span>
+<span class="fc" id="L81">		actions.put(&quot;history_previous&quot;, new AbstractAction() {</span>
+			@Override
+			public void actionPerformed(ActionEvent e) {
+<span class="nc bnc" id="L84" title="All 2 branches missed.">				if (cache.hasPrevious()) {</span>
+<span class="nc" id="L85">					setChatLine(cache.previous());</span>
+				}
+<span class="nc" id="L87">			}</span>
+		});
+<span class="fc" id="L89">		actions.put(&quot;history_next&quot;, new AbstractAction() {</span>
+			@Override
+			public void actionPerformed(ActionEvent e) {
+<span class="nc bnc" id="L92" title="All 2 branches missed.">				if (cache.hasNext()) {</span>
+<span class="nc" id="L93">					setChatLine(cache.next());</span>
+				}
+<span class="nc" id="L95">			}</span>
+		});
+<span class="fc" id="L97">		actions.put(&quot;manual&quot;, new AbstractAction() {</span>
+			@Override
+			public void actionPerformed(ActionEvent e) {
+<span class="nc" id="L100">				SlashActionRepository.get(&quot;manual&quot;).execute(null, null);</span>
+<span class="nc" id="L101">			}</span>
+		});
+<span class="fc" id="L103">	}</span>
+
+<span class="fc" id="L105">	private class ParserHandler implements ActionListener {</span>
+		@Override
+		public void actionPerformed(final ActionEvent e) {
+<span class="nc" id="L108">			final String text = e.getActionCommand();</span>
+
+<span class="nc bnc" id="L110" title="All 2 branches missed.">			if (ChatLineParser.parseAndHandle(text)) {</span>
+<span class="nc" id="L111">				clearLine();</span>
+			}
+<span class="nc" id="L113">		}</span>
+	}
+
+	public void addKeyListener(final KeyListener l) {
+<span class="nc" id="L117">		playerChatText.addKeyListener(l);</span>
+<span class="nc" id="L118">	}</span>
+
+	public String getText() {
+<span class="nc" id="L121">		return playerChatText.getText();</span>
+	}
+
+	private void setCache(final ChatCache cache) {
+<span class="fc" id="L125">		this.cache = cache;</span>
+<span class="fc" id="L126">	}</span>
+
+	private void clearLine() {
+<span class="nc" id="L129">		cache.addlinetoCache(getText());</span>
+
+<span class="nc" id="L131">		setChatLine(&quot;&quot;);</span>
+<span class="nc" id="L132">	}</span>
+
+	public void saveCache() {
+<span class="nc" id="L135">		cache.save();</span>
+<span class="nc" id="L136">	}</span>
+	
+	/**
+	 * A document filter that limits the maximum allowed length of a document.
+	 */
+	private static class SizeFilter extends DocumentFilter {
+		/** Sound to play if the user tries to enter too long string. */
+		private static final String sound = &quot;click-10&quot;;
+		/** Maximum length of the document. */
+		final int maxSize;
+
+		/**
+		 * Create a new SizeFilter.
+		 * 
+		 * @param maxSize maximum length of the document
+		 */
+<span class="fc" id="L152">		SizeFilter(int maxSize) {</span>
+<span class="fc" id="L153">			this.maxSize = maxSize;</span>
+<span class="fc" id="L154">		}</span>
+		
+		@Override
+		public void insertString(FilterBypass fb, int offs, String str,
+				AttributeSet a) throws BadLocationException {
+<span class="nc bnc" id="L159" title="All 2 branches missed.">			if ((fb.getDocument().getLength() + str.length()) &lt;= maxSize) {</span>
+<span class="nc" id="L160">				super.insertString(fb, offs, str, a);</span>
+			} else {
+<span class="nc" id="L162">				fail();</span>
+			}
+<span class="nc" id="L164">		}</span>
+
+		@Override
+		public void replace(FilterBypass fb, int offs, int length, String str,
+				AttributeSet a) throws BadLocationException {
+<span class="nc bnc" id="L169" title="All 2 branches missed.">			if ((fb.getDocument().getLength() + str.length() - length) &lt;= maxSize) {</span>
+<span class="nc" id="L170">				super.replace(fb, offs, length, str, a);</span>
+			} else {
+<span class="nc" id="L172">				fail();</span>
+			}
+<span class="nc" id="L174">		}</span>
+
+		/**
+		 * Called when the document change is rejected. Notify the user.
+		 */
+		private void fail() {
+<span class="nc" id="L180">			ClientSingletonRepository.getSound().getGroup(SoundLayer.USER_INTERFACE.groupName).play(sound, 0, null, null, false, true);</span>
+<span class="nc" id="L181">		}</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

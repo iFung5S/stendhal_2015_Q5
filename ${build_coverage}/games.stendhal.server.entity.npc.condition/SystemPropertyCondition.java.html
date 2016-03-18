@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SystemPropertyCondition.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.npc.condition</a> &gt; <span class="el_source">SystemPropertyCondition.java</span></div><h1>SystemPropertyCondition.java</h1><pre class="source lang-java linenums">package games.stendhal.server.entity.npc.condition;
+
+import static com.google.common.base.Preconditions.checkNotNull;
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.core.config.annotations.Dev;
+import games.stendhal.server.core.config.annotations.Dev.Category;
+import games.stendhal.server.entity.Entity;
+import games.stendhal.server.entity.npc.ChatCondition;
+import games.stendhal.server.entity.player.Player;
+
+import com.google.common.base.Objects;
+
+/**
+ * Is the specified system property set?
+ */
+@Dev(category=Category.ENVIRONMENT, label=&quot;System?&quot;)
+public class SystemPropertyCondition implements ChatCondition {
+
+	private final String key;
+	private final String value;
+
+	/**
+	 * Creates a new SystemPropertyCondition
+	 *
+	 * @param key key to check
+	 */
+<span class="fc" id="L27">	public SystemPropertyCondition(String key) {</span>
+<span class="fc" id="L28">		this.key = checkNotNull(key);</span>
+<span class="fc" id="L29">		this.value = null;</span>
+<span class="fc" id="L30">	}</span>
+
+	/**
+	 * Creates a new SystemPropertyCondition
+	 *
+	 * @param key key to check
+	 * @param value value the key has to have.
+	 */
+<span class="nc" id="L38">	public SystemPropertyCondition(String key, String value) {</span>
+<span class="nc" id="L39">		this.key = checkNotNull(key);</span>
+<span class="nc" id="L40">		this.value = value;</span>
+<span class="nc" id="L41">	}</span>
+
+	@Override
+	public boolean fire(final Player player, final Sentence sentence, final Entity entity) {
+<span class="pc bpc" id="L45" title="1 of 2 branches missed.">		if (value == null) {</span>
+<span class="fc bfc" id="L46" title="All 2 branches covered.">			return System.getProperty(key) != null;</span>
+		} else {
+<span class="nc" id="L48">			return value.equals(System.getProperty(key));</span>
+		}
+	}
+
+	@Override
+	public String toString() {
+<span class="nc" id="L54">		StringBuilder sb = new StringBuilder();</span>
+<span class="nc" id="L55">		sb.append(&quot;system &lt;&quot;);</span>
+<span class="nc" id="L56">		sb.append(key);</span>
+<span class="nc bnc" id="L57" title="All 2 branches missed.">		if (value != null) {</span>
+<span class="nc" id="L58">			sb.append(&quot;=&quot;);</span>
+<span class="nc" id="L59">			sb.append(value);</span>
+		}
+<span class="nc" id="L61">		sb.append(&quot;&gt;&quot;);</span>
+<span class="nc" id="L62">		return sb.toString();</span>
+	}
+
+	@Override
+	public int hashCode() {
+<span class="nc" id="L67">		return 47137 * key.hashCode();</span>
+	}
+
+	@Override
+	public boolean equals(final Object obj) {
+<span class="pc bpc" id="L72" title="1 of 2 branches missed.">		if (!(obj instanceof SystemPropertyCondition)) {</span>
+<span class="nc" id="L73">			return false;</span>
+		}
+<span class="fc" id="L75">		SystemPropertyCondition other = (SystemPropertyCondition) obj;</span>
+<span class="pc bpc" id="L76" title="2 of 4 branches missed.">		return key.equals(other.key)</span>
+			&amp;&amp; Objects.equal(value, other.value);
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

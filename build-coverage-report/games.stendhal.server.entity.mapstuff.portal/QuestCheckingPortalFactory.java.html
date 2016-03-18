@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>QuestCheckingPortalFactory.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.mapstuff.portal</a> &gt; <span class="el_source">QuestCheckingPortalFactory.java</span></div><h1>QuestCheckingPortalFactory.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                (C) Copyright 2007-2013 - Faiumoni e. V.                 *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.mapstuff.portal;
+
+
+import games.stendhal.server.core.config.factory.ConfigurableFactoryContext;
+
+/**
+ * A factory for &lt;code&gt;QuestCheckingPortal&lt;/code&gt; objects.
+ */
+<span class="nc" id="L20">public class QuestCheckingPortalFactory extends AccessCheckingPortalFactory {</span>
+
+	private String requiredQuest;
+	private String requiredState;
+	private String rejectMessage;
+
+	/**
+	 * Extract the quest name from a context.
+	 * 
+	 * @param ctx
+	 *            The configuration context.
+	 * @throws IllegalArgumentException
+	 *             If the quest attribute is missing.
+	 */
+	protected void setQuest(final ConfigurableFactoryContext ctx) {
+<span class="nc" id="L35">		requiredQuest = ctx.getRequiredString(&quot;quest&quot;);</span>
+<span class="nc" id="L36">		requiredState = ctx.getString(&quot;state&quot;, null);</span>
+<span class="nc" id="L37">		rejectMessage = ctx.getString(&quot;rejected&quot;, &quot;Why should i go there?&quot;);</span>
+<span class="nc" id="L38">	}</span>
+
+	/**
+	 * Create a quest checking portal.
+	 * 
+	 * @param ctx Configuration context.
+	 * @return A Portal.
+	 * @throws IllegalArgumentException
+	 *             If there is a problem with the attributes. The exception
+	 *             message should be a value suitable for meaningful user
+	 *             interpretation.
+	 * @see QuestCheckingPortal
+	 */
+	@Override
+	protected AccessCheckingPortal createPortal(final ConfigurableFactoryContext ctx) {
+<span class="nc" id="L53">		setQuest(ctx);</span>
+<span class="nc" id="L54">		return new QuestCheckingPortal(requiredQuest, requiredState, rejectMessage);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

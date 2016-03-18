@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SlashActionCommand.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.scripting</a> &gt; <span class="el_source">SlashActionCommand.java</span></div><h1>SlashActionCommand.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.scripting;
+
+import games.stendhal.client.actions.SlashAction;
+import games.stendhal.common.ErrorBuffer;
+
+/**
+ * Command line parser for the Stendhal client.
+ * 
+ * @author Martin Fuchs
+ */
+<span class="fc" id="L23">class SlashActionCommand extends ErrorBuffer {</span>
+
+	private String name;
+	private SlashAction action;
+
+	private String[] params;
+	private String remainder;
+
+	/**
+	 * @return action object
+	 */
+	SlashAction getAction() {
+<span class="fc" id="L35">		return action;</span>
+	}
+
+	/**
+	 * sets the action to be parsed.
+	 * 
+	 * @param action
+	 *            the action to be parsed
+	 */
+	void setAction(final SlashAction action) {
+<span class="fc" id="L45">		this.action = action;</span>
+<span class="fc" id="L46">	}</span>
+
+	/**
+	 * return command name.
+	 * 
+	 * @return command name
+	 */
+	public String getName() {
+<span class="fc" id="L54">		return name;</span>
+	}
+
+	/**
+	 * return command parameters.
+	 * 
+	 * @return parameter array
+	 */
+	String[] getParams() {
+<span class="fc" id="L63">		return params;</span>
+	}
+
+	/**
+	 * set command parameters.
+	 * 
+	 * @param params
+	 *            parameter array
+	 */
+	void setParams(final String[] params) {
+<span class="fc" id="L73">		this.params = params;</span>
+<span class="fc" id="L74">	}</span>
+
+	/**
+	 * return trailing parameter text.
+	 * 
+	 * @return remainder
+	 */
+	public String getRemainder() {
+<span class="fc" id="L82">		return remainder;</span>
+	}
+
+	/**
+	 * sets the trailing text.
+	 * 
+	 * @param remainder
+	 *            the trailing text
+	 */
+	void setRemainder(final String remainder) {
+<span class="fc" id="L92">		this.remainder = remainder;</span>
+<span class="fc" id="L93">	}</span>
+
+	/**
+	 * set command name.
+	 * 
+	 * @param name
+	 *            the command name
+	 */
+	void setName(final String name) {
+<span class="fc" id="L102">		this.name = name;</span>
+<span class="fc" id="L103">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

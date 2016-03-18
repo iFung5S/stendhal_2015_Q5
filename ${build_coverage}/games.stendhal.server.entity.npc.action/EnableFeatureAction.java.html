@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>EnableFeatureAction.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.npc.action</a> &gt; <span class="el_source">EnableFeatureAction.java</span></div><h1>EnableFeatureAction.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.npc.action;
+
+import static com.google.common.base.Preconditions.checkNotNull;
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.core.config.annotations.Dev;
+import games.stendhal.server.core.config.annotations.Dev.Category;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.player.Player;
+
+import com.google.common.base.Objects;
+
+/**
+ * Enables a client side feature.
+ */
+@Dev(category=Category.OTHER, label=&quot;Feature+&quot;)
+public class EnableFeatureAction implements ChatAction {
+
+	private final String feature;
+	private final String value;
+
+	/**
+	 * Creates a new EnableFeatureAction.
+	 *
+	 * @param feature name of feature
+	 */
+	public EnableFeatureAction(final String feature) {
+<span class="fc" id="L40">		this(feature, &quot;&quot;);</span>
+<span class="fc" id="L41">	}</span>
+
+	/**
+	 * Creates a new EnableFeatureAction.
+	 *
+	 * @param feature name of feature
+	 * @param value value of feature (&lt;code&gt;null&lt;/code&gt; means disabled, &quot;&quot; means enabled without value)
+	 */
+	@Dev
+<span class="fc" id="L50">	public EnableFeatureAction(final String feature, final String value) {</span>
+<span class="fc" id="L51">		this.feature = checkNotNull(feature);</span>
+<span class="fc" id="L52">		this.value = value;</span>
+<span class="fc" id="L53">	}</span>
+
+
+	@Override
+	public void fire(final Player player, final Sentence sentence, final EventRaiser npc) {
+<span class="fc" id="L58">		player.setFeature(feature, value);</span>
+<span class="fc" id="L59">	}</span>
+
+	@Override
+	public String toString() {
+<span class="nc" id="L63">		final StringBuilder sb = new StringBuilder();</span>
+<span class="nc" id="L64">		sb.append(&quot;enable feature &lt;&quot;);</span>
+<span class="nc" id="L65">		sb.append(feature);</span>
+<span class="nc" id="L66">		sb.append(&quot;m &quot;);</span>
+<span class="nc" id="L67">		sb.append(value);</span>
+<span class="nc" id="L68">		sb.append(&quot;&gt;&quot;);</span>
+<span class="nc" id="L69">		return sb.toString();</span>
+	}
+
+	@Override
+	public int hashCode() {
+<span class="nc" id="L74">		return 5171 * feature.hashCode();</span>
+	}
+
+	@Override
+	public boolean equals(final Object obj) {
+<span class="nc bnc" id="L79" title="All 2 branches missed.">		if (!(obj instanceof EnableFeatureAction)) {</span>
+<span class="nc" id="L80">			return false;</span>
+		}
+<span class="nc" id="L82">		EnableFeatureAction other = (EnableFeatureAction) obj;</span>
+<span class="nc bnc" id="L83" title="All 4 branches missed.">		return feature.equals(other.feature)</span>
+			&amp;&amp; Objects.equal(value, other.value);
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

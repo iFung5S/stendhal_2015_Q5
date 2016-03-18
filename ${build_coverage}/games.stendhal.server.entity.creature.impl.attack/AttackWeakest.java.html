@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>AttackWeakest.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.creature.impl.attack</a> &gt; <span class="el_source">AttackWeakest.java</span></div><h1>AttackWeakest.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.creature.impl.attack;
+
+import games.stendhal.server.entity.RPEntity;
+import games.stendhal.server.entity.creature.AttackableCreature;
+import games.stendhal.server.entity.creature.Creature;
+
+import java.util.List;
+
+/**
+ * A profile for creature that always tries to kill the weakest enemy first.
+ */
+<span class="fc" id="L24">public class AttackWeakest extends HandToHand {</span>
+	/**
+	 * Check if the target is something worth attacking.
+	 * (basically a Player or Pet, to be maximally annoying)
+	 * 
+	 * @param target the target to be checked
+	 * @return &lt;code&gt;true&lt;/code&gt; iff the target is a good candidate to be killed
+	 */
+	private boolean isPreferredTarget(RPEntity target) {
+		/*
+		 * A bit of a hack - ignore scroll creatures so that players can not
+		 * confuse creatures with summon scrolls.
+		 */
+<span class="fc bfc" id="L37" title="All 2 branches covered.">		return !(target instanceof AttackableCreature);</span>
+	}
+	/**
+	 * Attack the weakest enemy next to the creature.
+	 * 
+	 * @param creature
+	 *            the creature checking for the optimal target
+	 * @return &lt;code&gt;true&lt;/code&gt; iff a good target was found. That includes
+	 *         keeping the current target if that is the optimal one
+	 */
+	private boolean attackWeakest(Creature creature) {
+		// create list of possible enemies
+<span class="fc" id="L49">		final List&lt;RPEntity&gt; enemyList = creature.getEnemyList();</span>
+<span class="fc bfc" id="L50" title="All 2 branches covered.">		if (enemyList.isEmpty()) {</span>
+<span class="fc" id="L51">			return false;</span>
+		}
+
+<span class="fc" id="L54">		RPEntity target = null;</span>
+		
+<span class="fc bfc" id="L56" title="All 4 branches covered.">		if (creature.isAttacking() &amp;&amp; isPreferredTarget(creature.getAttackTarget())) {</span>
+<span class="fc" id="L57">			target = creature.getAttackTarget();</span>
+		}
+
+		int level;
+<span class="fc bfc" id="L61" title="All 2 branches covered.">		if (target != null) {</span>
+<span class="fc" id="L62">			level = target.getLevel();</span>
+		} else {
+			// just something above anything
+<span class="fc" id="L65">			level = 1000;</span>
+		}
+
+<span class="fc bfc" id="L68" title="All 2 branches covered.">		for (final RPEntity enemy : enemyList) {</span>
+<span class="fc bfc" id="L69" title="All 2 branches covered.">			if (!isPreferredTarget(enemy)) {</span>
+<span class="fc" id="L70">				continue;</span>
+			}
+
+<span class="pc bpc" id="L73" title="1 of 4 branches missed.">			if (creature.getAttackStrategy().canAttackNow(creature, enemy)</span>
+					&amp;&amp; !enemy.isInvisibleToCreatures()) {
+				/*
+				 * Use level as an approximation of the strength. Prefer keeping
+				 * the current target if the enemies are equally strong.
+				 */
+<span class="fc bfc" id="L79" title="All 2 branches covered.">				if (enemy.getLevel() &lt; level) {</span>
+<span class="fc" id="L80">					target = enemy;</span>
+<span class="fc" id="L81">					level = enemy.getLevel();</span>
+				}
+			}
+<span class="fc" id="L84">		}</span>
+
+<span class="fc bfc" id="L86" title="All 2 branches covered.">		if (target != null) {</span>
+<span class="fc bfc" id="L87" title="All 2 branches covered.">			if (target != creature.getAttackTarget()) {</span>
+<span class="fc" id="L88">				creature.setTarget(target);</span>
+			}
+<span class="fc" id="L90">			return true;</span>
+		}
+
+<span class="fc" id="L93">		return false;</span>
+	}
+
+	@Override
+	public void findNewTarget(final Creature creature) {
+<span class="fc bfc" id="L98" title="All 2 branches covered.">		if (!attackWeakest(creature)) {</span>
+			// Fall back to the default behavior
+<span class="fc" id="L100">			super.findNewTarget(creature);</span>
+		}
+<span class="fc" id="L102">	}</span>
+
+	@Override
+	public boolean hasValidTarget(final Creature creature) {
+		// Change target if there's a weaker creature around
+<span class="fc" id="L107">		attackWeakest(creature);</span>
+<span class="fc" id="L108">		return super.hasValidTarget(creature);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

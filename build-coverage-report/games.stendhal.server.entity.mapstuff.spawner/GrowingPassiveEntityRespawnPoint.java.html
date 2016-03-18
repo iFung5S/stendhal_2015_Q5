@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>GrowingPassiveEntityRespawnPoint.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.mapstuff.spawner</a> &gt; <span class="el_source">GrowingPassiveEntityRespawnPoint.java</span></div><h1>GrowingPassiveEntityRespawnPoint.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                      (C) Copyright 2003 - Marauroa                      *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.mapstuff.spawner;
+
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.entity.item.Item;
+import marauroa.common.game.Definition.Type;
+import marauroa.common.game.RPClass;
+import marauroa.common.game.RPObject;
+
+import org.apache.log4j.Logger;
+
+/**
+ * This respwan point has to be &quot;used&quot; to get the item. After that, it will
+ * slowly regrow; there are several regrowing steps in which the graphics will
+ * change to show the progress.
+ *
+ * @author daniel, hendrik
+ */
+public abstract class GrowingPassiveEntityRespawnPoint extends
+		PassiveEntityRespawnPoint {
+
+<span class="fc" id="L33">	private static Logger logger = Logger.getLogger(GrowingPassiveEntityRespawnPoint.class);</span>
+
+	/** How long it takes for one growing step. */
+	private static final int GROWING_RATE = 3000;
+
+	/** Current stage of the growth. */
+	private int ripeness;
+
+	/** Maximum ripeness, at which stage the item will be ripe for harvesting. */
+	private int maxRipeness;
+
+	/**
+	 * Get the maximum ripeness.
+	 *
+	 * @return the stage at which the grown item is ready for harvesting
+	 */
+	protected final int getMaxRipeness() {
+<span class="fc" id="L50">		return maxRipeness;</span>
+	}
+
+	/**
+	 * Set the maximum ripeness, at which the grown item is ready for harvesting.
+	 *
+	 * @param maxRipeness maximum ripeness
+	 */
+	final void setMaxRipeness(final int maxRipeness) {
+<span class="fc" id="L59">		this.maxRipeness = maxRipeness;</span>
+<span class="fc" id="L60">		put(&quot;max_ripeness&quot;, maxRipeness);</span>
+<span class="fc" id="L61">	}</span>
+
+	/**
+	 * Register RPClass for GrowingPassiveEntityRespawnPoints. The used
+	 * identifier is &quot;growing_entity_spawner&quot;.
+	 */
+	public static void generateRPClass() {
+<span class="fc" id="L68">		final RPClass grainFieldClass = new RPClass(&quot;growing_entity_spawner&quot;);</span>
+<span class="fc" id="L69">		grainFieldClass.isA(&quot;plant_grower&quot;);</span>
+<span class="fc" id="L70">		grainFieldClass.addAttribute(&quot;action_name&quot;, Type.STRING);</span>
+<span class="fc" id="L71">		grainFieldClass.addAttribute(&quot;max_ripeness&quot;, Type.BYTE);</span>
+<span class="fc" id="L72">		grainFieldClass.addAttribute(&quot;ripeness&quot;, Type.BYTE);</span>
+<span class="fc" id="L73">	}</span>
+
+	/**
+	 * Initialize various data for the grower.
+	 *
+	 * @param clazz entity class
+	 * @param actionName name of the use action
+	 * @param maxRipeness maximum ripeness stage of the grower
+	 * @param width width of the grower entity
+	 * @param height height of the grower entity
+	 */
+	private void init(final String clazz, final String actionName, final int maxRipeness,
+			final int width, final int height) {
+<span class="fc" id="L86">		this.maxRipeness = maxRipeness;</span>
+<span class="fc" id="L87">		setRPClass(&quot;growing_entity_spawner&quot;);</span>
+<span class="fc" id="L88">		put(&quot;type&quot;, &quot;growing_entity_spawner&quot;);</span>
+<span class="fc" id="L89">		setEntityClass(clazz);</span>
+<span class="fc" id="L90">		put(&quot;action_name&quot;, actionName);</span>
+<span class="fc" id="L91">		put(&quot;max_ripeness&quot;, maxRipeness);</span>
+
+<span class="fc" id="L93">		setSize(width, height);</span>
+<span class="fc" id="L94">		setResistance(30);</span>
+<span class="fc" id="L95">	}</span>
+
+	/**
+	 * Create a GrowingPassiveEntityRespawnPoint from an RPObject. Used for
+	 * restoring growers stored in the zone.
+	 *
+	 * @param object The RPObject to be converted
+	 * @param type Entity class
+	 * @param itemName Name of the spawned item
+	 * @param actionName Name of the use action
+	 * @param maxRipeness Maximum ripeness stage of the grower
+	 * @param growthRate Average time between growth steps in turns
+	 */
+	public GrowingPassiveEntityRespawnPoint(final RPObject object, final String type, final String itemName,
+			final String actionName, final int maxRipeness, final int growthRate) {
+<span class="nc" id="L110">		super(object, itemName, growthRate);</span>
+<span class="nc" id="L111">		init(type, actionName, maxRipeness, getInt(&quot;width&quot;), getInt(&quot;height&quot;));</span>
+<span class="nc" id="L112">		ripeness = getInt(&quot;ripeness&quot;);</span>
+
+<span class="nc" id="L114">		update();</span>
+		// Start the timer, if needed
+<span class="nc bnc" id="L116" title="All 2 branches missed.">		if (ripeness &lt; maxRipeness) {</span>
+<span class="nc" id="L117">			SingletonRepository.getTurnNotifier().notifyInTurns(getRandomTurnsForRegrow(), this);</span>
+		}
+<span class="nc" id="L119">	}</span>
+
+	/**
+	 * Create a new GrowingPassiveEntityRespawnPoint.
+	 *
+	 * @param type Entity class
+	 * @param itemName Name of the grown entity
+	 * @param actionName Name of the use action
+	 * @param maxRipeness Maximum ripeness stage of the grower
+	 * @param width Width of the grower entity
+	 * @param height Height of the grower entity
+	 */
+	public GrowingPassiveEntityRespawnPoint(final String type, final String itemName, final String actionName,
+			final int maxRipeness, final int width, final int height) {
+<span class="fc" id="L133">		super(itemName, GROWING_RATE);</span>
+<span class="fc" id="L134">		init(type, actionName, maxRipeness, width, height);</span>
+<span class="fc" id="L135">	}</span>
+
+	@Override
+	public void update() {
+<span class="nc" id="L139">		super.update();</span>
+<span class="nc bnc" id="L140" title="All 2 branches missed.">		if (has(&quot;ripeness&quot;)) {</span>
+<span class="nc" id="L141">			ripeness = getInt(&quot;ripeness&quot;);</span>
+		}
+<span class="nc" id="L143">	}</span>
+
+	/**
+	 * Set the current ripeness stage of the grower.
+	 *
+	 * @param ripeness
+	 */
+	protected void setRipeness(final int ripeness) {
+<span class="fc" id="L151">		this.ripeness = ripeness;</span>
+<span class="fc" id="L152">		put(&quot;ripeness&quot;, ripeness);</span>
+<span class="fc" id="L153">	}</span>
+
+	/**
+	 * Get the current ripeness stage of the grower.
+	 *
+	 * @return ripeness
+	 */
+	protected int getRipeness() {
+<span class="fc" id="L161">		return ripeness;</span>
+	}
+
+	@Override
+	protected void growNewFruit() {
+<span class="fc" id="L166">		setRipeness(ripeness + 1);</span>
+<span class="fc" id="L167">		logger.debug(&quot;Grow &quot; + ripeness + &quot; up to &quot; + maxRipeness);</span>
+<span class="fc" id="L168">		notifyWorldAboutChanges();</span>
+
+<span class="pc bpc" id="L170" title="1 of 2 branches missed.">		if (ripeness &lt; maxRipeness) {</span>
+<span class="fc" id="L171">			SingletonRepository.getTurnNotifier().notifyInTurns(getRandomTurnsForRegrow(), this);</span>
+		}
+<span class="fc" id="L173">	}</span>
+
+	@Override
+	public void onFruitPicked(final Item picked) {
+<span class="fc" id="L177">		super.onFruitPicked(picked);</span>
+<span class="fc" id="L178">		setRipeness(0);</span>
+<span class="fc" id="L179">		notifyWorldAboutChanges();</span>
+<span class="fc" id="L180">	}</span>
+
+	@Override
+	public void setToFullGrowth() {
+<span class="fc" id="L184">		setRipeness(maxRipeness);</span>
+		// don't grow anything new until someone harvests
+<span class="fc" id="L186">		SingletonRepository.getTurnNotifier().dontNotify(this);</span>
+<span class="fc" id="L187">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

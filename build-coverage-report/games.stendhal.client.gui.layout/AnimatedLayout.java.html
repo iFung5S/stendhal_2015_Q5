@@ -1,0 +1,360 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>AnimatedLayout.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui.layout</a> &gt; <span class="el_source">AnimatedLayout.java</span></div><h1>AnimatedLayout.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                (C) Copyright 2003-2015 - Faiumoni e.V.                  *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+/*
+ * Inspired by MadProgrammer's example at
+ * http://stackoverflow.com/a/14541651/2471439
+ */
+package games.stendhal.client.gui.layout;
+
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.Dimension;
+import java.awt.LayoutManager2;
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.WeakHashMap;
+
+import javax.swing.Timer;
+
+/**
+ * A forwarding layout manager that uses smooth animations for layout changes.
+ */
+public class AnimatedLayout implements LayoutManager2 {
+	/** The layout manager used to determine the desired final layout. */
+	private LayoutManager2 proxy;
+	/** Mapping of animations managed by this layout. */
+	private Map&lt;Container, Animator&gt; animations;
+	/** Flag for showing or suppressing animation. */
+<span class="nc" id="L43">	private boolean animated = true;</span>
+	
+	/**
+	 * Create a new AnimatedLayout.
+	 * 
+	 * @param proxy layout manager to be used for determining the desired layout
+	 */
+<span class="nc" id="L50">	public AnimatedLayout(LayoutManager2 proxy) {</span>
+<span class="nc" id="L51">		this.proxy = proxy;</span>
+<span class="nc" id="L52">		animations = new WeakHashMap&lt;Container, Animator&gt;(5);</span>
+<span class="nc" id="L53">	}</span>
+	
+	/**
+	 * Turn animations on or off.
+	 * 
+	 * @param animate &lt;code&gt;true&lt;/code&gt; if subsequent layout changes are
+	 * animated, otherwise &lt;code&gt;false&lt;/code&gt; 
+	 */
+	public void setAnimated(boolean animate) {
+<span class="nc bnc" id="L62" title="All 2 branches missed.">		if (animated != animate) {</span>
+<span class="nc" id="L63">			animated = animate;</span>
+		}
+<span class="nc" id="L65">	}</span>
+	
+	@Override
+	public void addLayoutComponent(String name, Component comp) {
+<span class="nc" id="L69">		proxy.addLayoutComponent(name, comp);</span>
+<span class="nc" id="L70">	}</span>
+	
+	@Override
+	public void removeLayoutComponent(Component comp) {
+<span class="nc" id="L74">		proxy.removeLayoutComponent(comp);</span>
+<span class="nc" id="L75">	}</span>
+	
+	@Override
+	public Dimension preferredLayoutSize(Container parent) {
+<span class="nc" id="L79">		return proxy.preferredLayoutSize(parent);</span>
+	}
+	
+	@Override
+	public Dimension minimumLayoutSize(Container parent) {
+<span class="nc" id="L84">		return proxy.minimumLayoutSize(parent);</span>
+	}
+	
+	@Override
+	public void layoutContainer(Container parent) {
+<span class="nc bnc" id="L89" title="All 2 branches missed.">		if (!animated) {</span>
+<span class="nc" id="L90">			proxy.layoutContainer(parent);</span>
+<span class="nc" id="L91">			return;</span>
+		}
+		
+<span class="nc" id="L94">		Map&lt;Component, Rectangle&gt; startPositions = new HashMap&lt;Component, Rectangle&gt;(parent.getComponentCount());</span>
+<span class="nc bnc" id="L95" title="All 2 branches missed.">		for (Component comp : parent.getComponents()) {</span>
+<span class="nc" id="L96">			startPositions.put(comp, new Rectangle(comp.getBounds()));</span>
+		}
+		
+<span class="nc" id="L99">		proxy.layoutContainer(parent);</span>
+		
+<span class="nc" id="L101">		Collection&lt;BoundData&gt; changes = new ArrayList&lt;BoundData&gt;();</span>
+<span class="nc bnc" id="L102" title="All 2 branches missed.">		for (Component comp : parent.getComponents()) {</span>
+<span class="nc" id="L103">			Rectangle bounds = comp.getBounds();</span>
+<span class="nc" id="L104">			Rectangle startBounds = startPositions.get(comp);</span>
+<span class="nc bnc" id="L105" title="All 2 branches missed.">			if (!startBounds.equals(bounds)) {</span>
+<span class="nc" id="L106">				comp.setBounds(startBounds);</span>
+<span class="nc" id="L107">				changes.add(new BoundData(comp, startBounds, bounds));</span>
+			}
+		}
+		
+<span class="nc bnc" id="L111" title="All 2 branches missed.">		if (!changes.isEmpty()) {</span>
+<span class="nc" id="L112">			Animator animator = animations.get(parent);</span>
+<span class="nc bnc" id="L113" title="All 2 branches missed.">			if (animator == null) {</span>
+<span class="nc" id="L114">				animator = new Animator(parent, changes);</span>
+<span class="nc" id="L115">				animations.put(parent, animator);</span>
+			} else {
+<span class="nc" id="L117">				animator.setBounds(changes);</span>
+			}
+<span class="nc" id="L119">			animator.restart();</span>
+<span class="nc" id="L120">		} else {</span>
+<span class="nc" id="L121">			Animator animator = animations.get(parent);</span>
+<span class="nc bnc" id="L122" title="All 2 branches missed.">			if (animator != null) {</span>
+<span class="nc" id="L123">				animator.stop();</span>
+<span class="nc" id="L124">				animations.remove(parent);</span>
+			}
+		}
+<span class="nc" id="L127">	}</span>
+	
+	
+	@Override
+	public void addLayoutComponent(Component comp, Object constraints) {
+<span class="nc" id="L132">		proxy.addLayoutComponent(comp, constraints);</span>
+<span class="nc" id="L133">	}</span>
+	
+	@Override
+	public Dimension maximumLayoutSize(Container target) {
+<span class="nc" id="L137">		return proxy.maximumLayoutSize(target);</span>
+	}
+	
+	@Override
+	public float getLayoutAlignmentX(Container target) {
+<span class="nc" id="L142">		return proxy.getLayoutAlignmentX(target);</span>
+	}
+	
+	@Override
+	public float getLayoutAlignmentY(Container target) {
+<span class="nc" id="L147">		return proxy.getLayoutAlignmentY(target);</span>
+	}
+	
+	@Override
+	public void invalidateLayout(Container target) {
+<span class="nc" id="L152">		proxy.invalidateLayout(target);</span>
+<span class="nc" id="L153">	}</span>
+	
+	/**
+	 * Class for holding Components' initial and final bounds.
+	 */
+	private static class BoundData {
+		/** The component whose bounds are stored. */
+		private final Component component;
+		/** Initial bounds. */
+		private final Rectangle startBounds;
+		/** Final bounds. */
+		private final Rectangle finalBounds;
+		
+		/**
+		 * Create new BoundData.
+		 * 
+		 * @param component component whose bounds are stored
+		 * @param startBounds bounds of the component at the start of the animation
+		 * @param finalBounds bounds of the component at the end of the animation,
+		 */
+<span class="nc" id="L173">		BoundData(Component component, Rectangle startBounds, Rectangle finalBounds) {</span>
+<span class="nc" id="L174">			this.component = component;</span>
+<span class="nc" id="L175">			this.startBounds = startBounds;</span>
+<span class="nc" id="L176">			this.finalBounds = finalBounds;</span>
+<span class="nc" id="L177">		}</span>
+		
+		/**
+		 * Get the component to which the bounds belong to.
+		 * 
+		 * @return component
+		 */
+		Component getComponent() {
+<span class="nc" id="L185">			return component;</span>
+		}
+		
+		/**
+		 * Get the maximum coordinate change.
+		 * 
+		 * @return maximum change
+		 */
+		int getMaxDistance() {
+<span class="nc" id="L194">			int maxDist = Math.abs(startBounds.x - finalBounds.x);</span>
+<span class="nc" id="L195">			maxDist = Math.max(maxDist, Math.abs(startBounds.x + startBounds.width - finalBounds.x - finalBounds.width));</span>
+<span class="nc" id="L196">			maxDist = Math.max(maxDist, Math.abs(startBounds.y - finalBounds.y));</span>
+<span class="nc" id="L197">			return Math.max(maxDist, Math.abs(startBounds.y + startBounds.height - finalBounds.y - finalBounds.height));</span>
+		}
+		
+		/**
+		 * Get the bounds at specified progress state.
+		 * @param progress state of progress
+		 * 
+		 * @return bounds at specified progress state
+		 */
+		Rectangle getBounds(double progress) {
+<span class="nc" id="L207">			return interpolate(startBounds, finalBounds, progress);</span>
+		}
+		
+		/**
+		 * Calculate interpolated bounds based on the initial and final bounds,
+		 * and the state of progress.
+		 * 
+		 * @param startBounds initial bounds
+		 * @param finalBounds final bounds
+		 * @param progress state of progress
+		 * @return interpolated bounds
+		 */
+		private Rectangle interpolate(Rectangle startBounds, Rectangle finalBounds, double progress) {
+<span class="nc" id="L220">			Rectangle bounds = new Rectangle();</span>
+<span class="nc" id="L221">			bounds.setLocation(interpolate(startBounds.getLocation(), finalBounds.getLocation(), progress));</span>
+<span class="nc" id="L222">			bounds.setSize(interpolate(startBounds.getSize(), finalBounds.getSize(), progress));</span>
+			
+<span class="nc" id="L224">			return bounds;</span>
+		}
+		
+		/**
+		 * Calculate interpolated dimensions based on the initial and final
+		 * dimensions, and the state of progress.
+		 * 
+		 * @param startSize initial size
+		 * @param finalSize final size
+		 * @param progress state of progress
+		 * @return interpolated size
+		 */
+		private Dimension interpolate(Dimension startSize, Dimension finalSize, double progress) {
+<span class="nc" id="L237">			Dimension size = new Dimension();</span>
+<span class="nc" id="L238">			size.width = interpolate(startSize.width, finalSize.width, progress);</span>
+<span class="nc" id="L239">			size.height = interpolate(startSize.height, finalSize.height, progress);</span>
+			
+<span class="nc" id="L241">			return size;</span>
+		}
+		
+		/**
+		 * Calculate interpolated location based on the initial and final
+		 * location, and the state of progress.
+		 * 
+		 * @param startPoint initial location
+		 * @param finalPoint final location
+		 * @param progress state of progress
+		 * @return interpolated location
+		 */
+		private Point interpolate(Point startPoint, Point finalPoint, double progress) {
+<span class="nc" id="L254">			Point point = new Point();</span>
+<span class="nc" id="L255">			point.x = interpolate(startPoint.x, finalPoint.x, progress);</span>
+<span class="nc" id="L256">			point.y = interpolate(startPoint.y, finalPoint.y, progress);</span>
+			
+<span class="nc" id="L258">			return point;</span>
+		}
+		
+		/**
+		 * Calculate interpolated value based on the initial and final values,
+		 * and the state of progress.
+		 * 
+		 * @param startValue initial value
+		 * @param endValue final value
+		 * @param progress state of progress
+		 * @return interpolated value
+		 */
+		private int interpolate(int startValue, int endValue, double progress) {
+<span class="nc" id="L271">			int distance = endValue - startValue;</span>
+			double distanceDone;
+			// quadratic ease in and out
+<span class="nc bnc" id="L274" title="All 2 branches missed.">			if (progress &lt;= 0.5) {</span>
+<span class="nc" id="L275">				distanceDone = 2 * progress * progress;</span>
+			} else {
+<span class="nc" id="L277">				distanceDone = -2 * progress * progress + 4 * progress - 1;</span>
+			}
+			
+<span class="nc" id="L280">			return (int) (distance * distanceDone) + startValue;</span>
+		}
+	}
+	
+	/**
+	 * Object for managing the animations.
+	 */
+	private static class Animator implements ActionListener {
+		/** Minimum animation speed. Larger is faster. */
+		private static final double MINIMUM_SPEED = 0.032;
+		
+		/** Timer used for the animation steps. */
+		private final Timer timer;
+		/** The container of the animated components. */
+		private Container parent;
+		/** Bound data of the animated components. */
+		private Collection&lt;BoundData&gt; boundList;
+		/** Current animation state. */
+		private double progress;
+		/** Current animation speed. */
+		private double progressRate;
+		
+		/**
+		 * Create a new Animator.
+		 * 
+		 * @param parent The container of the animated components
+		 * @param bounds Bound data of the animated components
+		 */
+<span class="nc" id="L308">		Animator(Container parent, Collection&lt;BoundData&gt; bounds) {</span>
+<span class="nc" id="L309">			setBounds(bounds);</span>
+<span class="nc" id="L310">			timer = new Timer(16, this);</span>
+<span class="nc" id="L311">			this.parent = parent;</span>
+<span class="nc" id="L312">		}</span>
+		
+		/**
+		 * Set bound data for the animations.
+		 * @param bounds bound data
+		 */
+		final void setBounds(Collection&lt;BoundData&gt; bounds) {
+			// Base the animation speed on the longest animated distance
+<span class="nc" id="L320">			int maxDist = 0;</span>
+<span class="nc bnc" id="L321" title="All 2 branches missed.">			for (BoundData ab : bounds) {</span>
+<span class="nc" id="L322">				maxDist = Math.max(maxDist, ab.getMaxDistance());</span>
+<span class="nc" id="L323">			}</span>
+<span class="nc" id="L324">			progressRate = Math.max(MINIMUM_SPEED, 1.0 / maxDist);</span>
+<span class="nc" id="L325">			this.boundList = bounds;</span>
+<span class="nc" id="L326">		}</span>
+		
+		/**
+		 * Start, or restart the animation.
+		 */
+		void restart() {
+<span class="nc" id="L332">			progress = 0;</span>
+<span class="nc" id="L333">			timer.restart();</span>
+<span class="nc" id="L334">		}</span>
+		
+		/**
+		 * Stop the animation.
+		 */
+		void stop() {
+<span class="nc" id="L340">			timer.stop();</span>
+<span class="nc" id="L341">		}</span>
+		
+		@Override
+		public void actionPerformed(ActionEvent e) {
+<span class="nc" id="L345">			progress += progressRate;</span>
+<span class="nc bnc" id="L346" title="All 2 branches missed.">			if (progress &gt;= 1) {</span>
+<span class="nc" id="L347">				progress = 1;</span>
+<span class="nc" id="L348">				timer.stop();</span>
+			}
+			
+<span class="nc bnc" id="L351" title="All 2 branches missed.">			for (BoundData bounds : boundList) {</span>
+<span class="nc" id="L352">				Component comp = bounds.getComponent();</span>
+<span class="nc" id="L353">				comp.setBounds(bounds.getBounds(progress));</span>
+<span class="nc" id="L354">			}</span>
+			
+<span class="nc" id="L356">			parent.repaint();</span>
+<span class="nc" id="L357">		}</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

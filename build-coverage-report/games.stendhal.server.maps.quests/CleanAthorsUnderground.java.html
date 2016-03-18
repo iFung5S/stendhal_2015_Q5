@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>CleanAthorsUnderground.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests</a> &gt; <span class="el_source">CleanAthorsUnderground.java</span></div><h1>CleanAthorsUnderground.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests;
+
+import games.stendhal.common.MathHelper;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.action.EquipItemAction;
+import games.stendhal.server.entity.npc.action.IncreaseKarmaAction;
+import games.stendhal.server.entity.npc.action.IncreaseXPAction;
+import games.stendhal.server.entity.npc.action.MultipleActions;
+import games.stendhal.server.entity.npc.action.SayTimeRemainingAction;
+import games.stendhal.server.entity.npc.action.SetQuestAction;
+import games.stendhal.server.entity.npc.action.SetQuestToTimeStampAction;
+import games.stendhal.server.entity.npc.action.StartRecordingKillsAction;
+import games.stendhal.server.entity.npc.condition.AndCondition;
+import games.stendhal.server.entity.npc.condition.KilledForQuestCondition;
+import games.stendhal.server.entity.npc.condition.NotCondition;
+import games.stendhal.server.entity.npc.condition.QuestInStateCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotStartedCondition;
+import games.stendhal.server.entity.npc.condition.QuestStateStartsWithCondition;
+import games.stendhal.server.entity.npc.condition.TimePassedCondition;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.maps.Region;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+
+import marauroa.common.Pair;
+
+/**
+ * QUEST: Clean Athors underground
+ *
+ * PARTICIPANTS: &lt;ul&gt;
+ * &lt;li&gt; NPC on Athor island
+ * &lt;li&gt; one of each creature in Athor underground
+ * &lt;/ul&gt;
+ *
+ * STEPS:&lt;ul&gt;
+ * &lt;li&gt; John on Athor island asks players to kill some creatures of the dungeon for him, cause he can't explore it otherwise
+ * &lt;li&gt; Kill them for him and go back to the NPC to get your reward
+ * &lt;/ul&gt;
+ * 
+ *
+ * REWARD:&lt;ul&gt;
+ * &lt;li&gt; 5000 XP
+ * &lt;li&gt; 10 greater potion
+ * &lt;li&gt; some karma
+ * &lt;/ul&gt;
+ *
+ * REPETITIONS: &lt;ul&gt;&lt;li&gt;once in a week&lt;/ul&gt;
+ * 
+ * @author Vanessa Julius, idea by anoyyou
+
+ */
+
+<span class="nc" id="L73">public class CleanAthorsUnderground extends AbstractQuest {</span>
+
+	private static final String QUEST_SLOT = &quot;clean_athors_underground&quot;;
+	private static final int WEEK_IN_MINUTES = MathHelper.MINUTES_IN_ONE_HOUR * 24 * 7;
+	
+	
+	@Override
+	public String getSlotName() {
+<span class="nc" id="L81">		return QUEST_SLOT;</span>
+		
+	}
+	
+	private void step_1() {
+<span class="nc" id="L86">		final SpeakerNPC npc = npcs.get(&quot;John&quot;);</span>
+
+<span class="nc" id="L88">		npc.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.QUEST_MESSAGES, 
+				new QuestNotStartedCondition(QUEST_SLOT),
+				ConversationStates.QUEST_OFFERED,
+				&quot;My wife Jane and me are on vacation here on Athor island. #Unfortunately we can't explore the whole island because some ugly #creatures step in our way each time. Can you help us by killing some of them to turn our vacation into a good one?&quot;,
+				null);
+
+<span class="nc" id="L95">		npc.add(</span>
+				ConversationStates.QUEST_OFFERED,
+				Arrays.asList(&quot;Unfortunately&quot;),
+				null,
+				ConversationStates.QUEST_OFFERED,
+				&quot;Yes, unfortunately. We wanted to have a great time here but all we did so far was sunbathe at the beach.&quot;,
+				null);
+		
+<span class="nc" id="L103">		npc.add(</span>
+				ConversationStates.QUEST_OFFERED,
+				Arrays.asList(&quot;creatures&quot;),
+				null,
+				ConversationStates.QUEST_OFFERED,
+				&quot;We just want to visit the first part of the dungeon, it seems to be very interesting. Some of these ugly things jump around there, even some mummies!&quot;,
+				null);
+		
+<span class="nc" id="L111">		npc.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.QUEST_MESSAGES,
+				new AndCondition(new NotCondition(new TimePassedCondition(QUEST_SLOT, 1, WEEK_IN_MINUTES)), new QuestStateStartsWithCondition(QUEST_SLOT, &quot;killed&quot;)),
+				ConversationStates.ATTENDING,
+				null,
+				new SayTimeRemainingAction(QUEST_SLOT, 1, WEEK_IN_MINUTES, &quot;These #creatures didn't return so far and we could see some lovely places all over. Please return in&quot;));
+		
+		
+<span class="nc" id="L119">		npc.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.QUEST_MESSAGES, 
+				new AndCondition(new QuestStateStartsWithCondition(QUEST_SLOT,&quot;killed&quot;),
+						 new TimePassedCondition(QUEST_SLOT, 1, WEEK_IN_MINUTES)),
+				ConversationStates.QUEST_OFFERED,
+				&quot;Those #creatures returned after the last time you helped us. Will you help us again please?&quot;,
+				null);
+
+	
+
+<span class="nc" id="L129">		final Map&lt;String, Pair&lt;Integer, Integer&gt;&gt; toKill = new TreeMap&lt;String, Pair&lt;Integer, Integer&gt;&gt;();</span>
+<span class="nc" id="L130">		toKill.put(&quot;mummy&quot;, new Pair&lt;Integer, Integer&gt;(0,1));</span>
+<span class="nc" id="L131">		toKill.put(&quot;royal mummy&quot;, new Pair&lt;Integer, Integer&gt;(0,1));</span>
+<span class="nc" id="L132">		toKill.put(&quot;monk&quot;,new Pair&lt;Integer, Integer&gt;(0,1));</span>
+<span class="nc" id="L133">		toKill.put(&quot;darkmonk&quot;,new Pair&lt;Integer, Integer&gt;(0,1));</span>
+<span class="nc" id="L134">		toKill.put(&quot;bat&quot;,new Pair&lt;Integer, Integer&gt;(0,1));</span>
+<span class="nc" id="L135">		toKill.put(&quot;brown slime&quot;,new Pair&lt;Integer, Integer&gt;(0,1));</span>
+<span class="nc" id="L136">		toKill.put(&quot;green slime&quot;,new Pair&lt;Integer, Integer&gt;(0,1));</span>
+<span class="nc" id="L137">		toKill.put(&quot;black slime&quot;,new Pair&lt;Integer, Integer&gt;(0,1));</span>
+<span class="nc" id="L138">		toKill.put(&quot;minotaur&quot;,new Pair&lt;Integer, Integer&gt;(0,1));</span>
+<span class="nc" id="L139">		toKill.put(&quot;blue dragon&quot;,new Pair&lt;Integer, Integer&gt;(0,1));</span>
+<span class="nc" id="L140">		toKill.put(&quot;stone golem&quot;,new Pair&lt;Integer, Integer&gt;(0,1));</span>
+
+<span class="nc" id="L142">		final List&lt;ChatAction&gt; actions = new LinkedList&lt;ChatAction&gt;();</span>
+<span class="nc" id="L143">		actions.add(new SetQuestAction(QUEST_SLOT, &quot;start&quot;));</span>
+<span class="nc" id="L144">		actions.add(new StartRecordingKillsAction(QUEST_SLOT, 1, toKill));</span>
+
+		
+<span class="nc" id="L147">		npc.add(ConversationStates.QUEST_OFFERED,</span>
+				ConversationPhrases.YES_MESSAGES,
+				null,
+				ConversationStates.ATTENDING,
+				&quot;Fantastic! We can't wait for your return. Please kill one of each creature you can find in the underground of Athor island. I bet you'll get them all!&quot;,
+				new MultipleActions(actions));
+
+<span class="nc" id="L154">		npc.add(ConversationStates.QUEST_OFFERED, </span>
+				ConversationPhrases.NO_MESSAGES, 
+				null,
+				ConversationStates.ATTENDING,
+				&quot;Oh never mind. We'll go on sunbathing then. Not that we aren't tired of it...&quot;,
+				new SetQuestAction(QUEST_SLOT, &quot;rejected&quot;));
+<span class="nc" id="L160">	}</span>
+
+	private void step_2() {
+		/* Player has to kill the creatures*/
+<span class="nc" id="L164">	}</span>
+
+	private void step_3() {
+
+<span class="nc" id="L168">		final SpeakerNPC npc = npcs.get(&quot;John&quot;);</span>
+
+
+<span class="nc" id="L171">		final List&lt;ChatAction&gt; actions = new LinkedList&lt;ChatAction&gt;();</span>
+<span class="nc" id="L172">	    actions.add(new EquipItemAction(&quot;greater potion&quot;, 10));</span>
+<span class="nc" id="L173">		actions.add(new IncreaseXPAction(5000));</span>
+<span class="nc" id="L174">		actions.add(new SetQuestAction(QUEST_SLOT, &quot;killed;1&quot;));</span>
+<span class="nc" id="L175">		actions.add(new SetQuestToTimeStampAction(QUEST_SLOT, 1));</span>
+<span class="nc" id="L176">		actions.add(new IncreaseKarmaAction(10.0));</span>
+
+		
+<span class="nc" id="L179">		LinkedList&lt;String&gt; triggers = new LinkedList&lt;String&gt;();</span>
+<span class="nc" id="L180">		triggers.addAll(ConversationPhrases.FINISH_MESSAGES);</span>
+<span class="nc" id="L181">		triggers.addAll(ConversationPhrases.QUEST_MESSAGES);		</span>
+<span class="nc" id="L182">		npc.add(ConversationStates.ATTENDING, </span>
+				triggers,
+				new AndCondition(
+						new QuestInStateCondition(QUEST_SLOT, 0, &quot;start&quot;),
+						new KilledForQuestCondition(QUEST_SLOT, 1)),
+				ConversationStates.ATTENDING, 
+				&quot;Brilliant! You killed some of these ugly creatures as I see! Hopefully they'll not return that fast or we will still not have the chance to explore some places.&quot;  + &quot; Please take these greater potions as a reward for your help.&quot;,
+				new MultipleActions(actions));
+
+<span class="nc" id="L191">		npc.add(ConversationStates.ATTENDING, </span>
+				triggers,
+				new AndCondition(
+						new QuestInStateCondition(QUEST_SLOT, 0, &quot;start&quot;),
+						new NotCondition(new KilledForQuestCondition(QUEST_SLOT, 1))),
+				ConversationStates.ATTENDING, 
+				&quot;Please free these lovely places on Athor from ugly creatures!&quot;,
+				null);
+		
+<span class="nc" id="L200">	}</span>
+
+	@Override
+	public void addToWorld() {
+<span class="nc" id="L204">		fillQuestInfo(</span>
+				&quot;Clean Athors underground&quot;,
+				&quot;John and his wife Jane want to explore Athor underground on their vacation but unfortunately they can't.&quot;,
+				false);
+<span class="nc" id="L208">		step_1();</span>
+<span class="nc" id="L209">		step_2();</span>
+<span class="nc" id="L210">		step_3();</span>
+<span class="nc" id="L211">	}</span>
+	
+	@Override
+	public List&lt;String&gt; getHistory(final Player player) {
+<span class="nc" id="L215">			final List&lt;String&gt; res = new ArrayList&lt;String&gt;();</span>
+<span class="nc bnc" id="L216" title="All 2 branches missed.">			if (!player.hasQuest(QUEST_SLOT)) {</span>
+<span class="nc" id="L217">				return res;</span>
+			}
+<span class="nc bnc" id="L219" title="All 2 branches missed.">			if (!isCompleted(player)) {</span>
+<span class="nc" id="L220">				res.add(&quot;I must kill one of each creature of the Athor underground to help John and Jane have a nice vacation!&quot;);</span>
+<span class="nc bnc" id="L221" title="All 2 branches missed.">			} else if(isRepeatable(player)){</span>
+<span class="nc" id="L222">				res.add(&quot;It's a long time ago that I visited John and Jane on Athor island. Maybe they need my help again now.&quot;);</span>
+			} else {
+<span class="nc" id="L224">				res.add(&quot;I've killed some creatures and John and Jane can finally enjoy their vacation! They will not need my help again during the next days.&quot;);</span>
+			}
+<span class="nc" id="L226">			return res;</span>
+	}
+
+
+	@Override
+	public String getName() {
+<span class="nc" id="L232">		return &quot;CleanAthorsUnderground&quot;;</span>
+
+	}
+	
+	@Override
+	public boolean isRepeatable(final Player player) {
+<span class="nc" id="L238">		return new AndCondition(new QuestStateStartsWithCondition(QUEST_SLOT,&quot;killed&quot;),</span>
+				 new TimePassedCondition(QUEST_SLOT, 1, WEEK_IN_MINUTES)).fire(player,null, null);
+	}
+	
+	@Override
+	public boolean isCompleted(final Player player) {
+<span class="nc" id="L244">		return new QuestStateStartsWithCondition(QUEST_SLOT,&quot;killed&quot;).fire(player, null, null);</span>
+	}
+
+	@Override
+	public String getNPCName() {
+<span class="nc" id="L249">		return &quot;John&quot;;</span>
+	}
+
+	@Override
+	public String getRegion() {
+<span class="nc" id="L254">		return Region.ATHOR_ISLAND;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

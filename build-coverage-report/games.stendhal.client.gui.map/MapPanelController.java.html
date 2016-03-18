@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>MapPanelController.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui.map</a> &gt; <span class="el_source">MapPanelController.java</span></div><h1>MapPanelController.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui.map;
+
+import games.stendhal.client.GameObjects;
+import games.stendhal.client.StendhalClient;
+import games.stendhal.client.StendhalClient.ZoneChangeListener;
+import games.stendhal.client.Zone;
+import games.stendhal.client.entity.DomesticAnimal;
+import games.stendhal.client.entity.EntityChangeListener;
+import games.stendhal.client.entity.HousePortal;
+import games.stendhal.client.entity.IEntity;
+import games.stendhal.client.entity.Player;
+import games.stendhal.client.entity.Portal;
+import games.stendhal.client.entity.RPEntity;
+import games.stendhal.client.entity.User;
+import games.stendhal.client.entity.WalkBlocker;
+import games.stendhal.client.entity.Wall;
+import games.stendhal.client.gui.layout.SBoxLayout;
+import games.stendhal.client.gui.layout.SLayout;
+import games.stendhal.client.listener.PositionChangeListener;
+import games.stendhal.common.CollisionDetection;
+
+import java.awt.Color;
+import java.awt.Graphics;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+import javax.swing.JComponent;
+import javax.swing.SwingUtilities;
+
+/**
+ * Controller object for the map panel.
+ */
+public class MapPanelController implements GameObjects.GameObjectListener, PositionChangeListener, ZoneChangeListener {
+<span class="nc bnc" id="L46" title="All 2 branches missed.">	private static final boolean supermanMode = (System.getProperty(&quot;stendhal.superman&quot;) != null);</span>
+	private final JComponent container;
+	private final MapPanel panel;
+	private final InformationPanel infoPanel;
+<span class="nc" id="L50">	final Map&lt;IEntity, MapObject&gt; mapObjects = new ConcurrentHashMap&lt;IEntity, MapObject&gt;();</span>
+	private double x, y;
+
+	/**
+	 * &lt;code&gt;true&lt;/code&gt; if the map should be repainted, &lt;code&gt;false&lt;/code&gt;
+	 * otherwise.
+	 */ 
+	private volatile boolean needsRefresh;
+	
+	/**
+	 * Create a MapPanelController.
+	 * 
+	 * @param client client object
+	 */
+<span class="nc" id="L64">	public MapPanelController(final StendhalClient client) {</span>
+<span class="nc" id="L65">		container = new MapContainer();</span>
+<span class="nc" id="L66">		container.setLayout(new SBoxLayout(SBoxLayout.VERTICAL));</span>
+		
+<span class="nc" id="L68">		panel = new MapPanel(this, client);</span>
+<span class="nc" id="L69">		container.add(panel);</span>
+		
+<span class="nc" id="L71">		infoPanel = new InformationPanel();</span>
+<span class="nc" id="L72">		infoPanel.setBackground(Color.BLACK);</span>
+<span class="nc" id="L73">		container.add(infoPanel, SLayout.EXPAND_X);</span>
+		
+<span class="nc" id="L75">		client.getGameObjects().addGameObjectListener(this);</span>
+<span class="nc" id="L76">	}</span>
+	
+	/**
+	 * Mark the map contents changed, so that the component should be redrawn.
+	 * 
+	 * @param needed 
+	 */
+	void setNeedsRefresh(boolean needed) {
+<span class="nc" id="L84">		needsRefresh = needed;</span>
+<span class="nc" id="L85">	}</span>
+	
+	/**
+	 * Get the map panel component.
+	 * 
+	 * @return component
+	 */
+	public JComponent getComponent() {
+<span class="nc" id="L93">		return container;</span>
+	}
+	
+	/**
+	 * Add an entity to the map, if it should be displayed to the user. This
+	 * method is thread safe.
+	 * 
+	 * @param entity the added entity
+	 */
+	@Override
+	public void addEntity(final IEntity entity) {
+<span class="nc" id="L104">		MapObject object = null;</span>
+		
+<span class="nc bnc" id="L106" title="All 2 branches missed.">		if (entity instanceof Player) {</span>
+<span class="nc" id="L107">			object = new PlayerMapObject(entity);</span>
+<span class="nc bnc" id="L108" title="All 2 branches missed.">		} else if (entity instanceof Portal) {</span>
+<span class="nc" id="L109">			final Portal portal = (Portal) entity;</span>
+
+<span class="nc bnc" id="L111" title="All 2 branches missed.">			if (!portal.isHidden()) {</span>
+<span class="nc" id="L112">				mapObjects.put(entity, new PortalMapObject(entity));</span>
+			}
+<span class="nc bnc" id="L114" title="All 2 branches missed.">		} else if (entity instanceof HousePortal) {</span>
+<span class="nc" id="L115">			object = new PortalMapObject(entity);</span>
+<span class="nc bnc" id="L116" title="All 2 branches missed.">		} else if (entity instanceof WalkBlocker) {</span>
+<span class="nc" id="L117">			object = new WalkBlockerMapObject(entity);</span>
+<span class="nc bnc" id="L118" title="All 2 branches missed.">		} else if (entity instanceof Wall) {</span>
+<span class="nc" id="L119">			object = new WallMapObject(entity);</span>
+<span class="nc bnc" id="L120" title="All 2 branches missed.">		} else if (entity instanceof DomesticAnimal) {</span>
+			// Only own pets and sheep are drawn but this is checked in the map object so the user status is always up to date
+<span class="nc" id="L122">			object = new DomesticAnimalMapObject((DomesticAnimal) entity);</span>
+<span class="nc bnc" id="L123" title="All 4 branches missed.">		} else if (supermanMode &amp;&amp; User.isAdmin()) {</span>
+<span class="nc bnc" id="L124" title="All 2 branches missed.">			if (entity instanceof RPEntity) {</span>
+<span class="nc" id="L125">				object = new RPEntityMapObject(entity);</span>
+			} else {
+<span class="nc" id="L127">				object = new MovingMapObject(entity);</span>
+			}
+		}
+		
+<span class="nc bnc" id="L131" title="All 2 branches missed.">		if (object != null) {</span>
+<span class="nc" id="L132">			mapObjects.put(entity, object);</span>
+			
+			// changes to objects that should trigger a refresh
+<span class="nc bnc" id="L135" title="All 2 branches missed.">			if (object instanceof MovingMapObject) {</span>
+<span class="nc" id="L136">				entity.addChangeListener(new EntityChangeListener&lt;IEntity&gt;() {</span>
+					@Override
+					public void entityChanged(final IEntity entity, final Object property) {
+<span class="nc bnc" id="L139" title="All 6 branches missed.">						if ((property == IEntity.PROP_POSITION) </span>
+								|| (property == RPEntity.PROP_GHOSTMODE)
+								|| (property == RPEntity.PROP_GROUP_MEMBERSHIP)) {
+<span class="nc" id="L142">							needsRefresh = true;</span>
+						}
+<span class="nc" id="L144">					}</span>
+				});
+			}
+<span class="nc" id="L147">			needsRefresh = true;</span>
+		}
+<span class="nc" id="L149">	}</span>
+
+	
+	/**
+	 * Remove an entity from the map entity list.
+	 * 
+	 * @param entity the entity to be removed
+	 */
+	@Override
+	public void removeEntity(final IEntity entity) {
+<span class="nc bnc" id="L159" title="All 2 branches missed.">		if (mapObjects.remove(entity) != null) {</span>
+<span class="nc" id="L160">			needsRefresh = true;</span>
+		}
+<span class="nc" id="L162">	}</span>
+	
+	/**
+	 * Request redrawing the map screen if the needed.
+	 */
+	public void refresh() {
+<span class="nc bnc" id="L168" title="All 2 branches missed.">		if (needsRefresh) {</span>
+<span class="nc" id="L169">			panel.repaint();</span>
+		}
+<span class="nc" id="L171">	}</span>
+	
+	/**
+	 * Update the map with new data.
+	 * 
+	 * @param cd
+	 *            The collision map.
+	 * @param pd  
+	 *      	  The protection map.
+	 * @param zone
+	 *            The zone name.
+	 * @param dangerLevel zone danger level
+	 */
+	private void update(final CollisionDetection cd, final CollisionDetection pd,
+			final String zone, final double dangerLevel) {
+		// Panel will do the relevant part in EDT.
+<span class="nc" id="L187">		panel.update(cd, pd);</span>
+<span class="nc" id="L188">		SwingUtilities.invokeLater(new Runnable() {</span>
+			@Override
+			public void run() {
+<span class="nc" id="L191">				infoPanel.setZoneName(zone);</span>
+<span class="nc" id="L192">				infoPanel.setDangerLevel(dangerLevel);</span>
+<span class="nc" id="L193">			}</span>
+		});
+<span class="nc" id="L195">	}</span>
+	
+	/**
+	 * The player's position changed.
+	 * 
+	 * @param x
+	 *            The X coordinate (in world units).
+	 * @param y
+	 *            The Y coordinate (in world units).
+	 */
+	@Override
+	public void positionChanged(final double x, final double y) {
+		/*
+		 * The client gets occasionally spurious events.
+		 * Suppress repainting unless the position actually changed
+		 */
+<span class="nc bnc" id="L211" title="All 4 branches missed.">		if ((this.x != x) || (this.y != y)) {</span>
+<span class="nc" id="L212">			this.x = x;</span>
+<span class="nc" id="L213">			this.y = y;</span>
+<span class="nc" id="L214">			SwingUtilities.invokeLater(new Runnable() {</span>
+				@Override
+				public void run() {
+<span class="nc" id="L217">					panel.positionChanged(x, y);</span>
+					/*
+					 * Set the refresh flag after the map offset has been
+					 * actually updated. The position listener for moving map
+					 * objects sets it, but it happens in the game loop thread
+					 * and may be unset before the map panel has actually got
+					 * the correct map offset. 
+					 */
+<span class="nc" id="L225">					setNeedsRefresh(true);</span>
+<span class="nc" id="L226">				}</span>
+			});
+		}
+<span class="nc" id="L229">	}</span>
+	
+	@Override
+	public void onZoneChange(Zone zone) {
+<span class="nc" id="L233">	}</span>
+
+	@Override
+	public void onZoneChangeCompleted(Zone zone) {
+<span class="nc" id="L237">		update(zone.getCollision(), zone.getProtection(), zone.getReadableName(), zone.getDangerLevel());</span>
+<span class="nc" id="L238">	}</span>
+
+	@Override
+	public void onZoneUpdate(Zone zone) {
+<span class="nc" id="L242">		update(zone.getCollision(), zone.getProtection(), zone.getReadableName(), zone.getDangerLevel());</span>
+<span class="nc" id="L243">	}</span>
+
+	/**
+	 * A container with black background to hold the map and related widgets.
+	 */
+<span class="nc" id="L248">	private static class MapContainer extends JComponent {</span>
+		@Override
+		public void paintComponent(Graphics g) {
+<span class="nc" id="L251">			g.setColor(Color.BLACK);</span>
+<span class="nc" id="L252">			g.fillRect(0, 0, getWidth(), getHeight());</span>
+<span class="nc" id="L253">		}</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

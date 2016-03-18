@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>MarkScrollAction.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.actions</a> &gt; <span class="el_source">MarkScrollAction.java</span></div><h1>MarkScrollAction.java</h1><pre class="source lang-java linenums">package games.stendhal.server.actions;
+
+import static games.stendhal.common.constants.Actions.TARGET;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.entity.item.Item;
+import games.stendhal.server.entity.player.Player;
+import marauroa.common.game.RPAction;
+
+<span class="fc" id="L10">public class MarkScrollAction implements ActionListener {</span>
+
+	@Override
+	public void onAction(Player player, RPAction action) {
+
+		// can't try to drop the scroll straight away as teleport may not be allowed
+<span class="nc bnc" id="L16" title="All 2 branches missed.">		if(player.isEquipped(&quot;empty scroll&quot;, 1)) {</span>
+
+<span class="nc" id="L18">			final StendhalRPZone zone = player.getZone();</span>
+<span class="nc" id="L19">			final int x = player.getX();</span>
+<span class="nc" id="L20">			final int y = player.getY();</span>
+
+<span class="nc bnc" id="L22" title="All 2 branches missed.">			if (zone.isTeleportInAllowed(x, y)) {</span>
+
+<span class="nc" id="L24">				player.drop(&quot;empty scroll&quot;, 1);</span>
+
+<span class="nc" id="L26">				String infostring = zone.getName() + &quot; &quot; + x + &quot; &quot; + y;</span>
+
+<span class="nc" id="L28">				Item scroll = SingletonRepository.getEntityManager().getItem(&quot;marked scroll&quot;);</span>
+<span class="nc" id="L29">				scroll.setInfoString(infostring);</span>
+
+				// add a description if the player wanted one
+<span class="nc bnc" id="L32" title="All 2 branches missed.">				if (action.has(TARGET)) {</span>
+<span class="nc" id="L33">					String description = action.get(TARGET) + &quot; &quot; + action.get(&quot;args&quot;);</span>
+<span class="nc" id="L34">					scroll.setDescription(&quot;You see a scroll marked by &quot; + player.getName() + &quot;. It says: \&quot;&quot;+ description +&quot;\&quot;. &quot;);</span>
+				}
+
+<span class="nc" id="L37">				player.equipOrPutOnGround(scroll);</span>
+
+<span class="nc" id="L39">			} else {</span>
+<span class="nc" id="L40">				player.sendPrivateText(&quot;The strong anti magic aura in this area prevents the scroll from working!&quot;);</span>
+			}
+<span class="nc" id="L42">		} else {</span>
+<span class="nc" id="L43">			player.sendPrivateText(&quot;You don't have any empty scrolls to mark.&quot;);</span>
+		}
+<span class="nc" id="L45">	}</span>
+
+}
+
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

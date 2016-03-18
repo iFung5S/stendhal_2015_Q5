@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>NoLoginAreaFactory.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.mapstuff.area</a> &gt; <span class="el_source">NoLoginAreaFactory.java</span></div><h1>NoLoginAreaFactory.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                (C) Copyright 2003-2012 - Faiumoni e. V.                 *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.mapstuff.area;
+
+import games.stendhal.server.core.config.factory.ConfigurableFactory;
+import games.stendhal.server.core.config.factory.ConfigurableFactoryContext;
+
+/**
+ * A base factory for &lt;code&gt;NoLoginArea&lt;/code&gt; objects.
+ */
+<span class="nc" id="L20">public class NoLoginAreaFactory implements ConfigurableFactory {</span>
+
+	/**
+	 * Extract the height from context.
+	 * 
+	 * @param ctx
+	 *            The configuration context.
+	 * @return The height, 1 if unspecified.
+	 * @throws IllegalArgumentException
+	 *             If the attribute is invalid.
+	 */
+	protected int getHeight(final ConfigurableFactoryContext ctx) {
+<span class="nc" id="L32">		return ctx.getInt(&quot;height&quot;, 1);</span>
+	}
+
+	/**
+	 * Extract the width from context.
+	 * 
+	 * @param ctx
+	 *            The configuration context.
+	 * @return The width, 1 if unspecified.
+	 * @throws IllegalArgumentException
+	 *             If the attribute is invalid.
+	 */
+	protected int getWidth(final ConfigurableFactoryContext ctx) {
+<span class="nc" id="L45">		return ctx.getInt(&quot;width&quot;, 1);</span>
+	}
+
+	/**
+	 * Get the message to send to the player.
+	 * 
+	 * @param ctx
+	 *            The configuration context.
+	 * 
+	 * @return The message to send to the player.
+	 */
+	protected String getMessage(final ConfigurableFactoryContext ctx) {
+<span class="nc" id="L57">		return ctx.getString(&quot;message&quot;, null);</span>
+	}
+
+	/**
+	 * Get the new player X coordinate.
+	 * 
+	 * @param ctx
+	 *            The configuration context.
+	 * 
+	 * @return The new player X coordinate.
+	 * 
+	 * @throws IllegalArgumentException
+	 *             If the attribute is missing/invalid.
+	 */
+	protected int getNewX(final ConfigurableFactoryContext ctx) {
+<span class="nc" id="L72">		return ctx.getRequiredInt(&quot;new-x&quot;);</span>
+	}
+
+	/**
+	 * Get the new player Y coordinate.
+	 * 
+	 * @param ctx
+	 *            The configuration context.
+	 * 
+	 * @return The new player Y coordinate.
+	 * 
+	 * @throws IllegalArgumentException
+	 *             If the attribute is missing/invalid.
+	 */
+	protected int getNewY(final ConfigurableFactoryContext ctx) {
+<span class="nc" id="L87">		return ctx.getRequiredInt(&quot;new-y&quot;);</span>
+	}
+
+	/**
+	 * Create an object.
+	 * 
+	 * @param ctx
+	 *            The configuration context.
+	 * 
+	 * @return A new object, or &lt;code&gt;null&lt;/code&gt; if allowed by the factory
+	 *         type.
+	 * 
+	 * @throws IllegalArgumentException
+	 *             If there is a problem with the attributes. The exception
+	 *             message should be a value suitable for meaningful user
+	 *             interpretation.
+	 */
+	@Override
+	public AreaEntity create(final ConfigurableFactoryContext ctx) {
+<span class="nc" id="L106">		AreaEntity area = new AreaEntity(getWidth(ctx), getHeight(ctx));</span>
+<span class="nc" id="L107">		NoLoginAreaBehaviour noLoginAreaBehaviour = new NoLoginAreaBehaviour(getNewX(ctx), getNewY(ctx), getMessage(ctx));</span>
+<span class="nc" id="L108">		area.addBehaviour(noLoginAreaBehaviour);</span>
+<span class="nc" id="L109">		area.addBehaviour(new HideAreaBehaviour());</span>
+<span class="nc" id="L110">		return area;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

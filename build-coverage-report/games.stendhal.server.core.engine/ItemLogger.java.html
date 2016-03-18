@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ItemLogger.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.core.engine</a> &gt; <span class="el_source">ItemLogger.java</span></div><h1>ItemLogger.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.core.engine;
+
+import games.stendhal.server.core.engine.db.StendhalItemDAO;
+import games.stendhal.server.core.engine.dbcommand.AbstractLogItemEventCommand;
+import games.stendhal.server.core.engine.dbcommand.LogMergeItemEventCommand;
+import games.stendhal.server.core.engine.dbcommand.LogSimpleItemEventCommand;
+import games.stendhal.server.core.engine.dbcommand.LogSplitItemEventCommand;
+import games.stendhal.server.entity.Entity;
+import games.stendhal.server.entity.PassiveEntity;
+import games.stendhal.server.entity.RPEntity;
+import games.stendhal.server.entity.item.Item;
+import games.stendhal.server.entity.player.Player;
+import marauroa.common.game.RPObject;
+import marauroa.common.game.RPSlot;
+import marauroa.server.db.command.DBCommandQueue;
+
+/**
+ * Item Logger.
+ *
+ * @author hendrik
+ */
+<span class="fc" id="L34">public class ItemLogger {</span>
+
+
+	public void addLogItemEventCommand(final AbstractLogItemEventCommand command) {
+<span class="fc" id="L38">		DBCommandQueue.get().enqueue(command);</span>
+<span class="fc" id="L39">	}</span>
+
+
+	private String getQuantity(final RPObject item) {
+<span class="fc" id="L43">		int quantity = 1;</span>
+<span class="fc bfc" id="L44" title="All 2 branches covered.">		if (item.has(&quot;quantity&quot;)) {</span>
+<span class="fc" id="L45">			quantity = item.getInt(&quot;quantity&quot;);</span>
+		}
+<span class="fc" id="L47">		return Integer.toString(quantity);</span>
+	}
+
+	public void loadOnLogin(final Player player, final RPSlot slot, final Item item) {
+<span class="nc bnc" id="L51" title="All 2 branches missed.">		if (item.has(StendhalItemDAO.ATTR_ITEM_LOGID)) {</span>
+<span class="nc" id="L52">			return;</span>
+		}
+<span class="nc" id="L54">		addLogItemEventCommand(new LogSimpleItemEventCommand(item, player, &quot;create&quot;, item.get(&quot;name&quot;), getQuantity(item), &quot;olditem&quot;,</span>
+				slot.getName()));
+<span class="nc" id="L56">	}</span>
+
+	public void destroyOnLogin(final Player player, final RPSlot slot, final RPObject item) {
+<span class="nc" id="L59">		addLogItemEventCommand(new LogSimpleItemEventCommand(item, player, &quot;destroy&quot;, item.get(&quot;name&quot;), getQuantity(item), &quot;on login&quot;,</span>
+				slot.getName()));
+<span class="nc" id="L61">	}</span>
+
+	public void destroy(final RPEntity entity, final RPSlot slot, final RPObject item) {
+<span class="fc" id="L64">		destroy(entity, slot, item, &quot;quest&quot;);</span>
+<span class="fc" id="L65">	}</span>
+
+	public void destroy(final RPEntity entity, final RPSlot slot, final RPObject item, String reason) {
+<span class="fc" id="L68">		String slotName = &quot;&quot;;</span>
+<span class="pc bpc" id="L69" title="1 of 2 branches missed.">		if (slot != null) {</span>
+<span class="fc" id="L70">			slotName = slot.getName();</span>
+		}
+<span class="fc" id="L72">		addLogItemEventCommand(new LogSimpleItemEventCommand(item, entity, &quot;destroy&quot;, item.get(&quot;name&quot;), getQuantity(item), reason,</span>
+				slotName));
+<span class="fc" id="L74">	}</span>
+
+	public void dropQuest(final Player player, final Item item) {
+<span class="nc" id="L77">		addLogItemEventCommand(new LogSimpleItemEventCommand(item, player, &quot;destroy&quot;, item.get(&quot;name&quot;), getQuantity(item), &quot;quest&quot;, null));</span>
+<span class="nc" id="L78">	}</span>
+
+	/**
+	 * Call when the item or its container times out, or the containing zone is
+	 * destroyed
+	 * 
+	 * @param item Item to log timeout for
+	 */
+	public void timeout(final Item item) {
+		LogSimpleItemEventCommand command;
+<span class="pc bpc" id="L88" title="1 of 2 branches missed.">		if (!item.isContained()) {</span>
+<span class="fc" id="L89">			command = new LogSimpleItemEventCommand(item, null, &quot;destroy&quot;, item.get(&quot;name&quot;), getQuantity(item), &quot;timeout&quot;, item.getZone().getID().getID() + &quot; &quot; + item.getX() + &quot; &quot; + item.getY());</span>
+		} else {
+<span class="nc" id="L91">			RPObject base = item.getBaseContainer();</span>
+<span class="nc bnc" id="L92" title="All 2 branches missed.">			if (base instanceof Entity) {</span>
+<span class="nc" id="L93">				Entity baseEntity = (Entity) base;</span>
+<span class="nc" id="L94">				command = new LogSimpleItemEventCommand(item, null, &quot;destroy&quot;,</span>
+						item.get(&quot;name&quot;), getQuantity(item),
+						&quot;timeout&quot;, baseEntity.getZone().getID().getID()
+						+ &quot; &quot; + baseEntity.getX() + &quot; &quot; + baseEntity.getY()
+						+ &quot; (&quot; + baseEntity.getRPClass().getName() + &quot;)&quot;);
+<span class="nc" id="L99">			} else {</span>
+<span class="nc" id="L100">				return;</span>
+			}
+		}
+<span class="fc" id="L103">		addLogItemEventCommand(command);</span>
+<span class="fc" id="L104">	}</span>
+
+	public void displace(final Player player, final PassiveEntity item, final StendhalRPZone zone, final int oldX, final int oldY, final int x, final int y) {
+<span class="fc" id="L107">		addLogItemEventCommand(new LogSimpleItemEventCommand(item, player, &quot;ground-to-ground&quot;, zone.getID().getID(), oldX + &quot; &quot; + oldY,</span>
+				zone.getID().getID(), x + &quot; &quot; + y));
+<span class="fc" id="L109">	}</span>
+
+	public void equipAction(final Player player, final Entity entity, final String[] sourceInfo, final String[] destInfo) {
+<span class="fc" id="L112">		addLogItemEventCommand(new LogSimpleItemEventCommand(entity, player, sourceInfo[0] + &quot;-to-&quot; + destInfo[0], sourceInfo[1],</span>
+				sourceInfo[2], destInfo[1], destInfo[2]));
+<span class="fc" id="L114">	}</span>
+
+	public void merge(final RPEntity entity, final Item oldItem, final Item outlivingItem) {
+<span class="pc bpc" id="L117" title="1 of 2 branches missed.">		if (!(entity instanceof Player)) {</span>
+<span class="nc" id="L118">			return;</span>
+		}
+<span class="fc" id="L120">		final Player player = (Player) entity;</span>
+
+<span class="fc" id="L122">		addLogItemEventCommand(new LogMergeItemEventCommand(player, oldItem, outlivingItem));</span>
+<span class="fc" id="L123">	}</span>
+
+	public void splitOff(final RPEntity player, final Item item, final int quantity) {
+<span class="fc" id="L126">		final String oldQuantity = getQuantity(item);</span>
+<span class="fc" id="L127">		final String outlivingQuantity = Integer.toString(Integer.parseInt(oldQuantity) - quantity);</span>
+<span class="fc" id="L128">		addLogItemEventCommand(new LogSimpleItemEventCommand(item, player, &quot;split out&quot;, &quot;-1&quot;, oldQuantity, outlivingQuantity, Integer.toString(quantity)));</span>
+<span class="fc" id="L129">	}</span>
+
+
+	public void splitOff(final RPEntity player, final Item item, final Item newItem, final int quantity) {
+<span class="pc bpc" id="L133" title="1 of 2 branches missed.">		if (!(player instanceof Player)) {</span>
+<span class="nc" id="L134">			return;</span>
+		}
+<span class="fc" id="L136">		addLogItemEventCommand(new LogSplitItemEventCommand(player, item, newItem));</span>
+<span class="fc" id="L137">	}</span>
+
+	/*
+	create             name         quantity          quest-name / killed creature / summon zone x y / summonat target target-slot quantity / olditem
+	slot-to-slot       source       source-slot       target    target-slot
+	ground-to-slot     zone         x         y       target    target-slot
+	slot-to-ground     source       source-slot       zone         x         y
+	ground-to-ground   zone         x         y       zone         x         y
+	use                old-quantity new-quantity
+	destroy            name         quantity          by admin / by quest / on login / timeout on ground
+	merge in           outliving_id      destroyed-quantity   outliving-quantity       merged-quantity
+	merged in          destroyed_id      outliving-quantity   destroyed-quantity       merged-quantity
+	split out          new_id            old-quantity         outliving-quantity       new-quantity
+	splitted out       outliving_id      old-quantity         new-quantity             outliving-quantity
+
+	the last two are redundant pairs to simplify queries
+	 */
+
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

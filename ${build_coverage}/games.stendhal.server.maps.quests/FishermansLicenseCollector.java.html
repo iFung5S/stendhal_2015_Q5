@@ -1,0 +1,284 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>FishermansLicenseCollector.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests</a> &gt; <span class="el_source">FishermansLicenseCollector.java</span></div><h1>FishermansLicenseCollector.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2011 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests;
+
+import games.stendhal.common.grammar.Grammar;
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.action.SetQuestAction;
+import games.stendhal.server.entity.npc.action.SetQuestAndModifyKarmaAction;
+import games.stendhal.server.entity.npc.condition.AndCondition;
+import games.stendhal.server.entity.npc.condition.GreetingMatchesNameCondition;
+import games.stendhal.server.entity.npc.condition.QuestActiveCondition;
+import games.stendhal.server.entity.npc.condition.QuestCompletedCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotStartedCondition;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.maps.Region;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
+
+/**
+ * QUEST: Fisherman's license Collector
+ * 
+ * PARTICIPANTS:
+ * &lt;ul&gt;
+ * &lt;li&gt; Santiago the fisherman&lt;/li&gt;
+ * &lt;/ul&gt;
+ * 
+ * STEPS:
+ * &lt;ul&gt;
+ * &lt;li&gt; The player must bring all kinds of fishes to the fisherman&lt;/li&gt;
+ * &lt;/ul&gt;
+ * 
+ * REWARD:
+ * &lt;ul&gt;
+ * &lt;li&gt; 2000 XP&lt;/li&gt;
+ * &lt;li&gt; some karma (25 + (5 | -5)) &lt;/li&gt;
+ * &lt;li&gt; The player gets a fisherman's license (i.e. fishing skills increased by
+ *      0.2).&lt;/li&gt;
+ * &lt;/ul&gt;
+ *
+ * REPETITIONS:
+ * &lt;ul&gt;
+ * &lt;li&gt; No repetitions.&lt;/li&gt;
+ * &lt;/ul&gt;
+ *
+ * @author dine
+ */
+
+<span class="nc" id="L66">public class FishermansLicenseCollector extends AbstractQuest {</span>
+
+	public static final String QUEST_SLOT = &quot;fishermans_license2&quot;;
+
+	@Override
+	public String getSlotName() {
+<span class="nc" id="L72">		return QUEST_SLOT;</span>
+	}
+	
+<span class="nc" id="L75">	private static final List&lt;String&gt; neededFish = </span>
+		Arrays.asList(&quot;trout&quot;, &quot;perch&quot;, &quot;mackerel&quot;, &quot;cod&quot;, &quot;roach&quot;, &quot;char&quot;, &quot;clownfish&quot;, &quot;surgeonfish&quot;);
+
+	/**
+	 * Returns a list of the names of all fish that the given player still has
+	 * to bring to fulfill the quest.
+	 *
+	 * @param player
+	 *            The player doing the quest
+	 * @param hash
+	 *            If true, sets a # character in front of every name
+	 * @return A list of fish names
+	 */
+	private List&lt;String&gt; missingFish(final Player player, final boolean hash) {
+<span class="nc" id="L89">		final List&lt;String&gt; result = new LinkedList&lt;String&gt;();</span>
+
+<span class="nc" id="L91">		String doneText = player.getQuest(QUEST_SLOT);</span>
+<span class="nc bnc" id="L92" title="All 2 branches missed.">		if (doneText == null) {</span>
+<span class="nc" id="L93">			doneText = &quot;&quot;;</span>
+		}
+
+<span class="nc" id="L96">		final List&lt;String&gt; done = Arrays.asList(doneText.split(&quot;;&quot;));</span>
+<span class="nc bnc" id="L97" title="All 2 branches missed.">		for (final String fish : neededFish) {</span>
+<span class="nc bnc" id="L98" title="All 2 branches missed.">			if (!done.contains(fish)) {</span>
+<span class="nc bnc" id="L99" title="All 2 branches missed.">				if (hash) {</span>
+<span class="nc" id="L100">					result.add(&quot;#&quot; + fish);</span>
+				} else {
+<span class="nc" id="L102">					result.add(fish);</span>
+				}
+			}
+<span class="nc" id="L105">		}</span>
+<span class="nc" id="L106">		return result;</span>
+	}
+
+	private void step_1() {
+<span class="nc" id="L110">		final SpeakerNPC npc = npcs.get(&quot;Santiago&quot;);</span>
+
+		// player says hi before starting the quest
+<span class="nc" id="L113">		npc.add(</span>
+			ConversationStates.IDLE,
+			ConversationPhrases.GREETING_MESSAGES,
+			new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+					new QuestCompletedCondition(FishermansLicenseQuiz.QUEST_SLOT),
+					new QuestNotStartedCondition(QUEST_SLOT)),
+			ConversationStates.ATTENDING,
+			&quot;Hello again! The second part of your #exam is waiting for you!&quot;,
+			null);
+
+		// player is willing to help
+<span class="nc" id="L124">		npc.add(ConversationStates.QUEST_2_OFFERED,</span>
+			ConversationPhrases.YES_MESSAGES, null,
+			ConversationStates.ATTENDING,
+			&quot;You have to bring me one fish of each #species so that I can see what you have learned so far.&quot;,
+			new SetQuestAction(QUEST_SLOT, &quot;&quot;));
+
+		// player is not willing to help
+<span class="nc" id="L131">		npc.add(ConversationStates.QUEST_2_OFFERED,</span>
+			ConversationPhrases.NO_MESSAGES, null,
+			ConversationStates.ATTENDING,
+			&quot;It's okay, then you can excercise a bit more.&quot;,
+			new SetQuestAndModifyKarmaAction(QUEST_SLOT, &quot;rejected&quot;, -5.0));
+
+		// player asks what exactly is missing
+<span class="nc" id="L138">		npc.add(ConversationStates.ATTENDING, &quot;species&quot;,</span>
+			new QuestActiveCondition(QUEST_SLOT),
+			ConversationStates.QUESTION_2, null,
+<span class="nc" id="L141">			new ChatAction() {</span>
+				@Override
+				public void fire(final Player player, final Sentence sentence, final EventRaiser raiser) {
+<span class="nc" id="L144">					final List&lt;String&gt; needed = missingFish(player, true);</span>
+<span class="nc" id="L145">					raiser.say(&quot;There &quot; + Grammar.isare(needed.size())</span>
+							+ &quot; &quot;
+							+ Grammar.quantityplnoun(needed.size(), &quot;fish&quot;, &quot;one&quot;)
+							+ &quot; still missing: &quot;
+							+ Grammar.enumerateCollection(needed)
+							+ &quot;. Do you have such fish with you?&quot;);
+<span class="nc" id="L151">				}</span>
+			});
+
+		// player says he doesn't have required fish with him
+<span class="nc" id="L155">		npc.add(ConversationStates.QUESTION_2, ConversationPhrases.NO_MESSAGES, null,</span>
+<span class="nc" id="L156">			ConversationStates.IDLE, null, new ChatAction() {</span>
+				@Override
+				public void fire(final Player player, final Sentence sentence, final EventRaiser raiser) {
+<span class="nc" id="L159">					final List&lt;String&gt; missing = missingFish(player, false);</span>
+<span class="nc" id="L160">					raiser.say(&quot;Let me know as soon as you find &quot;</span>
+							+ Grammar.itthem(missing.size()) + &quot;. Goodbye.&quot;);
+<span class="nc" id="L162">				}</span>
+			});
+
+		// player says he has a required fish with him
+<span class="nc" id="L166">		npc.add(ConversationStates.QUESTION_2,</span>
+			ConversationPhrases.YES_MESSAGES, null,
+			ConversationStates.QUESTION_2, &quot;Which fish did you catch?&quot;,
+			null);
+
+<span class="nc bnc" id="L171" title="All 2 branches missed.">		for(final String itemName : neededFish) {</span>
+<span class="nc" id="L172">			npc.add(ConversationStates.QUESTION_2, itemName, null,</span>
+				ConversationStates.QUESTION_2, null,
+<span class="nc" id="L174">				new ChatAction() {</span>
+					@Override
+					public void fire(final Player player, final Sentence sentence, final EventRaiser raiser) {
+<span class="nc" id="L177">						List&lt;String&gt; missing = missingFish(player, false);</span>
+
+<span class="nc bnc" id="L179" title="All 2 branches missed.">						if (missing.contains(itemName)) {</span>
+<span class="nc bnc" id="L180" title="All 2 branches missed.">							if (player.drop(itemName)) {</span>
+								// register fish as done
+<span class="nc" id="L182">								final String doneText = player.getQuest(QUEST_SLOT);</span>
+<span class="nc" id="L183">								player.setQuest(QUEST_SLOT, doneText + &quot;;&quot; + itemName);</span>
+
+								// check if the player has brought all fish
+<span class="nc" id="L186">								missing = missingFish(player, true);</span>
+
+<span class="nc bnc" id="L188" title="All 2 branches missed.">								if (!missing.isEmpty()) {</span>
+<span class="nc" id="L189">									raiser.say(&quot;This fish is looking very good! Do you have another one for me?&quot;);</span>
+								} else {
+<span class="nc" id="L191">									player.addXP(2000);</span>
+<span class="nc" id="L192">									player.addKarma(25);</span>
+<span class="nc" id="L193">									raiser.say(&quot;You did a great job! Now you are a real fisherman and you will be much more successful when you catch fish!&quot;);</span>
+<span class="nc" id="L194">									player.setQuest(QUEST_SLOT, &quot;done&quot;);</span>
+									// once there are other ways to increase your
+									// fishing skills, increase the old skills
+									// instead of just setting to 0.2.
+<span class="nc" id="L198">									player.setSkill(&quot;fishing&quot;, Double.toString(0.2));</span>
+<span class="nc" id="L199">									player.notifyWorldAboutChanges();</span>
+								}
+<span class="nc" id="L201">							} else {</span>
+<span class="nc" id="L202">								raiser.say(&quot;Don't try to cheat! I know that you don't have &quot;</span>
+										+ Grammar.a_noun(itemName)
+										+ &quot;. What do you really have for me?&quot;);
+							}
+						} else {
+<span class="nc" id="L207">							raiser.say(&quot;You cannot cheat in this exam! I know that you already gave this fish to me. Do you have other fish for me?&quot;);</span>
+						}
+<span class="nc" id="L209">					}</span>
+				});
+<span class="nc" id="L211">		}</span>
+<span class="nc" id="L212">	}</span>
+
+	private void step_2() {
+		// Just find some of the fish somewhere and bring them to Santiago.
+<span class="nc" id="L216">	}</span>
+
+	private void step_3() {
+<span class="nc" id="L219">		final SpeakerNPC npc = npcs.get(&quot;Santiago&quot;);</span>
+
+		// player returns while quest is still active
+<span class="nc" id="L222">		npc.add(</span>
+			ConversationStates.IDLE,
+			ConversationPhrases.GREETING_MESSAGES,
+			new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+					new QuestActiveCondition(QUEST_SLOT)),
+			ConversationStates.ATTENDING,
+			&quot;Welcome back. I hope you were not lazy and that you brought me some other fish #species.&quot;,
+			null);
+
+		// player returns after finishing the quest
+<span class="nc" id="L232">		npc.add(</span>
+			ConversationStates.IDLE,
+			ConversationPhrases.GREETING_MESSAGES,
+			new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+					new QuestCompletedCondition(QUEST_SLOT)),
+			ConversationStates.ATTENDING,
+			&quot;Welcome fisherman! Nice to see you again. I wish you luck for fishing.&quot;,
+			null);
+<span class="nc" id="L240">	}</span>
+
+	@Override
+	public void addToWorld() {
+<span class="nc" id="L244">		fillQuestInfo(</span>
+				&quot;Fishermans License part 2&quot;,
+				&quot;Santiago will grant a fishermans license to those who can prove their skills.&quot;,
+				true);
+<span class="nc" id="L248">		step_1();</span>
+<span class="nc" id="L249">		step_2();</span>
+<span class="nc" id="L250">		step_3();</span>
+<span class="nc" id="L251">	}</span>
+
+	
+	@Override
+	public List&lt;String&gt; getHistory(final Player player) {
+<span class="nc" id="L256">			final List&lt;String&gt; res = new ArrayList&lt;String&gt;();</span>
+<span class="nc bnc" id="L257" title="All 2 branches missed.">			if (!player.hasQuest(QUEST_SLOT)) {</span>
+<span class="nc" id="L258">				return res;</span>
+			}
+<span class="nc" id="L260">			res.add(&quot;The second part of my fishing exam is to take Santiago many species of fish.&quot;);</span>
+<span class="nc bnc" id="L261" title="All 2 branches missed.">			if (!isCompleted(player)) {</span>
+<span class="nc" id="L262">				res.add(&quot;I still need to bring &quot; + Grammar.enumerateCollection(missingFish(player, false)) + &quot; for Santiago to inspect.&quot;);</span>
+			} else {
+<span class="nc" id="L264">				res.add(&quot;I brought every fish Santiago wanted and now I'm a real fisherman! I will have more success when I fish.&quot;);</span>
+			}
+<span class="nc" id="L266">			return res;</span>
+	}
+	
+	@Override
+	public String getName() {
+<span class="nc" id="L271">		return &quot;FishermansLicenseCollector&quot;;</span>
+	}
+	
+	@Override
+	public String getRegion() {
+<span class="nc" id="L276">		return Region.ADOS_CITY;</span>
+	}
+
+	@Override
+	public String getNPCName() {
+<span class="nc" id="L281">		return &quot;Santiago&quot;;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

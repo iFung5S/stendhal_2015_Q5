@@ -1,0 +1,259 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SlotGrid.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui</a> &gt; <span class="el_source">SlotGrid.java</span></div><h1>SlotGrid.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui;
+
+import games.stendhal.client.GameLoop;
+import games.stendhal.client.GameObjects;
+import games.stendhal.client.entity.ContentChangeListener;
+import games.stendhal.client.entity.IEntity;
+import games.stendhal.client.entity.Inspector;
+
+import java.awt.GridLayout;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
+
+import javax.swing.JComponent;
+
+import marauroa.common.game.RPObject;
+import marauroa.common.game.RPObject.ID;
+import marauroa.common.game.RPSlot;
+
+import org.apache.log4j.Logger;
+
+/**
+ * A view of an RPSlot in a grid of ItemPanels.
+ */
+public class SlotGrid extends JComponent implements ContentChangeListener, Inspectable {
+	private static final int PADDING = 1;
+<span class="nc" id="L40">	private static final Logger logger = Logger.getLogger(SlotGrid.class);</span>
+	
+	/** All shown item panels. */
+	private final List&lt;ItemPanel&gt; panels;
+	/** The parent entity of the shown slot. */
+	private IEntity parent;
+	/** Name of the shown slot. */
+	private String slotName;
+
+	
+<span class="nc" id="L50">	public SlotGrid(int width, int height) {</span>
+<span class="nc" id="L51">		setLayout(new GridLayout(height, width, PADDING, PADDING));</span>
+<span class="nc" id="L52">		panels = new ArrayList&lt;ItemPanel&gt;();</span>
+		
+<span class="nc bnc" id="L54" title="All 2 branches missed.">		for (int i = 0; i &lt; width * height; i++) {</span>
+<span class="nc" id="L55">			ItemPanel panel = new ItemPanel(null, null);</span>
+<span class="nc" id="L56">			panel.setItemNumber(i);</span>
+<span class="nc" id="L57">			panels.add(panel);</span>
+<span class="nc" id="L58">			add(panel);</span>
+		}
+<span class="nc" id="L60">	}</span>
+	
+	/**
+	 * Set the types the panels can accept.
+	 * 
+	 * @param types accepted types
+	 */
+	@SafeVarargs
+	public final void setAcceptedTypes(Class&lt;? extends IEntity&gt; ... types) {
+		// Reuse the same set for all the panels
+<span class="nc" id="L70">		List&lt;Class&lt;? extends IEntity&gt;&gt; list = Arrays.asList(types);</span>
+<span class="nc bnc" id="L71" title="All 2 branches missed.">		for (ItemPanel panel : panels) {</span>
+<span class="nc" id="L72">			panel.setAcceptedTypes(list);</span>
+<span class="nc" id="L73">		}</span>
+<span class="nc" id="L74">	}</span>
+	
+	/**
+	 * Sets the parent entity of the window.
+	 * 
+	 * @param parent entity owning the slot represented by the grid
+	 * @param slot the slot represented by the grid
+	 */
+	public void setSlot(final IEntity parent, final String slot) {
+<span class="nc bnc" id="L83" title="All 2 branches missed.">		if (!GameLoop.isGameLoop()) {</span>
+			// Game loop can modify slot contents at will, so it's not a good
+			// idea to try to read the contents in the EDT.
+<span class="nc" id="L86">			GameLoop.get().runOnce(new Runnable() {</span>
+				@Override
+				public void run() {
+<span class="nc" id="L89">					setSlot(parent, slot);</span>
+<span class="nc" id="L90">				}</span>
+			});
+<span class="nc" id="L92">			return;</span>
+		}
+		
+<span class="nc bnc" id="L95" title="All 2 branches missed.">		if (this.parent != null) {</span>
+<span class="nc" id="L96">			this.parent.removeContentChangeListener(this);</span>
+		}
+		
+<span class="nc" id="L99">		this.parent = parent;</span>
+<span class="nc" id="L100">		this.slotName = slot;</span>
+
+		/*
+		 * Reset the container info for all holders
+		 */
+<span class="nc bnc" id="L105" title="All 2 branches missed.">		for (final ItemPanel panel : panels) {</span>
+<span class="nc" id="L106">			panel.setParent(parent);</span>
+<span class="nc" id="L107">			panel.setName(slot);</span>
+<span class="nc" id="L108">		}</span>
+
+<span class="nc" id="L110">		parent.addContentChangeListener(this);</span>
+<span class="nc" id="L111">		scanSlotContent();</span>
+<span class="nc" id="L112">	}</span>
+	
+	/**
+	 * Get the name of the slot this grid represents.
+	 * 
+	 * @return name of the slot
+	 */
+	public String getSlotName() {
+<span class="nc" id="L120">		return slotName;</span>
+	}
+	
+	/**
+	 * Set the inspector the contained entities should use.
+	 * 
+	 * @param inspector used inspector
+	 */
+	@Override
+	public void setInspector(Inspector inspector) {
+<span class="nc bnc" id="L130" title="All 2 branches missed.">		for (ItemPanel panel : panels) {</span>
+<span class="nc" id="L131">			panel.setInspector(inspector);</span>
+<span class="nc" id="L132">		}</span>
+<span class="nc" id="L133">	}</span>
+	
+	/**
+	 * Clear the grid and detach it from the slot it shows.
+	 */
+	void release() {
+<span class="nc bnc" id="L139" title="All 2 branches missed.">		if (parent != null) {</span>
+<span class="nc" id="L140">			parent.removeContentChangeListener(SlotGrid.this);</span>
+		}
+		// Ensure that parent &amp; slotName do not change in the middle of
+		// scanSlotContent() 
+<span class="nc" id="L144">		GameLoop.get().runOnce(new Runnable() {</span>
+			@Override
+			public void run() {
+<span class="nc bnc" id="L147" title="All 2 branches missed.">				for (final ItemPanel panel : panels) {</span>
+<span class="nc" id="L148">					panel.setEntity(null);</span>
+<span class="nc" id="L149">				}</span>
+<span class="nc" id="L150">				parent = null;</span>
+<span class="nc" id="L151">				slotName = null;</span>
+<span class="nc" id="L152">			}</span>
+		});
+<span class="nc" id="L154">	}</span>
+	
+	/**
+	 * Scans the content of the slot.
+	 */
+	private void scanSlotContent() {
+<span class="nc bnc" id="L160" title="All 4 branches missed.">		if ((parent == null) || (slotName == null)) {</span>
+<span class="nc" id="L161">			return;</span>
+		}
+
+		// Clear the panels, in case they are not already empty
+<span class="nc bnc" id="L165" title="All 2 branches missed.">		for (ItemPanel panel : panels) {</span>
+<span class="nc" id="L166">			panel.setEntity(null);</span>
+<span class="nc" id="L167">		}</span>
+<span class="nc" id="L168">		final RPSlot rpslot = parent.getSlot(slotName);</span>
+		// Treat the entire slot contents as a content change
+<span class="nc" id="L170">		contentAdded(rpslot);</span>
+<span class="nc" id="L171">	}</span>
+
+	@Override
+	public void contentAdded(RPSlot added) {
+		// We are interested only in one slot
+<span class="nc bnc" id="L176" title="All 2 branches missed.">		if (slotName.equals(added.getName())) {</span>
+<span class="nc bnc" id="L177" title="All 2 branches missed.">			for (RPObject obj : added) {</span>
+<span class="nc" id="L178">				handleAdded(obj);</span>
+<span class="nc" id="L179">			}</span>
+		}
+<span class="nc" id="L181">	}</span>
+	
+	/**
+	 * Handle an added or modified item.
+	 * 
+	 * @param obj changed or added object
+	 */
+	private void handleAdded(RPObject obj) {
+<span class="nc" id="L189">		ID id = obj.getID();</span>
+<span class="nc bnc" id="L190" title="All 2 branches missed.">		for (ItemPanel panel : panels) {</span>
+<span class="nc" id="L191">			IEntity entity = panel.getEntity();</span>
+<span class="nc bnc" id="L192" title="All 4 branches missed.">			if (entity != null &amp;&amp; id.equals(entity.getRPObject().getID())) {</span>
+				// Changed rather than added.
+<span class="nc" id="L194">				return;</span>
+			}
+<span class="nc" id="L196">		}</span>
+		// Actually added. Get the corresponding entity
+<span class="nc" id="L198">		IEntity entity = GameObjects.getInstance().get(obj);</span>
+		
+		// Tuck it in the first free slot
+<span class="nc bnc" id="L201" title="All 2 branches missed.">		for (ItemPanel panel : panels) {</span>
+<span class="nc bnc" id="L202" title="All 2 branches missed.">			if (panel.getEntity() == null) {</span>
+<span class="nc" id="L203">				panel.setEntity(entity);</span>
+<span class="nc" id="L204">				return;</span>
+			}
+<span class="nc" id="L206">		}</span>
+		
+<span class="nc" id="L208">		logger.error(&quot;More objects than slots: &quot; + slotName);</span>
+<span class="nc" id="L209">	}</span>
+
+	@Override
+	public void contentRemoved(RPSlot removed) {
+		// We are interested only in one slot
+<span class="nc bnc" id="L214" title="All 2 branches missed.">		if (slotName.equals(removed.getName())) {</span>
+<span class="nc bnc" id="L215" title="All 2 branches missed.">			for (RPObject obj : removed) {</span>
+<span class="nc" id="L216">				ID id = obj.getID();</span>
+<span class="nc bnc" id="L217" title="All 2 branches missed.">				for (ItemPanel panel : panels) {</span>
+<span class="nc" id="L218">					IEntity entity = panel.getEntity();</span>
+<span class="nc bnc" id="L219" title="All 4 branches missed.">					if (entity != null &amp;&amp; id.equals(entity.getRPObject().getID())) {</span>
+<span class="nc bnc" id="L220" title="All 2 branches missed.">						if (obj.size() == 1) {</span>
+							// The object was removed
+<span class="nc" id="L222">							panel.setEntity(null);</span>
+<span class="nc" id="L223">							continue;</span>
+						}
+					}
+<span class="nc" id="L226">				}</span>
+<span class="nc" id="L227">			}</span>
+<span class="nc" id="L228">			compressSlots();</span>
+		}
+<span class="nc" id="L230">	}</span>
+	
+	/**
+	 * Shift item panel contents so that the empty ones are last.
+	 */
+	private void compressSlots() {
+<span class="nc" id="L236">		Iterator&lt;ItemPanel&gt; emptyIt = panels.iterator();</span>
+<span class="nc" id="L237">		Iterator&lt;ItemPanel&gt; fullIt = panels.iterator();</span>
+		// fullIt is always at least as far as emptyIt
+<span class="nc bnc" id="L239" title="All 2 branches missed.">		while (fullIt.hasNext()) {</span>
+<span class="nc" id="L240">			ItemPanel full = fullIt.next();</span>
+<span class="nc" id="L241">			ItemPanel empty = emptyIt.next();</span>
+<span class="nc bnc" id="L242" title="All 2 branches missed.">			if (empty.getEntity() == null) {</span>
+				// Found an empty slot. Try to move an entity from some filled
+				// one after it to it. Find the next filled slot.
+<span class="nc bnc" id="L245" title="All 2 branches missed.">				while (full.getEntity() == null) {</span>
+<span class="nc bnc" id="L246" title="All 2 branches missed.">					if (fullIt.hasNext()) {</span>
+<span class="nc" id="L247">						full = fullIt.next();</span>
+					} else {
+						// Finished scanning the slots
+<span class="nc" id="L250">						return;</span>
+					}
+				}
+				// Found a filled slot. Move the entity to the empty one
+<span class="nc" id="L254">				full.moveViewTo(empty);</span>
+			}
+<span class="nc" id="L256">		}</span>
+<span class="nc" id="L257">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

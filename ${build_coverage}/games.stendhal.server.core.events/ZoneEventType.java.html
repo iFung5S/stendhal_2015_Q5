@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ZoneEventType.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.core.events</a> &gt; <span class="el_source">ZoneEventType.java</span></div><h1>ZoneEventType.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.core.events;
+
+/**
+ * Event types used in the new Zone notifier.
+ * 
+ * @author kymara (based on TutorialEventType by hendrik)
+ */
+<span class="nc" id="L20">public enum ZoneEventType {</span>
+
+<span class="nc" id="L22">	VISIT_SUB1_SEMOS_CATACOMBS(</span>
+			&quot;Screams and wails fill the air of these ghastly catacombs ...&quot;),
+<span class="nc" id="L24">	VISIT_SUB2_SEMOS_CATACOMBS(</span>
+			&quot;Your sense of foreboding grows as you enter deeper to the catacombs. You spy some lethal looking spikes and vow to be careful of them.&quot;),
+<span class="nc" id="L26">	VISIT_KIKAREUKIN_CAVE(</span>
+			&quot;Your head spins as the portal lifts you high into the air, past clouds and birds. You're sucked towards a floating group of islands. You're pulled through layers of rock and finally you land in a vast network of caves.&quot;),
+<span class="nc" id="L28">	VISIT_KANMARARN_PRISON(</span>
+			&quot;PRISON BREAKOUT! You've stumbled into a heist. It looks like the duergars have come to break their leaders and heroes free from their imprisonment by the dwarves.&quot;),
+<span class="nc" id="L30">	VISIT_IMPERIAL_CAVES(</span>
+			&quot;Commands and orders are heard from afar. You can only imagine you must be approaching an army of some sort. Worryingly, you can also hear some very very heavy footsteps.&quot;),
+<span class="nc" id="L32">	VISIT_MAGIC_CITY_N(</span>
+			&quot;Your skin prickles as you explore further. There is definitely magic here.&quot;),
+<span class="nc" id="L34">	VISIT_MAGIC_CITY(</span>
+			&quot;You now sense a strong magical presence. Perhaps sorcerers are nearby, or some strong enchantments?&quot;),	
+<span class="nc" id="L36">	VISIT_SEMOS_CAVES(</span>
+			&quot;The ground in this cave trembles from the footfalls of GIANTS! The weak should explore no further here. Turn around and run away!&quot;),
+<span class="nc" id="L38">	VISIT_ADOS_CASTLE(</span>
+			  &quot;You sense that great atrocities have happened here. The castle must be overrun with evil creatures, as the sounds of their last victims ring in your ears. It may be wise to stay away.&quot;);
+
+	private String message;
+
+	/**
+	 * create a new ZoneEventType.
+	 * 
+	 * @param message
+	 *            human readable message
+	 */
+<span class="nc" id="L49">	private ZoneEventType(final String message) {</span>
+<span class="nc" id="L50">		this.message = message;</span>
+<span class="nc" id="L51">	}</span>
+
+	/**
+	 * get the descriptive message.
+	 * 
+	 * @return message
+	 */
+	String getMessage() {
+<span class="nc" id="L59">		return message;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

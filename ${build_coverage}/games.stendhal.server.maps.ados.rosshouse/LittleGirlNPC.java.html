@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>LittleGirlNPC.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.ados.rosshouse</a> &gt; <span class="el_source">LittleGirlNPC.java</span></div><h1>LittleGirlNPC.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.ados.rosshouse;
+
+import games.stendhal.common.Direction;
+import games.stendhal.server.core.config.ZoneConfigurator;
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.core.pathfinder.FixedPath;
+import games.stendhal.server.core.pathfinder.Node;
+import games.stendhal.server.entity.Outfit;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * &lt;p&gt;Creates a normal version of Susi in the ross house.
+ */
+<span class="fc" id="L32">public class LittleGirlNPC implements ZoneConfigurator {</span>
+
+	/**
+	 * Configure a zone.
+	 *
+	 * @param	zone		The zone to be configured.
+	 * @param	attributes	Configuration attributes.
+	 */
+	@Override
+	public void configureZone(final StendhalRPZone zone, final Map&lt;String, String&gt; attributes) {
+<span class="fc" id="L42">		createGirlNPC(zone);</span>
+<span class="fc" id="L43">	}</span>
+
+	public void createGirlNPC(final StendhalRPZone zone) {
+
+<span class="fc" id="L47">		final SpeakerNPC npc = new SpeakerNPC(&quot;Susi&quot;) {</span>
+			@Override
+			protected void createPath() {
+<span class="fc" id="L50">				final List&lt;Node&gt; nodes = new LinkedList&lt;Node&gt;();</span>
+<span class="fc" id="L51">				nodes.add(new Node(3, 7));</span>
+<span class="fc" id="L52">				nodes.add(new Node(5, 7));</span>
+<span class="fc" id="L53">				nodes.add(new Node(5, 3));</span>
+<span class="fc" id="L54">				nodes.add(new Node(5, 8));</span>
+<span class="fc" id="L55">				nodes.add(new Node(10, 8));</span>
+<span class="fc" id="L56">				nodes.add(new Node(10, 12));</span>
+<span class="fc" id="L57">				nodes.add(new Node(12, 12));</span>
+<span class="fc" id="L58">				nodes.add(new Node(9, 12));</span>
+<span class="fc" id="L59">				nodes.add(new Node(9, 11));</span>
+<span class="fc" id="L60">				nodes.add(new Node(7, 11));</span>
+<span class="fc" id="L61">				nodes.add(new Node(7, 7));</span>
+<span class="fc" id="L62">				setPath(new FixedPath(nodes, true));</span>
+
+<span class="fc" id="L64">			}</span>
+
+			@Override
+			protected void createDialog() {
+				// TODO: Add different greetings depending on whether Susi's is a friend of the player or not
+<span class="fc" id="L69">				addGreeting(&quot;Hello. Daddy must have left the house door open again. He's always doing that.&quot;);</span>
+<span class="fc" id="L70">				addJob(&quot;I am just a little girl.&quot;);</span>
+<span class="fc" id="L71">				addGoodbye(&quot;Have fun!&quot;);</span>
+
+<span class="fc" id="L73">				addQuest(&quot;I might see you some time at the #Mine #Town #Revival #Weeks.&quot;);</span>
+
+				// Revival Weeks
+<span class="fc" id="L76">				add(</span>
+					ConversationStates.ATTENDING,
+					Arrays.asList(&quot;Semos&quot;, &quot;Mine&quot;, &quot;Town&quot;, &quot;Revival&quot;, &quot;Weeks&quot;),
+					ConversationStates.ATTENDING,
+					&quot;During the Revival Weeks at the end of October we celebrate the old and now mostly dead dead Mine Town north of Semos City.&quot;,
+					null);
+
+				// help
+<span class="fc" id="L84">				addHelp(&quot;Have fun.&quot;);</span>
+<span class="fc" id="L85">			}</span>
+		};
+		
+<span class="fc" id="L88">		npc.setOutfit(new Outfit(0, 4, 7, 32, 13));</span>
+<span class="fc" id="L89">		npc.setPosition(3, 7);</span>
+<span class="fc" id="L90">		npc.setDirection(Direction.DOWN);</span>
+<span class="fc" id="L91">		npc.initHP(100);</span>
+<span class="fc" id="L92">		npc.setDescription(&quot;You see Susi. Did you ever hear the story about her being lost for some time?&quot;);</span>
+<span class="fc" id="L93">		zone.add(npc);</span>
+<span class="fc" id="L94">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

@@ -1,0 +1,504 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ProgressLog.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui.progress</a> &gt; <span class="el_source">ProgressLog.java</span></div><h1>ProgressLog.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui.progress;
+
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Window;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JComponent;
+import javax.swing.JDialog;
+import javax.swing.JEditorPane;
+import javax.swing.JScrollPane;
+import javax.swing.JTabbedPane;
+import javax.swing.SwingUtilities;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
+import javax.swing.event.HyperlinkEvent;
+import javax.swing.event.HyperlinkListener;
+import javax.swing.text.Caret;
+import javax.swing.text.DefaultCaret;
+
+import games.stendhal.client.gui.WindowUtils;
+import games.stendhal.client.gui.j2DClient;
+import games.stendhal.client.gui.j2d.BackgroundPainter;
+import games.stendhal.client.gui.layout.SBoxLayout;
+import games.stendhal.client.gui.layout.SLayout;
+import games.stendhal.client.gui.wt.core.SettingChangeAdapter;
+import games.stendhal.client.gui.wt.core.WtWindowManager;
+import games.stendhal.client.sprite.DataLoader;
+
+/**
+ * Progress status window. For displaying quest information.
+ */
+class ProgressLog {
+	/** Width of the window content. */
+	private static final int PAGE_WIDTH = 450;
+	/** Height of the window content. */
+	private static final int PAGE_HEIGHT = 300;
+	/** Width of the index area of a page. */
+	private static final int INDEX_WIDTH = 180;
+	/** Image used for the log background. */
+	private static final String BACKGROUND_IMAGE = &quot;data/gui/scroll_background.png&quot;;
+	/** Name of the font used for the html areas. Should match the file name without .ttf */
+	private static final String FONT_NAME = &quot;BlackChancery&quot;;
+	/** Image data element for marking repeatable quests. */
+<span class="nc" id="L67">	private static final String IMAGE = &quot;&lt;img border=\&quot;0\&quot; style=\&quot;border-style: none\&quot; src='&quot; + DataLoader.getResource(&quot;data/gui/rp.png&quot;).toString() + &quot;'/&gt;&quot;;</span>
+
+	/** The enclosing window. */
+	private JDialog window;
+	/** Category tabs. */
+	private final JTabbedPane tabs;
+	/** Content pages. */
+<span class="nc" id="L74">	private final List&lt;Page&gt; pages = new ArrayList&lt;Page&gt;();</span>
+	/** Name of the font used. Defaults to {@link #FONT_NAME}. */
+	private String fontName;
+	/** Repeatable, completed quests. */
+<span class="nc" id="L78">	private Collection&lt;String&gt; repeatable = Collections.emptySet();</span>
+
+	/**
+	 * Create a new ProgressLog.
+	 *
+	 * @param name name of the window
+	 */
+<span class="nc" id="L85">	ProgressLog(String name) {</span>
+<span class="nc" id="L86">		window = new JDialog(j2DClient.get().getMainFrame(), name);</span>
+
+<span class="nc" id="L88">		tabs = new JTabbedPane();</span>
+<span class="nc" id="L89">		tabs.setPreferredSize(new Dimension(PAGE_WIDTH, PAGE_HEIGHT));</span>
+<span class="nc" id="L90">		tabs.addChangeListener(new TabChangeListener());</span>
+
+<span class="nc" id="L92">		WindowUtils.closeOnEscape(window);</span>
+<span class="nc" id="L93">		window.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);</span>
+<span class="nc" id="L94">		window.add(tabs);</span>
+<span class="nc" id="L95">		window.pack();</span>
+<span class="nc" id="L96">		WindowUtils.watchFontSize(window);</span>
+<span class="nc" id="L97">		WindowUtils.trackLocation(window, &quot;travel_log&quot;, true);</span>
+		
+<span class="nc" id="L99">		WtWindowManager.getInstance().registerSettingChangeListener(&quot;ui.logfont&quot;,</span>
+<span class="nc" id="L100">				new SettingChangeAdapter(&quot;ui.logfont&quot;, FONT_NAME) {</span>
+			@Override
+			public void changed(String newValue) {
+<span class="nc" id="L103">				fontName = newValue;</span>
+<span class="nc bnc" id="L104" title="All 2 branches missed.">				for (Page page : pages) {</span>
+<span class="nc" id="L105">					page.setFontName(newValue);</span>
+<span class="nc" id="L106">				}</span>
+<span class="nc" id="L107">			}</span>
+		});
+<span class="nc" id="L109">	}</span>
+
+	/**
+	 * Set the available categories.
+	 *
+	 * @param pages category list
+	 * @param query query for retrieving the index lists for the pages. Page
+	 *	name will be used as the query parameter
+	 */
+	void setPages(List&lt;String&gt; pages, ProgressStatusQuery query) {
+<span class="nc" id="L119">		tabs.removeAll();</span>
+<span class="nc" id="L120">		this.pages.clear();</span>
+<span class="nc bnc" id="L121" title="All 2 branches missed.">		for (String page : pages) {</span>
+<span class="nc" id="L122">			Page content = new Page();</span>
+<span class="nc" id="L123">			content.setFontName(fontName);</span>
+<span class="nc" id="L124">			content.setIndexQuery(query, page);</span>
+<span class="nc" id="L125">			tabs.add(page, content);</span>
+<span class="nc" id="L126">			this.pages.add(content);</span>
+<span class="nc" id="L127">		}</span>
+<span class="nc" id="L128">	}</span>
+
+	/**
+	 * Set the subject index for a given page.
+	 *
+	 * @param page category
+	 * @param subjects index of available subjects
+	 * @param onClick query for retrieving the data for a given subject. Subject
+	 * 	name will be used as the query parameter
+	 */
+	void setPageIndex(String page, List&lt;String&gt; subjects, ProgressStatusQuery onClick) {
+<span class="nc" id="L139">		int index = tabs.indexOfTab(page);</span>
+<span class="nc bnc" id="L140" title="All 2 branches missed.">		if (index != -1) {</span>
+<span class="nc" id="L141">			Component comp = tabs.getComponent(index);</span>
+<span class="nc bnc" id="L142" title="All 2 branches missed.">			if (comp instanceof Page) {</span>
+<span class="nc" id="L143">				((Page) comp).setIndex(subjects, onClick, repeatable);</span>
+			}
+		}
+<span class="nc" id="L146">	}</span>
+
+	/**
+	 * Set the descriptive content for a given page.
+	 *
+	 * @param page category
+	 * @param header subject header. This will be shown as a html header for the
+	 * content paragraph
+	 * @param description a description about the items shown between the header and the list
+	 * @param information information
+	 * @param contents content paragraphs
+	 */
+	void setPageContent(String page, String header, String description, String information, List&lt;String&gt; contents) {
+<span class="nc" id="L159">		int index = tabs.indexOfTab(page);</span>
+<span class="nc bnc" id="L160" title="All 2 branches missed.">		if (index != -1) {</span>
+<span class="nc" id="L161">			Component comp = tabs.getComponent(index);</span>
+<span class="nc bnc" id="L162" title="All 2 branches missed.">			if (comp instanceof Page) {</span>
+<span class="nc" id="L163">				boolean rep = repeatable.contains(header);</span>
+<span class="nc" id="L164">				((Page) comp).setContent(header, description, information, contents, rep);</span>
+			}
+		}
+<span class="nc" id="L167">	}</span>
+	
+	/**
+	 * Set the repeatable quests. These will be marked for the player in the
+	 * progress log.
+	 * 
+	 * @param repeatable a collection of quest names
+	 */
+	void setRepeatable(Collection&lt;String&gt; repeatable) {
+<span class="nc" id="L176">		this.repeatable = repeatable;</span>
+<span class="nc" id="L177">	}</span>
+
+	/**
+	 * Get the window component.
+	 *
+	 * @return travel log window
+	 */
+	Window getWindow() {
+<span class="nc" id="L185">		return window;</span>
+	}
+
+	/**
+	 * Listener for tab changes. Requests the page to update its index when it's
+	 * selected.
+	 */
+<span class="nc" id="L192">	private class TabChangeListener implements ChangeListener {</span>
+		@Override
+		public void stateChanged(ChangeEvent event) {
+<span class="nc" id="L195">			Component selected = tabs.getSelectedComponent();</span>
+<span class="nc bnc" id="L196" title="All 2 branches missed.">			if (selected instanceof Page) {</span>
+<span class="nc" id="L197">				((Page) selected).update();</span>
+			}
+<span class="nc" id="L199">		}</span>
+	}
+
+	/**
+	 * A page on the window.
+	 */
+	private class Page extends JComponent implements HyperlinkListener {
+		/** Html area for the subjects. */
+		private final JEditorPane indexArea;
+		/** The html area. */
+		private final JEditorPane contentArea;
+		/** Scrolling component of the index area. */
+		private final JScrollPane indexScrollPane;
+		/** Scrolling component of the content html area. */
+		private final JScrollPane contentScrollPane;
+
+		/** Query that is used to update the index area. */
+		private ProgressStatusQuery indexQuery;
+		/** Additional data for the index updating query. */
+		private String indexQueryData;
+
+		/** Query that is used to update the content area. */
+		private ProgressStatusQuery contentQuery;
+		/** Additional data for the content updating query. */
+		private String contentQueryData;
+		/** Name of the font. */
+		private String fontName;
+
+		/**
+		 * Create a new page.
+		 */
+<span class="nc" id="L230">		Page() {</span>
+<span class="nc" id="L231">			this.setLayout(new SBoxLayout(SBoxLayout.VERTICAL));</span>
+<span class="nc" id="L232">			JComponent panels = SBoxLayout.createContainer(SBoxLayout.HORIZONTAL, SBoxLayout.COMMON_PADDING);</span>
+<span class="nc" id="L233">			add(panels, SBoxLayout.constraint(SLayout.EXPAND_X,</span>
+					SLayout.EXPAND_Y));
+
+<span class="nc" id="L236">			indexArea = new PrettyEditorPane();</span>
+<span class="nc" id="L237">			indexArea.addHyperlinkListener(this);</span>
+
+<span class="nc" id="L239">			indexScrollPane = new JScrollPane(indexArea);</span>
+			// Fixed width
+<span class="nc" id="L241">			indexScrollPane.setMaximumSize(new Dimension(INDEX_WIDTH, Integer.MAX_VALUE));</span>
+<span class="nc" id="L242">			indexScrollPane.setMinimumSize(new Dimension(INDEX_WIDTH, 0));</span>
+			// Turn off caret following
+<span class="nc" id="L244">			Caret caret = indexArea.getCaret();</span>
+<span class="nc bnc" id="L245" title="All 2 branches missed.">			if (caret instanceof DefaultCaret) {</span>
+<span class="nc" id="L246">				((DefaultCaret) caret).setUpdatePolicy(DefaultCaret.NEVER_UPDATE);</span>
+			}
+
+<span class="nc" id="L249">			panels.add(indexScrollPane, SLayout.EXPAND_Y);</span>
+
+<span class="nc" id="L251">			contentArea = new PrettyEditorPane();</span>
+			// Does not need a listener. There should be no links
+
+<span class="nc" id="L254">			contentScrollPane = new JScrollPane(contentArea);</span>
+<span class="nc" id="L255">			panels.add(contentScrollPane, SBoxLayout.constraint(SLayout.EXPAND_X,</span>
+					SLayout.EXPAND_Y));
+
+<span class="nc" id="L258">			JComponent buttonBox = SBoxLayout.createContainer(SBoxLayout.HORIZONTAL, SBoxLayout.COMMON_PADDING);</span>
+<span class="nc" id="L259">			buttonBox.setAlignmentX(RIGHT_ALIGNMENT);</span>
+<span class="nc" id="L260">			buttonBox.setBorder(BorderFactory.createEmptyBorder(SBoxLayout.COMMON_PADDING,</span>
+					0, SBoxLayout.COMMON_PADDING, SBoxLayout.COMMON_PADDING));
+<span class="nc" id="L262">			add(buttonBox);</span>
+			// A button for reloading the page contents
+<span class="nc" id="L264">			JButton refresh = new JButton(&quot;Update&quot;);</span>
+<span class="nc" id="L265">			refresh.setMnemonic(KeyEvent.VK_U);</span>
+<span class="nc" id="L266">			refresh.setAlignmentX(Component.RIGHT_ALIGNMENT);</span>
+<span class="nc" id="L267">			refresh.addActionListener(new ActionListener() {</span>
+				@Override
+				public void actionPerformed(ActionEvent event) {
+<span class="nc" id="L270">					update();</span>
+<span class="nc" id="L271">				}</span>
+			});
+<span class="nc" id="L273">			buttonBox.add(refresh);</span>
+<span class="nc" id="L274">			JButton closeButton = new JButton(&quot;Close&quot;);</span>
+<span class="nc" id="L275">			closeButton.setMnemonic(KeyEvent.VK_C);</span>
+<span class="nc" id="L276">			closeButton.addActionListener(new ActionListener() {</span>
+				@Override
+				public void actionPerformed(ActionEvent e) {
+<span class="nc" id="L279">					getWindow().dispose();</span>
+<span class="nc" id="L280">				}</span>
+			});
+<span class="nc" id="L282">			buttonBox.add(closeButton);</span>
+<span class="nc" id="L283">		}</span>
+
+		/**
+		 * Update the page from the latest data from the server.
+		 */
+		void update() {
+<span class="nc bnc" id="L289" title="All 2 branches missed.">			if (indexQuery != null) {</span>
+<span class="nc" id="L290">				indexQuery.fire(indexQueryData);</span>
+			}
+<span class="nc bnc" id="L292" title="All 4 branches missed.">			if (contentQuery != null &amp;&amp; (contentQueryData != null)) {</span>
+<span class="nc" id="L293">				contentQuery.fire(contentQueryData);</span>
+			}
+<span class="nc" id="L295">		}</span>
+
+		/**
+		 * Set the query information for updating the the index.
+		 *
+		 * @param query query object
+		 * @param queryData additional data for the query
+		 */
+		void setIndexQuery(ProgressStatusQuery query, String queryData) {
+<span class="nc" id="L304">			this.indexQuery = query;</span>
+<span class="nc" id="L305">			this.indexQueryData = queryData;</span>
+<span class="nc" id="L306">		}</span>
+		
+		/**
+		 * Set the font.
+		 * 
+		 * @param font font name
+		 */
+		void setFontName(String font) {
+<span class="nc" id="L314">			fontName = font;</span>
+<span class="nc" id="L315">			updateOnFontChange();</span>
+<span class="nc" id="L316">		}</span>
+		
+		@Override
+		public void setFont(Font font) {
+<span class="nc" id="L320">			super.setFont(font);</span>
+			// The font itself is not used, but the size is
+<span class="nc" id="L322">			updateOnFontChange();</span>
+<span class="nc" id="L323">		}</span>
+		
+		/**
+		 * Update only if visible to avoid opening the window just because
+		 * the font setting changed.
+		 */
+		private void updateOnFontChange() {
+<span class="nc" id="L330">			Container top = this.getTopLevelAncestor();</span>
+<span class="nc bnc" id="L331" title="All 4 branches missed.">			if (top != null &amp;&amp; top.isVisible()) {</span>
+<span class="nc" id="L332">				update();</span>
+			}
+<span class="nc" id="L334">		}</span>
+
+		/**
+		 * Set the subject index.
+		 *
+		 * @param subjects list of subjects available on this page
+		 * @param onClick query to be used for requesting data for a subject.
+		 *	Subject name will be used as the query parameter
+		 * @param repeatable names of repeatable quests
+		 */
+		void setIndex(List&lt;String&gt; subjects, ProgressStatusQuery onClick, Collection&lt;String&gt; repeatable) {
+			/*
+			 * Order the quests alphabetically. The server provides them ordered
+			 * by internal name (and does not really guarantee even that), not
+			 * by the human readable name.
+			 */
+<span class="nc" id="L350">			Collections.sort(subjects);</span>
+<span class="nc" id="L351">			StringBuilder text = new StringBuilder(&quot;&lt;html&gt;&quot;);</span>
+<span class="nc" id="L352">			text.append(createStyleDefinition());</span>
+<span class="nc bnc" id="L353" title="All 2 branches missed.">			for (String elem : subjects) {</span>
+<span class="nc" id="L354">				text.append(&quot;&lt;p&gt;&quot;);</span>
+				// Make the elements clickable only if we have a handler for the
+				// clicks
+<span class="nc bnc" id="L357" title="All 2 branches missed.">				if (onClick != null) {</span>
+<span class="nc" id="L358">					text.append(&quot;&lt;a href=\&quot;&quot;);</span>
+<span class="nc" id="L359">					text.append(elem);</span>
+<span class="nc" id="L360">					text.append(&quot;\&quot;&gt;&quot;);</span>
+<span class="nc" id="L361">					text.append(elem);</span>
+					// Mark any possible repeatable quests
+<span class="nc bnc" id="L363" title="All 2 branches missed.">					if (repeatable.contains(elem)) {</span>
+<span class="nc" id="L364">						text.append(IMAGE);</span>
+					}
+<span class="nc" id="L366">					text.append(&quot;&lt;/a&gt;&quot;);</span>
+				} else {
+<span class="nc" id="L368">					text.append(elem);</span>
+					// Mark any possible repeatable quests
+<span class="nc bnc" id="L370" title="All 2 branches missed.">					if (repeatable.contains(elem)) {</span>
+<span class="nc" id="L371">						text.append(IMAGE);</span>
+					}
+				}
+<span class="nc" id="L374">			}</span>
+<span class="nc" id="L375">			text.append(&quot;&lt;/html&gt;&quot;);</span>
+<span class="nc" id="L376">			contentQuery = onClick;</span>
+
+<span class="nc" id="L378">			indexArea.setText(text.toString());</span>
+<span class="nc" id="L379">		}</span>
+
+		/**
+		 * StyleSheet for the scroll html areas. Margins are needed to avoid
+		 * drawing over the scroll borders.
+		 *
+		 * @return style sheet
+		 */
+		private String createStyleDefinition() {
+<span class="nc" id="L388">			int fontSize = getFont().getSize() + 2;</span>
+<span class="nc" id="L389">			return &quot;&lt;style type=\&quot;text/css\&quot;&gt;body {font-family:&quot; + fontName</span>
+					+ &quot;; font-size:&quot; + fontSize
+					+ &quot;; margin:12px} p {margin:4px 0px} a {color:#a00000} li, ul {margin-left:10px}&lt;/style&gt;&quot;;
+		}
+
+		/**
+		 * Set the page contents. Each of the content strings is shown as its
+		 * own paragraph.
+		 *
+		 * @param header page header
+		 * @param description description of the quest
+		 * @param information information
+		 * @param contents content paragraphs
+		 * @param repeatable &lt;code&gt;true&lt;/code&gt; if the quest should be marked
+		 * 	repeatable, otherwise &lt;code&gt;false&lt;/code&gt;
+		 */
+		void setContent(String header, String description, String information,
+				List&lt;String&gt; contents, boolean repeatable) {
+<span class="nc" id="L407">			StringBuilder text = new StringBuilder(&quot;&lt;html&gt;&quot;);</span>
+<span class="nc" id="L408">			text.append(createStyleDefinition());</span>
+
+			// header
+<span class="nc bnc" id="L411" title="All 2 branches missed.">			if (header != null) {</span>
+<span class="nc" id="L412">				text.append(&quot;&lt;h2&gt;&quot;);</span>
+<span class="nc" id="L413">				text.append(header);</span>
+<span class="nc" id="L414">				text.append(&quot;&lt;/h2&gt;&quot;);</span>
+			}
+			
+<span class="nc bnc" id="L417" title="All 2 branches missed.">			if (repeatable) {</span>
+<span class="nc" id="L418">				text.append(&quot;&lt;p style=\&quot;font-family:arial; color: #000080\&quot;&gt;&lt;b&gt;&quot;);</span>
+<span class="nc" id="L419">				text.append(IMAGE);</span>
+<span class="nc" id="L420">				text.append(&quot;I can do this quest again.&quot;);</span>
+<span class="nc" id="L421">				text.append(&quot;&lt;/b&gt;&lt;/p&gt;&quot;);</span>
+			}
+
+			// information
+<span class="nc bnc" id="L425" title="All 4 branches missed.">			if ((information != null) &amp;&amp; (!information.trim().equals(&quot;&quot;))) {</span>
+<span class="nc" id="L426">				text.append(&quot;&lt;p style=\&quot;font-family:arial; color: #FF0000\&quot;&gt;&lt;b&gt;&quot;);</span>
+<span class="nc" id="L427">				text.append(information);</span>
+<span class="nc" id="L428">				text.append(&quot;&lt;/b&gt;&lt;/p&gt;&quot;);</span>
+			}
+
+			// description
+<span class="nc bnc" id="L432" title="All 2 branches missed.">			if (description != null) {</span>
+<span class="nc" id="L433">				text.append(&quot;&lt;p&gt;&lt;i&gt;&quot;);</span>
+<span class="nc" id="L434">				text.append(description);</span>
+<span class="nc" id="L435">				text.append(&quot;&lt;/i&gt;&lt;/p&gt;&quot;);</span>
+			}
+
+			// details
+<span class="nc bnc" id="L439" title="All 2 branches missed.">			if (!contents.isEmpty()) {</span>
+<span class="nc" id="L440">				text.append(&quot;&lt;ul&gt;&quot;);</span>
+<span class="nc bnc" id="L441" title="All 2 branches missed.">				for (String elem : contents) {</span>
+<span class="nc" id="L442">					text.append(&quot;&lt;li&gt;&quot;);</span>
+<span class="nc" id="L443">					text.append(elem);</span>
+<span class="nc" id="L444">					text.append(&quot;&lt;/li&gt;&quot;);</span>
+<span class="nc" id="L445">				}</span>
+<span class="nc" id="L446">				text.append(&quot;&lt;/ul&gt;&quot;);</span>
+			}
+<span class="nc" id="L448">			text.append(&quot;&lt;/html&gt;&quot;);</span>
+<span class="nc" id="L449">			contentArea.setText(text.toString());</span>
+
+			/*
+			 * Scroll to top. This needs to be pushed to the even queue, because
+			 * otherwise the scroll event triggered by changing the text would run
+			 * after this.
+			 */
+<span class="nc" id="L456">			SwingUtilities.invokeLater(new Runnable() {</span>
+				@Override
+				public void run() {
+<span class="nc" id="L459">					contentScrollPane.getVerticalScrollBar().setValue(0);</span>
+<span class="nc" id="L460">				}</span>
+			});
+<span class="nc" id="L462">		}</span>
+
+		@Override
+		public void hyperlinkUpdate(HyperlinkEvent event) {
+<span class="nc bnc" id="L466" title="All 2 branches missed.">			if (event.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {</span>
+				/*
+				 * It would be more correct to read the parameter from the link
+				 * target, but swing does not give access to that when it fails
+				 * to parse it as an URL.
+				 */
+<span class="nc" id="L472">				contentQueryData = event.getDescription();</span>
+<span class="nc bnc" id="L473" title="All 2 branches missed.">				if (contentQuery != null) {</span>
+<span class="nc" id="L474">					contentQuery.fire(contentQueryData);</span>
+				}
+			}
+<span class="nc" id="L477">		}</span>
+	}
+
+	/**
+	 * A HTML JEditorPane with a background image.
+	 */
+	private static class PrettyEditorPane extends JEditorPane {
+		/** Painter for the background. */
+		private final BackgroundPainter background;
+
+		/**
+		 * Create a new PrettyEditorPane.
+		 */
+<span class="nc" id="L490">		public PrettyEditorPane() {</span>
+<span class="nc" id="L491">			background = new BackgroundPainter(BACKGROUND_IMAGE);</span>
+<span class="nc" id="L492">			setOpaque(false);</span>
+<span class="nc" id="L493">			setContentType(&quot;text/html&quot;);</span>
+<span class="nc" id="L494">			setEditable(false);</span>
+<span class="nc" id="L495">		}</span>
+
+		@Override
+		protected void paintComponent(Graphics g) {
+<span class="nc" id="L499">			background.paint(g, getWidth(), getHeight());</span>
+<span class="nc" id="L500">			super.paintComponent(g);</span>
+<span class="nc" id="L501">		}</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

@@ -1,0 +1,476 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>KHtmlEdit.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui</a> &gt; <span class="el_source">KHtmlEdit.java</span></div><h1>KHtmlEdit.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui;
+
+import games.stendhal.client.StendhalClient;
+import games.stendhal.common.NotificationType;
+
+import java.awt.Color;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URL;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.text.CharacterIterator;
+import java.text.StringCharacterIterator;
+
+import javax.swing.JTextPane;
+import javax.swing.event.HyperlinkEvent;
+import javax.swing.event.HyperlinkListener;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.Element;
+import javax.swing.text.html.HTMLDocument;
+import javax.swing.text.html.StyleSheet;
+
+import marauroa.common.game.RPAction;
+
+import org.apache.log4j.Logger;
+
+/**
+ * A HTML implementation of a KTextEdit component.
+ *
+ * TODO: Many of the general HTML functions can be moved to a common utility
+ * class.
+ *
+ * TODO: Move the message formatting (and setup) code to a common class so that
+ * the in-game text bubbles can use the same code for rendering.
+ */
+public class KHtmlEdit extends KTextEdit {
+	/**
+	 * serial version uid
+	 */
+	private static final long serialVersionUID = -8415450500521691744L;
+
+<span class="nc" id="L54">	private static Logger logger = Logger.getLogger(KHtmlEdit.class);</span>
+	
+<span class="nc" id="L56">	KHtmlEdit() {</span>
+<span class="nc" id="L57">		textPane.addHyperlinkListener(new ActivateLinkCB());</span>
+<span class="nc" id="L58">	}</span>
+
+	//
+	// KHtmlEdit
+	//
+
+	/**
+	 * Handle hypertext link activation.
+	 *
+	 * @param ev
+	 *            The link event data.
+	 */
+	protected void activateLink(final HyperlinkEvent ev) {
+		String text;
+<span class="nc" id="L72">		final URL url = ev.getURL();</span>
+
+<span class="nc bnc" id="L74" title="All 2 branches missed.">		if (url != null) {</span>
+<span class="nc bnc" id="L75" title="All 2 branches missed.">			if (url.getProtocol().equals(&quot;say&quot;)) {</span>
+<span class="nc" id="L76">				text = url.getPath();</span>
+
+				try {
+<span class="nc" id="L79">					text = URLDecoder.decode(text, &quot;UTF-8&quot;);</span>
+<span class="nc" id="L80">				} catch (final UnsupportedEncodingException ex) {</span>
+					// Leave text as-is and hope for best
+<span class="nc" id="L82">				}</span>
+			} else {
+				// TODO: Activate browser (in a portable way)
+<span class="nc" id="L85">				getToolkit().beep();</span>
+<span class="nc" id="L86">				return;</span>
+			}
+		} else {
+<span class="nc" id="L89">			text = ev.getDescription();</span>
+
+<span class="nc bnc" id="L91" title="All 2 branches missed.">			if (text.startsWith(&quot;say:&quot;)) {</span>
+<span class="nc" id="L92">				text = text.substring(4);</span>
+
+				try {
+<span class="nc" id="L95">					text = URLDecoder.decode(text, &quot;UTF-8&quot;);</span>
+<span class="nc" id="L96">				} catch (final UnsupportedEncodingException ex) {</span>
+					// Leave text as-is and hope for best
+<span class="nc" id="L98">				}</span>
+			}
+		}
+
+		/*
+		 * Chat link
+		 */
+<span class="nc" id="L105">		final RPAction rpaction = new RPAction();</span>
+
+<span class="nc" id="L107">		rpaction.put(&quot;type&quot;, &quot;chat&quot;);</span>
+<span class="nc" id="L108">		rpaction.put(&quot;text&quot;, text);</span>
+
+<span class="nc" id="L110">		StendhalClient.get().send(rpaction);</span>
+<span class="nc" id="L111">	}</span>
+
+	/**
+	 * Append HTML text to the end of the content. Note: Currently elements must
+	 * be complete to be added correctly.
+	 *
+	 * @param text
+	 *            The HTML text to add.
+	 */
+	protected void appendString(final String text) {
+<span class="nc" id="L121">		final HTMLDocument doc = (HTMLDocument) textPane.getDocument();</span>
+
+		try {
+<span class="nc" id="L124">			final Element root = doc.getParagraphElement(0);</span>
+<span class="nc" id="L125">			doc.insertBeforeEnd(root, text);</span>
+<span class="nc" id="L126">		} catch (final BadLocationException e) {</span>
+<span class="nc" id="L127">			logger.error(e, e);</span>
+<span class="nc" id="L128">		} catch (final IOException e) {</span>
+<span class="nc" id="L129">			logger.error(e, e);</span>
+<span class="nc" id="L130">		}</span>
+<span class="nc" id="L131">	}</span>
+
+	/**
+	 * Append a character to a buffer, escaping HTML meta-characters when
+	 * needed.
+	 * @param sbuf
+	 * @param ch
+	 *
+	 */
+	protected void appendHTML(final StringBuilder sbuf, final char ch) {
+<span class="nc bnc" id="L141" title="All 4 branches missed.">		switch (ch) {</span>
+		case '&lt;':
+<span class="nc" id="L143">			sbuf.append(&quot;&amp;lt;&quot;);</span>
+<span class="nc" id="L144">			break;</span>
+
+		case '&gt;':
+<span class="nc" id="L147">			sbuf.append(&quot;&amp;gt;&quot;);</span>
+<span class="nc" id="L148">			break;</span>
+
+		case '&amp;':
+<span class="nc" id="L151">			sbuf.append(&quot;&amp;amp;&quot;);</span>
+<span class="nc" id="L152">			break;</span>
+
+		default:
+<span class="nc" id="L155">			sbuf.append(ch);</span>
+			break;
+		}
+<span class="nc" id="L158">	}</span>
+
+	/**
+	 * Escape text as HTML, escaping meta-characters.
+	 * @param sbuf
+	 *
+	 * @param text
+	 *            Raw text.
+	 *
+	 */
+	protected void appendHTML(final StringBuilder sbuf, final String text) {
+<span class="nc" id="L169">		final StringCharacterIterator ci = new StringCharacterIterator(text);</span>
+<span class="nc" id="L170">		char ch = ci.current();</span>
+
+<span class="nc bnc" id="L172" title="All 2 branches missed.">		while (ch != CharacterIterator.DONE) {</span>
+<span class="nc" id="L173">			appendHTML(sbuf, ch);</span>
+<span class="nc" id="L174">			ch = ci.next();</span>
+		}
+<span class="nc" id="L176">	}</span>
+
+	/**
+	 * Translate a standard Stendhal encoded to HTML encoded.
+	 *
+	 * @param text
+	 *            The text to encode.
+	 *
+	 * @return HTML encoded text.
+	 */
+	protected String translateToHTML(final String text) {
+<span class="nc" id="L187">		final StringBuilder sbuf = new StringBuilder();</span>
+
+//TODO use common utility class FormatTextParser instead of StringCharacterIterator
+//		try {
+//			new FormatTextParser() {
+//				public void normalText(String txt) throws BadLocationException {
+//				}
+//
+//				public void colorText(String txt) throws BadLocationException {
+//				}
+//			}.format(text);
+//		} catch (Exception ble) { // BadLocationException
+//			System.err.println(&quot;Couldn't insert initial text.&quot;);
+//		}
+
+<span class="nc" id="L202">		final StringCharacterIterator ci = new StringCharacterIterator(text);</span>
+<span class="nc" id="L203">		char ch = ci.current();</span>
+
+<span class="nc bnc" id="L205" title="All 2 branches missed.">		while (ch != CharacterIterator.DONE) {</span>
+			// display text after &quot;#&quot; as link
+<span class="nc bnc" id="L207" title="All 2 branches missed.">			if (ch == '#') {</span>
+<span class="nc" id="L208">				ch = ci.next();</span>
+
+				/*
+				 * '##' means just a single '#'
+				 */
+<span class="nc bnc" id="L213" title="All 2 branches missed.">				if (ch == '#') {</span>
+<span class="nc" id="L214">					appendHTML(sbuf, ch);</span>
+<span class="nc" id="L215">					ch = ci.next();</span>
+				} else {
+<span class="nc" id="L217">					final String link = extractLink(ci);</span>
+
+					/*
+					 * Emit link (if any)
+					 */
+<span class="nc bnc" id="L222" title="All 2 branches missed.">					if (link != null) {</span>
+<span class="nc" id="L223">						buildLink(sbuf, link);</span>
+					}
+
+<span class="nc" id="L226">					ch = ci.current();</span>
+<span class="nc" id="L227">				}</span>
+			} else {
+<span class="nc" id="L229">				appendHTML(sbuf, ch);</span>
+<span class="nc" id="L230">				ch = ci.next();</span>
+			}
+		}
+
+<span class="nc" id="L234">		return sbuf.toString();</span>
+	}
+
+	/**
+	 * Extract link content from a character iterator. It is assumed that the
+	 * '#' has already been eaten. It leaves the character iterator at the first
+	 * character after the link text.
+	 *
+	 * @param ci
+	 *            The character iterator.
+	 *
+	 * @return Link text (or an empty string).
+	 */
+	protected String extractLink(final CharacterIterator ci) {
+<span class="nc" id="L248">		final StringBuilder sbuf = new StringBuilder();</span>
+<span class="nc" id="L249">		char ch = ci.current();</span>
+<span class="nc" id="L250">		char terminator = ' ';</span>
+
+		// color quoted compound words like &quot;#'iron sword'&quot;
+<span class="nc bnc" id="L253" title="All 2 branches missed.">		if (ch == '\'') {</span>
+<span class="nc" id="L254">			terminator = ch;</span>
+		}
+
+<span class="nc bnc" id="L257" title="All 2 branches missed.">		while (ch != CharacterIterator.DONE) {</span>
+<span class="nc bnc" id="L258" title="All 2 branches missed.">			if (ch == terminator) {</span>
+<span class="nc bnc" id="L259" title="All 2 branches missed.">				if (terminator == ' ') {</span>
+    				/*
+    				 * Continued link (#abc #def)?
+    				 */
+<span class="nc" id="L263">    				ch = ci.next();</span>
+
+<span class="nc bnc" id="L265" title="All 2 branches missed.">    				if (ch == '#') {</span>
+<span class="nc" id="L266">    					ch = ' ';</span>
+    				} else {
+<span class="nc" id="L268">    					ci.previous();</span>
+<span class="nc" id="L269">    					break;</span>
+    				}
+				} else {
+					break;
+				}
+			}
+
+<span class="nc" id="L276">			sbuf.append(ch);</span>
+<span class="nc" id="L277">			ch = ci.next();</span>
+		}
+
+		/*
+		 * Don't treat word delimiter(s) on the end as link text
+		 */
+<span class="nc" id="L283">		int len = sbuf.length();</span>
+
+<span class="nc bnc" id="L285" title="All 2 branches missed.">		while (len != 0) {</span>
+<span class="nc bnc" id="L286" title="All 2 branches missed.">			if (!isWordDelim(sbuf.charAt(--len))) {</span>
+<span class="nc" id="L287">				len++;</span>
+<span class="nc" id="L288">				break;</span>
+			}
+
+<span class="nc" id="L291">			sbuf.setLength(len);</span>
+<span class="nc" id="L292">			ci.previous();</span>
+		}
+
+		/*
+		 * Nothing found?
+		 */
+<span class="nc bnc" id="L298" title="All 2 branches missed.">		if (len == 0) {</span>
+<span class="nc" id="L299">			return null;</span>
+		}
+
+<span class="nc" id="L302">		return sbuf.toString();</span>
+	}
+
+	/**
+	 * Determine is a character is a word delimiter when followed by a space or
+	 * end-of-line. Care should be taken to avoid matching characters that are
+	 * typically at the end of valid URL's.
+	 *
+	 * @param ch
+	 *            A character;
+	 *
+	 * @return &lt;code&gt;true&lt;/code&gt; if a word delimiter.
+	 */
+	protected boolean isWordDelim(final char ch) {
+<span class="nc bnc" id="L316" title="All 2 branches missed.">		switch (ch) {</span>
+		case '.':
+		case ',':
+		case '!':
+		case '?':
+		case ';':
+<span class="nc" id="L322">			return true;</span>
+
+		default:
+<span class="nc" id="L325">			return false;</span>
+		}
+	}
+
+	/**
+	 * Convert a text &quot;link&quot; to an HTML link. For well-known URL's, the link is
+	 * taken literally, otherwise a &lt;code&gt;say:&lt;/code&gt; URL will be generated.
+	 *
+	 * @param sbuf
+	 *            The string buffer to append to.
+	 * @param text
+	 *            The text to convert.
+	 */
+	protected void buildLink(final StringBuilder sbuf, final String text) {
+<span class="nc" id="L339">		sbuf.append(&quot;&lt;a href='&quot;);</span>
+
+<span class="nc bnc" id="L341" title="All 6 branches missed.">		if (text.startsWith(&quot;http://&quot;) || text.startsWith(&quot;https://&quot;)</span>
+				|| text.startsWith(&quot;ftp://&quot;)) {
+<span class="nc" id="L343">			sbuf.append(text);</span>
+		} else {
+<span class="nc" id="L345">			sbuf.append(&quot;say:&quot;);</span>
+
+			try {
+<span class="nc" id="L348">				sbuf.append(URLEncoder.encode(text, &quot;UTF-8&quot;));</span>
+<span class="nc" id="L349">			} catch (final UnsupportedEncodingException ex) {</span>
+				// Nothing left to try
+<span class="nc" id="L351">				sbuf.append(text);</span>
+<span class="nc" id="L352">			}</span>
+		}
+
+<span class="nc" id="L355">		sbuf.append(&quot;'&gt;&quot;);</span>
+<span class="nc" id="L356">		appendHTML(sbuf, text);</span>
+<span class="nc" id="L357">		sbuf.append(&quot;&lt;/a&gt;&quot;);</span>
+<span class="nc" id="L358">	}</span>
+
+	/**
+	 * Convert a color to a CSS color attribute value.
+	 *
+	 * @param color
+	 *            An AWT color.
+	 *
+	 * @return A &lt;code&gt;color:&lt;/code&gt; CSS attribute value.
+	 */
+	protected String colorToRGB(final Color color) {
+<span class="nc" id="L369">		return String.format(&quot;#%02x%02x%02x&quot;, color.getRed(), color.getGreen(),</span>
+				color.getBlue());
+	}
+
+	//
+	// KTextEdit
+	//
+	@Override
+	protected void initStylesForTextPane(final JTextPane textPane, int mainTextSize) {
+<span class="nc" id="L378">		textPane.setContentType(&quot;text/html&quot;);</span>
+
+<span class="nc" id="L380">		final HTMLDocument doc = (HTMLDocument) textPane.getDocument();</span>
+<span class="nc" id="L381">		final StyleSheet css = doc.getStyleSheet();</span>
+
+		/*
+		 * Configure standard styles
+		 */
+<span class="nc" id="L386">		css.addRule(&quot;body { font-family: Dialog; font-size: &quot; + (mainTextSize + 1)</span>
+				+ &quot;pt }&quot;);
+<span class="nc" id="L388">		css.addRule(&quot;a { color: blue; font-style: italic }&quot;);</span>
+
+<span class="nc" id="L390">		css.addRule(&quot;._timestamp { color: &quot; + colorToRGB(HEADER_COLOR)</span>
+				+ &quot;; font-size: &quot; + (mainTextSize - 1)
+				+ &quot;pt; font-style: italic }&quot;);
+<span class="nc" id="L393">		css.addRule(&quot;._header { color: &quot; + colorToRGB(HEADER_COLOR) + &quot; }&quot;);</span>
+
+		/*
+		 * Configure notification types
+		 */
+<span class="nc bnc" id="L398" title="All 2 branches missed.">		for (final NotificationType type : NotificationType.values()) {</span>
+<span class="nc" id="L399">			final Color color = type.getColor();</span>
+
+<span class="nc bnc" id="L401" title="All 2 branches missed.">			if (color != null) {</span>
+<span class="nc" id="L402">				css.addRule(&quot;.&quot; + type.getMnemonic() + &quot; { color: &quot;</span>
+						+ colorToRGB(color) + &quot;; font-weight: bold; }&quot;);
+			}
+		}
+<span class="nc" id="L406">	}</span>
+
+	@Override
+	protected void insertHeader(final String text) {
+<span class="nc bnc" id="L410" title="All 4 branches missed.">		if ((text != null) &amp;&amp; (text.length() != 0)) {</span>
+<span class="nc" id="L411">			final StringBuilder sbuf = new StringBuilder();</span>
+
+<span class="nc" id="L413">			sbuf.append(&quot;&lt;span class='_header'&gt;&quot;);</span>
+<span class="nc" id="L414">			sbuf.append(&quot;&amp;lt;&quot;);</span>
+<span class="nc" id="L415">			appendHTML(sbuf, text);</span>
+<span class="nc" id="L416">			sbuf.append(&quot;&amp;gt;&quot;);</span>
+<span class="nc" id="L417">			sbuf.append(&quot;&lt;/span&gt;&quot;);</span>
+
+<span class="nc" id="L419">			appendString(sbuf.toString());</span>
+		}
+<span class="nc" id="L421">	}</span>
+
+	@Override
+	protected void insertNewline() {
+<span class="nc" id="L425">		appendString(&quot;&lt;br&gt;\n&quot;);</span>
+<span class="nc" id="L426">	}</span>
+
+	/**
+	 * Insert the text portion of the line using a specified notification type
+	 * for style.
+	 *
+	 * @param text
+	 *            The text to insert.
+	 * @param type
+	 *            The notification type.
+	 */
+	@Override
+	protected void insertText(final String text, final NotificationType type) {
+<span class="nc" id="L439">		final StringBuilder sbuf = new StringBuilder();</span>
+
+<span class="nc" id="L441">		sbuf.append(&quot;&lt;span class='&quot;);</span>
+<span class="nc" id="L442">		sbuf.append(type.getMnemonic());</span>
+<span class="nc" id="L443">		sbuf.append(&quot;'&gt;&quot;);</span>
+<span class="nc" id="L444">		sbuf.append(translateToHTML(text));</span>
+<span class="nc" id="L445">		sbuf.append(&quot;&lt;/span&gt;&quot;);</span>
+
+<span class="nc" id="L447">		appendString(sbuf.toString());</span>
+<span class="nc" id="L448">	}</span>
+	
+	@Override
+	protected void insertTimestamp(final String text) {
+<span class="nc" id="L452">		final StringBuilder sbuf = new StringBuilder();</span>
+
+<span class="nc" id="L454">		sbuf.append(&quot;&lt;span class='_timestamp'&gt;&quot;);</span>
+<span class="nc" id="L455">		appendHTML(sbuf, text);</span>
+<span class="nc" id="L456">		sbuf.append(&quot;&lt;/span&gt;&quot;);</span>
+
+<span class="nc" id="L458">		appendString(sbuf.toString());</span>
+<span class="nc" id="L459">	}</span>
+
+	//
+	//
+
+	/**
+	 * A hyperlink listener for link activation.
+	 */
+<span class="nc" id="L467">	private class ActivateLinkCB implements HyperlinkListener {</span>
+		@Override
+		public void hyperlinkUpdate(final HyperlinkEvent ev) {
+<span class="nc bnc" id="L470" title="All 2 branches missed.">			if (ev.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {</span>
+<span class="nc" id="L471">				activateLink(ev);</span>
+			}
+<span class="nc" id="L473">		}</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

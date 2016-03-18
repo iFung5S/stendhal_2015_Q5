@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>PositionChangeMulticaster.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.listener</a> &gt; <span class="el_source">PositionChangeMulticaster.java</span></div><h1>PositionChangeMulticaster.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.listener;
+
+import java.util.concurrent.CopyOnWriteArrayList;
+
+
+/**
+ * A position change multicaster.
+ */
+<span class="fc" id="L21">public class PositionChangeMulticaster implements PositionChangeListener {</span>
+	/**
+	 * The position change listeners.
+	 */
+<span class="fc" id="L25">	private final CopyOnWriteArrayList&lt;PositionChangeListener&gt; listeners = </span>
+		new CopyOnWriteArrayList&lt;PositionChangeListener&gt;();
+
+	//
+	// PositionChangeMulticaster
+	//
+
+	/**
+	 * Add a position change listener.
+	 * 
+	 * @param listener
+	 *            The listener.
+	 */
+	public void add(final PositionChangeListener listener) {
+<span class="nc" id="L39">		listeners.add(listener);</span>
+<span class="nc" id="L40">	}</span>
+
+	//
+	// PositionChangeListener
+	//
+
+	/**
+	 * Call position change event on all registered listeners.
+	 * 
+	 * @param x
+	 *            The new X coordinate (in world units).
+	 * @param y
+	 *            The new Y coordinate (in world units).
+	 */
+	@Override
+	public void positionChanged(final double x, final double y) {
+<span class="nc bnc" id="L56" title="All 2 branches missed.">		for (final PositionChangeListener l : listeners) {</span>
+<span class="nc" id="L57">			l.positionChanged(x, y);</span>
+<span class="nc" id="L58">		}</span>
+<span class="nc" id="L59">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

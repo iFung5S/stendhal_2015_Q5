@@ -1,0 +1,998 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SpeakerNPC.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.npc</a> &gt; <span class="el_source">SpeakerNPC.java</span></div><h1>SpeakerNPC.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.npc;
+
+import games.stendhal.common.parser.ConversationParser;
+import games.stendhal.common.parser.Expression;
+import games.stendhal.common.parser.ExpressionMatcher;
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.engine.StendhalRPWorld;
+import games.stendhal.server.entity.CollisionAction;
+import games.stendhal.server.entity.Killer;
+import games.stendhal.server.entity.RPEntity;
+import games.stendhal.server.entity.item.Corpse;
+import games.stendhal.server.entity.npc.action.NPCEmoteAction;
+import games.stendhal.server.entity.npc.condition.EmoteCondition;
+import games.stendhal.server.entity.npc.condition.GreetingMatchesNameCondition;
+import games.stendhal.server.entity.npc.fsm.Engine;
+import games.stendhal.server.entity.npc.fsm.Transition;
+import games.stendhal.server.entity.player.Player;
+
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
+
+import org.apache.log4j.Logger;
+
+/**
+ * This is a finite state machine that implements a chat system. See:
+ * http://en.wikipedia.org/wiki/Finite_state_machine In fact, it is a
+ * transducer.
+ * States are denoted by the enum ConversationStates. Input is the text
+ * that the player says to the SpeakerNPC. Output is the text that the
+ * SpeakerNPC answers.
+ *
+ * See examples to understand how it works.
+ *
+ * RULES:
+ *
+ * State IDLE is both the start state and the state that will end the
+ * conversation between the player and the SpeakerNPC.
+ *
+ * State ATTENDING is the state where only one player can talk to NPC
+ * and where the prior talk doesn't matter.
+ *
+ * State ANY is a wildcard and is used to jump from any state whenever
+ * the trigger is active. There are states that are reserved for
+ * special behaviours and quests.
+ *
+ * Example how it works: First we need to create a message to greet the player
+ * and attend it. We add a hi event:
+ *
+ * add(ConversationStates.IDLE, ConversationPhrases.GREETING_MESSAGES,
+ * ConversationStates.ATTENDING, &quot;Welcome, player!&quot;, null)
+ *
+ * Once the NPC is in the IDLE state and hears the word &quot;hi&quot;, it will say
+ * &quot;Welcome player!&quot; and move to ATTENDING.
+ *
+ * Now let's add some options when player is in ATTENDING_STATE, like job,
+ * offer, buy, sell, etc.
+ *
+ * add(ConversationStates.ATTENDING, ConversationPhrases.JOB_MESSAGES,
+ * ConversationStates.ATTENDING, &quot;I work as a part time example showman&quot;, null)
+ *
+ * add(ConversationStates.ATTENDING_STATE, &quot;offer&quot;,
+ * ConversationStates.ATTENDING_STATE, &quot;I sell best quality swords&quot;, null)
+ *
+ * Ok, two new events: job and offer, they go from ATTENDING state to ATTENDING
+ * state, because after reacting to &quot;job&quot; or &quot;offer&quot;, the NPC can directly react
+ * to one of these again.
+ *
+ * &lt;pre&gt;
+ * add(ConversationStates.ATTENDING, &quot;buy&quot;, ConversationStates.BUY_PRICE_OFFERED, null, new ChatAction() {
+ *    public void fire(Player player, String text, SpeakerNPC npc) {
+ *        int i = text.indexOf(&quot; &quot;);
+ *        String item = text.substring(i + 1);
+ *        if (item.equals(&quot;sword&quot;)) {
+ *            npc.say(item + &quot;costs 10 coins. Do you want to buy?&quot;);
+ *        } else {
+ *            npc.say(&quot;Sorry, I don't sell &quot; + item + &quot;.&quot;);
+ *            npc.setActualState(ConversationStates.ATTENDING);
+ *        }
+ *    }
+ * });
+ * &lt;/pre&gt;
+ *
+ * Now the hard part. We listen to &quot;buy&quot;, so we need to process the text, and
+ * for that we use the ChatAction class, we create a new class that will handle
+ * the event. Also see that we move to a new state, BUY_PRICE_OFFERED. The
+ * player is then replying to a question, so we only expect two possible
+ * replies: yes or no.
+ *
+ * add(ConversationStates.BUY_PRICE_OFFERED, ConversationPhrases.YES_MESSAGES,
+ * ConversationStates.ATTENDING, &quot;Sorry, I changed my mind. I won't sell
+ * anything.&quot;, null); // See SellerBehaviour.java for a working example.
+ *
+ * Whatever the reply is, return to ATTENDING state so we can listen to new
+ * things.
+ *
+ * Finally we want to finish the conversation, so whatever state we are, we want
+ * to finish a conversation with &quot;Bye!&quot;.
+ *
+ * add(ConversationStates.ANY, ConversationPhrases.GOODBYE_MESSAGES,
+ * ConversationStates.IDLE, &quot;Bye!&quot;, null);
+ *
+ * We use the state ANY as a wildcard, so if the input text is &quot;bye&quot; the
+ * transition happens, no matter in which state the FSM really is, with the
+ * exception of the IDLE state.
+ */
+public class SpeakerNPC extends NPC {
+	/** the logger instance. */
+<span class="fc" id="L123">	private static final Logger logger = Logger.getLogger(SpeakerNPC.class);</span>
+
+	/** The default distance from which an NPC should end a conversation. */
+	private static final int DEFAULT_GOODBYE_RANGE = 8;
+
+<span class="fc" id="L128">	private final Engine engine = new Engine(this);</span>
+
+	/**
+	 * Determines how long a conversation can be paused before it will
+	 * terminated by the NPC. Defaults to 30 seconds.
+	 */
+<span class="fc" id="L134">	private long playerChatTimeout = secondsToTurns(30);</span>
+
+<span class="fc" id="L136">	private int squaredGoodByeRange = getSquaredGoodByeRange();</span>
+
+	// Default wait message when NPC is busy
+	private String waitMessage;
+
+	// Default wait action when NPC is busy
+	private ChatAction waitAction;
+
+	// Default bye message when NPC stops chatting with the player
+	private String goodbyeMessage;
+
+	private ChatCondition initChatCondition;
+
+	// Default initChat action when NPC starts chatting with the player
+	private ChatAction initChatAction;
+
+	/**
+	 * Stores which turn was the last one at which a player spoke to this NPC.
+	 * This is important to determine conversation timeout.
+	 */
+	private long lastMessageTurn;
+
+	/**
+	 * The player who is currently talking to the NPC, or null if the NPC is
+	 * currently not taking part in a conversation.
+	 */
+	private RPEntity attending;
+
+	/**
+	 * alternative image for website
+	 */
+	private String alternativeImage;
+
+	/**
+	 * is this speaker can act without players around flag.
+	 * by default switched off.
+	 */
+<span class="fc" id="L173">	private boolean actingAlone=false;</span>
+
+	/**
+	 * Creates a new SpeakerNPC.
+	 *
+	 * @param name
+	 *            The NPC's name. Please note that names should be unique.
+	 */
+<span class="fc" id="L181">	public SpeakerNPC(final String name) {</span>
+<span class="fc" id="L182">		baseSpeed = 0.2;</span>
+<span class="fc" id="L183">		createPath();</span>
+
+<span class="fc" id="L185">		lastMessageTurn = 0;</span>
+
+<span class="fc" id="L187">		setName(name);</span>
+<span class="fc" id="L188">		createDialog();</span>
+<span class="fc" id="L189">		createDefaultReplies();</span>
+<span class="fc" id="L190">		put(&quot;title_type&quot;, &quot;npc&quot;);</span>
+
+<span class="fc" id="L192">		setSize(1, 1);</span>
+
+		// set the default perception range for player chatting
+<span class="fc" id="L195">		setPerceptionRange(5);</span>
+<span class="fc" id="L196">		updateModifiedAttributes();</span>
+<span class="fc" id="L197">	}</span>
+
+	/**
+	 * allow or disallow for npc to act without players in his zone.
+	 * @param allow - flag for allowing/disallowing npc's acting
+	 */
+	public void setAllowToActAlone(final boolean allow) {
+<span class="fc" id="L204">		actingAlone=allow;</span>
+<span class="fc" id="L205">	}</span>
+
+	public boolean isAllowedToActAlone() {
+<span class="nc" id="L208">		return(actingAlone);</span>
+	}
+
+	protected void createPath() {
+		// sub classes can implement this method
+<span class="fc" id="L213">	}</span>
+
+	protected void createDialog() {
+		// sub classes can implement this method
+<span class="fc" id="L217">	}</span>
+
+	private void createDefaultReplies() {
+<span class="fc" id="L220">		addWaitMessage();</span>
+<span class="fc" id="L221">	}</span>
+
+	/**
+	 * Is called when the NPC stops chatting with a player. Override it if
+	 * needed.
+	 * @param attending2 who has been talked to.
+	 */
+	protected void onGoodbye(final RPEntity attending2) {
+		// do nothing
+<span class="fc" id="L230">	}</span>
+
+	/**
+	 * Gets all players that have recently (this turn?) talked and are standing
+	 * nearby the NPC. Nearby means that they are standing less than &lt;i&gt;range&lt;/i&gt;
+	 * squares away horizontally and less than &lt;i&gt;range&lt;/i&gt; squares away
+	 * vertically.
+	 *
+	 * @param npc
+	 * @param range
+	 * @return A list of nearby players who have recently talked.
+	 */
+	private List&lt;Player&gt; getNearbyPlayersThatHaveSpoken(final NPC npc, final double range) {
+<span class="fc" id="L243">		final int x = npc.getX();</span>
+<span class="fc" id="L244">		final int y = npc.getY();</span>
+
+<span class="fc" id="L246">		final List&lt;Player&gt; players = new LinkedList&lt;Player&gt;();</span>
+
+<span class="fc bfc" id="L248" title="All 2 branches covered.">		for (final Player player : getZone().getPlayers()) {</span>
+<span class="fc" id="L249">			final int px = player.getX();</span>
+<span class="fc" id="L250">			final int py = player.getY();</span>
+
+<span class="pc bpc" id="L252" title="1 of 2 branches missed.">			if (player.has(&quot;text&quot;)) {</span>
+<span class="nc" id="L253">				int dx = px - x;</span>
+<span class="nc" id="L254">				int dy = py - y;</span>
+
+<span class="nc bnc" id="L256" title="All 4 branches missed.">				if (Math.abs(dx)&lt;range &amp;&amp; Math.abs(dy)&lt;range) { // check rectangular area</span>
+//				if (dx*dx + dy*dy &lt; range*range) { // optionally we could check a circular area
+<span class="nc" id="L258">					players.add(player);</span>
+				}
+			}
+<span class="fc" id="L261">		}</span>
+
+<span class="fc" id="L263">		return players;</span>
+	}
+
+	/**
+	 * Gets the player who is standing nearest to the NPC. Returns null if no
+	 * player is standing nearby. Nearby means that they are standing less than
+	 * &lt;i&gt;range&lt;/i&gt; squares away horizontally and less than &lt;i&gt;range&lt;/i&gt;
+	 * squares away vertically. Note, however, that the Euclidian distance is
+	 * used to compare which player is standing closest.
+	 *
+	 * @param range
+	 * @return The nearest player, or null if no player is standing on the same
+	 *         map.
+	 */
+	private Player getNearestPlayer(final double range) {
+<span class="nc" id="L278">		final int x = getX();</span>
+<span class="nc" id="L279">		final int y = getY();</span>
+
+<span class="nc" id="L281">		Player nearest = null;</span>
+
+<span class="nc" id="L283">		int squaredDistanceOfNearestPlayer = Integer.MAX_VALUE;</span>
+
+<span class="nc bnc" id="L285" title="All 2 branches missed.">		for (final Player player : getZone().getPlayers()) {</span>
+<span class="nc" id="L286">			final int px = player.getX();</span>
+<span class="nc" id="L287">			final int py = player.getY();</span>
+
+<span class="nc bnc" id="L289" title="All 4 branches missed.">			if ((Math.abs(px - x) &lt; range) &amp;&amp; (Math.abs(py - y) &lt; range)) {</span>
+<span class="nc" id="L290">				final int squaredDistanceOfThisPlayer =</span>
+						(px - x) * (px - x) + (py - y) * (py - y);
+
+<span class="nc bnc" id="L293" title="All 2 branches missed.">				if (squaredDistanceOfThisPlayer &lt; squaredDistanceOfNearestPlayer) {</span>
+<span class="nc" id="L294">					squaredDistanceOfNearestPlayer = squaredDistanceOfThisPlayer;</span>
+<span class="nc" id="L295">					nearest = player;</span>
+				}
+			}
+<span class="nc" id="L298">		}</span>
+
+<span class="nc" id="L300">		return nearest;</span>
+	}
+
+	/**
+	 * The entity who is currently talking to the NPC, or null if the NPC is
+	 * currently not taking part in a conversation.
+	 *
+	 * @return RPEntity
+	 */
+	public RPEntity getAttending() {
+<span class="fc" id="L310">		return attending;</span>
+	}
+
+	/**
+	 * Sets the rpentity to whom the NPC is currently listening. Note: You don't
+	 * need to use this for most NPCs.
+	 *
+	 * @param rpentity
+	 *            the entity with whom the NPC should be talking.
+	 */
+	public void setAttending(final RPEntity rpentity) {
+<span class="fc" id="L321">		attending = rpentity;</span>
+<span class="fc" id="L322">		lastMessageTurn = SingletonRepository.getRuleProcessor().getTurn();</span>
+<span class="fc bfc" id="L323" title="All 2 branches covered.">		if (rpentity != null) {</span>
+<span class="fc" id="L324">			stop();</span>
+		} else {
+<span class="pc bpc" id="L326" title="1 of 2 branches missed.">			if (hasPath()) {</span>
+<span class="fc" id="L327">				setSpeed(getBaseSpeed());</span>
+			}
+<span class="fc" id="L329">			setIdea(null);</span>
+		}
+<span class="fc" id="L331">	}</span>
+
+	@Override
+	public void onDead(final Killer killer, final boolean remove) {
+<span class="nc" id="L335">		heal();</span>
+<span class="nc" id="L336">		notifyWorldAboutChanges();</span>
+<span class="nc" id="L337">	}</span>
+
+	@Override
+	protected void dropItemsOn(final Corpse corpse) {
+		//they cant die
+<span class="nc" id="L342">		logger.error(&quot;SpeakerNpc &quot; + getName());</span>
+<span class="nc" id="L343">	}</span>
+
+	/**
+	 * Sets the time a conversation can be paused before it will be terminated
+	 * by the NPC.
+	 *
+	 * @param playerChatTimeout
+	 *            the time, in seconds
+	 */
+	public void setPlayerChatTimeout(final long playerChatTimeout) {
+<span class="fc" id="L353">		this.playerChatTimeout = secondsToTurns(playerChatTimeout);</span>
+<span class="fc" id="L354">	}</span>
+
+	@Override
+	public void setPerceptionRange(int perceptionRange) {
+<span class="fc" id="L358">		super.setPerceptionRange(perceptionRange);</span>
+<span class="fc" id="L359">		squaredGoodByeRange = getSquaredGoodByeRange();</span>
+<span class="fc" id="L360">	}</span>
+
+	private long secondsToTurns(final long seconds) {
+<span class="fc" id="L363">		return seconds * 1000 / StendhalRPWorld.MILLISECONDS_PER_TURN;</span>
+	}
+
+	private int getSquaredGoodByeRange() {
+<span class="fc" id="L367">		int goodByeRange = Math.max(getPerceptionRange(), DEFAULT_GOODBYE_RANGE);</span>
+<span class="fc" id="L368">		return goodByeRange * goodByeRange;</span>
+	}
+
+	@Override
+	public void logic() {
+		// do nothing, the logic is in preLogic because it needs to be
+		// done at the beginning of the next turn. Otherwise the NPCs
+		// respond to player in the chat log before the player says something.
+<span class="fc" id="L376">	}</span>
+
+	public void preLogic() {
+
+<span class="pc bpc" id="L380" title="2 of 6 branches missed.">		if (this.getZone().getPlayerAndFriends().isEmpty() &amp;&amp; !isTalking() &amp;&amp; !actingAlone) {</span>
+<span class="fc" id="L381">			return;</span>
+		}
+
+<span class="pc bpc" id="L384" title="1 of 2 branches missed.">		if (has(&quot;text&quot;)) {</span>
+<span class="nc" id="L385">			remove(&quot;text&quot;);</span>
+		}
+
+		// if no player is talking to the NPC, the NPC can move around.
+<span class="pc bpc" id="L389" title="1 of 2 branches missed.">		if (!isTalking()) {</span>
+			// TODO: Reset this on FSM engine state change
+<span class="nc bnc" id="L391" title="All 2 branches missed.">			if (getAttending() != null) {</span>
+<span class="nc" id="L392">				setAttending(null);</span>
+			}
+<span class="nc bnc" id="L394" title="All 2 branches missed.">			if (hasPath()) {</span>
+<span class="nc" id="L395">				setSpeed(getBaseSpeed());</span>
+			}
+<span class="nc" id="L397">			applyMovement();</span>
+<span class="pc bpc" id="L398" title="1 of 2 branches missed.">		} else if (attending != null) {</span>
+			// If the player is too far away
+<span class="pc bpc" id="L400" title="9 of 10 branches missed.">			if ((attending.squaredDistance(this) &gt; squaredGoodByeRange)</span>
+					|| ((attending instanceof Player) &amp;&amp; (((Player) attending).isDisconnected()))
+			// or if the player fell asleep ;)
+					|| ((attending instanceof Player) &amp;&amp; (SingletonRepository.getRuleProcessor().getTurn()
+							- lastMessageTurn &gt; playerChatTimeout))) {
+				// we force him to say bye to NPC :)
+<span class="fc" id="L406">				endConversation();</span>
+			}
+		}
+
+		// now look for nearest player only if there's an initChatAction
+<span class="pc bpc" id="L411" title="2 of 4 branches missed.">		if (!isTalking() &amp;&amp; (initChatAction != null)) {</span>
+<span class="nc" id="L412">			final Player nearest = getNearestPlayer(getPerceptionRange());</span>
+
+<span class="nc bnc" id="L414" title="All 2 branches missed.">			if (nearest != null) {</span>
+<span class="nc bnc" id="L415" title="All 4 branches missed.">				if ((initChatCondition == null)</span>
+						|| initChatCondition.fire(nearest, null, this)) {
+					// Note: The sentence parameter is left as null, so be
+					// careful not to use it in the fire() handler.
+<span class="nc" id="L419">					initChatAction.fire(nearest, null, new EventRaiser(this));</span>
+				}
+			}
+		}
+
+		// and finally react on anybody talking to us
+<span class="fc" id="L425">		final List&lt;Player&gt; speakers = getNearbyPlayersThatHaveSpoken(this, getPerceptionRange());</span>
+<span class="pc bpc" id="L426" title="1 of 2 branches missed.">		for (final Player speaker : speakers) {</span>
+<span class="nc" id="L427">			tell(speaker, speaker.get(&quot;text&quot;));</span>
+<span class="nc" id="L428">		}</span>
+
+<span class="fc" id="L430">		maybeMakeSound();</span>
+<span class="fc" id="L431">		notifyWorldAboutChanges();</span>
+<span class="fc" id="L432">	}</span>
+
+	protected void endConversation() {
+<span class="pc bpc" id="L435" title="1 of 2 branches missed.">		if (goodbyeMessage != null) {</span>
+<span class="fc" id="L436">			say(goodbyeMessage);</span>
+		}
+<span class="fc" id="L438">		onGoodbye(attending);</span>
+<span class="fc" id="L439">		engine.setCurrentState(ConversationStates.IDLE);</span>
+<span class="fc" id="L440">		setAttending(null);</span>
+<span class="fc" id="L441">	}</span>
+
+	public boolean isTalking() {
+<span class="fc bfc" id="L444" title="All 2 branches covered.">		return engine.getCurrentState() != ConversationStates.IDLE;</span>
+	}
+
+	@Override
+	// you can override this if you don't want your NPC to turn around
+	// in certain situations.
+	public void say(final String text) {
+		// turn towards player if necessary, then say it.
+<span class="fc" id="L452">		say(text, true);</span>
+<span class="fc" id="L453">	}</span>
+
+	protected void say(final String text, final boolean turnToPlayer) {
+		// be polite and face the player we are talking to
+<span class="fc bfc" id="L457" title="All 4 branches covered.">		if (turnToPlayer &amp;&amp; (attending != null)) {</span>
+<span class="fc" id="L458">			faceToward(attending);</span>
+		}
+
+<span class="fc" id="L461">		super.say(text);</span>
+<span class="fc" id="L462">	}</span>
+
+	/** Message when NPC is attending another player.
+	 * @param text to say to bothering player
+	 * @param action to perform
+	 */
+	public void addWaitMessage(final String text, final ChatAction action) {
+<span class="fc" id="L469">		waitMessage = text;</span>
+<span class="fc" id="L470">		waitAction = action;</span>
+<span class="fc" id="L471">	}</span>
+
+
+	public void addInitChatMessage(final ChatCondition condition, final ChatAction action) {
+<span class="fc" id="L475">		initChatCondition = condition;</span>
+<span class="fc" id="L476">		initChatAction = action;</span>
+<span class="fc" id="L477">	}</span>
+
+	/**
+	 * Adds a new transition to the FSM.
+	 *
+	 * @param state
+	 *            the starting state of the FSM
+	 * @param trigger
+	 *            input for this transition
+	 * @param condition
+	 *            null or condition that has to return true for this transition
+	 *            to be considered
+	 * @param nextState
+	 *            the new state of the FSM
+	 * @param reply
+	 *            a simple text reply (may be null for no reply)
+	 * @param action
+	 *            a special action to be taken (may be null)
+	 */
+	public void add(final ConversationStates state, final String trigger, final ChatCondition condition,
+			final ConversationStates nextState, final String reply, final ChatAction action) {
+<span class="fc" id="L498">		engine.add(state, trigger, condition, false, nextState, reply, action);</span>
+<span class="fc" id="L499">	}</span>
+
+	/**
+	 * Adds a new transition to the FSM.
+	 *
+	 * @param state
+	 *            the starting state of the FSM
+	 * @param trigger
+	 *            input for this transition
+	 * @param condition
+	 *            null or condition that has to return true for this transition
+	 *            to be considered
+	 * @param nextState
+	 *            the new state of the FSM
+	 * @param reply
+	 *            a simple text reply (may be null for no reply)
+	 * @param action
+	 *            a special action to be taken (may be null)
+	 * @param label
+	 *            a label string to handle transitions
+	 */
+	public void add(final ConversationStates state, final String trigger, final ChatCondition condition,
+			final ConversationStates nextState, final String reply, final ChatAction action, final String label) {
+<span class="fc" id="L522">		engine.add(state, trigger, condition, false, nextState, reply, action, label);</span>
+<span class="fc" id="L523">	}</span>
+
+	/**
+	 * Adds a new transition with explicit ExpressionMatcher to the FSM.
+	 *
+	 * @param state
+	 * @param trigger
+	 * @param matcher
+	 * @param condition
+	 * @param nextState
+	 * @param reply
+	 * @param action
+	 */
+	public void addMatching(final ConversationStates state, final String trigger, final ExpressionMatcher matcher, final ChatCondition condition,
+			final ConversationStates nextState, final String reply, final ChatAction action) {
+<span class="fc" id="L538">		engine.addMatching(state, trigger, matcher, condition, false, nextState, reply, action);</span>
+<span class="fc" id="L539">	}</span>
+
+	/**
+	 * Adds a new set of transitions to the FSM.
+	 *
+	 * @param state
+	 *            the starting state of the FSM
+	 * @param triggerStrings
+	 *            a list of inputs for this transition
+	 * @param condition
+	 *            null or condition that has to return true for this transition
+	 *            to be considered
+	 * @param nextState
+	 *            the new state of the FSM
+	 * @param reply
+	 *            a simple text reply (may be null for no reply)
+	 * @param action
+	 *            a special action to be taken (may be null)
+	 * @param label
+	 */
+	public void add(final ConversationStates state, final Collection&lt;String&gt; triggerStrings, final ChatCondition condition,
+			final ConversationStates nextState, final String reply, final ChatAction action, final String label) {
+<span class="nc" id="L561">		engine.add(state, triggerStrings, condition, false, nextState, reply, action, label);</span>
+<span class="nc" id="L562">	}</span>
+
+	/**
+	 * Adds a new set of transitions to the FSM.
+	 *
+	 * @param state
+	 *            the starting state of the FSM
+	 * @param triggerStrings
+	 *            a list of inputs for this transition
+	 * @param condition
+	 *            null or condition that has to return true for this transition
+	 *            to be considered
+	 * @param nextState
+	 *            the new state of the FSM
+	 * @param reply
+	 *            a simple text reply (may be null for no reply)
+	 * @param action
+	 *            a special action to be taken (may be null)
+	 */
+	public void add(final ConversationStates state, final Collection&lt;String&gt; triggerStrings, final ChatCondition condition,
+			final ConversationStates nextState, final String reply, final ChatAction action) {
+<span class="fc" id="L583">		engine.add(state, triggerStrings, condition, false, nextState, reply, action, &quot;&quot;);</span>
+<span class="fc" id="L584">	}</span>
+
+	/**
+	 * Adds a new set of transitions to the FSM.
+	 *
+	 * @param state
+	 *            the starting state of the FSM
+	 * @param triggerStrings
+	 *            a list of inputs for this transition
+	 * @param condition
+	 *            null or condition that has to return true for this transition
+	 *            to be considered
+	 * @param secondary
+	 * 			  flag to mark secondary transitions to be taken into account after preferred transitions
+	 * @param nextState
+	 *            the new state of the FSM
+	 * @param reply
+	 *            a simple text reply (may be null for no reply)
+	 * @param action
+	 *            a special action to be taken (may be null)
+	 */
+	public void add(final ConversationStates state, final Collection&lt;String&gt; triggerStrings, final ChatCondition condition, boolean secondary,
+			final ConversationStates nextState, final String reply, final ChatAction action) {
+<span class="fc" id="L607">		engine.add(state, triggerStrings, condition, secondary, nextState, reply, action);</span>
+<span class="fc" id="L608">	}</span>
+
+	/**
+	 * Adds a new set of transitions to the FSM.
+	 *
+	 * @param states
+	 *            the starting states of the FSM
+	 * @param trigger
+	 *            input for this transition
+	 * @param condition
+	 *            null or condition that has to return true for this transition
+	 *            to be considered
+	 * @param nextState
+	 *            the new state of the FSM
+	 * @param reply
+	 *            a simple text reply (may be null for no reply)
+	 * @param action
+	 *            a special action to be taken (may be null)
+	 */
+	public void add(final ConversationStates[] states, final String trigger, final ChatCondition condition,
+			final ConversationStates nextState, final String reply, final ChatAction action) {
+<span class="fc bfc" id="L629" title="All 2 branches covered.">		for (final ConversationStates state : states) {</span>
+<span class="fc" id="L630">			add(state, trigger, condition, nextState, reply, action);</span>
+		}
+<span class="fc" id="L632">	}</span>
+
+	/**
+	 * Adds a new set of transitions to the FSM.
+	 *
+	 * @param states
+	 *            the starting states of the FSM
+	 * @param triggerStrings
+	 *            a list of inputs for this transition
+	 * @param condition
+	 *            null or condition that has to return true for this transition
+	 *            to be considered
+	 * @param nextState
+	 *            the new state of the FSM
+	 * @param reply
+	 *            a simple text reply (may be null for no reply)
+	 * @param action
+	 *            a special action to be taken (may be null)
+	 */
+	public void add(final ConversationStates[] states, final Collection&lt;String&gt; triggerStrings,
+			final ChatCondition condition, final ConversationStates nextState, final String reply,
+			final ChatAction action) {
+<span class="fc bfc" id="L654" title="All 2 branches covered.">		for (final ConversationStates state : states) {</span>
+<span class="fc" id="L655">			add(state, triggerStrings, condition, nextState, reply, action);</span>
+		}
+<span class="fc" id="L657">	}</span>
+
+
+	public void add(final ConversationStates state, final Collection&lt;String&gt; triggerStrings, final ConversationStates nextState,
+			final String reply, final ChatAction action) {
+<span class="fc" id="L662">		add(state, triggerStrings, null, nextState, reply, action);</span>
+<span class="fc" id="L663">	}</span>
+
+
+	public void add(final ConversationStates state, final Collection&lt;String&gt; triggerStrings, final ConversationStates nextState,
+			final String reply, final ChatAction action, final String label) {
+<span class="nc" id="L668">		add(state, triggerStrings, null, nextState, reply, action, label);</span>
+<span class="nc" id="L669">	}</span>
+
+	/**
+	 * delete transition that match label
+	 *
+	 * @param label
+	 * @return - deleting state
+	 */
+	public boolean del(final String label) {
+<span class="fc" id="L678">		return(engine.remove(label));</span>
+	}
+
+
+
+	public void listenTo(final Player player, final String text) {
+<span class="fc" id="L684">		tell(player, text);</span>
+<span class="fc" id="L685">	}</span>
+
+	/**
+	 * If the given player says something to this NPC, and the NPC is already
+	 * speaking to another player, tells the given player to wait.
+	 *
+	 * @param player
+	 *            The player who spoke to the player
+	 * @param text
+	 *            The text that the given player has said
+	 * @return true iff the NPC had to get rid of the player
+	 */
+	private boolean getRidOfPlayerIfAlreadySpeaking(final Player player, final String text) {
+		// If we are attending another player make this one wait.
+<span class="pc bpc" id="L699" title="1 of 4 branches missed.">		if (attending != null &amp;&amp; !player.equals(attending)) {</span>
+<span class="pc bpc" id="L700" title="1 of 2 branches missed.">			if (ConversationPhrases.GREETING_MESSAGES.contains(</span>
+					ConversationParser.parse(text).getTriggerExpression().getNormalized())) {
+<span class="fc" id="L702">				logger.debug(&quot;Already attending a player&quot;);</span>
+
+<span class="pc bpc" id="L704" title="1 of 2 branches missed.">				if (waitMessage != null) {</span>
+<span class="nc" id="L705">					say(waitMessage);</span>
+				}
+
+<span class="pc bpc" id="L708" title="1 of 2 branches missed.">				if (waitAction != null) {</span>
+<span class="fc" id="L709">					final Sentence sentence = ConversationParser.parse(text);</span>
+					// Note: sentence is currently not yet used in
+					// the called handler functions.
+<span class="fc" id="L712">					waitAction.fire(player, sentence, new EventRaiser(this));</span>
+				}
+			}
+
+<span class="fc" id="L716">			return true;</span>
+		}
+
+<span class="fc" id="L719">		return false;</span>
+	}
+
+	/** This function evolves the FSM.
+	 * @param player
+	 * @param text
+	 * @return true if step was successfully executed*/
+	private boolean tell(final Player player, final String text) {
+<span class="fc bfc" id="L727" title="All 2 branches covered.">		if (getRidOfPlayerIfAlreadySpeaking(player, text)) {</span>
+<span class="fc" id="L728">			return true;</span>
+		}
+
+		// If we are not attending a player, attend this one.
+<span class="pc bpc" id="L732" title="1 of 2 branches missed.">		if (engine.getCurrentState() == ConversationStates.IDLE) {</span>
+<span class="fc" id="L733">			logger.debug(&quot;Attending player &quot; + player.getName());</span>
+<span class="fc" id="L734">			setAttending(player);</span>
+		}
+
+<span class="fc" id="L737">		lastMessageTurn = SingletonRepository.getRuleProcessor().getTurn();</span>
+
+<span class="fc" id="L739">		return engine.step(player, text);</span>
+	}
+
+	public void setCurrentState(final ConversationStates state) {
+<span class="fc bfc" id="L743" title="All 2 branches covered.">		if (state == ConversationStates.ATTENDING) {</span>
+<span class="fc" id="L744">        	setIdea(&quot;attending&quot;);</span>
+        } else {
+<span class="fc" id="L746">        	setIdea(&quot;awaiting&quot;);</span>
+        }
+<span class="fc" id="L748">		engine.setCurrentState(state);</span>
+<span class="fc" id="L749">	}</span>
+
+	/**
+	 * Add default greeting transition with optional recognition of the NPC name.
+	 */
+	public void addGreeting() {
+<span class="fc" id="L755">		addGreeting(&quot;Greetings! How may I help you?&quot;, null);</span>
+<span class="fc" id="L756">	}</span>
+
+	/**
+	 * Add greeting transition with name recognition.
+	 * @param text
+	 */
+	public void addGreeting(final String text) {
+<span class="fc" id="L763">		addGreeting(text, null);</span>
+<span class="fc" id="L764">	}</span>
+
+	/**
+	 * Add greeting transition with name recognition.
+	 * @param text
+	 * @param action
+	 */
+	public void addGreeting(final String text, final ChatAction action) {
+<span class="fc" id="L772">		add(ConversationStates.IDLE, ConversationPhrases.GREETING_MESSAGES,</span>
+				new GreetingMatchesNameCondition(getName()), true,
+				ConversationStates.ATTENDING, text, action);
+<span class="fc" id="L775">	}</span>
+
+	/**
+	 * Makes this NPC say a text when it hears a certain trigger during a
+	 * conversation.
+	 *
+	 * @param trigger
+	 *            The text that causes the NPC to answer
+	 * @param text
+	 *            The answer
+	 */
+	public void addReply(final String trigger, final String text) {
+<span class="fc" id="L787">		add(ConversationStates.ATTENDING, trigger, null,</span>
+				ConversationStates.ATTENDING, text, null);
+<span class="fc" id="L789">	}</span>
+
+	/**
+	 * @param triggerStrings
+	 * @param text
+	 */
+	public void addReply(final Collection&lt;String&gt; triggerStrings, final String text) {
+<span class="fc" id="L796">		add(ConversationStates.ATTENDING, triggerStrings,</span>
+				ConversationStates.ATTENDING, text, null);
+<span class="fc" id="L798">	}</span>
+
+	/**
+	 * Makes NPC say a text and/or do an action when a trigger is said.
+	 *
+	 * @param trigger
+	 * @param text
+	 * @param action
+	 */
+	public void addReply(final String trigger, final String text, final ChatAction action) {
+<span class="fc" id="L808">		add(ConversationStates.ATTENDING, trigger, null,</span>
+				ConversationStates.ATTENDING, text, action);
+<span class="fc" id="L810">	}</span>
+
+	/**
+	 * Makes NPC say a text and/or do an action when a trigger is said.
+	 *
+	 * @param triggerStrings
+	 * @param text
+	 * @param action
+	 */
+	public void addReply(final Collection&lt;String&gt; triggerStrings, final String text, final ChatAction action) {
+<span class="fc" id="L820">		add(ConversationStates.ATTENDING, triggerStrings, null,</span>
+				ConversationStates.ATTENDING, text, action);
+<span class="fc" id="L822">	}</span>
+
+	public void addQuest(final String text) {
+<span class="fc" id="L825">		add(ConversationStates.ATTENDING, ConversationPhrases.QUEST_MESSAGES,</span>
+				ConversationStates.ATTENDING, text, null);
+<span class="fc" id="L827">	}</span>
+
+	public void addJob(final String jobDescription) {
+<span class="fc" id="L830">		addReply(ConversationPhrases.JOB_MESSAGES, jobDescription);</span>
+<span class="fc" id="L831">	}</span>
+
+	public void addHelp(final String helpDescription) {
+<span class="fc" id="L834">		addReply(ConversationPhrases.HELP_MESSAGES, helpDescription);</span>
+<span class="fc" id="L835">	}</span>
+
+	public void addOffer(final String offerDescription) {
+<span class="fc" id="L838">		addReply(ConversationPhrases.OFFER_MESSAGES, offerDescription);</span>
+<span class="fc" id="L839">	}</span>
+
+	/**
+	 * make npc's emotion reply on player's emotion
+	 * @param playerAction - what player doing with npc
+	 * @param npcAction - npc's emotion reply on player's emotion
+	 */
+	public void addEmotionReply(final String playerAction, final String npcAction) {
+<span class="fc" id="L847">		add(ConversationStates.IDLE, Arrays.asList(&quot;!me &quot;), new EmoteCondition(playerAction),</span>
+				ConversationStates.IDLE, null, new NPCEmoteAction(npcAction));
+<span class="fc" id="L849">		add(ConversationStates.ATTENDING, Arrays.asList(&quot;!me &quot;), new EmoteCondition(playerAction),</span>
+				ConversationStates.ATTENDING, null, new NPCEmoteAction(npcAction));
+<span class="fc" id="L851">	}</span>
+
+	/**
+	 * make npc's emotion
+	 * @param triggerStrings - player's keywords for npc emotion
+	 * @param npcAction - npc's emotion
+	 */
+	public void addEmotion(final Collection&lt;String&gt; triggerStrings, final String npcAction) {
+<span class="nc" id="L859">		add(ConversationStates.IDLE, triggerStrings,</span>
+				ConversationStates.IDLE, null, new NPCEmoteAction(npcAction));
+<span class="nc" id="L861">		add(ConversationStates.ATTENDING, triggerStrings,</span>
+				ConversationStates.ATTENDING, null, new NPCEmoteAction(npcAction));
+
+<span class="nc" id="L864">	}</span>
+
+	/**
+	 * make npc's emotion
+	 * @param trigger - player's keywords for npc emotion
+	 * @param npcAction - npc's emotion
+	 */
+	public void addEmotion(final String trigger, final String npcAction) {
+<span class="nc" id="L872">		add(ConversationStates.IDLE, Arrays.asList(trigger),</span>
+				ConversationStates.IDLE, null, new NPCEmoteAction(npcAction));
+<span class="nc" id="L874">		add(ConversationStates.ATTENDING, Arrays.asList(trigger),</span>
+				ConversationStates.ATTENDING, null, new NPCEmoteAction(npcAction));
+<span class="nc" id="L876">	}</span>
+
+	/**
+	 * make npc's reply on player's emotion
+	 * @param playerAction - what player doing with npc
+	 * @param reply - npc's reply on player's emotion
+	 */
+	public void addReplyOnEmotion(final String playerAction, final String reply) {
+<span class="nc" id="L884">		add(ConversationStates.IDLE, Arrays.asList(&quot;!me &quot;),new EmoteCondition(playerAction),</span>
+				ConversationStates.IDLE, reply, null);
+<span class="nc" id="L886">		add(ConversationStates.ATTENDING, Arrays.asList(&quot;!me &quot;),new EmoteCondition(playerAction),</span>
+				ConversationStates.ATTENDING, reply, null);
+<span class="nc" id="L888">	}</span>
+
+	public void addGoodbye() {
+<span class="fc" id="L891">		addGoodbye(&quot;Bye.&quot;);</span>
+<span class="fc" id="L892">	}</span>
+
+	public void addGoodbye(final String text) {
+<span class="fc" id="L895">		goodbyeMessage = text;</span>
+<span class="fc" id="L896">		add(ConversationStates.ANY, ConversationPhrases.GOODBYE_MESSAGES,</span>
+<span class="fc" id="L897">				ConversationStates.IDLE, text, new ChatAction() {</span>
+
+					@Override
+					public void fire(final Player player, final Sentence sentence,
+							final EventRaiser npc) {
+<span class="fc" id="L902">						((SpeakerNPC) npc.getEntity()).onGoodbye(player);</span>
+<span class="fc" id="L903">					}</span>
+
+					@Override
+					public String toString() {
+<span class="nc" id="L907">						return &quot;SpeakerNPC.onGoodbye&quot;;</span>
+					}
+				});
+<span class="fc" id="L910">	}</span>
+
+	/**
+	 * Returns a copy of the transition table.
+	 *
+	 * @return list of transitions
+	 */
+	public List&lt;Transition&gt; getTransitions() {
+<span class="fc" id="L918">		return engine.getTransitions();</span>
+	}
+
+	public Engine getEngine() {
+<span class="fc" id="L922">		return engine;</span>
+	}
+
+	@Override
+	protected void handleObjectCollision() {
+<span class="nc" id="L927">		CollisionAction action = getCollisionAction();</span>
+<span class="nc bnc" id="L928" title="All 2 branches missed.">	    if (action == CollisionAction.REVERSE) {</span>
+<span class="nc" id="L929">	        reversePath();</span>
+<span class="nc bnc" id="L930" title="All 2 branches missed.">	    } else if (action == CollisionAction.REROUTE) {</span>
+<span class="nc" id="L931">	    	reroute();</span>
+	    }
+	    else {
+<span class="nc" id="L934">	        stop();</span>
+	    }
+<span class="nc" id="L936">	}</span>
+
+	@Override
+	protected void handleSimpleCollision(final int nx, final int ny) {
+<span class="nc" id="L940">		CollisionAction action = getCollisionAction();</span>
+<span class="nc bnc" id="L941" title="All 2 branches missed.">	    if (action == CollisionAction.REROUTE) {</span>
+<span class="nc" id="L942">	        reroute();</span>
+	    }
+	    else {
+<span class="nc" id="L945">	        stop();</span>
+	    }
+<span class="nc" id="L947">	}</span>
+
+	/**
+	 * gets an alternative image for example for the website
+	 *
+	 * @return name of alternative image or &lt;code&gt;null&lt;/code&gt; in case the normal image should be used.
+	 */
+	public String getAlternativeImage() {
+<span class="nc" id="L955">		return alternativeImage;</span>
+	}
+
+	/**
+	 * sets an alternative image for example for the website
+	 *
+	 * @param alternativeImage name of alternative image or &lt;code&gt;null&lt;/code&gt; in case the normal image should be used.
+	 */
+	public void setAlternativeImage(String alternativeImage) {
+<span class="fc" id="L964">		this.alternativeImage = alternativeImage;</span>
+<span class="fc" id="L965">	}</span>
+
+	private void addWaitMessage() {
+<span class="fc" id="L968">		addWaitMessage(null, new ChatAction() {</span>
+			@Override
+			public void fire(final Player player, final Sentence sentence, final EventRaiser npc) {
+<span class="fc" id="L971">				npc.say(&quot;Please wait, &quot; + player.getTitle()</span>
+						+ &quot;! I am still attending to &quot;
+						+ npc.getAttending().getTitle() + &quot;.&quot;);
+<span class="fc" id="L974">			}</span>
+		});
+<span class="fc" id="L976">	}</span>
+
+
+	/**
+	 * gets the answer to the &quot;job&quot; question in ATTENDING state.
+	 *
+	 * @return the answer to the job question or null in case there is no job specified
+	 */
+	public String getJob() {
+<span class="nc" id="L985">		List&lt;Transition&gt; transitions = engine.getTransitions();</span>
+<span class="nc bnc" id="L986" title="All 2 branches missed.">		for (Transition transition : transitions) {</span>
+<span class="nc bnc" id="L987" title="All 2 branches missed.">			if (transition.getState() == ConversationStates.ATTENDING) {</span>
+<span class="nc bnc" id="L988" title="All 2 branches missed.">				for(Expression triggerExpr : transition.getTriggers()) {</span>
+<span class="nc bnc" id="L989" title="All 2 branches missed.">					if (triggerExpr.getOriginal().equals(&quot;job&quot;)) {</span>
+<span class="nc" id="L990">						return transition.getReply();</span>
+					}
+<span class="nc" id="L992">				}</span>
+			}
+<span class="nc" id="L994">		}</span>
+<span class="nc" id="L995">		return null;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

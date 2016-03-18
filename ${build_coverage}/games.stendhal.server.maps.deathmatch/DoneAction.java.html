@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>DoneAction.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.deathmatch</a> &gt; <span class="el_source">DoneAction.java</span></div><h1>DoneAction.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.deathmatch;
+
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.engine.dbcommand.WriteHallOfFamePointsCommand;
+import games.stendhal.server.core.events.TurnNotifier;
+import games.stendhal.server.entity.item.Item;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.action.IncrementQuestAction;
+import games.stendhal.server.entity.npc.action.SetQuestAction;
+import games.stendhal.server.entity.player.Player;
+import marauroa.server.db.command.DBCommandQueue;
+
+/**
+ * Handles player claim of victory by giving reward after verifying the winning.
+ */
+<span class="fc" id="L31">public class DoneAction implements ChatAction {</span>
+
+	/**
+	 * Creates the player bound special trophy helmet and equips it.
+	 *
+	 * @param player Player object
+	 * @return Helmet
+	 */
+	private Item createTrophyHelmet(final Player player) {
+<span class="nc" id="L40">		final Item helmet = SingletonRepository.getEntityManager().getItem(&quot;trophy helmet&quot;);</span>
+<span class="nc" id="L41">		helmet.setBoundTo(player.getName());</span>
+<span class="nc" id="L42">		helmet.put(&quot;def&quot;, 1);</span>
+<span class="nc" id="L43">		helmet.setInfoString(player.getName());</span>
+<span class="nc" id="L44">		helmet.setPersistent(true);</span>
+<span class="nc" id="L45">		helmet.setDescription(&quot;This is &quot; + player.getName()</span>
+		        + &quot;'s grand prize for Deathmatch winners. Wear it with pride.&quot;);
+<span class="nc" id="L47">		player.equipOrPutOnGround(helmet);</span>
+<span class="nc" id="L48">		return helmet;</span>
+	}
+
+	/**
+	 * Updates the player's points in the hall of fame for deathmatch.
+	 *
+	 * @param player Player
+	 */
+	private void updatePoints(final Player player) {
+<span class="nc" id="L57">		final DeathmatchState deathmatchState = DeathmatchState.createFromQuestString(player.getQuest(&quot;deathmatch&quot;));</span>
+<span class="nc" id="L58">		DBCommandQueue.get().enqueue(new WriteHallOfFamePointsCommand(player.getName(), &quot;D&quot;, deathmatchState.getPoints(), true));</span>
+<span class="nc" id="L59">	}</span>
+
+	@Override
+	public void fire(final Player player, final Sentence sentence, final EventRaiser raiser) {
+<span class="nc" id="L63">		final DeathmatchState deathmatchState = DeathmatchState.createFromQuestString(player.getQuest(&quot;deathmatch&quot;));</span>
+<span class="nc bnc" id="L64" title="All 2 branches missed.">		if (deathmatchState.getLifecycleState() != DeathmatchLifecycle.VICTORY) {</span>
+<span class="nc" id="L65">			raiser.say(&quot;C'm on, don't lie to me! All you can do now is #bail or win.&quot;);</span>
+<span class="nc" id="L66">			return;</span>
+		}
+
+<span class="nc" id="L69">		updatePoints(player);</span>
+
+		// We assume that the player only carries one trophy helmet.
+<span class="nc" id="L72">		final Item helmet = player.getFirstEquipped(&quot;trophy helmet&quot;);</span>
+<span class="nc bnc" id="L73" title="All 2 branches missed.">		if (helmet == null) {</span>
+<span class="nc" id="L74">			createTrophyHelmet(player);</span>
+<span class="nc" id="L75">			raiser.say(&quot;Here is your special trophy helmet. Keep it, as the defense will increase by 1 &quot;</span>
+				+ &quot;for every deathmatch you complete. Now, tell me if you want to #leave.&quot;);
+		} else {
+<span class="nc" id="L78">			int defense = 1;</span>
+<span class="nc bnc" id="L79" title="All 2 branches missed.">			if (helmet.has(&quot;def&quot;)) {</span>
+<span class="nc" id="L80">				defense = helmet.getInt(&quot;def&quot;);</span>
+			}
+<span class="nc" id="L82">			defense++;</span>
+<span class="nc" id="L83">			final int maxdefense = 5 + (player.getLevel() / 5);</span>
+<span class="nc bnc" id="L84" title="All 2 branches missed.">			if (defense &gt; maxdefense) {</span>
+<span class="nc" id="L85">				helmet.put(&quot;def&quot;, maxdefense);</span>
+<span class="nc" id="L86">				raiser.say(&quot;I'm sorry to inform you, the maximum defense for your helmet at your current level is &quot;</span>
+				                + maxdefense);
+			} else {
+<span class="nc" id="L89">				helmet.put(&quot;def&quot;, defense);</span>
+				String message;
+<span class="nc bnc" id="L91" title="All 2 branches missed.">				if (defense == maxdefense) {</span>
+<span class="nc" id="L92">					message = &quot;Your helmet has been magically strengthened to the maximum defense for your level, &quot; + defense;</span>
+				} else {
+<span class="nc" id="L94">					message = &quot;Your helmet has been magically strengthened to a defense of &quot; + defense;</span>
+				}
+<span class="nc" id="L96">				raiser.say(message + &quot;. Now, tell me if you want to #leave.&quot;);</span>
+			}
+		}
+<span class="nc" id="L99">		player.updateItemAtkDef();</span>
+<span class="nc" id="L100">		TurnNotifier.get().notifyInTurns(0, new NotifyPlayerAboutHallOfFamePoints((SpeakerNPC) raiser.getEntity(), player.getName(), &quot;D&quot;, &quot;deathmatch_score&quot;));</span>
+		
+<span class="nc" id="L102">		new SetQuestAction(&quot;deathmatch&quot;, 0, &quot;done&quot;).fire(player, sentence, raiser);</span>
+		// Track the number of wins.
+<span class="nc" id="L104">		new IncrementQuestAction(&quot;deathmatch&quot;, 6, 1).fire(player, sentence, raiser);</span>
+<span class="nc" id="L105">		SingletonRepository.getAchievementNotifier().onFinishQuest(player);</span>
+<span class="nc" id="L106">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

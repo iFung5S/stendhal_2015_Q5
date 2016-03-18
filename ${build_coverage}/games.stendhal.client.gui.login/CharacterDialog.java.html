@@ -1,0 +1,375 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>CharacterDialog.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui.login</a> &gt; <span class="el_source">CharacterDialog.java</span></div><h1>CharacterDialog.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui.login;
+
+import games.stendhal.client.StendhalClient;
+import games.stendhal.client.stendhal;
+import games.stendhal.client.entity.IEntity;
+import games.stendhal.client.entity.Player;
+import games.stendhal.client.gui.TransparencyMode;
+import games.stendhal.client.gui.WindowUtils;
+import games.stendhal.client.gui.j2d.entity.EntityView;
+import games.stendhal.client.gui.j2d.entity.EntityViewFactory;
+import games.stendhal.client.gui.layout.SBoxLayout;
+import games.stendhal.client.gui.layout.SLayout;
+
+import java.awt.Container;
+import java.awt.Graphics2D;
+import java.awt.GraphicsEnvironment;
+import java.awt.GridLayout;
+import java.awt.Image;
+import java.awt.Insets;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Map.Entry;
+
+import javax.swing.BorderFactory;
+import javax.swing.Icon;
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JComponent;
+import javax.swing.JDialog;
+import javax.swing.JFrame;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+
+import marauroa.client.BannedAddressException;
+import marauroa.client.TimeoutException;
+import marauroa.common.game.CharacterResult;
+import marauroa.common.game.RPObject;
+import marauroa.common.net.InvalidVersionException;
+
+import org.apache.log4j.Logger;
+
+/**
+ * A dialog for selecting from the available characters of a user account.
+ */
+public final class CharacterDialog extends JDialog implements Runnable {
+	private static final long serialVersionUID = -8827654641088132946L;
+
+<span class="nc" id="L66">	private static Logger logger = Logger.getLogger(CharacterDialog.class);</span>
+
+	/** Maximum dialog width in pixels */
+	private static final int DIALOG_WIDTH = 640;
+	/** Maximum dialog height in pixels */
+	private static final int DIALOG_HEIGHT = 480;
+	/** Maximum number of character buttons per row */
+	private static final int MAX_COLUMNS = 4;
+	/** Width of a player image in pixels */
+	private static final int IMAGE_WIDTH = 32;
+	/** Height of a player image in pixels */
+	private static final int IMAGE_HEIGHT = 48;
+	/**
+	 * Maximum number of characters / account. A soft limit since this
+	 * is client side.
+	 */
+	private static final int MAX_CHARACTERS = 16;
+	
+	
+	/** Area containing buttons for each character */
+	private final JComponent characterPanel;
+	
+	/**
+	 * Create a new &lt;code&gt;CharacterDialog&lt;/code&gt;.
+	 * 
+	 * @param characters map of available characters, and &lt;code&gt;RPObjects&lt;/code&gt;
+	 * 	representing them
+	 * @param owner the parent window
+	 */
+	public CharacterDialog(final Map&lt;String, RPObject&gt; characters, JFrame owner) {
+<span class="nc" id="L96">		super(owner);</span>
+<span class="nc" id="L97">		setTitle(&quot;Choose character&quot;);</span>
+		
+<span class="nc" id="L99">		this.addWindowListener(new WindowAdapter() {</span>
+			@Override
+			public void windowClosing(WindowEvent e) {
+<span class="nc" id="L102">				onClose();</span>
+<span class="nc" id="L103">			}</span>
+		});
+		
+<span class="nc" id="L106">		int pad = SBoxLayout.COMMON_PADDING;</span>
+<span class="nc" id="L107">		setLayout(new SBoxLayout(SBoxLayout.VERTICAL, pad));</span>
+<span class="nc" id="L108">		Container content = getContentPane();</span>
+<span class="nc bnc" id="L109" title="All 2 branches missed.">		if (content instanceof JComponent) {</span>
+<span class="nc" id="L110">			((JComponent) content).setBorder(BorderFactory.createEmptyBorder(pad, pad, pad, pad));</span>
+		}
+		
+		// Create the character area
+<span class="nc" id="L114">		characterPanel = new JPanel();</span>
+<span class="nc" id="L115">		characterPanel.setBorder(null);</span>
+		// Do not add empty places if the first row is not full
+<span class="nc" id="L117">		int columns = Math.min(MAX_COLUMNS, characters.keySet().size());</span>
+<span class="nc" id="L118">		GridLayout grid = new GridLayout(0, columns);</span>
+<span class="nc" id="L119">		characterPanel.setLayout(grid);</span>
+<span class="nc" id="L120">		JScrollPane scroll = new JScrollPane(characterPanel);</span>
+<span class="nc" id="L121">		add(scroll, SLayout.EXPAND_X);</span>
+		
+<span class="nc" id="L123">		addCharacters(characters);</span>
+		
+		// Create area for additional buttons
+<span class="nc" id="L126">		JComponent buttonBar = SBoxLayout.createContainer(SBoxLayout.HORIZONTAL, SBoxLayout.COMMON_PADDING);</span>
+<span class="nc" id="L127">		add(buttonBar, SLayout.EXPAND_X);</span>
+		
+		// Align the buttons right
+<span class="nc" id="L130">		SBoxLayout.addSpring(buttonBar);</span>
+		
+		// Action buttons. Should these be of uniform size?
+<span class="nc" id="L133">		JButton newCharButton = new JButton(&quot;New Character&quot;);</span>
+<span class="nc" id="L134">		newCharButton.setMnemonic(KeyEvent.VK_N);</span>
+<span class="nc" id="L135">		newCharButton.addActionListener(new CreateCharacterAction(this));</span>
+		// Disable creating unreasonable amounts of characters. Enough is enough.
+<span class="nc bnc" id="L137" title="All 2 branches missed.">		if (characters.keySet().size() &gt;= MAX_CHARACTERS) {</span>
+<span class="nc" id="L138">			newCharButton.setEnabled(false);</span>
+		}
+<span class="nc" id="L140">		buttonBar.add(newCharButton);</span>
+		
+<span class="nc" id="L142">		JButton exitButton = new JButton(&quot;Cancel&quot;);</span>
+<span class="nc" id="L143">		exitButton.setMnemonic(KeyEvent.VK_C);</span>
+<span class="nc" id="L144">		exitButton.addActionListener(new ActionListener() {</span>
+			@Override
+			public void actionPerformed(final ActionEvent evt) {
+<span class="nc" id="L147">				onClose();</span>
+<span class="nc" id="L148">			}</span>
+		});
+<span class="nc" id="L150">		buttonBar.add(exitButton);</span>
+		
+<span class="nc" id="L152">		pack();</span>
+<span class="nc" id="L153">		setSize(Math.min(getWidth(), DIALOG_WIDTH), Math.min(getHeight(), DIALOG_HEIGHT));</span>
+<span class="nc bnc" id="L154" title="All 2 branches missed.">		if (owner != null) {</span>
+<span class="nc" id="L155">			owner.setEnabled(false);</span>
+<span class="nc" id="L156">			this.setLocationRelativeTo(owner);</span>
+		}
+		
+<span class="nc" id="L159">		Thread thread = new Thread(this, &quot;KeepAlive on character dialog&quot;);</span>
+<span class="nc" id="L160">		thread.setDaemon(true);</span>
+<span class="nc" id="L161">		thread.start();</span>
+
+<span class="nc" id="L163">		WindowUtils.closeOnEscape(this);</span>
+<span class="nc" id="L164">		setResizable(false);</span>
+<span class="nc" id="L165">		setVisible(true);</span>
+<span class="nc" id="L166">	}</span>
+	
+	/**
+	 * Add the available characters.
+	 * 
+	 * @param characters
+	 */
+	private void addCharacters(final Map&lt;String, RPObject&gt; characters) {
+<span class="nc bnc" id="L174" title="All 2 branches missed.">		for (Entry&lt;String, RPObject&gt; character : characters.entrySet()) {</span>
+<span class="nc" id="L175">			JButton button = createCharacterButton(character.getKey(), character.getValue());</span>
+<span class="nc" id="L176">			characterPanel.add(button);</span>
+<span class="nc" id="L177">		}</span>
+<span class="nc" id="L178">	}</span>
+	
+	/**
+	 * Create a button for a character.
+	 * 
+	 * @param name Name of the character
+	 * @param character Object representing the character
+	 * 
+	 * @return a button for the character 
+	 */
+	private JButton createCharacterButton(final String name, final RPObject character) {
+		// Abusing EntityView code to get the image of the player.
+		// Avoid doing sound stuff. That is not available at this stage of
+		// running the client.
+<span class="nc" id="L192">		IEntity player = new Player() {</span>
+			@Override
+			protected void onPosition(double x, double y) {
+<span class="nc" id="L195">			}</span>
+			@Override
+			protected void addSounds(String groupName, String categoryName, String... soundNames) {
+<span class="nc" id="L198">			}</span>
+		};
+		// Zero the coordinates, otherwise the EntityView will try to draw
+		// itself to some weird place
+<span class="nc" id="L202">		character.put(&quot;x&quot;, 0);</span>
+<span class="nc" id="L203">		character.put(&quot;y&quot;, 0);</span>
+		// ignore ghostmode for showing the image
+<span class="nc" id="L205">		character.remove(&quot;ghostmode&quot;);</span>
+		// ignore player killer skull
+<span class="nc" id="L207">		character.remove(&quot;last_player_kill_time&quot;);</span>
+<span class="nc" id="L208">		player.initialize(character);</span>
+		
+<span class="nc" id="L210">		EntityView&lt;?&gt; view = EntityViewFactory.create(player);</span>
+		// this if-block is there to be compatible with Stendhal 0.84 that is missing information
+<span class="nc" id="L212">		Icon icon = null;</span>
+<span class="nc bnc" id="L213" title="All 2 branches missed.">		if (view != null) {</span>
+<span class="nc" id="L214">			Image image = createCharacterImage(view);</span>
+<span class="nc" id="L215">			icon = new ImageIcon(image);</span>
+		}
+		
+		// Construct a label for the player button with the information we
+		// want to show. Needs to be html as that's the only way JButton
+		// can handle multi line labels.
+<span class="nc" id="L221">		StringBuilder label = new StringBuilder(&quot;&lt;html&gt;&quot;);</span>
+<span class="nc" id="L222">		label.append(name);</span>
+		
+		// this if-block is here for compatibility with stendhal server 0.84
+<span class="nc bnc" id="L225" title="All 2 branches missed.">		if (character.has(&quot;name&quot;)) {</span>
+<span class="nc" id="L226">			label.append(&quot;&lt;br&gt;Level: &quot;);</span>
+<span class="nc" id="L227">			String level = &quot;0&quot;;</span>
+<span class="nc bnc" id="L228" title="All 2 branches missed.">			if (character.has(&quot;level&quot;)) {</span>
+<span class="nc" id="L229">				level = character.get(&quot;level&quot;);</span>
+			}
+<span class="nc" id="L231">			label.append(level);</span>
+		}
+<span class="nc" id="L233">		label.append(&quot;&lt;/html&gt;&quot;);</span>
+		
+<span class="nc" id="L235">		JButton playerButton = new JButton(label.toString(), icon);</span>
+		// Reduce the margins. The buttons are large enough as they are.
+<span class="nc" id="L237">		playerButton.setMargin(new Insets(1, 1, 1, 1));</span>
+		
+<span class="nc" id="L239">		playerButton.addActionListener(new ActionListener() {</span>
+			@Override
+			public void actionPerformed(final ActionEvent evt) {
+<span class="nc" id="L242">				chooseCharacter(name);</span>
+<span class="nc" id="L243">			}</span>
+		});
+		
+<span class="nc" id="L246">		return playerButton;</span>
+	}
+	
+	/**
+	 * Create a character image from the view.
+	 *  
+	 * @param view view of the player
+	 * @return A front view image of the player
+	 */
+	private Image createCharacterImage(EntityView&lt;?&gt; view) {
+<span class="nc" id="L256">		Image image = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration().createCompatibleImage(IMAGE_WIDTH, IMAGE_HEIGHT, TransparencyMode.TRANSPARENCY);</span>
+<span class="nc" id="L257">		Graphics2D g2d = (Graphics2D) image.getGraphics();</span>
+		
+		// Adjust the coordinates so that the actual player image gets
+		// drawn to the image area
+<span class="nc" id="L261">		g2d.translate(0, IMAGE_HEIGHT % 32);</span>
+<span class="nc" id="L262">		view.draw(g2d);</span>
+<span class="nc" id="L263">		g2d.dispose();</span>
+		
+<span class="nc" id="L265">		return image;</span>
+	}
+	
+	/**
+	 * Called when the window is closed or the exit button is pressed.
+	 */
+	private void onClose() {
+<span class="nc bnc" id="L272" title="All 2 branches missed.">		if (getOwner() == null) {</span>
+<span class="nc" id="L273">			System.exit(0);</span>
+		}
+<span class="nc" id="L275">		getOwner().setEnabled(true);</span>
+<span class="nc" id="L276">		this.setVisible(false);</span>
+<span class="nc" id="L277">		dispose();</span>
+<span class="nc" id="L278">	}</span>
+	
+	/**
+	 * Called when a character is selected.
+	 * 
+	 * @param character player selected by the user
+	 */
+	private void chooseCharacter(final String character) {
+		try {
+<span class="nc" id="L287">			StendhalClient.get().chooseCharacter(character);</span>
+<span class="nc" id="L288">			setVisible(false);</span>
+<span class="nc" id="L289">			stendhal.setDoLogin();</span>
+<span class="nc" id="L290">			dispose();</span>
+<span class="nc" id="L291">		} catch (TimeoutException e) {</span>
+<span class="nc" id="L292">			logger.error(e, e);</span>
+<span class="nc" id="L293">			handleError(&quot;Your connection timed out, please login again.&quot;, &quot;Choose Character&quot;);</span>
+<span class="nc" id="L294">		} catch (InvalidVersionException e) {</span>
+<span class="nc" id="L295">			logger.error(e, e);</span>
+<span class="nc" id="L296">			handleError(&quot;Your version of Stendhal is incompatible with the server.&quot;, &quot;Choose Character&quot;);</span>
+<span class="nc" id="L297">		} catch (BannedAddressException e) {</span>
+<span class="nc" id="L298">			logger.error(e, e);</span>
+<span class="nc" id="L299">			handleError(&quot;Please login again.&quot;, &quot;Choose Character&quot;);</span>
+<span class="nc" id="L300">		}</span>
+<span class="nc" id="L301">	}</span>
+
+	/**
+	 * Displays the error message, removes the progress bar and 
+	 * either enabled the login dialog in interactive mode or exits
+	 * the client in non interactive mode.
+	 *
+	 * @param errorMessage error message
+	 * @param errorTitle   title of error dialog box
+	 */
+	private void handleError(String errorMessage, String errorTitle) {
+<span class="nc" id="L312">		JOptionPane.showMessageDialog(</span>
+				this, errorMessage, errorTitle, JOptionPane.ERROR_MESSAGE);
+
+<span class="nc bnc" id="L315" title="All 2 branches missed.">		if (getOwner() != null) {</span>
+<span class="nc" id="L316">			setVisible(false);</span>
+<span class="nc" id="L317">			getOwner().setEnabled(true);</span>
+<span class="nc" id="L318">			dispose();</span>
+		} else {
+			// Hack for non interactive login
+<span class="nc" id="L321">			System.exit(1);</span>
+		}
+<span class="nc" id="L323">	}</span>
+
+	static class CreateCharacterAction implements ActionListener {
+		private CharacterDialog parent;
+<span class="nc" id="L327">		private CreateCharacterAction(CharacterDialog parent) {</span>
+<span class="nc" id="L328">			this.parent = parent;</span>
+<span class="nc" id="L329">		}</span>
+
+		@Override
+		public void actionPerformed(final ActionEvent evt) {
+<span class="nc" id="L333">			String name = JOptionPane.showInputDialog(parent,</span>
+					&quot;Please enter the name of your character (only letters allowed):&quot;,
+					&quot;Create Character&quot;,
+					JOptionPane.QUESTION_MESSAGE);
+
+<span class="nc bnc" id="L338" title="All 2 branches missed.">			if (name == null) {</span>
+<span class="nc" id="L339">				return;</span>
+			}
+
+			try {
+				// TODO: error handling, exceptions and return of false
+<span class="nc" id="L344">				CharacterResult result = StendhalClient.get().createCharacter(name.toLowerCase(Locale.ENGLISH), new RPObject());</span>
+<span class="nc bnc" id="L345" title="All 2 branches missed.">				if (result.getResult().failed()) {</span>
+<span class="nc" id="L346">					JOptionPane.showMessageDialog(parent, result.getResult().getText());</span>
+				} else {
+<span class="nc" id="L348">					parent.setVisible(false);</span>
+				}
+<span class="nc" id="L350">			} catch (TimeoutException e) {</span>
+<span class="nc" id="L351">				logger.error(e, e);</span>
+<span class="nc" id="L352">				parent.handleError(&quot;Your connection timed out, please login again.&quot;, &quot;Choose Character&quot;);</span>
+<span class="nc" id="L353">			} catch (InvalidVersionException e) {</span>
+<span class="nc" id="L354">				logger.error(e, e);</span>
+<span class="nc" id="L355">				parent.handleError(&quot;Your version of Stendhal is incompatible with the server.&quot;, &quot;Choose Character&quot;);</span>
+<span class="nc" id="L356">			} catch (BannedAddressException e) {</span>
+<span class="nc" id="L357">				logger.error(e, e);</span>
+<span class="nc" id="L358">				parent.handleError(&quot;Please login again.&quot;, &quot;Choose Character&quot;);</span>
+<span class="nc" id="L359">			}</span>
+<span class="nc" id="L360">		}</span>
+	}
+
+	@Override
+	public void run() {
+<span class="nc bnc" id="L365" title="All 2 branches missed.">		while (isVisible()) {</span>
+<span class="nc" id="L366">			StendhalClient.get().sendKeepAlive();</span>
+			try {
+<span class="nc" id="L368">				Thread.sleep(5*60*1000);</span>
+<span class="nc" id="L369">			} catch (InterruptedException e) {</span>
+<span class="nc" id="L370">				break;</span>
+<span class="nc" id="L371">			}</span>
+		}
+<span class="nc" id="L373">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

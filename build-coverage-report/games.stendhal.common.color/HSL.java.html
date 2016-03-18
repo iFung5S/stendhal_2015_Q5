@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>HSL.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.common.color</a> &gt; <span class="el_source">HSL.java</span></div><h1>HSL.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2012 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.common.color;
+
+import static games.stendhal.common.color.ARGB.BLUE;
+import static games.stendhal.common.color.ARGB.GREEN;
+import static games.stendhal.common.color.ARGB.RED;
+import games.stendhal.common.math.Algebra;
+
+/**
+ * Methods for transforming between 32 bit ARGB and floating point HSL color
+ * spaces.
+ */
+<span class="nc" id="L23">public class HSL {</span>
+	/**
+	 * Transform ARGB color vector to HSL space. Transparency is dropped.
+	 * All returned components are in range [0, 1].
+	 *  
+	 * @param rgb red, green, blue value
+	 * @param hsl hue, saturation, lightness
+	 */
+	public static void rgb2hsl(int[] rgb, float[] hsl) {
+		float h, s, l;
+		int maxVar;
+
+		float max, min;
+<span class="nc" id="L36">		float r = rgb[RED] / 255f;</span>
+<span class="nc" id="L37">		float g = rgb[GREEN] / 255f;</span>
+<span class="nc" id="L38">		float b = rgb[BLUE] / 255f;</span>
+
+		// Find the max and minimum colors, and remember which one it was
+<span class="nc bnc" id="L41" title="All 4 branches missed.">		if (r &gt; g) {</span>
+<span class="nc" id="L42">			max = r;</span>
+<span class="nc" id="L43">			min = g;</span>
+<span class="nc" id="L44">			maxVar = RED;</span>
+		} else {
+<span class="nc" id="L46">			max = g;</span>
+<span class="nc" id="L47">			min = r;</span>
+<span class="nc" id="L48">			maxVar = GREEN;</span>
+		}
+<span class="nc bnc" id="L50" title="All 4 branches missed.">		if (b &gt; max) {</span>
+<span class="nc" id="L51">			max = b;</span>
+<span class="nc" id="L52">			maxVar = BLUE;</span>
+<span class="nc bnc" id="L53" title="All 4 branches missed.">		} else if (b &lt; min) {</span>
+<span class="nc" id="L54">			min = b;</span>
+		}
+
+		// lightness
+<span class="nc" id="L58">		l = (max + min) / 2;</span>
+
+		// saturation
+<span class="nc" id="L61">		float diff = max - min;</span>
+<span class="nc bnc" id="L62" title="All 4 branches missed.">		if (diff &lt; Algebra.EPSILON) {</span>
+<span class="nc" id="L63">			s = 0;</span>
+			// hue not really defined, but set it to something reasonable
+<span class="nc" id="L65">			h = 0;</span>
+		} else {
+<span class="nc bnc" id="L67" title="All 4 branches missed.">			if (l &lt; 0.5f) {</span>
+<span class="nc" id="L68">				s = diff / (max + min);</span>
+			} else {
+<span class="nc" id="L70">				s = diff / (2 - max - min);</span>
+			}
+
+			// hue
+<span class="nc bnc" id="L74" title="All 4 branches missed.">			if (maxVar == RED) {</span>
+<span class="nc" id="L75">				h = (g - b) / diff;</span>
+<span class="nc bnc" id="L76" title="All 4 branches missed.">			} else if (maxVar == GREEN) {</span>
+<span class="nc" id="L77">				h = 2f + (b - r) / diff;</span>
+			} else {
+<span class="nc" id="L79">				h = 4f + (r - g) / diff;</span>
+			}
+			// Normalize to range [0, 1]. It's more useful than the usual 360
+<span class="nc" id="L82">			h /= 6f;</span>
+		}
+<span class="nc" id="L84">		hsl[0] = h;</span>
+<span class="nc" id="L85">		hsl[1] = s;</span>
+<span class="nc" id="L86">		hsl[2] = l;</span>
+<span class="nc" id="L87">	}</span>
+
+	/**
+	 * Transform HSL color vector to ARGB space. Alpha is kept at 0 for
+	 * everything. All HSL should be scaled to range [0, 1].
+	 * 
+	 * @param rgb red, green, blue value
+	 * @param hsl hue, saturation, lightness
+	 */
+	public static void hsl2rgb(float[] hsl, int[] rgb) {
+		int r, g, b;
+<span class="fc" id="L98">		float h = hsl[0];</span>
+<span class="fc" id="L99">		float s = hsl[1];</span>
+<span class="fc" id="L100">		float l = hsl[2];</span>
+
+<span class="pc bpc" id="L102" title="2 of 4 branches missed.">		if (s &lt; Algebra.EPSILON) {</span>
+<span class="nc" id="L103">			r = g = b = (int) (255 * l);</span>
+		} else {
+			float tmp1, tmp2;
+<span class="pc bpc" id="L106" title="2 of 4 branches missed.">			if (l &lt; 0.5f) {</span>
+<span class="nc" id="L107">				tmp1 = l * (1f + s);</span>
+			} else {
+<span class="fc" id="L109">				tmp1 = l + s - l * s;</span>
+			}
+<span class="fc" id="L111">			tmp2 = 2f * l - tmp1;</span>
+
+<span class="fc" id="L113">			float rf = hue2rgb(limitHue(h + 1f/3f), tmp2, tmp1);</span>
+<span class="fc" id="L114">			float gf = hue2rgb(limitHue(h), tmp2, tmp1);</span>
+<span class="fc" id="L115">			float bf = hue2rgb(limitHue(h - 1f/3f), tmp2, tmp1);</span>
+
+<span class="fc" id="L117">			r = ((int) (255 * rf)) &amp; 0xff;</span>
+<span class="fc" id="L118">			g = ((int) (255 * gf)) &amp; 0xff;</span>
+<span class="fc" id="L119">			b = ((int) (255 * bf)) &amp; 0xff;</span>
+		}
+
+<span class="fc" id="L122">		rgb[RED] = r;</span>
+<span class="fc" id="L123">		rgb[GREEN] = g;</span>
+<span class="fc" id="L124">		rgb[BLUE] = b;</span>
+<span class="fc" id="L125">	}</span>
+
+	/**
+	 * Keep hue value within [0, 1] circle.
+	 *  
+	 * @param hue
+	 * @return normalized hue
+	 */
+	private static float limitHue(float hue) {
+<span class="fc" id="L134">		float res = hue;</span>
+<span class="pc bpc" id="L135" title="2 of 4 branches missed.">		if (res &lt; 0) {</span>
+<span class="nc" id="L136">			res += 1f;</span>
+<span class="fc bfc" id="L137" title="All 4 branches covered.">		} else if (res &gt; 1f) {</span>
+<span class="fc" id="L138">			res -= 1f;</span>
+		}
+<span class="fc" id="L140">		return res;</span>
+	}
+
+	/**
+	 * Transform a hue to RGB.
+	 * 
+	 * @param hue
+	 * @param val1 color dependent value
+	 * @param val2 color dependent value
+	 * @return R, G, or B value
+	 */
+	private static float hue2rgb(float hue, float val1, float val2) {
+<span class="fc" id="L152">		float res = hue;</span>
+<span class="fc bfc" id="L153" title="All 4 branches covered.">		if (6f * hue &lt; 1f) {</span>
+<span class="fc" id="L154">			res = val1 + (val2 - val1) * 6f * hue;</span>
+<span class="fc bfc" id="L155" title="All 4 branches covered.">		} else if (2f * hue &lt; 1f) {</span>
+<span class="fc" id="L156">			res = val2;</span>
+<span class="pc bpc" id="L157" title="2 of 4 branches missed.">		} else if (3f * hue &lt; 2f) {</span>
+<span class="nc" id="L158">			res = val1 + (val2 - val1) * (2f/3f - hue) * 6f;</span>
+		} else {
+<span class="fc" id="L160">			res = val1;</span>
+		}
+
+<span class="fc" id="L163">		return res;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

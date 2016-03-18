@@ -1,0 +1,350 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>InvasionPhase.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests.piedpiper</a> &gt; <span class="el_source">InvasionPhase.java</span></div><h1>InvasionPhase.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests.piedpiper;
+
+import games.stendhal.common.Rand;
+import games.stendhal.common.grammar.Grammar;
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.core.pathfinder.Node;
+import games.stendhal.server.core.pathfinder.Path;
+import games.stendhal.server.core.rp.StendhalRPAction;
+import games.stendhal.server.entity.RPEntity;
+import games.stendhal.server.entity.creature.CircumstancesOfDeath;
+import games.stendhal.server.entity.creature.Creature;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.player.Player;
+
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Observable;
+import java.util.Observer;
+
+public class InvasionPhase extends TPPQuest {
+
+	private final int minPhaseChangeTime;
+	private final int maxPhaseChangeTime;
+<span class="fc" id="L44">	protected LinkedList&lt;Creature&gt; rats = new LinkedList&lt;Creature&gt;();</span>
+
+	private void addConversations(final SpeakerNPC mainNPC) {
+<span class="fc" id="L47">		TPP_Phase myphase = INVASION;</span>
+
+		// Player asking about rats at invasion time.
+<span class="fc" id="L50">		mainNPC.add(</span>
+				ConversationStates.ATTENDING,
+				Arrays.asList(&quot;rats&quot;, &quot;rats!&quot;),
+				new TPPQuestInPhaseCondition(myphase),
+				ConversationStates.ATTENDING,
+				null,
+<span class="fc" id="L56">				new ChatAction() {</span>
+					@Override
+					public void fire(Player player, Sentence sentence, EventRaiser npc) {
+<span class="fc" id="L59">						npc.say(&quot;There &quot; + Grammar.isare(TPPQuestHelperFunctions.getRats().size()) +</span>
+								&quot; still about &quot;+Integer.toString(TPPQuestHelperFunctions.getRats().size())+
+								&quot; rats alive.&quot;);
+<span class="fc" id="L62">					}</span>
+				});
+
+		//Player asked about details at invasion time.
+<span class="fc" id="L66">		mainNPC.add(</span>
+				ConversationStates.ATTENDING,
+				&quot;details&quot;,
+				new TPPQuestInPhaseCondition(myphase),
+				ConversationStates.ATTENDING,
+				&quot;Ados is being invaded by rats! &quot;+
+				  &quot;I dont want to either reward you or &quot;+
+				  &quot;explain details to you now,&quot;+
+				  &quot; until all rats are dead.&quot;,
+				null);
+
+		// Player asked about reward at invasion time.
+<span class="fc" id="L78">		mainNPC.add(</span>
+				ConversationStates.ATTENDING,
+				&quot;reward&quot;,
+				new TPPQuestInPhaseCondition(myphase),
+				ConversationStates.ATTENDING,
+				&quot;Ados is being invaded by rats! &quot;+
+				  &quot;I dont want to reward you now, &quot;+
+				  &quot; until all rats are dead.&quot;,
+				null);
+<span class="fc" id="L87">	}</span>
+
+	/**
+	 * Create InvasionPhase.
+	 * 
+	 * @param timings 
+	 */
+	public InvasionPhase(Map&lt;String, Integer&gt; timings) {
+<span class="fc" id="L95">		super(timings);</span>
+<span class="fc" id="L96">		minPhaseChangeTime = timings.get(INVASION_TIME_MIN);</span>
+<span class="fc" id="L97">		maxPhaseChangeTime = timings.get(INVASION_TIME_MAX);</span>
+<span class="fc" id="L98">		this.rats=TPPQuestHelperFunctions.getRats();</span>
+<span class="fc" id="L99">		addConversations(TPPQuestHelperFunctions.getMainNPC());</span>
+<span class="fc" id="L100">	}</span>
+
+
+	@Override
+	public int getMinTimeOut() {
+<span class="fc" id="L105">		return minPhaseChangeTime;</span>
+	}
+
+
+	@Override
+	public int getMaxTimeOut() {
+<span class="fc" id="L111">		return maxPhaseChangeTime;</span>
+	}
+
+
+
+	/**
+	 * rats invasion starts :-)
+	 * Iterate through each zone and select the min and max rat count based on zone size
+	 * Places rat if possible, if not skip this rat (so if 6 rats chosen perhaps only 3 are placed)
+	 */
+	private void summonRats() {
+
+<span class="fc" id="L123">		final RatsObserver ratsObserver = new RatsObserver();</span>
+
+		// generating rats in zones
+<span class="fc bfc" id="L126" title="All 2 branches covered.">		for(int j=0; j&lt;(RAT_ZONES.size()); j++) {</span>
+<span class="fc" id="L127">			final StendhalRPZone zone = (StendhalRPZone) SingletonRepository.getRPWorld().getRPZone(</span>
+					RAT_ZONES.get(j));
+<span class="fc" id="L129">			final int maxRats = (int) Math.round(Math.sqrt(zone.getWidth()*zone.getHeight())/4);</span>
+<span class="fc" id="L130">			final int minRats = (int) Math.round(Math.sqrt(zone.getWidth()*zone.getHeight())/12);</span>
+<span class="fc" id="L131">			final int ratsCount = Rand.rand(maxRats-minRats)+minRats;</span>
+<span class="fc" id="L132">			logger.debug(ratsCount+ &quot; rats selected at &quot; + zone.getName());</span>
+<span class="fc bfc" id="L133" title="All 2 branches covered.">			for(int i=0 ; i&lt;ratsCount; i++) {</span>
+<span class="fc" id="L134">				final int x=Rand.rand(zone.getWidth());</span>
+<span class="fc" id="L135">				final int y=Rand.rand(zone.getHeight());</span>
+<span class="fc" id="L136">				final Creature tempCreature = TPPQuestHelperFunctions.getRandomRat();</span>
+<span class="fc" id="L137">				final Creature rat = new Creature(tempCreature.getNewInstance());</span>
+
+				// chosen place is occupied
+<span class="fc bfc" id="L140" title="All 2 branches covered.">				if (zone.collides(rat,x,y)) {</span>
+					// Could not place the creature here.
+					// Treat it like it was never exists.
+<span class="fc" id="L143">					logger.debug(&quot;RATS &quot; + zone.getName() + &quot; &quot; + x + &quot; &quot; + y + &quot; collided.&quot;);</span>
+<span class="fc" id="L144">					continue;</span>
+<span class="fc bfc" id="L145" title="All 2 branches covered.">				} else if (zone.getName().startsWith(&quot;0&quot;)) {</span>
+					// If we can't make it here, we can't make it anywhere ...
+					// just checking the 0 level zones atm
+					// the rat is not in the zone yet so we can't call the smaller version of the searchPath method
+<span class="fc" id="L149">					final List&lt;Node&gt; path = Path.searchPath(zone, x, y, zone.getWidth()/2,</span>
+							zone.getHeight()/2, (64+64)*2);
+<span class="pc bpc" id="L151" title="2 of 4 branches missed.">					if (path == null || path.size() == 0){</span>
+<span class="nc" id="L152">						logger.debug(&quot;RATS &quot; + zone.getName() + &quot; &quot; + x + &quot; &quot; + y + &quot; no path to &quot; + zone.getWidth()/2 + &quot; &quot; + zone.getHeight()/2);</span>
+<span class="nc" id="L153">						continue;</span>
+					}
+				}
+				// spawn creature
+<span class="fc" id="L157">				rat.registerObjectsForNotification(ratsObserver);</span>
+				/* -- commented because of these noises reflects on all archrats in game -- */
+				// add unique noises to humanoids
+<span class="fc bfc" id="L160" title="All 2 branches covered.">				if (tempCreature.getName().equals(&quot;archrat&quot;)) {</span>
+<span class="fc" id="L161">					final LinkedList&lt;String&gt; ll = new LinkedList&lt;String&gt;(</span>
+							Arrays.asList(&quot;We will capture Ados!&quot;,
+							&quot;Our revenge will awesome!&quot;));
+<span class="fc" id="L164">					LinkedHashMap&lt;String, LinkedList&lt;String&gt;&gt; lhm =</span>
+						new LinkedHashMap&lt;String, LinkedList&lt;String&gt;&gt;();
+					// add to all states except death.
+<span class="fc" id="L167">					lhm.put(&quot;idle&quot;, ll);</span>
+<span class="fc" id="L168">					lhm.put(&quot;fight&quot;, ll);</span>
+<span class="fc" id="L169">					lhm.put(&quot;follow&quot;, ll);</span>
+<span class="fc" id="L170">					rat.setNoises(lhm);</span>
+				}
+
+<span class="fc" id="L173">				StendhalRPAction.placeat(zone, rat, x, y);</span>
+<span class="fc" id="L174">				rats.add(rat);</span>
+			}
+		}
+<span class="fc" id="L177">	}</span>
+
+	/**
+	 * function to control amount of alive rats.
+	 * @param dead
+	 * 			- creature that was just died.
+	 */
+	private void notifyDead(final RPEntity dead) {
+<span class="pc bpc" id="L185" title="1 of 2 branches missed.">		if (!rats.remove(dead)) {</span>
+<span class="nc" id="L186">			logger.warn(&quot;killed creature isn't in control list (&quot;+dead.toString()+&quot;).&quot;);</span>
+		}
+<span class="fc bfc" id="L188" title="All 2 branches covered.">		if (rats.size()==0) {</span>
+<span class="fc" id="L189">			phaseToDefaultPhase(</span>
+					new LinkedList&lt;String&gt;(Arrays.asList(&quot;pied piper&quot;)));
+		}
+<span class="fc" id="L192">    }</span>
+
+	/**
+	 *  Rats are dead :-)
+	 */
+
+	@Override
+	public String getSwitchingToDefPhaseMessage() {
+		final String text = &quot;Mayor Chalmers shouts: No #rats in Ados survived, &quot;+
+				            &quot;only those who always lived in the &quot;+
+				            &quot;haunted house. &quot;+
+				            &quot;Rat hunters are welcome to get their #reward.&quot;;
+<span class="fc" id="L204">		return(text);</span>
+	}
+
+	/**
+	 *  Rats now living under all buildings. Need to call Pied Piper :-)
+	 */
+	@Override
+	public String getSwitchingToNextPhaseMessage() {
+		final String text =
+			&quot;Mayor Chalmers shouts: Suddenly, #rats have captured the city, &quot;+
+		  //&quot;Mayor Chalmers shouts: The #rats left as suddenly as they arrived. &quot;+
+		  //&quot;Perhaps they have returned to the sewers. &quot;+
+			&quot;I now need to call the Pied Piper, a rat exterminator. &quot;+
+			&quot;Anyway, thanks to all who tried to clean up Ados, &quot;+
+			&quot; you are welcome to get your #reward.&quot;;
+<span class="fc" id="L219">		return(text);</span>
+	}
+
+	/**
+	 * removing rats from the world
+	 */
+	private void removeAllRats() {
+<span class="fc" id="L226">		final int sz=rats.size();</span>
+<span class="fc" id="L227">		int i=0;</span>
+<span class="fc bfc" id="L228" title="All 2 branches covered.">		while(rats.size()!=0) {</span>
+			try {
+<span class="fc" id="L230">			final Creature rat = rats.get(0);</span>
+<span class="fc" id="L231">			rat.stopAttack();</span>
+<span class="fc" id="L232">			rat.clearDropItemList();</span>
+<span class="fc" id="L233">			rat.getZone().remove(rat);</span>
+<span class="fc" id="L234">			rats.remove(0);</span>
+<span class="fc" id="L235">			i++;</span>
+<span class="nc" id="L236">			} catch (IndexOutOfBoundsException ioobe) {</span>
+				// index is greater then size???
+<span class="nc" id="L238">				logger.error(&quot;removeAllRats IndexOutOfBoundException at &quot;+</span>
+						Integer.toString(i)+&quot; position. Total &quot;+
+						Integer.toString(sz)+&quot; elements.&quot;, ioobe);
+<span class="pc" id="L241">			}</span>
+		}
+<span class="fc" id="L243">	}</span>
+
+	/**
+	 * Red alert! Rats in the Ados city!
+	 * 
+	 * @return Ados mayor's call for help message
+	 */
+	protected String ratsProblem() {
+		final String text = &quot;Mayor Chalmers shouts: Ados City is being invaded by #rats!&quot;+
+			              &quot; Anyone who will help to clean up the city, will be rewarded!&quot;;
+<span class="fc" id="L253">		return(text);</span>
+	}
+
+	@Override
+	public void prepare() {
+<span class="fc" id="L258">		summonRats();</span>
+<span class="fc" id="L259">		super.startShouts(timings.get(SHOUT_TIME), ratsProblem());</span>
+<span class="fc" id="L260">	}</span>
+
+	@Override
+	public void phaseToDefaultPhase(List&lt;String&gt; comments) {
+<span class="fc" id="L264">		comments.add(&quot;last rat killed&quot;);</span>
+<span class="fc" id="L265">		super.phaseToDefaultPhase(comments);</span>
+<span class="fc" id="L266">	}</span>
+
+
+	@Override
+	public void phaseToNextPhase(ITPPQuest nextPhase, List&lt;String&gt; comments) {
+<span class="fc" id="L271">		comments.add(&quot;switch phase, &quot;+rats.size()+&quot; rats still alive.&quot;);</span>
+<span class="fc" id="L272">		removeAllRats();</span>
+<span class="fc" id="L273">		super.phaseToNextPhase(nextPhase, comments);</span>
+<span class="fc" id="L274">	}</span>
+
+    /**
+     *  Implementation of Observer interface.
+     *  Update function will record the fact of rat's killing
+     *  in player's quest slot.
+     */
+<span class="fc" id="L281">	class RatsObserver implements Observer {</span>
+		@Override
+		public void update (Observable obj, Object arg) {
+<span class="pc bpc" id="L284" title="1 of 2 branches missed.">	        if (arg instanceof CircumstancesOfDeath) {</span>
+<span class="fc" id="L285">	    		final CircumstancesOfDeath circs=(CircumstancesOfDeath)arg;</span>
+<span class="pc bpc" id="L286" title="1 of 2 branches missed.">	        	if(RAT_ZONES.contains(circs.getZone().getName())) {</span>
+<span class="pc bpc" id="L287" title="1 of 2 branches missed.">	        	if(circs.getKiller() instanceof Player) {</span>
+<span class="fc" id="L288">	        		final Player player = (Player) circs.getKiller();</span>
+<span class="fc" id="L289">	        		killsRecorder(player, circs.getVictim());</span>
+	        	}
+<span class="fc" id="L291">	        	notifyDead(circs.getVictim());</span>
+	        	}
+	        }
+<span class="fc" id="L294">	    }</span>
+	}
+
+	/**
+	 *  method for making records about killing rats
+	 *  in player's quest slot.
+	 *
+	 *  @param player
+	 *  			- player which killed rat.
+	 *  @param victim
+	 *  			- rat object
+	 */
+	private void killsRecorder(Player player, final RPEntity victim) {
+
+<span class="fc" id="L308">		final String str = victim.getName();</span>
+<span class="fc" id="L309">		final int i = RAT_TYPES.indexOf(str);</span>
+<span class="pc bpc" id="L310" title="1 of 2 branches missed.">		if(i==-1) {</span>
+			//no such creature in reward table, will not count it
+<span class="nc" id="L312">			logger.warn(&quot;Unknown creature killed: &quot;+</span>
+					    victim.getName());
+<span class="nc" id="L314">			return;</span>
+		}
+
+<span class="pc bpc" id="L317" title="1 of 6 branches missed.">		if((player.getQuest(QUEST_SLOT)==null)||</span>
+		   (player.getQuest(QUEST_SLOT).equals(&quot;done&quot;)||
+		   (player.getQuest(QUEST_SLOT).equals(&quot;&quot;)))){
+			// player just killed his first creature.
+<span class="fc" id="L321">		    player.setQuest(QUEST_SLOT, &quot;rats;0;0;0;0;0;0&quot;);</span>
+		}
+
+		// we using here and after &quot;i+1&quot; because player's quest index 0
+		// is occupied by quest stage description.
+<span class="pc bpc" id="L326" title="1 of 2 branches missed.">		if (&quot;&quot;.equals(player.getQuest(QUEST_SLOT,i+1))){</span>
+			// something really wrong, will correct this...
+<span class="nc" id="L328">			player.setQuest(QUEST_SLOT,&quot;rats;0;0;0;0;0;0&quot;);</span>
+		}
+		int kills;
+		try {
+<span class="fc" id="L332">			kills = Integer.parseInt(player.getQuest(QUEST_SLOT, i+1))+1;</span>
+<span class="nc" id="L333">		} catch (NumberFormatException nfe) {</span>
+			// have no records about this creature in player's slot.
+			// treat it as he never killed this creature before.
+<span class="nc" id="L336">			kills=1;</span>
+<span class="fc" id="L337">		}</span>
+<span class="fc" id="L338">		player.setQuest(QUEST_SLOT, i+1, Integer.toString(kills));</span>
+<span class="fc" id="L339">	}</span>
+
+
+	@Override
+	public TPP_Phase getPhase() {
+<span class="fc" id="L344">		return TPP_Phase.TPP_INVASION;</span>
+	}
+
+
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

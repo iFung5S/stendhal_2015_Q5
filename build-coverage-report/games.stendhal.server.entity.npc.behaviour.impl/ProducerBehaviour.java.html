@@ -1,0 +1,421 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ProducerBehaviour.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.npc.behaviour.impl</a> &gt; <span class="el_source">ProducerBehaviour.java</span></div><h1>ProducerBehaviour.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.npc.behaviour.impl;
+
+import games.stendhal.common.grammar.Grammar;
+import games.stendhal.common.grammar.ItemParserResult;
+import games.stendhal.common.parser.ExpressionType;
+import games.stendhal.common.parser.WordList;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.entity.item.StackableItem;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.util.TimeUtil;
+
+import java.util.Date;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
+
+/**
+ * The behaviour of an NPC who is able to produce something for a player if the
+ * player brings the required resources. Production takes time, depending on the
+ * amount of ordered products.
+ *
+ * @author daniel
+ */
+public class ProducerBehaviour extends TransactionBehaviour {
+
+	/**
+	 * To store the current status of a production order, each ProducerBehaviour
+	 * needs to have an exclusive quest slot.
+	 *
+	 * This slot can have three states:
+	 * &lt;ul&gt;
+	 * &lt;li&gt;unset: if the player has never asked the NPC to produce anything.&lt;/li&gt;
+	 * &lt;li&gt;done: if the player's last order has been processed.&lt;/li&gt;
+	 * &lt;li&gt;number;product;time: if the player has given an order and has not
+	 * yet retrieved the product. number is the amount of products that the
+	 * player will get, product is the name of the ordered product, and time is
+	 * the time when the order was given, in milliseconds since the epoch.&lt;/li&gt;
+	 * &lt;/ul&gt;
+	 *
+	 * Note: The product name is stored although each ProductBehaviour only
+	 * allows one type of product at the moment. We store it to make the system
+	 * extensible.
+	 */
+	private final String questSlot;
+
+	/**
+	 * The name of the activity, e.g. &quot;build&quot;, &quot;forge&quot;, &quot;bake&quot;
+	 */
+	private final String productionActivity;
+
+	/**
+	 * The unit in which the product is counted, e.g. &quot;bags&quot;, &quot;pieces&quot;, &quot;pounds&quot;
+	 */
+	// private String productUnit;
+
+	private final String productName;
+
+	/**
+	 * Whether the produced item should be player bound.
+	 */
+	private final boolean productBound;
+
+	/**
+	 * A mapping which maps the name of each required resource (e.g. &quot;iron ore&quot;)
+	 * to the amount of this resource that is required for one unit of the
+	 * product.
+	 */
+	private final Map&lt;String, Integer&gt; requiredResourcesPerItem;
+
+	/**
+	 * The number of seconds required to produce one unit of the product.
+	 */
+	private final int productionTimePerItem;
+
+	/**
+	 * Creates a new ProducerBehaviour.
+	 *
+	 * @param questSlot
+	 *            the slot that is used to store the status
+	 * @param productionActivity
+	 *            the name of the activity, e.g. &quot;build&quot;, &quot;forge&quot;, &quot;bake&quot;
+	 * @param productName
+	 *            the name of the product, e.g. &quot;plate armor&quot;. It must be a
+	 *            valid item name.
+	 * @param requiredResourcesPerItem
+	 *            a mapping which maps the name of each required resource (e.g.
+	 *            &quot;iron ore&quot;) to the amount of this resource that is required
+	 *            for one unit of the product.
+	 * @param productionTimePerItem
+	 *            the number of seconds required to produce one unit of the
+	 *            product.
+	 */
+	public ProducerBehaviour(final String questSlot, final String productionActivity,
+			final String productName, final Map&lt;String, Integer&gt; requiredResourcesPerItem,
+			final int productionTimePerItem) {
+<span class="fc" id="L109">		this(questSlot, productionActivity, productName,</span>
+				requiredResourcesPerItem, productionTimePerItem, false);
+<span class="fc" id="L111">	}</span>
+
+	/**
+	 * Creates a new ProducerBehaviour.
+	 *
+	 * @param questSlot
+	 *            the slot that is used to store the status
+	 * @param productionActivity
+	 *            the name of the activity, e.g. &quot;build&quot;, &quot;forge&quot;, &quot;bake&quot;
+	 * @param productName
+	 *            the name of the product, e.g. &quot;plate armor&quot;. It must be a
+	 *            valid item name.
+	 * @param requiredResourcesPerItem
+	 *            a mapping which maps the name of each required resource (e.g.
+	 *            &quot;iron ore&quot;) to the amount of this resource that is required
+	 *            for one unit of the product.
+	 * @param productionTimePerItem
+	 *            the number of seconds required to produce one unit of the
+	 *            product.
+	 * @param productBound
+	 *            Whether the produced item should be player bound. Use only for
+	 *            special one-time items.
+	 */
+	public ProducerBehaviour(final String questSlot, final String productionActivity,
+			final String productName, final Map&lt;String, Integer&gt; requiredResourcesPerItem,
+			final int productionTimePerItem, final boolean productBound) {
+<span class="fc" id="L137">		super(productName);</span>
+
+<span class="fc" id="L139">		this.questSlot = questSlot;</span>
+<span class="fc" id="L140">		this.productionActivity = productionActivity;</span>
+		// this.productUnit = productUnit;
+<span class="fc" id="L142">		this.productName = productName;</span>
+<span class="fc" id="L143">		this.requiredResourcesPerItem = requiredResourcesPerItem;</span>
+<span class="fc" id="L144">		this.productionTimePerItem = productionTimePerItem;</span>
+<span class="fc" id="L145">		this.productBound = productBound;</span>
+
+		// add the activity word as verb to the word list in case it is still missing there
+<span class="fc" id="L148">		WordList.getInstance().registerVerb(productionActivity);</span>
+
+<span class="fc bfc" id="L150" title="All 2 branches covered.">		for (final String itemName : requiredResourcesPerItem.keySet()) {</span>
+<span class="fc" id="L151">			WordList.getInstance().registerName(itemName, ExpressionType.OBJECT);</span>
+<span class="fc" id="L152">		}</span>
+<span class="fc" id="L153">	}</span>
+
+	public String getQuestSlot() {
+<span class="fc" id="L156">		return questSlot;</span>
+	}
+
+	protected Map&lt;String, Integer&gt; getRequiredResourcesPerItem() {
+<span class="fc" id="L160">		return requiredResourcesPerItem;</span>
+	}
+
+	public String getProductionActivity() {
+<span class="fc" id="L164">		return productionActivity;</span>
+	}
+
+//	protected String getProductUnit() {
+//	return productUnit;
+//	}
+
+	/**
+	 * Return item name of the product to produce.
+	 *
+	 * @return product name
+	 */
+	public String getProductName() {
+<span class="fc" id="L177">		return productName;</span>
+	}
+
+	public int getProductionTime(final int amount) {
+<span class="fc" id="L181">		return productionTimePerItem * amount;</span>
+	}
+
+	/**
+	 * Determine whether the produced item should be player bound.
+	 *
+	 * @return &lt;code&gt;true&lt;/code&gt; if the product should be bound.
+	 */
+	public boolean isProductBound() {
+<span class="fc" id="L190">		return productBound;</span>
+	}
+
+	/**
+	 * Gets a nicely formulated string that describes the amounts and names of
+	 * the resources that are required to produce &lt;i&gt;amount&lt;/i&gt; units of the
+	 * product, with hashes before the resource names in order to highlight
+	 * them, e.g. &quot;4 #wood, 2 #iron, and 6 #leather&quot;.
+	 *
+	 * @param amount
+	 *            The amount of products that were requested
+	 * @return A string describing the required resources woth hashes
+	 */
+	protected String getRequiredResourceNamesWithHashes(final int amount) {
+		// use sorted TreeSet instead of HashSet
+<span class="fc" id="L205">		final Set&lt;String&gt; requiredResourcesWithHashes = new TreeSet&lt;String&gt;();</span>
+<span class="fc bfc" id="L206" title="All 2 branches covered.">		for (final Map.Entry&lt;String, Integer&gt; entry : getRequiredResourcesPerItem().entrySet()) {</span>
+<span class="fc" id="L207">			requiredResourcesWithHashes.add(Grammar.quantityplnounWithHash(amount</span>
+					* entry.getValue(), entry.getKey()));
+<span class="fc" id="L209">		}</span>
+<span class="fc" id="L210">		return Grammar.enumerateCollection(requiredResourcesWithHashes);</span>
+	}
+
+	/**
+	 * Gets a nicely formulated string that describes the amounts and names of
+	 * the resources that are required to produce &lt;i&gt;amount&lt;/i&gt; units of the
+	 * product
+	 *
+	 * @param amount
+	 *            The amount of products that were requested
+	 * @return A string describing the required resources.
+	 */
+	public String getRequiredResourceNames(final int amount) {
+		// use sorted TreeSet instead of HashSet
+<span class="fc" id="L224">		final Set&lt;String&gt; requiredResources = new TreeSet&lt;String&gt;();</span>
+<span class="fc bfc" id="L225" title="All 2 branches covered.">		for (final Map.Entry&lt;String, Integer&gt; entry : getRequiredResourcesPerItem().entrySet()) {</span>
+<span class="fc" id="L226">			requiredResources.add(Grammar.quantityplnoun(amount</span>
+					* entry.getValue(), entry.getKey()));
+<span class="fc" id="L228">		}</span>
+<span class="fc" id="L229">		return Grammar.enumerateCollection(requiredResources);</span>
+	}
+
+	/**
+	 * Create a text representing a saying of approximate time until
+	 * the order being produced is ready
+	 *
+	 * @param player
+	 * @return A string describing the remaining time.
+	 */
+	public String getApproximateRemainingTime(final Player player) {
+<span class="fc" id="L240">		final String orderString = player.getQuest(questSlot);</span>
+<span class="fc" id="L241">		final String[] order = orderString.split(&quot;;&quot;);</span>
+<span class="fc" id="L242">		final long orderTime = Long.parseLong(order[2]);</span>
+<span class="fc" id="L243">		final long timeNow = new Date().getTime();</span>
+<span class="fc" id="L244">		final int numberOfProductItems = Integer.parseInt(order[0]);</span>
+		// String productName = order[1];
+
+<span class="fc" id="L247">		final long finishTime = orderTime</span>
+				+ (getProductionTime(numberOfProductItems) * 1000L);
+<span class="fc" id="L249">		final int remainingSeconds = (int) ((finishTime - timeNow) / 1000);</span>
+<span class="fc" id="L250">		return TimeUtil.approxTimeUntil(remainingSeconds);</span>
+	}
+
+	/**
+	 * Is the order ready for this player?
+	 *
+	 * @param player
+	 * @return true if the order is ready.
+	 */
+	public boolean isOrderReady(final Player player) {
+<span class="fc" id="L260">		final String orderString = player.getQuest(questSlot);</span>
+<span class="fc" id="L261">		final String[] order = orderString.split(&quot;;&quot;);</span>
+<span class="fc" id="L262">		final int numberOfProductItems = Integer.parseInt(order[0]);</span>
+		// String productName = order[1];
+<span class="fc" id="L264">		final long orderTime = Long.parseLong(order[2]);</span>
+<span class="fc" id="L265">		final long timeNow = new Date().getTime();</span>
+<span class="fc bfc" id="L266" title="All 2 branches covered.">		return timeNow - orderTime &gt;= getProductionTime(numberOfProductItems) * 1000L;</span>
+	}
+
+	/**
+	 * Checks how many items are being produced on this particular order
+	 *
+	 * @param player
+	 * @return number of items
+	 */
+	public int getNumberOfProductItems(final Player player) {
+<span class="fc" id="L276">		final String orderString = player.getQuest(questSlot);</span>
+<span class="fc" id="L277">		final String[] order = orderString.split(&quot;;&quot;);</span>
+
+<span class="fc" id="L279">		return Integer.parseInt(order[0]);</span>
+	}
+
+	/**
+	 * Checks how many items the NPC can offer to produce based on what the player is carrying
+	 *
+	 * @param player
+	 * @return maximum number of items
+	 */
+	protected int getMaximalAmount(final Player player) {
+<span class="fc" id="L289">		int maxAmount = Integer.MAX_VALUE;</span>
+
+<span class="fc bfc" id="L291" title="All 2 branches covered.">		for (final Map.Entry&lt;String, Integer&gt; entry : getRequiredResourcesPerItem().entrySet()) {</span>
+<span class="fc" id="L292">			final int limitationByThisResource = player.getNumberOfEquipped(entry.getKey())</span>
+					/ entry.getValue();
+<span class="fc" id="L294">			maxAmount = Math.min(maxAmount, limitationByThisResource);</span>
+<span class="fc" id="L295">		}</span>
+
+<span class="fc" id="L297">		return maxAmount;</span>
+	}
+
+	/**
+	 * Tries to take all the resources required to produce &lt;i&gt;amount&lt;/i&gt; units
+	 * of the product from the player. If this is possible, asks the user if the
+	 * order should be initiated.
+	 *
+	 * @param res
+	 * @param npc
+	 * @param player
+	 * @return true if all resources can be taken
+	 */
+	public boolean askForResources(final ItemParserResult res, final EventRaiser npc, final Player player) {
+<span class="fc" id="L311">		int amount = res.getAmount();</span>
+
+<span class="fc bfc" id="L313" title="All 2 branches covered.">		if (getMaximalAmount(player) &lt; amount) {</span>
+<span class="fc" id="L314">			npc.say(&quot;I can only &quot; + getProductionActivity() + &quot; &quot;</span>
+					+ Grammar.quantityplnoun(amount, getProductName(), &quot;a&quot;)
+					+ &quot; if you bring me &quot;
+					+ getRequiredResourceNamesWithHashes(amount) + &quot;.&quot;);
+<span class="fc" id="L318">			return false;</span>
+		} else {
+<span class="fc" id="L320">			res.setAmount(amount);</span>
+<span class="fc" id="L321">			npc.say(&quot;I need you to fetch me &quot;</span>
+					+ getRequiredResourceNamesWithHashes(amount)
+					+ &quot; for this job, which will take &quot; + TimeUtil.approxTimeUntil(getProductionTime(amount)) + &quot;. Do you have what I need?&quot;);
+<span class="fc" id="L324">			return true;</span>
+		}
+	}
+
+	/**
+	 * Tries to take all the resources required to produce the agreed amount of
+	 * the product from the player. If this is possible, initiates an order.
+	 *
+	 * @param npc
+	 *            the involved NPC
+	 * @param player
+	 *            the involved player
+	 */
+	@Override
+	public boolean transactAgreedDeal(ItemParserResult res, final EventRaiser npc, final Player player) {
+<span class="pc bpc" id="L339" title="1 of 2 branches missed.">		if (getMaximalAmount(player) &lt; res.getAmount()) {</span>
+			// The player tried to cheat us by placing the resource
+			// onto the ground after saying &quot;yes&quot;
+<span class="nc" id="L342">			npc.say(&quot;Hey! I'm over here! You'd better not be trying to trick me...&quot;);</span>
+<span class="nc" id="L343">			return false;</span>
+		} else {
+<span class="fc bfc" id="L345" title="All 2 branches covered.">			for (final Map.Entry&lt;String, Integer&gt; entry : getRequiredResourcesPerItem().entrySet()) {</span>
+<span class="fc" id="L346">				final int amountToDrop = res.getAmount() * entry.getValue();</span>
+<span class="fc" id="L347">				player.drop(entry.getKey(), amountToDrop);</span>
+<span class="fc" id="L348">			}</span>
+<span class="fc" id="L349">			final long timeNow = new Date().getTime();</span>
+<span class="fc" id="L350">			player.setQuest(questSlot, res.getAmount() + &quot;;&quot; + getProductName() + &quot;;&quot; + timeNow);</span>
+<span class="fc" id="L351">			npc.say(&quot;OK, I will &quot;</span>
+					+ getProductionActivity()
+					+ &quot; &quot;
+					+ Grammar.quantityplnoun(res.getAmount(), getProductName(), &quot;a&quot;)
+					+ &quot; for you, but that will take some time. Please come back in &quot;
+					+ getApproximateRemainingTime(player) + &quot;.&quot;);
+<span class="fc" id="L357">			return true;</span>
+		}
+	}
+
+	/**
+	 * This method is called when the player returns to pick up the finished
+	 * product. It checks if the NPC is already done with the order. If that is
+	 * the case, the player is given the product. Otherwise, the NPC asks the
+	 * player to come back later.
+	 *
+	 * @param npc
+	 *            The producing NPC
+	 * @param player
+	 *            The player who wants to fetch the product
+	 */
+	public void giveProduct(final EventRaiser npc, final Player player) {
+<span class="fc" id="L373">		final int numberOfProductItems = getNumberOfProductItems(player);</span>
+		// String productName = order[1];
+
+<span class="fc bfc" id="L376" title="All 2 branches covered.">		if (!isOrderReady(player)) {</span>
+<span class="fc" id="L377">			npc.say(&quot;Welcome back! I'm still busy with your order to &quot;</span>
+					+ getProductionActivity() + &quot; &quot; + Grammar.quantityplnoun(numberOfProductItems, getProductName(), &quot;a&quot;)
+					+ &quot; for you. Come back in &quot;
+					+ getApproximateRemainingTime(player) + &quot; to get it.&quot;);
+		} else {
+<span class="fc" id="L382">			final StackableItem products = (StackableItem) SingletonRepository.getEntityManager().getItem(</span>
+					getProductName());
+
+<span class="fc" id="L385">			products.setQuantity(numberOfProductItems);</span>
+
+<span class="fc bfc" id="L387" title="All 2 branches covered.">			if (isProductBound()) {</span>
+<span class="fc" id="L388">				products.setBoundTo(player.getName());</span>
+			}
+
+<span class="pc bpc" id="L391" title="1 of 2 branches missed.">			if (player.equipToInventoryOnly(products)) {</span>
+<span class="fc" id="L392">				npc.say(&quot;Welcome back! I'm done with your order. Here you have &quot;</span>
+					+ Grammar.quantityplnoun(numberOfProductItems,
+							getProductName(), &quot;the&quot;) + &quot;.&quot;);
+<span class="fc" id="L395">				player.setQuest(questSlot, &quot;done&quot;);</span>
+				// give some XP as a little bonus for industrious workers
+<span class="fc" id="L397">				player.addXP(numberOfProductItems);</span>
+<span class="fc" id="L398">				player.notifyWorldAboutChanges();</span>
+<span class="fc" id="L399">				player.incProducedCountForItem(getProductName(), products.getQuantity());</span>
+<span class="fc" id="L400">				SingletonRepository.getAchievementNotifier().onProduction(player);</span>
+			} else {
+<span class="nc" id="L402">				npc.say(&quot;Welcome back! I'm done with your order. But right now you cannot take the &quot;</span>
+						+ Grammar.plnoun(numberOfProductItems, getProductName())
+						+ &quot;. Come back when you have space.&quot;);
+			}
+		}
+<span class="fc" id="L407">	}</span>
+
+	/**
+	 * Answer with an error message in case the request could not be fulfilled.
+	 *
+	 * @param res
+	 * @param npcAction
+	 * @return error message
+	 */
+	public String getErrormessage(final ItemParserResult res, final String npcAction) {
+<span class="fc" id="L417">		return getErrormessage(res, getProductionActivity(), npcAction);</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

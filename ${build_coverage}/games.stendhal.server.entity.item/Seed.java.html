@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Seed.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.item</a> &gt; <span class="el_source">Seed.java</span></div><h1>Seed.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.item;
+
+import games.stendhal.server.core.events.TurnNotifier;
+import games.stendhal.server.entity.RPEntity;
+import games.stendhal.server.entity.mapstuff.spawner.FlowerGrower;
+
+import java.util.Map;
+
+/**
+ * A seed can be planted. 
+ * The plant action defines the behaviour (e.g. only plantable on fertile ground).
+ * The infostring stores what it will grow.
+ */
+public class Seed extends StackableItem {
+
+	public Seed(final Seed item) {
+<span class="fc" id="L29">		super(item);</span>
+<span class="fc" id="L30">	}</span>
+
+	/**
+	 * Creates a new seed
+	 * 
+	 * @param name
+	 * @param clazz
+	 * @param subclass
+	 * @param attributes
+	 */
+	public Seed(final String name, final String clazz, final String subclass, final Map&lt;String, String&gt; attributes) {
+<span class="fc" id="L41">		super(name, clazz, subclass, attributes);</span>
+<span class="fc" id="L42">	}</span>
+
+	@Override
+	public boolean onUsed(final RPEntity user) {
+<span class="fc bfc" id="L46" title="All 2 branches covered.">		if (!this.isContained()) {</span>
+			// the seed is on the ground, but not next to the player
+<span class="pc bpc" id="L48" title="1 of 2 branches missed.">			if (!this.nextTo(user)) {</span>
+<span class="nc" id="L49">				user.sendPrivateText(&quot;The &quot; + this.getName() + &quot; is too far away&quot;);</span>
+<span class="nc" id="L50">				return false;</span>
+			}
+			
+			// the infostring of the seed stores what it should grow
+<span class="fc" id="L54">			final String infostring = this.getInfoString();</span>
+			FlowerGrower flowerGrower;
+			// choose the default flower grower if there is none set
+<span class="fc bfc" id="L57" title="All 2 branches covered.">			if (infostring == null) {</span>
+<span class="fc" id="L58">				flowerGrower = new FlowerGrower();</span>
+			} else {
+<span class="fc" id="L60">				flowerGrower = new FlowerGrower(this.getInfoString());</span>
+			}
+<span class="fc" id="L62">			user.getZone().add(flowerGrower);</span>
+			// add the FlowerGrower where the seed was on the ground
+<span class="fc" id="L64">			flowerGrower.setPosition(this.getX(), this.getY());</span>
+			// The first stage of growth happens almost immediately        
+<span class="fc" id="L66">			TurnNotifier.get().notifyInTurns(3, flowerGrower);</span>
+			// remove the seed now that it is planted
+<span class="fc" id="L68">			this.removeOne();</span>
+<span class="fc" id="L69">			return true;</span>
+		}
+		// the seed was 'contained' in a slot and so it cannot be planted
+<span class="fc" id="L72">		user.sendPrivateText(&quot;You have to put the &quot; + this.getName() + &quot; on the ground to plant it, silly!&quot;);</span>
+<span class="fc" id="L73">		return false;</span>
+	}
+
+	@Override
+	public String describe() {
+<span class="nc" id="L78">		final String flowerName = getInfoString();</span>
+
+<span class="nc bnc" id="L80" title="All 2 branches missed.">		if (flowerName != null) {</span>
+<span class="nc" id="L81">			return &quot;You see a &quot; + flowerName + &quot; &quot; + this.getName() + &quot;.&quot;</span>
+                + &quot;It can be planted anywhere, but it will only thrive on fertile ground.&quot;;
+		} else {
+<span class="nc" id="L84">			return &quot;You see a seed. It can be planted anywhere, but it will only thrive on fertile ground.&quot;;</span>
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SupportMessageTemplatesFactory.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.common.messages</a> &gt; <span class="el_source">SupportMessageTemplatesFactory.java</span></div><h1>SupportMessageTemplatesFactory.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.common.messages;
+
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * provides a single point where to define support message templates
+ * @author madmetzger
+ *
+ */
+public class SupportMessageTemplatesFactory {
+
+	private static final String TEMPLATE_PREFIX = &quot;$&quot;;
+
+	private final Map&lt;String, String&gt; messageTemplates;
+	/**
+	 * creates a new instance and initializes the templates
+	 */
+<span class="fc" id="L31">	public SupportMessageTemplatesFactory() {</span>
+<span class="fc" id="L32">		this.messageTemplates = new HashMap&lt;String, String&gt;();</span>
+<span class="fc" id="L33">		registerTemplates();</span>
+<span class="fc" id="L34">	}</span>
+
+	/**
+	 * registers the available templates. use %s to personalize a template with the name of the asking player in the greeting. but you can only use %s once.
+	 */
+	private void registerTemplates() {
+<span class="fc" id="L40">		addTemplate(&quot;$atlas&quot;, &quot;Hi %s, we feel sorry that you got lost in the world of Stendhal. You can open the atlas of Faiumoni with the #/atlas command - thank you&quot;);</span>
+<span class="fc" id="L41">		addTemplate(&quot;$banprivate&quot;, &quot;Hi %s, I am sorry but we cannot discuss bans of other players for privacy reasons.&quot;);</span>
+<span class="fc" id="L42">		addTemplate(&quot;$bugstracker&quot;,&quot;Hi %s, it sounds like you have found a new bug. Please could you create a bug report, details on how to do this are at #http://stendhalgame.org/wiki/SubmitBug - thank you very much.&quot;);</span>
+<span class="fc" id="L43">		addTemplate(&quot;$bugreport&quot;,&quot;Hi %s, it sounds like you have found a new bug. Please could you create a bug report, details on how to do this are at #http://stendhalgame.org/wiki/SubmitBug - thank you very much.&quot;);</span>
+<span class="fc" id="L44">		addTemplate(&quot;$faq&quot;, &quot;Hi %s, you will find the answer to your question in the Stendhal FAQ. It's very helpful so please read it thoroughly! Use #/faq to open the Stendhal FAQ. Thanks for playing Stendhal!&quot;);</span>
+<span class="fc" id="L45">		addTemplate(&quot;$faqpvp&quot;,&quot;Hi %s, sorry to hear about that. Player attacks are actually within the rules of the game, and it is not something that support gets involved with for that reason. Please open the FAQ via #/faq and read carefully #http://stendhalgame.org/wiki/StendhalFAQ#Player_vs_Player - good luck for the future.&quot;);</span>
+<span class="fc" id="L46">		addTemplate(&quot;$faqsocial&quot;, &quot;Hi %s, sorry to hear about that. Please read #http://stendhalgame.org/wiki/StendhalFAQ#Player_social_problems which covers some common problems.&quot;);</span>
+<span class="fc" id="L47">		addTemplate(&quot;$firewallserver&quot;, &quot;Hi %s, I am sorry but we cannot help you with the configuration of your router or firewall. It is rather dangerous to modify those settings without knowing exactly what you are doing. So this should only be done by an experienced network administrator who will find instructions in the manual that came with the hardware router or operating system.&quot;);</span>
+<span class="fc" id="L48">		addTemplate(&quot;$gmreview&quot;, &quot;Hi %s, that issue is closed for discussion with live support as it is more complex. Please email #gm-review@stendhalgame.org to discuss that issue.&quot;);</span>
+<span class="fc" id="L49">		addTemplate(&quot;$gmreviewreply&quot;, &quot;Hi %s, email responses from #gm-review@stendhalgame.org can take up to four weeks, while the issue is independently reviewed.&quot;);</span>
+<span class="fc" id="L50">		addTemplate(&quot;$ignore&quot;,&quot;Hi %s, sorry to hear that you have had some problems with another player. Please try to ignore them. You can use #/ignore #playername to prevent chat messages.&quot;);</span>
+<span class="fc" id="L51">		addTemplate(&quot;$investigation&quot;,&quot;Hi %s, Stendhal is a game developed and run by volunteers. These kinds of investigations waste a lot of time. We're sorry but we cannot take this issue further.&quot;);</span>
+<span class="fc" id="L52">		addTemplate(&quot;$knownbug&quot;,&quot;Hi %s, thank you for telling us about this bug, we have found it ourselves too and it's already reported. Thank you though and please do keep reporting bugs if you see them!&quot;);</span>
+<span class="fc" id="L53">		addTemplate(&quot;$notsupport&quot;,&quot;Hi %s, sorry, but support cannot help with this issue. Please use #http://stendhalgame.org and the wiki #http://stendhalgame.org/wiki/Stendhal as information sources.&quot;);</span>
+<span class="fc" id="L54">		addTemplate(&quot;$password&quot;,&quot;Hi %s, you can change your password by logging in on #http://stendhalgame.org. When you are logged in on that page you will find a link called change password in the upper right area of the page. There you can change your password.&quot;);</span>
+<span class="fc" id="L55">		addTemplate(&quot;$rules&quot;,&quot;Hi %s, please read the Stendhal Rules, which will open via #/rules - thank you.&quot;);</span>
+<span class="fc" id="L56">		addTemplate(&quot;$spam&quot;,&quot;Hi %s, repeatedly saying the same thing over and over again is considered spamming, and this is against the rules of the game. Please do not spam, and please open the Stendhal Rules via #/rules, thank you.&quot;);</span>
+<span class="fc" id="L57">		addTemplate(&quot;$spamsupport&quot;,&quot;Hi %s, we use a special tool for support, so you don't have to worry about messages being lost. Please note that sending a lot of support messages will lower the priority of your query.&quot;);</span>
+<span class="fc" id="L58">		addTemplate(&quot;$thief&quot;,&quot;Hi %s, please ask Dagobert about #trading to learn how to trade safely and securely. Support cannot recover items lost through carelessness.&quot;);</span>
+<span class="fc" id="L59">		addTemplate(&quot;$wiki&quot;,&quot;Hi %s, this is a question which is answered on the Stendhal wiki, please look on #http://stendhalgame.org/wiki/Stendhal as this is full of useful information. Thanks for playing Stendhal.&quot;);</span>
+<span class="fc" id="L60">	}</span>
+
+	/**
+	 * registers a template name with the corresponding text
+	 *
+	 * @param templateName
+	 * @param templateText
+	 */
+	private void addTemplate(String templateName, String templateText) {
+<span class="fc" id="L69">		StringBuilder nameBuilder = new StringBuilder();</span>
+<span class="pc bpc" id="L70" title="2 of 4 branches missed.">		if(!templateName.startsWith(TEMPLATE_PREFIX)) {</span>
+<span class="nc" id="L71">			nameBuilder.append(TEMPLATE_PREFIX);</span>
+		}
+<span class="fc" id="L73">		nameBuilder.append(templateName);</span>
+<span class="fc" id="L74">		messageTemplates.put(nameBuilder.toString(), templateText);</span>
+<span class="fc" id="L75">	}</span>
+
+	/**
+	 * returns the map of templates
+	 *
+	 * @return a map of the template names as key and template text as value
+	 */
+	public Map&lt;String, String&gt; getTemplates() {
+<span class="fc" id="L83">		return messageTemplates;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

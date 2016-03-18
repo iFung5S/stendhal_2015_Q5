@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Chest.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.mapstuff.chest</a> &gt; <span class="el_source">Chest.java</span></div><h1>Chest.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                      (C) Copyright 2003 - Marauroa                      *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.mapstuff.chest;
+
+import games.stendhal.common.grammar.Grammar;
+import games.stendhal.server.core.events.UseListener;
+import games.stendhal.server.entity.Entity;
+import games.stendhal.server.entity.PassiveEntity;
+import games.stendhal.server.entity.RPEntity;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.entity.slot.ChestSlot;
+
+import java.util.Iterator;
+
+import marauroa.common.game.RPClass;
+import marauroa.common.game.RPObject;
+import marauroa.common.game.RPSlot;
+import marauroa.common.game.Definition.Type;
+
+/**
+ * A chest is an unmovable container. It can be opened and closed. While it is
+ * open, every player can put items in and take them out later. A player can
+ * take out items that another player put in.
+ */
+public class Chest extends Entity implements UseListener {
+	private static final String CHEST_RPCLASS_NAME = &quot;chest&quot;;
+
+	/**
+	 * Whether the chest is open.
+	 */
+	private boolean open;
+	
+	/**
+	 * Creates a new chest.
+	 */
+<span class="fc" id="L46">	public Chest() {</span>
+<span class="fc" id="L47">		setRPClass(CHEST_RPCLASS_NAME);</span>
+<span class="fc" id="L48">		put(&quot;type&quot;, CHEST_RPCLASS_NAME);</span>
+<span class="fc" id="L49">		open = false;</span>
+
+<span class="fc" id="L51">		final RPSlot slot = new ChestSlot(this);</span>
+<span class="fc" id="L52">		addSlot(slot);</span>
+<span class="fc" id="L53">	}</span>
+	
+	/**
+	 * Creates a new chest.
+	 * 
+	 * @param object
+	 *            RPObject
+	 */
+	public Chest(final RPObject object) {
+<span class="nc" id="L62">		super(object);</span>
+<span class="nc" id="L63">		setRPClass(CHEST_RPCLASS_NAME);</span>
+<span class="nc" id="L64">		put(&quot;type&quot;, CHEST_RPCLASS_NAME);</span>
+
+<span class="nc bnc" id="L66" title="All 2 branches missed.">		if (!hasSlot(&quot;content&quot;)) {</span>
+<span class="nc" id="L67">			final RPSlot slot = new ChestSlot(this);</span>
+<span class="nc" id="L68">			addSlot(slot);</span>
+		}
+
+<span class="nc" id="L71">		update();</span>
+<span class="nc" id="L72">	}</span>
+
+	public static void generateRPClass() {
+<span class="fc bfc" id="L75" title="All 2 branches covered.">		if (!RPClass.hasRPClass(CHEST_RPCLASS_NAME)) {</span>
+<span class="fc" id="L76">			final RPClass chest = new RPClass(CHEST_RPCLASS_NAME);</span>
+<span class="fc" id="L77">			chest.isA(&quot;entity&quot;);</span>
+<span class="fc" id="L78">			chest.addAttribute(&quot;open&quot;, Type.FLAG);</span>
+<span class="fc" id="L79">			chest.addRPSlot(&quot;content&quot;, 30);</span>
+		}
+<span class="fc" id="L81">	}</span>
+	
+	
+	//
+	// Chest
+	//
+
+	@Override
+    public String getDescriptionName(final boolean definite) {
+<span class="fc" id="L90">	    return Grammar.article_noun(CHEST_RPCLASS_NAME, definite);</span>
+    }
+
+	@Override
+	public void update() {
+<span class="nc" id="L95">		super.update();</span>
+<span class="nc" id="L96">		open = false;</span>
+<span class="nc bnc" id="L97" title="All 2 branches missed.">		if (has(&quot;open&quot;)) {</span>
+<span class="nc" id="L98">			open = true;</span>
+		}
+<span class="nc" id="L100">	}</span>
+
+	/**
+	 * Open the chest.
+	 */
+	public void open() {
+<span class="fc" id="L106">		this.open = true;</span>
+<span class="fc" id="L107">		put(&quot;open&quot;, &quot;&quot;);</span>
+<span class="fc" id="L108">	}</span>
+
+	/**
+	 * Close the chest.
+	 */
+	public void close() {
+<span class="fc" id="L114">		this.open = false;</span>
+
+<span class="pc bpc" id="L116" title="1 of 2 branches missed.">		if (has(&quot;open&quot;)) {</span>
+<span class="fc" id="L117">			remove(&quot;open&quot;);</span>
+		}
+<span class="fc" id="L119">	}</span>
+
+	/**
+	 * Determine if the chest is open.
+	 * 
+	 * @return &lt;code&gt;true&lt;/code&gt; if the chest is open.
+	 */
+	public boolean isOpen() {
+<span class="fc" id="L127">		return open;</span>
+	}
+
+	/**
+	 * Adds a passive entity (like an item) to the chest.
+	 * 
+	 * @param entity
+	 *            entity to add
+	 */
+	public void add(final PassiveEntity entity) {
+<span class="fc" id="L137">		final RPSlot content = getSlot(&quot;content&quot;);</span>
+<span class="fc" id="L138">		content.add(entity);</span>
+<span class="fc" id="L139">	}</span>
+
+	@Override
+	public int size() {
+<span class="fc" id="L143">		return getSlot(&quot;content&quot;).size();</span>
+	}
+
+	/**
+	 * Returns the content.
+	 * 
+	 * @return iterator for the content
+	 */
+	public Iterator&lt;RPObject&gt; getContent() {
+<span class="fc" id="L152">		final RPSlot content = getSlot(&quot;content&quot;);</span>
+<span class="fc" id="L153">		return content.iterator();</span>
+	}
+
+	//
+	// UseListener
+	//
+
+	@Override
+	public boolean onUsed(final RPEntity user) {
+<span class="pc bpc" id="L162" title="1 of 2 branches missed.">		if (user.nextTo(this)) {</span>
+<span class="fc bfc" id="L163" title="All 2 branches covered.">			if (isOpen()) {</span>
+<span class="fc" id="L164">				close();</span>
+			} else {
+<span class="fc" id="L166">				open();</span>
+			}
+
+<span class="fc" id="L169">			notifyWorldAboutChanges();</span>
+<span class="fc" id="L170">			return true;</span>
+		}
+<span class="nc bnc" id="L172" title="All 2 branches missed.">		if (user instanceof Player) {</span>
+<span class="nc" id="L173">			final Player player = (Player) user;</span>
+<span class="nc" id="L174">			player.sendPrivateText(&quot;You cannot reach the chest from there.&quot;);</span>
+		}
+<span class="nc" id="L176">		return false;</span>
+	}
+
+	//
+	// Entity
+	//
+
+	@Override
+	public String describe() {
+<span class="nc" id="L185">		String text = &quot;You see a chest.&quot;;</span>
+
+<span class="nc bnc" id="L187" title="All 2 branches missed.">		if (hasDescription()) {</span>
+<span class="nc" id="L188">			text = getDescription();</span>
+		}
+
+<span class="nc bnc" id="L191" title="All 2 branches missed.">		if (isOpen()) {</span>
+<span class="nc" id="L192">			text += &quot; It is open.&quot;;</span>
+<span class="nc" id="L193">			text += &quot; You can right click and inspect this item to see its contents.&quot;;</span>
+		} else {
+<span class="nc" id="L195">			text += &quot; It is closed.&quot;;</span>
+		}
+
+<span class="nc" id="L198">		return (text);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

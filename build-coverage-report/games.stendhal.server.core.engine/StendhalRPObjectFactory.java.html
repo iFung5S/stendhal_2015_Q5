@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>StendhalRPObjectFactory.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.core.engine</a> &gt; <span class="el_source">StendhalRPObjectFactory.java</span></div><h1>StendhalRPObjectFactory.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.core.engine;
+
+import games.stendhal.server.core.engine.transformer.ArrestWarrantTransformer;
+import games.stendhal.server.core.engine.transformer.EarningTransformer;
+import games.stendhal.server.core.engine.transformer.ExpirationTrackerTransformer;
+import games.stendhal.server.core.engine.transformer.FlowerGrowerTransFormer;
+import games.stendhal.server.core.engine.transformer.HousePortalTransformer;
+import games.stendhal.server.core.engine.transformer.MarketTransformer;
+import games.stendhal.server.core.engine.transformer.OfferTransformer;
+import games.stendhal.server.core.engine.transformer.PlayerTransformer;
+import games.stendhal.server.core.engine.transformer.RentedSignTransformer;
+import games.stendhal.server.core.engine.transformer.SpellTransformer;
+import games.stendhal.server.core.engine.transformer.StoredChestTransformer;
+import games.stendhal.server.core.engine.transformer.Transformer;
+import games.stendhal.server.entity.mapstuff.ExpirationTracker;
+import games.stendhal.server.entity.mapstuff.office.ArrestWarrant;
+import games.stendhal.server.entity.mapstuff.office.RentedSign;
+import games.stendhal.server.entity.spell.Spell;
+import games.stendhal.server.entity.trade.Earning;
+import games.stendhal.server.entity.trade.Market;
+import games.stendhal.server.entity.trade.Offer;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import marauroa.common.game.RPClass;
+import marauroa.common.game.RPObject;
+import marauroa.server.game.rp.RPObjectFactory;
+
+import org.apache.log4j.Logger;
+
+/**
+ * Creates concrete objects of Stendhal classes.
+ *
+ * @author hendrik
+ */
+public class StendhalRPObjectFactory extends RPObjectFactory {
+<span class="fc" id="L50">	private static Logger logger = Logger.getLogger(StendhalRPObjectFactory.class);</span>
+	private static RPObjectFactory singleton;
+	private Map&lt;String, Transformer&gt; transformerMap;
+	
+	
+	public StendhalRPObjectFactory() {
+<span class="fc" id="L56">		super();</span>
+<span class="fc" id="L57">		transformerMap = new HashMap&lt;String, Transformer&gt;();</span>
+<span class="fc" id="L58">		transformerMap.put(&quot;growing_entity_spawner&quot;, new FlowerGrowerTransFormer());</span>
+<span class="fc" id="L59">		transformerMap.put(ArrestWarrant.RPCLASS_NAME, new ArrestWarrantTransformer());</span>
+<span class="fc" id="L60">		transformerMap.put(RentedSign.RPCLASS_NAME, new RentedSignTransformer());</span>
+<span class="fc" id="L61">		transformerMap.put(&quot;chest&quot;, new StoredChestTransformer());</span>
+<span class="fc" id="L62">		transformerMap.put(&quot;house_portal&quot;, new HousePortalTransformer());</span>
+<span class="fc" id="L63">		transformerMap.put(Offer.OFFER_RPCLASS_NAME, new OfferTransformer());</span>
+<span class="fc" id="L64">		transformerMap.put(Earning.EARNING_RPCLASS_NAME, new EarningTransformer());</span>
+<span class="fc" id="L65">		transformerMap.put(Market.MARKET_RPCLASS_NAME, new MarketTransformer());</span>
+<span class="fc" id="L66">		transformerMap.put(&quot;player&quot;, new PlayerTransformer());</span>
+<span class="fc" id="L67">		transformerMap.put(Spell.RPCLASS_SPELL, new SpellTransformer());</span>
+<span class="fc" id="L68">		transformerMap.put(ExpirationTracker.RPCLASS_EXPIRATION_TRACKER, new ExpirationTrackerTransformer());</span>
+<span class="fc" id="L69">	}</span>
+	
+	private void fixRPClass(final RPObject object) {
+<span class="fc" id="L72">		final RPClass clazz = object.getRPClass();</span>
+<span class="pc bpc" id="L73" title="3 of 6 branches missed.">		if ((clazz == null) || (clazz.getName() == null) || (clazz.getName().trim().equals(&quot;&quot;))) {</span>
+<span class="nc bnc" id="L74" title="All 2 branches missed.">			if (object.has(&quot;type&quot;)) {</span>
+<span class="nc" id="L75">				logger.warn(&quot;Fixing empty class, setting it to type=&quot; + object.get(&quot;type&quot;) + &quot; on object: &quot; + object);</span>
+<span class="nc" id="L76">				object.setRPClass(object.get(&quot;type&quot;));</span>
+			}
+		}
+<span class="fc" id="L79">	}</span>
+	
+	@Override
+	public RPObject transform(final RPObject object) {
+
+<span class="fc" id="L84">		fixRPClass(object);</span>
+
+<span class="fc" id="L86">		final RPClass clazz = object.getRPClass();</span>
+<span class="pc bpc" id="L87" title="1 of 2 branches missed.">		if (clazz == null) {</span>
+<span class="nc" id="L88">			logger.error(&quot;Cannot create concrete object for &quot; + object</span>
+					+ &quot; because it does not have an RPClass.&quot;);
+<span class="nc" id="L90">			return super.transform(object);</span>
+		}
+
+<span class="fc" id="L93">		final String name = clazz.getName();</span>
+<span class="fc" id="L94">		Transformer trafo = transformerMap.get(name);</span>
+<span class="pc bpc" id="L95" title="1 of 2 branches missed.">		if (trafo == null) {</span>
+
+<span class="nc" id="L97">			return super.transform(object);</span>
+		} 
+<span class="fc" id="L99">		return trafo.transform(object);</span>
+	}
+
+
+
+	/**
+	 * returns the factory instance (this method is called
+	 * by Marauroa using reflection).
+	 * 
+	 * @return RPObjectFactory
+	 */
+	public static RPObjectFactory getFactory() {
+<span class="pc bpc" id="L111" title="1 of 2 branches missed.">		if (singleton == null) {</span>
+<span class="fc" id="L112">			singleton = new StendhalRPObjectFactory();</span>
+		}
+<span class="fc" id="L114">		return singleton;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

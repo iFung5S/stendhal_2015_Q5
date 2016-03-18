@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>CompositeLayerRenderer.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client</a> &gt; <span class="el_source">CompositeLayerRenderer.java</span></div><h1>CompositeLayerRenderer.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client;
+
+import games.stendhal.client.sprite.CompositeSprite;
+import games.stendhal.client.sprite.Sprite;
+import games.stendhal.client.sprite.SpriteCache;
+
+import java.awt.Composite;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * A LayerRenderer that merges several tile layers in to one using
+ * CompositeSprites.
+ */
+class CompositeLayerRenderer extends TileRenderer {
+	/**
+	 * Create a CompositeLayerRenderer from a set of {@link TileRenderer}s
+	 * 
+	 * @param layerRenderers TileRenderers used for compositing
+	 * @param blend composite mode for drawing the adjustment layer
+	 * @param adjustLayer adjustment layer
+	 */
+	CompositeLayerRenderer(List&lt;TileRenderer&gt; layerRenderers,
+<span class="nc" id="L35">			Composite blend, TileRenderer adjustLayer) {</span>
+<span class="nc" id="L36">		LayerRenderer lr = layerRenderers.get(0);</span>
+<span class="nc" id="L37">		width = lr.getWidth();</span>
+<span class="nc" id="L38">		height = lr.getHeight();</span>
+		
+<span class="nc" id="L40">		Sprite maps[][] = new Sprite[layerRenderers.size()][];</span>
+<span class="nc" id="L41">		int i = 0;</span>
+<span class="nc bnc" id="L42" title="All 2 branches missed.">		for (LayerRenderer layer : layerRenderers) {</span>
+<span class="nc" id="L43">			maps[i] = ((TileRenderer) layer).spriteMap;</span>
+<span class="nc" id="L44">			i++;				</span>
+<span class="nc" id="L45">		}</span>
+<span class="nc" id="L46">		createComposites(layerRenderers, blend, adjustLayer);</span>
+<span class="nc" id="L47">	}</span>
+
+	/**
+	 * Fill the spriteMap with composite sprites.
+	 * 
+	 * @param renderers slave layers
+	 * @param blend composite mode for drawing the adjustment layer
+	 * @param adjustLayer adjustment layer
+	 */
+	private void createComposites(List&lt;TileRenderer&gt; renderers,
+			Composite blend, TileRenderer adjustLayer) {
+<span class="nc" id="L58">		int size = width * height;</span>
+<span class="nc" id="L59">		spriteMap = new Sprite[size];</span>
+<span class="nc" id="L60">		SpriteCache cache = SpriteCache.get();</span>
+<span class="nc" id="L61">		int layers = renderers.size();</span>
+		
+<span class="nc" id="L63">		List&lt;Sprite&gt; slaveSprites = new ArrayList&lt;Sprite&gt;(layers);</span>
+		
+<span class="nc bnc" id="L65" title="All 2 branches missed.">		for (int i = 0; i &lt; size; i++) {</span>
+<span class="nc bnc" id="L66" title="All 2 branches missed.">			for (TileRenderer r : renderers) {</span>
+<span class="nc" id="L67">				slaveSprites.add(r.tileset.getSprite(r.map[i]));</span>
+<span class="nc" id="L68">			}</span>
+<span class="nc" id="L69">			Sprite adjSprite = null;</span>
+<span class="nc bnc" id="L70" title="All 2 branches missed.">			if (adjustLayer != null) {</span>
+<span class="nc" id="L71">				adjSprite = adjustLayer.tileset.getSprite(adjustLayer.map[i]);</span>
+			}
+<span class="nc" id="L73">			spriteMap[i] = CompositeSprite.getComposite(cache, slaveSprites,</span>
+					blend, adjSprite);
+<span class="nc" id="L75">			slaveSprites.clear();</span>
+		}
+		
+		// Wipe out unneeded data from the slaves. Assumes their draw() method
+		// will not be called from anywhere. The renderers will be useless by
+		// themselves after this, so if the assumption changes, this needs code
+		// will need to be revisited
+<span class="nc bnc" id="L82" title="All 2 branches missed.">		for (TileRenderer r : renderers) {</span>
+<span class="nc" id="L83">			r.map = null;</span>
+<span class="nc" id="L84">			r.spriteMap = null;</span>
+<span class="nc" id="L85">			r.tileset = null;</span>
+<span class="nc" id="L86">		}</span>
+<span class="nc" id="L87">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

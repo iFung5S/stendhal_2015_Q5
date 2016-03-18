@@ -1,0 +1,711 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SoundSystem.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.sound.system</a> &gt; <span class="el_source">SoundSystem.java</span></div><h1>SoundSystem.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.sound.system;
+
+import games.stendhal.client.sound.facade.Time;
+import games.stendhal.common.math.Dsp;
+import games.stendhal.common.memory.Field;
+
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.DataLine;
+import javax.sound.sampled.LineUnavailableException;
+import javax.sound.sampled.Mixer;
+import javax.sound.sampled.SourceDataLine;
+
+import org.apache.log4j.Logger;
+
+/**
+ * Thread to manage sound output.
+ * @author silvio
+ */
+public class SoundSystem extends Thread
+{
+<span class="nc" id="L42">	public static abstract class Output extends SignalProcessor { }</span>
+
+<span class="nc" id="L44">	private static class DummyOutput extends Output { }</span>
+
+<span class="nc bnc" id="L46" title="All 2 branches missed.">	private static class SystemOutput extends Output</span>
+	{
+		final SourceDataLine mLine;                   // the line we will write the PCM data to
+		final AudioFormat    mFormat;
+<span class="nc" id="L50">        float[]              mAudioBuffer     = null; // the interleaved uniform PCM data</span>
+<span class="nc" id="L51">		int                  mNumSamples      = 0;    //</span>
+<span class="nc" id="L52">        byte[]               mPCMBuffer       = null; // the uniform PCM data converted to the format defined in &quot;mAudioFormat&quot;</span>
+<span class="nc" id="L53">		int                  mPCMBufferSize   = 0;    //</span>
+<span class="nc" id="L54">		int                  mNumBytesWritten = 0;    // number of bytes from &quot;mPCMBuffer&quot; we have written to &quot;mLine&quot;</span>
+<span class="nc" id="L55">		int                  mNumBytesToWrite = 0;</span>
+
+		SystemOutput(SourceDataLine line)
+<span class="nc" id="L58">		{</span>
+<span class="nc bnc" id="L59" title="All 4 branches missed.">			assert line != null;</span>
+<span class="nc bnc" id="L60" title="All 4 branches missed.">			assert line.isOpen();</span>
+<span class="nc" id="L61">			mLine   = line;</span>
+<span class="nc" id="L62">			mFormat = line.getFormat();</span>
+<span class="nc" id="L63">			mLine.start();</span>
+<span class="nc" id="L64">		}</span>
+
+<span class="nc" id="L66">		boolean     isOpen              () { return mLine.isOpen();                    }</span>
+<span class="nc bnc" id="L67" title="All 2 branches missed.">        boolean     receivedData        () { return mNumSamples    &gt; 0;                }</span>
+<span class="nc bnc" id="L68" title="All 2 branches missed.">        boolean     isConverted         () { return mPCMBufferSize &gt; 0;                }</span>
+<span class="nc" id="L69">		AudioFormat getAudioFormat      () { return mFormat;                           }</span>
+//		float[]     getBuffer           () { return mAudioBuffer;                      }
+//		int         getNumSamples       () { return mNumSamples;                       }
+<span class="nc" id="L72">		int         getNumChannels      () { return mFormat.getChannels();             }</span>
+<span class="nc" id="L73">		int         getSampleRate       () { return (int)mFormat.getSampleRate();      }</span>
+<span class="nc" id="L74">		int         getNumBytesPerSample() { return mFormat.getSampleSizeInBits() / 8; }</span>
+<span class="nc" id="L75">		int         available           () { return mLine.available();                 }</span>
+<span class="nc" id="L76">		int         getNumBytesToWrite  () { return mNumBytesToWrite;                  }</span>
+
+		void close()
+		{
+<span class="nc" id="L80">			mLine.close();</span>
+<span class="nc" id="L81">			mAudioBuffer = null;</span>
+<span class="nc" id="L82">			mPCMBuffer   = null;</span>
+<span class="nc" id="L83">			reset();</span>
+<span class="nc" id="L84">		}</span>
+
+		void reset()
+		{
+<span class="nc" id="L88">			mNumBytesWritten = 0;</span>
+<span class="nc" id="L89">			mNumSamples      = 0;</span>
+<span class="nc" id="L90">			mPCMBufferSize   = 0;</span>
+<span class="nc" id="L91">		}</span>
+
+		void setBuffer(float[] buffer, int numSamples)
+		{
+<span class="nc bnc" id="L95" title="All 6 branches missed.">			assert (buffer == null) || (numSamples &lt;= buffer.length);</span>
+<span class="nc bnc" id="L96" title="All 4 branches missed.">			assert (numSamples % getNumChannels()) == 0;</span>
+
+<span class="nc" id="L98">			mAudioBuffer = buffer;</span>
+<span class="nc" id="L99">			mNumSamples  = numSamples;</span>
+<span class="nc" id="L100">		}</span>
+
+		void setNumBytesToWrite(int numBytesToWrite)
+		{
+<span class="nc" id="L104">			int frameSize = getNumBytesPerSample() * getNumChannels();</span>
+			
+<span class="nc" id="L106">			mNumBytesToWrite  = numBytesToWrite;</span>
+<span class="nc" id="L107">			mNumBytesToWrite /= frameSize;</span>
+<span class="nc" id="L108">			mNumBytesToWrite *= frameSize;</span>
+<span class="nc" id="L109">		}</span>
+
+		void convert()
+        {
+<span class="nc bnc" id="L113" title="All 4 branches missed.">            assert (mLine.getFormat().getSampleSizeInBits() % 8) == 0;</span>
+
+<span class="nc" id="L115">            int numBytesPerSample = getNumBytesPerSample();</span>
+<span class="nc" id="L116">			int numBytes          = numBytesPerSample * mNumSamples;</span>
+
+<span class="nc" id="L118">			mPCMBuffer     = Field.expand(mPCMBuffer, numBytes, false);</span>
+<span class="nc" id="L119">            mPCMBuffer     = Dsp.convertUniformPCM(mPCMBuffer, mAudioBuffer, mNumSamples, numBytesPerSample);</span>
+<span class="nc" id="L120">			mPCMBufferSize = numBytes;</span>
+<span class="nc" id="L121">        }</span>
+
+		boolean write(int numBytes)
+        {
+<span class="nc" id="L125">			int frameSize                 = getNumBytesPerSample() * getNumChannels();</span>
+<span class="nc" id="L126">			int numRemainingBytesInBuffer = mPCMBufferSize - mNumBytesWritten;</span>
+
+<span class="nc" id="L128">			numBytes  = Math.min(numBytes, numRemainingBytesInBuffer);</span>
+<span class="nc" id="L129">			numBytes  = Math.min(numBytes, mNumBytesToWrite         );</span>
+<span class="nc" id="L130">			numBytes  = Math.min(numBytes, mLine.available()        );</span>
+<span class="nc" id="L131">			numBytes /= frameSize;</span>
+<span class="nc" id="L132">			numBytes *= frameSize;</span>
+<span class="nc" id="L133">			numBytes  = mLine.write(mPCMBuffer, mNumBytesWritten, numBytes);</span>
+
+<span class="nc" id="L135">			mNumBytesWritten          += numBytes;</span>
+<span class="nc" id="L136">			mNumBytesToWrite          -= numBytes;</span>
+<span class="nc" id="L137">			numRemainingBytesInBuffer -= numBytes;</span>
+			
+<span class="nc bnc" id="L139" title="All 2 branches missed.">			if(numRemainingBytesInBuffer &lt; frameSize)</span>
+<span class="nc" id="L140">				reset();</span>
+
+<span class="nc bnc" id="L142" title="All 2 branches missed.">			if(mNumBytesToWrite &lt; frameSize)</span>
+<span class="nc" id="L143">				return false;</span>
+
+<span class="nc" id="L145">			return true;</span>
+        }
+
+		@Override
+        protected void modify(float[] buffer, int frames, int channels, int rate)
+        {
+<span class="nc bnc" id="L151" title="All 8 branches missed.">            if (buffer != null &amp;&amp; frames &gt; 0 &amp;&amp; channels &gt; 0 &amp;&amp; rate &gt; 0)</span>
+            {
+<span class="nc bnc" id="L153" title="All 4 branches missed.">                assert (frames * channels) &lt;= buffer.length;</span>
+<span class="nc" id="L154">				buffer = Dsp.convertChannels(buffer, frames, channels, getNumChannels());</span>
+
+<span class="nc" id="L156">				setBuffer(buffer, (frames * getNumChannels()));</span>
+
+<span class="nc" id="L158">				buffer = Dsp.convertSampleRate(buffer, (frames * channels), channels, rate, getSampleRate());</span>
+
+<span class="nc" id="L160">				float ratio = (float)frames / (float)rate;</span>
+<span class="nc" id="L161">				setBuffer(buffer, (int)(ratio * getSampleRate() * channels));</span>
+<span class="nc" id="L162">            }</span>
+			else
+			{
+<span class="nc" id="L165">				setBuffer(null, 0);</span>
+				//assert false: &quot;could not convert sample rate&quot;;
+			}
+<span class="nc" id="L168">        }</span>
+	}
+
+<span class="nc bnc" id="L171" title="All 2 branches missed.">	private static class MixerOutput extends Output</span>
+	{
+		AudioFormat  mAudioFormat;
+<span class="nc" id="L174">		float[]      mAudioBuffer     = null; // the interleaved uniform PCM data</span>
+<span class="nc" id="L175">		int          mNumSamples      = 0;    //</span>
+<span class="nc" id="L176">		int          mNumSamplesMixed = 0;</span>
+
+		MixerOutput(AudioFormat format)
+<span class="nc" id="L179">		{</span>
+<span class="nc bnc" id="L180" title="All 4 branches missed.">			assert format != null;</span>
+<span class="nc" id="L181">			mAudioFormat = format;</span>
+<span class="nc" id="L182">		}</span>
+
+<span class="nc bnc" id="L184" title="All 2 branches missed.">		boolean receivedData  () { return mNumSamples &gt; 0;                   }</span>
+<span class="nc" id="L185">		int     getNumChannels() { return mAudioFormat.getChannels();        }</span>
+<span class="nc" id="L186">		int     getSampleRate () { return (int)mAudioFormat.getSampleRate(); }</span>
+
+		void reset()
+		{
+<span class="nc" id="L190">			mNumSamples      = 0;</span>
+<span class="nc" id="L191">			mNumSamplesMixed = 0;</span>
+<span class="nc" id="L192">		}</span>
+
+		void setBuffer(float[] buffer, int numSamples)
+		{
+<span class="nc bnc" id="L196" title="All 6 branches missed.">			assert (buffer == null) || (numSamples &lt;= buffer.length);</span>
+<span class="nc bnc" id="L197" title="All 4 branches missed.">			assert (numSamples % getNumChannels()) == 0;</span>
+
+<span class="nc" id="L199">			mAudioBuffer = buffer;</span>
+<span class="nc" id="L200">			mNumSamples  = numSamples;</span>
+<span class="nc" id="L201">		}</span>
+		
+		boolean mix(float[] buffer, int size)
+		{
+<span class="nc" id="L205">			int offset          = 0;</span>
+<span class="nc" id="L206">			int numSamplesToMix = size;</span>
+
+<span class="nc bnc" id="L208" title="All 2 branches missed.">			while(numSamplesToMix &gt; 0)</span>
+			{
+<span class="nc bnc" id="L210" title="All 2 branches missed.">				if(!receivedData())</span>
+<span class="nc" id="L211">					request();</span>
+
+<span class="nc bnc" id="L213" title="All 2 branches missed.">				if(!receivedData())</span>
+<span class="nc" id="L214">					return false;</span>
+
+<span class="nc" id="L216">				int numSamples = mNumSamples - mNumSamplesMixed;</span>
+<span class="nc" id="L217">				numSamples = Math.min(numSamples, numSamplesToMix);</span>
+
+<span class="nc" id="L219">				Dsp.mixAudioData(buffer, offset, mAudioBuffer, mNumSamplesMixed, numSamples, 1.0f);</span>
+
+<span class="nc" id="L221">				offset           += numSamples;</span>
+<span class="nc" id="L222">				mNumSamplesMixed += numSamples;</span>
+<span class="nc" id="L223">				numSamplesToMix  -= numSamples;</span>
+
+<span class="nc bnc" id="L225" title="All 2 branches missed.">				if(mNumSamples == mNumSamplesMixed)</span>
+<span class="nc" id="L226">					reset();</span>
+<span class="nc" id="L227">			}</span>
+
+<span class="nc" id="L229">			return true;</span>
+		}
+
+		@Override
+        protected void modify(float[] buffer, int frames, int channels, int rate)
+        {
+<span class="nc bnc" id="L235" title="All 8 branches missed.">            if (buffer != null &amp;&amp; frames &gt; 0 &amp;&amp; channels &gt; 0 &amp;&amp; rate &gt; 0)</span>
+            {
+<span class="nc bnc" id="L237" title="All 4 branches missed.">                assert (frames * channels) &lt;= buffer.length;</span>
+<span class="nc" id="L238">				buffer = Dsp.convertChannels(buffer, frames, channels, getNumChannels());</span>
+
+<span class="nc" id="L240">				setBuffer(buffer, (frames * getNumChannels()));</span>
+
+<span class="nc" id="L242">				buffer = Dsp.convertSampleRate(buffer, (frames * channels), channels, rate, getSampleRate());</span>
+
+<span class="nc" id="L244">				float ratio = (float)frames / (float)rate;</span>
+<span class="nc" id="L245">				setBuffer(buffer, (int)(ratio * getSampleRate() * channels));</span>
+<span class="nc" id="L246">			}</span>
+			else
+			{
+<span class="nc" id="L249">				setBuffer(null, 0);</span>
+				//assert false: &quot;could not convert sample rate&quot;;
+			}
+<span class="nc" id="L252">        }</span>
+	}
+
+	private final static int    STATE_EXITING = 0;
+	private final static int    STATE_RUNNING = 1;
+	private final static int    STATE_PAUSING = 2;
+<span class="nc" id="L258">	private final static Time   ZERO_DURATION = new Time();</span>
+<span class="nc" id="L259">	private final static Logger logger        = Logger.getLogger(SoundSystem.class);</span>
+
+<span class="nc" id="L261">	private final LinkedList&lt;SystemOutput&gt; mSystemOutputs         = new LinkedList&lt;SystemOutput&gt;();</span>
+<span class="nc" id="L262">	private final LinkedList&lt;MixerOutput&gt;  mMixerOutputs          = new LinkedList&lt;MixerOutput&gt;();</span>
+<span class="nc" id="L263">	private SystemOutput                   mMixSystemOutput       = null;</span>
+<span class="nc" id="L264">    private Mixer                          mSystemMixer           = null;</span>
+<span class="nc" id="L265">    private Time                           mBufferDuration        = null;</span>
+<span class="nc" id="L266">    private final AtomicBoolean            mUseDynamicLoadScaling = new AtomicBoolean(false);</span>
+<span class="nc" id="L267">	private final AtomicReference&lt;Time&gt;    mStateChangeDelay      = new AtomicReference&lt;Time&gt;(ZERO_DURATION);</span>
+<span class="nc" id="L268">	private final AtomicInteger            mTargetSystemState     = new AtomicInteger(0);</span>
+<span class="nc" id="L269">	private int                            mCurrentSystemState    = 0;</span>
+<span class="nc" id="L270">	private int                            mMaxNumLines           = 0;</span>
+<span class="nc" id="L271">	private float[]                        mMixBuffer             = null;</span>
+
+    public SoundSystem(Mixer mixer, AudioFormat audioFormat, Time bufferDuration, int useMaxMixerLines)
+<span class="nc" id="L274">    {</span>
+<span class="nc bnc" id="L275" title="All 2 branches missed.">		if(audioFormat == null)</span>
+<span class="nc" id="L276">			throw new IllegalArgumentException(&quot;audioFormat argument must not be null&quot;);</span>
+<span class="nc bnc" id="L277" title="All 2 branches missed.">		if(bufferDuration == null)</span>
+<span class="nc" id="L278">			throw new IllegalArgumentException(&quot;bufferDuration argument must not be null&quot;);</span>
+
+<span class="nc bnc" id="L280" title="All 2 branches missed.">		if(mixer == null)</span>
+		{
+<span class="nc" id="L282">			logger.info(&quot;opening sound system and trying to find optimal system mixer device / output line&quot;);</span>
+<span class="nc" id="L283">			mixer = tryToFindMixer(audioFormat);</span>
+		}
+		else
+		{
+<span class="nc" id="L287">			logger.info(&quot;opening sound system using specified system mixer device&quot;);</span>
+		}
+		
+<span class="nc" id="L290">		init(mixer, audioFormat, bufferDuration, useMaxMixerLines);</span>
+<span class="nc" id="L291">    }</span>
+
+    public SoundSystem(SourceDataLine outputLine, Time bufferDuration)
+<span class="nc" id="L294">    {</span>
+<span class="nc bnc" id="L295" title="All 2 branches missed.">		if(outputLine == null)</span>
+<span class="nc" id="L296">			throw new IllegalArgumentException(&quot;outputLine argument must not be null&quot;);</span>
+<span class="nc bnc" id="L297" title="All 2 branches missed.">		if(bufferDuration == null)</span>
+<span class="nc" id="L298">			throw new IllegalArgumentException(&quot;bufferDuration argument must not be null&quot;);</span>
+
+<span class="nc" id="L300">		logger.info(&quot;opening sound system with only manual mixing enabled&quot;);</span>
+		
+<span class="nc" id="L302">        mBufferDuration = bufferDuration;</span>
+<span class="nc" id="L303">		mMaxNumLines    = 0;</span>
+		
+<span class="nc bnc" id="L305" title="All 2 branches missed.">        if(!outputLine.isOpen())</span>
+        {
+            try
+            {
+<span class="nc" id="L309">                outputLine.open();</span>
+            }
+<span class="nc" id="L311">            catch(LineUnavailableException e)</span>
+            {
+<span class="nc" id="L313">				logger.warn(&quot;cannot open output line for manual mixing of audio data: \&quot;&quot; + e + &quot;\&quot;&quot;);</span>
+<span class="nc" id="L314">				return;</span>
+            }
+<span class="nc" id="L316">			catch(SecurityException e)</span>
+			{
+<span class="nc" id="L318">				logger.warn(&quot;cannot open output line for manual mixing of audio data: \&quot;&quot; + e + &quot;\&quot;&quot;);</span>
+<span class="nc" id="L319">				return;</span>
+<span class="nc" id="L320">            }</span>
+        }
+
+<span class="nc" id="L323">		mMixSystemOutput = new SystemOutput(outputLine);</span>
+<span class="nc" id="L324">    }</span>
+
+	public void suspend(Time delay)
+	{
+<span class="nc" id="L328">		changeSystemState(STATE_PAUSING, delay);</span>
+<span class="nc" id="L329">	}</span>
+
+	public void proceed(Time delay)
+	{
+<span class="nc" id="L333">		changeSystemState(STATE_RUNNING, delay);</span>
+<span class="nc" id="L334">	}</span>
+
+	public Output openOutput(AudioFormat audioFormat)
+	{
+<span class="nc bnc" id="L338" title="All 2 branches missed.">		if(audioFormat == null)</span>
+<span class="nc" id="L339">			throw new IllegalArgumentException(&quot;audioFormat argument must not be null&quot;);</span>
+
+<span class="nc" id="L341">		DataLine.Info info = new DataLine.Info(SourceDataLine.class, audioFormat, AudioSystem.NOT_SPECIFIED);</span>
+
+<span class="nc bnc" id="L343" title="All 6 branches missed.">        if(mSystemMixer != null &amp;&amp; mSystemMixer.isLineSupported(info) &amp;&amp; mSystemOutputs.size() &lt; mMaxNumLines)</span>
+        {
+            try
+            {
+<span class="nc" id="L347">                SourceDataLine line = (SourceDataLine)mSystemMixer.getLine(info);</span>
+<span class="nc" id="L348">                line.open();</span>
+
+<span class="nc" id="L350">				SystemOutput output = new SystemOutput(line);</span>
+
+<span class="nc" id="L352">				synchronized(mSystemOutputs)</span>
+				{
+<span class="nc" id="L354">					mSystemOutputs.add(output);</span>
+<span class="nc" id="L355">				}</span>
+
+<span class="nc" id="L357">				logger.debug(&quot;opening a system output (using a system mixer device)&quot;);</span>
+<span class="nc" id="L358">				return output;</span>
+            }
+<span class="nc" id="L360">            catch(LineUnavailableException e) { }</span>
+        }
+
+<span class="nc bnc" id="L363" title="All 2 branches missed.">		if(mMixSystemOutput != null)</span>
+		{
+<span class="nc" id="L365">			MixerOutput output = new MixerOutput(mMixSystemOutput.getAudioFormat());</span>
+
+<span class="nc" id="L367">			synchronized(mMixerOutputs)</span>
+			{
+<span class="nc" id="L369">				mMixerOutputs.add(output);</span>
+<span class="nc" id="L370">			}</span>
+
+<span class="nc" id="L372">			logger.debug(&quot;opening a mixer output (using manual mixing)&quot;);</span>
+<span class="nc" id="L373">			return output;</span>
+		}
+
+<span class="nc" id="L376">		logger.debug(&quot;opening a dummy output (no output line could be received)&quot;);</span>
+<span class="nc" id="L377">		return new DummyOutput();</span>
+	}
+
+    public void closeOutput(Output output)
+    {
+<span class="nc bnc" id="L382" title="All 2 branches missed.">		if(output != null)</span>
+		{
+<span class="nc" id="L384">			output.disconnect();</span>
+
+<span class="nc" id="L386">			synchronized(mSystemOutputs)</span>
+			{
+<span class="nc bnc" id="L388" title="All 2 branches missed.">				if(output instanceof SystemOutput)</span>
+				{
+<span class="nc" id="L390">					logger.debug(&quot;closing a system output&quot;);</span>
+
+<span class="nc" id="L392">					SystemOutput systemOutput = (SystemOutput)output;</span>
+<span class="nc" id="L393">					systemOutput.close();</span>
+<span class="nc" id="L394">					mSystemOutputs.remove(systemOutput);</span>
+				}
+<span class="nc" id="L396">			}</span>
+
+<span class="nc" id="L398">			synchronized(mMixerOutputs)</span>
+			{
+<span class="nc bnc" id="L400" title="All 2 branches missed.">				if(output instanceof MixerOutput)</span>
+				{
+<span class="nc" id="L402">					logger.debug(&quot;closing a mixer output&quot;);</span>
+
+<span class="nc" id="L404">					MixerOutput mixerOutput = (MixerOutput)output;</span>
+<span class="nc" id="L405">					mMixerOutputs.remove(mixerOutput);</span>
+				}
+<span class="nc" id="L407">			}</span>
+		}
+<span class="nc" id="L409">    }</span>
+
+    public void closeAllOutputs()
+    {
+<span class="nc" id="L413">		logger.debug(&quot;closing all outputs excluding the output for manual mixing&quot;);</span>
+
+<span class="nc" id="L415">		synchronized(mSystemOutputs)</span>
+		{
+<span class="nc bnc" id="L417" title="All 2 branches missed.">			for(SystemOutput output: mSystemOutputs)</span>
+<span class="nc" id="L418">				output.close();</span>
+			
+<span class="nc" id="L420">			mSystemOutputs.clear();</span>
+<span class="nc" id="L421">		}</span>
+
+<span class="nc" id="L423">		synchronized(mMixerOutputs)</span>
+		{
+<span class="nc" id="L425">			mMixerOutputs.clear();</span>
+<span class="nc" id="L426">		}</span>
+<span class="nc" id="L427">    }</span>
+
+    public void exit(Time delay)
+    {
+<span class="nc" id="L431">		logger.info(&quot;stopping sound system&quot;);</span>
+<span class="nc" id="L432">		changeSystemState(STATE_EXITING, delay);</span>
+<span class="nc" id="L433">    }</span>
+
+    @Override
+    public void run()
+    {
+<span class="nc" id="L438">		class StateChanger</span>
+		{
+<span class="nc" id="L440">			long    mSystemTime  = 0;</span>
+<span class="nc" id="L441">			boolean mChangeState = false;</span>
+
+			void processStateChange()
+			{
+<span class="nc bnc" id="L445" title="All 2 branches missed.">				if(!mChangeState)</span>
+				{
+<span class="nc bnc" id="L447" title="All 2 branches missed.">					if(mCurrentSystemState != mTargetSystemState.get())</span>
+					{
+<span class="nc bnc" id="L449" title="All 2 branches missed.">						if(mStateChangeDelay.get().getInNanoSeconds() &lt;= 0)</span>
+						{
+<span class="nc" id="L451">							mCurrentSystemState = mTargetSystemState.get();</span>
+<span class="nc" id="L452">							return;</span>
+						}
+
+<span class="nc" id="L455">						mSystemTime  = System.nanoTime();</span>
+<span class="nc" id="L456">						mChangeState = true;</span>
+					}
+				}
+				else
+				{
+<span class="nc bnc" id="L461" title="All 2 branches missed.">					if((System.nanoTime() - mSystemTime) &gt;= mStateChangeDelay.get().getInNanoSeconds())</span>
+					{
+<span class="nc" id="L463">						mCurrentSystemState = mTargetSystemState.get();</span>
+<span class="nc" id="L464">						mChangeState        = false;</span>
+					}
+				}
+<span class="nc" id="L467">			}</span>
+		}
+
+<span class="nc" id="L470">        double       averageTimeToProcessSound = 0;//mBufferDuration.getInNanoSeconds();</span>
+<span class="nc" id="L471">        double       multiplicator             = 0.995;</span>
+<span class="nc" id="L472">		StateChanger stateChanger              = new StateChanger();</span>
+
+<span class="nc" id="L474">		mCurrentSystemState = STATE_RUNNING;</span>
+<span class="nc" id="L475">		mTargetSystemState.set(STATE_RUNNING);</span>
+<span class="nc" id="L476">		mStateChangeDelay.set(ZERO_DURATION);</span>
+
+<span class="nc bnc" id="L478" title="All 2 branches missed.">        while(mCurrentSystemState != STATE_EXITING)</span>
+        {
+<span class="nc" id="L480">			stateChanger.processStateChange();</span>
+
+<span class="nc bnc" id="L482" title="All 3 branches missed.">			switch(mCurrentSystemState)</span>
+			{
+			case STATE_RUNNING:
+				{
+<span class="nc" id="L486">					long duration = System.nanoTime();</span>
+
+<span class="nc" id="L488">					processOutputs();</span>
+
+<span class="nc bnc" id="L490" title="All 2 branches missed.">					if(mUseDynamicLoadScaling.get())</span>
+					{
+<span class="nc" id="L492">						duration                  = System.nanoTime() - duration;</span>
+<span class="nc" id="L493">						averageTimeToProcessSound = (averageTimeToProcessSound + duration) / 2.0;</span>
+
+<span class="nc bnc" id="L495" title="All 2 branches missed.">						if(averageTimeToProcessSound &gt; mBufferDuration.getInNanoSeconds())</span>
+<span class="nc" id="L496">							averageTimeToProcessSound = mBufferDuration.getInNanoSeconds();</span>
+
+<span class="nc" id="L498">						long nanos = (long)((mBufferDuration.getInNanoSeconds() - averageTimeToProcessSound) * multiplicator);</span>
+<span class="nc" id="L499">						suspendThread(nanos);</span>
+					}
+				}
+<span class="nc" id="L502">				break;</span>
+
+			case STATE_PAUSING:
+<span class="nc" id="L505">				suspendThread(50);</span>
+<span class="nc" id="L506">				break;</span>
+			}
+        }
+
+<span class="nc" id="L510">        closeAllOutputs();</span>
+<span class="nc" id="L511">		closeOutput(mMixSystemOutput);</span>
+<span class="nc" id="L512">    }</span>
+
+	private void changeSystemState(int state, Time delay)
+	{
+<span class="nc bnc" id="L516" title="All 2 branches missed.">		if(delay == null)</span>
+<span class="nc" id="L517">			delay = ZERO_DURATION;</span>
+		else
+<span class="nc" id="L519">			delay = delay.clone();</span>
+
+<span class="nc" id="L521">		mStateChangeDelay.set(delay);</span>
+<span class="nc" id="L522">		mTargetSystemState.set(state);</span>
+<span class="nc" id="L523">	}</span>
+
+	@SuppressWarnings(&quot;unchecked&quot;)
+	private void processOutputs()
+	{
+		LinkedList&lt;SystemOutput&gt; sysOutputs;
+		LinkedList&lt;MixerOutput&gt;  mixOutputs;
+
+<span class="nc" id="L531">		synchronized(mSystemOutputs)</span>
+		{
+<span class="nc" id="L533">			sysOutputs = (LinkedList&lt;SystemOutput&gt;)mSystemOutputs.clone();</span>
+<span class="nc" id="L534">		}</span>
+
+<span class="nc" id="L536">		synchronized(mMixerOutputs)</span>
+		{
+<span class="nc" id="L538">			mixOutputs = (LinkedList&lt;MixerOutput&gt;)mMixerOutputs.clone();</span>
+<span class="nc" id="L539">		}</span>
+
+<span class="nc bnc" id="L541" title="All 2 branches missed.">		if(mMixSystemOutput != null)</span>
+<span class="nc" id="L542">			sysOutputs.add(mMixSystemOutput);</span>
+
+<span class="nc bnc" id="L544" title="All 2 branches missed.">		for(SystemOutput output: sysOutputs)</span>
+		{
+<span class="nc" id="L546">			int sampleRate        = output.getSampleRate();</span>
+<span class="nc" id="L547">			int numBytesPerSample = output.getAudioFormat().getSampleSizeInBits() / 8;</span>
+<span class="nc" id="L548">			int numChannels       = output.getNumChannels();</span>
+<span class="nc" id="L549">			int numBytesToWrite   = (int)(mBufferDuration.getInSamples(sampleRate) * numChannels * numBytesPerSample);</span>
+
+<span class="nc" id="L551">			output.setNumBytesToWrite(numBytesToWrite);</span>
+<span class="nc" id="L552">		}</span>
+
+<span class="nc bnc" id="L554" title="All 2 branches missed.">		if(mMixSystemOutput != null)</span>
+		{
+<span class="nc" id="L556">			int numSamples = mMixSystemOutput.getNumBytesToWrite() / mMixSystemOutput.getNumBytesPerSample();</span>
+<span class="nc" id="L557">			mMixBuffer = Field.expand(mMixBuffer, numSamples, false);</span>
+<span class="nc" id="L558">			Arrays.fill(mMixBuffer, 0, numSamples, 0.0f);</span>
+
+<span class="nc bnc" id="L560" title="All 2 branches missed.">			for(MixerOutput output: mixOutputs)</span>
+<span class="nc" id="L561">				output.mix(mMixBuffer, numSamples);</span>
+
+<span class="nc" id="L563">			mMixSystemOutput.setBuffer(mMixBuffer, numSamples);</span>
+		}
+		
+<span class="nc bnc" id="L566" title="All 2 branches missed.">		while(!sysOutputs.isEmpty())</span>
+		{
+<span class="nc" id="L568">			boolean buffersAreFull = true;</span>
+
+<span class="nc bnc" id="L570" title="All 2 branches missed.">			for(Iterator&lt;SystemOutput&gt; iOutput = sysOutputs.iterator(); iOutput.hasNext(); )</span>
+			{
+<span class="nc" id="L572">				SystemOutput output = iOutput.next();</span>
+
+<span class="nc bnc" id="L574" title="All 2 branches missed.">				if(output.isOpen())</span>
+				{
+<span class="nc bnc" id="L576" title="All 2 branches missed.">					if(!output.receivedData())</span>
+<span class="nc" id="L577">						output.request(); // if we got no sound data we request it</span>
+
+<span class="nc bnc" id="L579" title="All 2 branches missed.">					if(output.receivedData())</span>
+					{
+<span class="nc bnc" id="L581" title="All 2 branches missed.">						if(!output.isConverted())</span>
+<span class="nc" id="L582">							output.convert();</span>
+
+<span class="nc bnc" id="L584" title="All 4 branches missed.">						buffersAreFull = buffersAreFull &amp;&amp; (output.available() == 0);</span>
+
+<span class="nc bnc" id="L586" title="All 2 branches missed.">						if(output.write(1000))</span>
+<span class="nc" id="L587">							continue;</span>
+					}
+				}
+
+<span class="nc" id="L591">				iOutput.remove();</span>
+<span class="nc" id="L592">			}</span>
+
+<span class="nc bnc" id="L594" title="All 4 branches missed.">			if(buffersAreFull &amp;&amp; !mUseDynamicLoadScaling.get())</span>
+<span class="nc" id="L595">				suspendThread(50);</span>
+<span class="nc" id="L596">		}</span>
+<span class="nc" id="L597">	}</span>
+
+	private void init(Mixer mixer, AudioFormat audioFormat, Time bufferDuration, int useMaxMixerLines)
+	{
+<span class="nc" id="L601">        mSystemMixer     = mixer;</span>
+<span class="nc" id="L602">        mBufferDuration  = bufferDuration;</span>
+<span class="nc" id="L603">		mMixSystemOutput = null;</span>
+
+<span class="nc bnc" id="L605" title="All 2 branches missed.">		if(mSystemMixer != null)</span>
+		{
+<span class="nc" id="L607">			DataLine.Info info = new DataLine.Info(SourceDataLine.class, audioFormat, AudioSystem.NOT_SPECIFIED);</span>
+
+			try
+            {
+<span class="nc" id="L611">                SourceDataLine line = (SourceDataLine)mSystemMixer.getLine(info);</span>
+<span class="nc" id="L612">                line.open();</span>
+
+<span class="nc" id="L614">				mMixSystemOutput = new SystemOutput(line);</span>
+<span class="nc" id="L615">				mMaxNumLines     = mSystemMixer.getMaxLines(info);</span>
+<span class="nc bnc" id="L616" title="All 2 branches missed.">				mMaxNumLines     = (mMaxNumLines == AudioSystem.NOT_SPECIFIED) ? (Integer.MAX_VALUE) : (mMaxNumLines);</span>
+<span class="nc" id="L617">				mMaxNumLines     = Math.min(useMaxMixerLines, (mMaxNumLines - 1));</span>
+            }
+<span class="nc" id="L619">            catch(LineUnavailableException e)</span>
+			{
+<span class="nc" id="L621">				logger.warn(&quot;cannot open output line of system mixer device: \&quot;&quot; + e + &quot;\&quot;&quot;);</span>
+			}
+<span class="nc" id="L623">			catch(IllegalArgumentException e)</span>
+			{
+<span class="nc" id="L625">				logger.warn(&quot;cannot open output line of system mixer device: \&quot;&quot; + e + &quot;\&quot;&quot;);</span>
+			}
+<span class="nc" id="L627">			catch(SecurityException e)</span>
+			{
+<span class="nc" id="L629">				logger.warn(&quot;cannot open output line of system mixer device: \&quot;&quot; + e + &quot;\&quot;&quot;);</span>
+<span class="nc" id="L630">			}</span>
+		}
+
+<span class="nc bnc" id="L633" title="All 2 branches missed.">        if(mSystemMixer == null)</span>
+        {
+<span class="nc" id="L635">			logger.info(&quot;try to open a common output line&quot;);</span>
+
+<span class="nc" id="L637">            DataLine.Info datalineInfo = new DataLine.Info(SourceDataLine.class, audioFormat, AudioSystem.NOT_SPECIFIED);</span>
+
+            try
+            {
+<span class="nc" id="L641">                SourceDataLine line = (SourceDataLine)AudioSystem.getLine(datalineInfo);</span>
+<span class="nc" id="L642">                line.open();</span>
+
+<span class="nc" id="L644">				mMixSystemOutput = new SystemOutput(line);</span>
+<span class="nc" id="L645">				mMaxNumLines     = 0;</span>
+            }
+<span class="nc" id="L647">            catch(LineUnavailableException e)</span>
+            {
+<span class="nc" id="L649">				logger.warn(&quot;cannot open common output line for manual mixing of audio data: \&quot;&quot; + e + &quot;\&quot;&quot;);</span>
+            }
+<span class="nc" id="L651">			catch(IllegalArgumentException e)</span>
+			{
+<span class="nc" id="L653">				logger.warn(&quot;cannot open common output line for manual mixing of audio data: \&quot;&quot; + e + &quot;\&quot;&quot;);</span>
+			}
+<span class="nc" id="L655">			catch(SecurityException e)</span>
+			{
+<span class="nc" id="L657">				logger.warn(&quot;cannot open common output line for manual mixing of audio data: \&quot;&quot; + e + &quot;\&quot;&quot;);</span>
+<span class="nc" id="L658">			}</span>
+        }
+
+<span class="nc bnc" id="L661" title="All 4 branches missed.">		if(mSystemMixer == null &amp;&amp; mMixSystemOutput == null)</span>
+<span class="nc" id="L662">			mMaxNumLines = 0;</span>
+<span class="nc" id="L663">	}</span>
+
+    private void suspendThread(long nanos)
+    {
+        try
+        {
+<span class="nc" id="L669">            long millis = nanos / Time.Unit.MILLI.getNanos();</span>
+
+<span class="nc" id="L671">            nanos %= Time.Unit.MILLI.getNanos();</span>
+
+<span class="nc" id="L673">            sleep(millis, (int)nanos);</span>
+        }
+<span class="nc" id="L675">        catch(InterruptedException ex) { }</span>
+<span class="nc" id="L676">    }</span>
+
+    public static Mixer tryToFindMixer(AudioFormat audioFormat)
+    {
+<span class="nc" id="L680">        Mixer.Info[]        mixerInfos   = AudioSystem.getMixerInfo();</span>
+<span class="nc" id="L681">        Mixer[]             mixers       = new Mixer[mixerInfos.length];</span>
+<span class="nc" id="L682">        final DataLine.Info dataLineInfo = new DataLine.Info(SourceDataLine.class, audioFormat);</span>
+
+<span class="nc bnc" id="L684" title="All 2 branches missed.">        if(mixers.length == 0)</span>
+<span class="nc" id="L685">            return null;</span>
+
+<span class="nc bnc" id="L687" title="All 2 branches missed.">        for(int i=0; i&lt;mixerInfos.length; ++i)</span>
+<span class="nc" id="L688">            mixers[i] = AudioSystem.getMixer(mixerInfos[i]);</span>
+        
+<span class="nc" id="L690">        Arrays.sort(mixers, new Comparator&lt;Mixer&gt;()</span>
+<span class="nc" id="L691">        {</span>
+            @Override
+			public int compare(Mixer mixer1, Mixer mixer2)
+            {
+<span class="nc" id="L695">                int numLines1 = mixer1.getMaxLines(dataLineInfo);</span>
+<span class="nc" id="L696">                int numLines2 = mixer2.getMaxLines(dataLineInfo);</span>
+
+<span class="nc bnc" id="L698" title="All 4 branches missed.">                if(numLines1 == AudioSystem.NOT_SPECIFIED || numLines1 &gt; numLines2)</span>
+<span class="nc" id="L699">                    return -1;</span>
+
+<span class="nc" id="L701">                return 1;</span>
+            }
+        });
+
+<span class="nc bnc" id="L705" title="All 2 branches missed.">        if(mixers[0].getMaxLines(dataLineInfo) == 0)</span>
+<span class="nc" id="L706">            return null;</span>
+        
+<span class="nc" id="L708">        return mixers[0];</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

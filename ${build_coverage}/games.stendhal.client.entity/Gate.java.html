@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Gate.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.entity</a> &gt; <span class="el_source">Gate.java</span></div><h1>Gate.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.entity;
+
+import java.awt.geom.Rectangle2D;
+import java.util.LinkedList;
+import java.util.List;
+
+import marauroa.common.game.RPObject;
+import marauroa.common.game.RPObject.ID;
+import marauroa.common.game.RPSlot;
+
+public class Gate implements IEntity {
+
+	private double x;
+	private double y;
+	private double width;
+	private double height;
+	private RPObject rpObject;
+	private double radius;
+
+<span class="fc" id="L32">	public Gate() {</span>
+<span class="fc" id="L33">		radius = 6;</span>
+<span class="fc" id="L34">	}</span>
+
+	@Override
+	public void addChangeListener(final EntityChangeListener&lt;?&gt; listener) {
+		// unused
+<span class="nc" id="L39">	}</span>
+
+	@Override
+	public Rectangle2D getArea() {
+<span class="fc" id="L43">		return new Rectangle2D.Double(getX(), getY(), getWidth(), getHeight());</span>
+	}
+
+	public Rectangle2D getAudibleArea() {
+	
+<span class="fc" id="L48">		return new Rectangle2D.Double(getX() - radius / 2, getY() - radius / 2, radius, radius);</span>
+	}
+
+	@Override
+	public String getEntityClass() {
+<span class="fc bfc" id="L53" title="All 2 branches covered.">		if (rpObject == null) {</span>
+<span class="fc" id="L54">			return &quot;&quot;;</span>
+		}
+<span class="fc" id="L56">		return this.rpObject.get(&quot;class&quot;);</span>
+	}
+
+	@Override
+	public String getEntitySubclass() {
+<span class="pc bpc" id="L61" title="1 of 2 branches missed.">		if (rpObject == null) {</span>
+<span class="nc" id="L62">			return &quot;&quot;;</span>
+		}
+<span class="fc" id="L64">		return this.rpObject.get(&quot;subclass&quot;);</span>
+	}
+
+	@Override
+	public double getHeight() {
+<span class="fc" id="L69">		return height;</span>
+	}
+
+	@Override
+	public ID getID() {
+<span class="fc bfc" id="L74" title="All 2 branches covered.">		if (rpObject == null) {</span>
+<span class="fc" id="L75">			return null;</span>
+		} else {
+<span class="fc" id="L77">			return rpObject.getID();</span>
+		}
+		
+	}
+
+	@Override
+	public String getName() {
+<span class="fc" id="L84">		return &quot;&quot;;</span>
+	}
+
+	@Override
+	public RPObject getRPObject() {
+<span class="fc" id="L89">		return rpObject;</span>
+	}
+
+	@Override
+	public int getResistance() {
+<span class="fc bfc" id="L94" title="All 2 branches covered.">		if (rpObject == null) {</span>
+<span class="fc" id="L95">			return 0;	</span>
+		}
+		
+<span class="fc" id="L98">		return rpObject.getInt(&quot;resistance&quot;);</span>
+	}
+	
+	@Override
+	public int getResistance(final IEntity entity) {
+<span class="fc" id="L103">		return getResistance();</span>
+	}
+
+	@Override
+	public RPSlot getSlot(final String name) {
+<span class="fc" id="L108">		return null;</span>
+	}
+
+	@Override
+	public String getTitle() {
+<span class="fc bfc" id="L113" title="All 2 branches covered.">		if (rpObject == null) {</span>
+<span class="fc" id="L114">			return null;</span>
+		}
+<span class="fc" id="L116">		return rpObject.get(&quot;title&quot;);</span>
+	}
+
+	@Override
+	public String getType() {
+<span class="fc bfc" id="L121" title="All 2 branches covered.">		if (rpObject == null) {</span>
+<span class="fc" id="L122">			return null;</span>
+		}
+<span class="fc" id="L124">		return rpObject.getRPClass().getName();</span>
+	}
+
+	@Override
+	public int getVisibility() {
+<span class="fc" id="L129">		return 100;</span>
+	}
+
+	@Override
+	public double getWidth() {
+<span class="fc" id="L134">		return width;</span>
+	}
+
+	@Override
+	public double getX() {
+<span class="fc" id="L139">		return x;</span>
+	}
+
+	@Override
+	public double getY() {
+<span class="fc" id="L144">		return y;</span>
+	}
+
+	@Override
+	public void initialize(final RPObject object) {
+<span class="fc" id="L149">		x = object.getInt(&quot;x&quot;);</span>
+<span class="fc" id="L150">		y = object.getInt(&quot;y&quot;);</span>
+<span class="fc" id="L151">		width = object.getInt(&quot;width&quot;);</span>
+<span class="fc" id="L152">		height = object.getInt(&quot;height&quot;);</span>
+<span class="fc" id="L153">		this.rpObject = object;</span>
+<span class="fc" id="L154">	}</span>
+
+	@Override
+	public boolean isObstacle(final IEntity entity) {
+<span class="nc bnc" id="L158" title="All 2 branches missed.">		return getResistance() &gt; 0;</span>
+	}
+
+	@Override
+	public boolean isOnGround() {
+<span class="fc" id="L163">		return true;</span>
+	}
+	
+	@Override
+	public boolean isUser() {
+<span class="nc" id="L168">		return false;</span>
+	}
+
+	@Override
+	public void release() {
+		// do nothing
+<span class="nc" id="L174">	}</span>
+
+	@Override
+	public void removeChangeListener(final EntityChangeListener&lt;?&gt; listener) {
+		// unused
+<span class="nc" id="L179">	}</span>
+
+	public void setAudibleRange(final double range) {
+<span class="nc" id="L182">		radius = range;	</span>
+<span class="nc" id="L183">	}</span>
+
+	@Override
+	public void update(final int delta) {
+		// unused
+<span class="nc" id="L188">	}</span>
+
+	@Override
+	public String getCursor() {
+<span class="nc" id="L192">		return &quot;ACTIVITY&quot;;</span>
+	}
+
+	/**
+	 * Get identifier path for the entity.
+	 * 
+	 * @return List of object identifiers and slot names that make up the
+	 * 	complete path to the entity
+	 */
+	@Override
+	public List&lt;String&gt; getPath() {
+<span class="nc" id="L203">		LinkedList&lt;String&gt; path = new LinkedList&lt;String&gt;();</span>
+<span class="nc" id="L204">		RPObject object = getRPObject();</span>
+<span class="nc bnc" id="L205" title="All 2 branches missed.">		while (object != null) {</span>
+			// Prepend the items; They'll be in a nice container-slot-content
+			// order for the server
+<span class="nc" id="L208">			path.add(0, Integer.toString(object.getID().getObjectID()));</span>
+<span class="nc" id="L209">			RPSlot slot = object.getContainerSlot();</span>
+<span class="nc bnc" id="L210" title="All 2 branches missed.">			if (slot != null) {</span>
+<span class="nc" id="L211">				path.add(0, slot.getName());</span>
+			}
+<span class="nc" id="L213">			object = object.getContainer();</span>
+<span class="nc" id="L214">		}</span>
+<span class="nc" id="L215">		return path;</span>
+	}
+
+	@Override
+	public void addContentChangeListener(ContentChangeListener listener) {
+		// unused
+<span class="nc" id="L221">	}</span>
+
+	@Override
+	public void removeContentChangeListener(ContentChangeListener listener) {
+		// unused
+<span class="nc" id="L226">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

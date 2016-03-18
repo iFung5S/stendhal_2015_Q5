@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>GrainField.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.entity</a> &gt; <span class="el_source">GrainField.java</span></div><h1>GrainField.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                      (C) Copyright 2003 - Marauroa                      *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.entity;
+
+import java.awt.Rectangle;
+import java.awt.geom.Rectangle2D;
+
+import marauroa.common.game.RPObject;
+
+/**
+ * A grain field entity.
+ */
+public class GrainField extends Entity {
+	/**
+	 * Ripeness property.
+	 */
+<span class="fc" id="L27">	public static final Property PROP_RIPENESS = new Property();</span>
+
+	/**
+	 * The maximum ripeness.
+	 */
+	private int maxRipeness;
+	
+	/**
+	 * Current ripeness.
+	 */
+	private int ripeness;
+
+	
+
+	/**
+	 * Create a grain field.
+	 */
+<span class="fc" id="L44">	public GrainField() {</span>
+<span class="fc" id="L45">	}</span>
+
+	//
+	// GrainField
+	//
+
+	/**
+	 * Get the maximum ripeness.
+	 * 
+	 * @return The maximum ripeness.
+	 */
+	public int getMaximumRipeness() {
+<span class="nc" id="L57">		return maxRipeness;</span>
+	}
+
+	/**
+	 * Get the ripeness.
+	 * 
+	 * @return The ripeness.
+	 */
+	public int getRipeness() {
+<span class="nc" id="L66">		return ripeness;</span>
+	}
+
+	//
+	// Entity
+	//
+
+	/**
+	 * Get the area the entity occupies.
+	 * 
+	 * @return A rectange (in world coordinate units).
+	 */
+	@Override
+	public Rectangle2D getArea() {
+<span class="nc" id="L80">		return new Rectangle.Double(getX(), getY() + getHeight() - 1,</span>
+				getWidth(), 1);
+	}
+
+	/**
+	 * Initialize this entity for an object.
+	 * 
+	 * @param object
+	 *            The object.
+	 * 
+	 * @see #release()
+	 */
+	@Override
+	public void initialize(final RPObject object) {
+<span class="fc" id="L94">		super.initialize(object);</span>
+
+<span class="pc bpc" id="L96" title="1 of 2 branches missed.">		if (object.has(&quot;ripeness&quot;)) {</span>
+<span class="nc" id="L97">			ripeness = object.getInt(&quot;ripeness&quot;);</span>
+		} else {
+<span class="fc" id="L99">			ripeness = 0;</span>
+		}
+
+		// default values are for compatibility to server &lt;= 0.56
+<span class="pc bpc" id="L103" title="1 of 2 branches missed.">		if (object.has(&quot;max_ripeness&quot;)) {</span>
+<span class="fc" id="L104">			maxRipeness = object.getInt(&quot;max_ripeness&quot;);</span>
+		} else {
+<span class="nc" id="L106">			maxRipeness = 5;</span>
+		}
+<span class="fc" id="L108">	}</span>
+
+	//
+	// RPObjectChangeListener
+	//
+
+	/**
+	 * The object added/changed attribute(s).
+	 * 
+	 * @param object
+	 *            The base object.
+	 * @param changes
+	 *            The changes.
+	 */
+	@Override
+	public void onChangedAdded(final RPObject object, final RPObject changes) {
+<span class="fc" id="L124">		super.onChangedAdded(object, changes);</span>
+
+<span class="pc bpc" id="L126" title="1 of 2 branches missed.">		if (changes.has(&quot;ripeness&quot;)) {</span>
+<span class="nc" id="L127">			ripeness = changes.getInt(&quot;ripeness&quot;);</span>
+<span class="nc" id="L128">			fireChange(PROP_RIPENESS);</span>
+		}
+
+<span class="pc bpc" id="L131" title="1 of 2 branches missed.">		if (object.has(&quot;max_ripeness&quot;)) {</span>
+<span class="nc" id="L132">			maxRipeness = object.getInt(&quot;max_ripeness&quot;);</span>
+		}
+<span class="fc" id="L134">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

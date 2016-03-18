@@ -1,0 +1,372 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>WindowUtils.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui</a> &gt; <span class="el_source">WindowUtils.java</span></div><h1>WindowUtils.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2012 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui;
+
+import games.stendhal.client.gui.wt.core.SettingChangeAdapter;
+import games.stendhal.client.gui.wt.core.SettingChangeListener;
+import games.stendhal.client.gui.wt.core.WtWindowManager;
+import games.stendhal.common.MathHelper;
+
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.Font;
+import java.awt.Frame;
+import java.awt.Window;
+import java.awt.event.ActionEvent;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
+import java.awt.event.KeyEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowStateListener;
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.swing.AbstractAction;
+import javax.swing.Action;
+import javax.swing.InputMap;
+import javax.swing.JComponent;
+import javax.swing.JDialog;
+import javax.swing.JFrame;
+import javax.swing.JRootPane;
+import javax.swing.KeyStroke;
+
+/**
+ * Utilities for system level windows.
+ */
+public class WindowUtils {
+	/** A key that should not get mixed with anything else. */
+	private static final String WINDOW_CLOSE = &quot;org.stendhalgame:window_closing&quot;;
+	/** Font size property name. */
+	private static final String FONT_SIZE_PROPERTY = &quot;ui.font_size&quot;;
+	/** Default font point size. */
+	private static final int DEFAULT_FONT_SIZE = 12;
+	
+	/** Property name used to determine if window dimensions should be restored. */
+	private static final String SAVE_DIMENSIONS_PROPERTY = &quot;ui.dimensions&quot;;
+	/** Prefix for per window size properties. */
+	private static final String PROP_PREFIX = &quot;ui.window.&quot;;
+	
+	/** Windows whose size is being tracked. */
+<span class="nc" id="L60">	private static final Map&lt;Window, ManagedWindowDecorator&gt; trackedWindows = new HashMap&lt;Window, ManagedWindowDecorator&gt;();</span>
+	
+	/**
+	 * Utility class - no instantiation.
+	 */
+<span class="nc" id="L65">	private WindowUtils() {</span>
+<span class="nc" id="L66">	}</span>
+	// getRootPane() in JDialog and JFrame has no common ancestor
+	
+	/**
+	 * Make the dialog close when the used presses escape. The event will be
+	 * the same as when the user closes the window using the window manager.
+	 * 
+	 * @param dialog dialog to make obey the escape key
+	 */
+	public static void closeOnEscape(final JDialog dialog) {
+<span class="nc" id="L76">		closeOnEscape(dialog, dialog.getRootPane());</span>
+<span class="nc" id="L77">	}</span>
+	
+	/**
+	 * Make the window close when the used presses escape. The event will be
+	 * the same as when the user closes the window using the window manager.
+	 * 
+	 * @param frame window to make obey the escape key
+	 */
+	static void closeOnEscape(final JFrame frame) {
+<span class="nc" id="L86">		closeOnEscape(frame, frame.getRootPane());</span>
+<span class="nc" id="L87">	}</span>
+	
+	/**
+	 * Track the windows location so that it can be restored at next client
+	 * start.
+	 * 
+	 * @param window tracked window
+	 * @param windowId identifier for the window. This should be unique for
+	 * 	each window type. The restored location is looked up by the identifier.
+	 * @param followSize track the size of the window too
+	 */
+	public static void trackLocation(Window window, String windowId,
+			final boolean followSize) {
+<span class="nc" id="L100">		final ManagedWindowDecorator mw = new ManagedWindowDecorator(window, windowId);</span>
+<span class="nc" id="L101">		final WtWindowManager manager = WtWindowManager.getInstance();</span>
+		// Avoid specifying any, if the type of the window data has not been
+		// saved before.
+<span class="nc" id="L104">		manager.setDefaultProperties(mw.getName(), false, mw.getX(), mw.getY());</span>
+<span class="nc" id="L105">		manager.formatWindow(mw);</span>
+<span class="nc bnc" id="L106" title="All 2 branches missed.">		if (followSize) {</span>
+<span class="nc" id="L107">			trackedWindows.put(window, mw);</span>
+		}
+		
+<span class="nc" id="L110">		window.addComponentListener(new ComponentAdapter() {</span>
+<span class="nc" id="L111">			final String widthProperty = PROP_PREFIX + mw.getName() + &quot;.width&quot;;</span>
+<span class="nc" id="L112">			final String heightProperty = PROP_PREFIX + mw.getName() + &quot;.height&quot;;</span>
+			
+			@Override
+			public void componentMoved(ComponentEvent e) {
+<span class="nc" id="L116">				WtWindowManager.getInstance().moveTo(mw, mw.getX(), mw.getY());</span>
+<span class="nc" id="L117">			}</span>
+			
+			@Override
+			public void componentResized(ComponentEvent event) {
+				// Ignore tracking until the size has been restored, so that the
+				// stored size does not get overwritten before it has a chance
+				// of being used
+<span class="nc bnc" id="L124" title="All 4 branches missed.">				if (!followSize || !mw.getRestored()) {</span>
+<span class="nc" id="L125">					return;</span>
+				}
+<span class="nc" id="L127">				WtWindowManager manager = WtWindowManager.getInstance();</span>
+<span class="nc bnc" id="L128" title="All 2 branches missed.">				if (!mw.isMaximized()) {</span>
+<span class="nc" id="L129">					manager.setProperty(widthProperty, Integer.toString(mw.getWidth()));</span>
+<span class="nc" id="L130">					manager.setProperty(heightProperty, Integer.toString(mw.getHeight()));</span>
+				}
+<span class="nc" id="L132">			}</span>
+		});
+		
+		// Some maximization changes are not for some reason detected by the
+		// size changes. Check the corresponding low level window events.
+<span class="nc" id="L137">		window.addWindowStateListener(new WindowStateListener() {</span>
+			@Override
+			public void windowStateChanged(WindowEvent e) {
+<span class="nc" id="L140">				manager.setProperty(PROP_PREFIX + mw.getName() + &quot;.maximized&quot;,</span>
+						Boolean.toString(mw.isMaximized()));
+<span class="nc" id="L142">			}</span>
+		});
+<span class="nc" id="L144">	}</span>
+	
+	/**
+	 * Restore the size of a tracked window.
+	 * 
+	 * @param window window whose size should be restored
+	 * 
+	 * @throws IllegalArgumentException in case restoring a window that is not
+	 *	tracked is tried
+	 */
+	public static void restoreSize(Window window) {
+<span class="nc" id="L155">		ManagedWindowDecorator dec = trackedWindows.get(window);</span>
+<span class="nc bnc" id="L156" title="All 2 branches missed.">		if (dec == null) {</span>
+<span class="nc" id="L157">			throw new IllegalArgumentException(&quot;Trying to restore a window that is not being tracked&quot;);</span>
+		}
+<span class="nc" id="L159">		dec.setRestored(true);</span>
+<span class="nc" id="L160">		WtWindowManager wm = WtWindowManager.getInstance();</span>
+<span class="nc bnc" id="L161" title="All 2 branches missed.">		if (!&quot;true&quot;.equals(wm.getProperty(SAVE_DIMENSIONS_PROPERTY, &quot;true&quot;))) {</span>
+<span class="nc" id="L162">			return;</span>
+		}
+		
+<span class="nc" id="L165">		String maximizedProp = PROP_PREFIX + dec.getName() + &quot;.maximized&quot;;</span>
+<span class="nc bnc" id="L166" title="All 2 branches missed.">		if (&quot;true&quot;.equals(wm.getProperty(maximizedProp, &quot;false&quot;))) {</span>
+<span class="nc bnc" id="L167" title="All 2 branches missed.">			if (window instanceof Frame) {</span>
+<span class="nc" id="L168">				((Frame) window).setExtendedState(Frame.MAXIMIZED_BOTH);</span>
+<span class="nc" id="L169">				return;</span>
+			} else {
+				// Should not happen, but handle the situation gracefully
+<span class="nc" id="L172">				wm.setProperty(maximizedProp, &quot;false&quot;);</span>
+			}
+		}
+<span class="nc" id="L175">		int width = wm.getPropertyInt(PROP_PREFIX + dec.getName() + &quot;.width&quot;, -1);</span>
+<span class="nc" id="L176">		int height = wm.getPropertyInt(PROP_PREFIX + dec.getName() + &quot;.height&quot;, -1);</span>
+<span class="nc bnc" id="L177" title="All 4 branches missed.">		if (width != -1 &amp;&amp; height != -1) {</span>
+<span class="nc" id="L178">			window.setSize(width, height);</span>
+		}
+<span class="nc" id="L180">	}</span>
+		
+	/**
+	 * Make the window close when the used presses escape. The event will be
+	 * the same as when the user closes the window using the window manager.
+	 * 
+	 * @param window window to make obey the escape key
+	 * @param root the root container of the window
+	 */
+	private static void closeOnEscape(final Window window, final JRootPane root) {
+<span class="nc" id="L190">		InputMap map = root.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);</span>
+<span class="nc" id="L191">		map.put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), WINDOW_CLOSE);</span>
+<span class="nc" id="L192">		Action dispatchClosing = new AbstractAction() {</span>
+			@Override
+			public void actionPerformed(ActionEvent event) {
+<span class="nc" id="L195">				window.dispatchEvent(new WindowEvent(window, WindowEvent.WINDOW_CLOSING));</span>
+<span class="nc" id="L196">			}</span>
+		};
+<span class="nc" id="L198">		root.getActionMap().put(WINDOW_CLOSE, dispatchClosing);</span>
+<span class="nc" id="L199">	}</span>
+	
+	/**
+	 * Register a component that should watch for default font size changes.
+	 * Typically the component should be the top level window.
+	 * 
+	 * @param component root component for the tree whose font size shall be
+	 * 	changed at default font size changes
+	 */
+	public static void watchFontSize(final Component component) {
+<span class="nc" id="L209">		final SettingChangeListener listener = new SettingChangeAdapter(FONT_SIZE_PROPERTY,</span>
+<span class="nc" id="L210">				Integer.toString(DEFAULT_FONT_SIZE)) {</span>
+			@Override
+			public void changed(String newValue) {
+<span class="nc" id="L213">				int size = MathHelper.parseIntDefault(newValue, DEFAULT_FONT_SIZE);</span>
+<span class="nc" id="L214">				scaleComponentFonts(component, size);</span>
+<span class="nc" id="L215">				component.validate();</span>
+<span class="nc" id="L216">				component.setSize(component.getPreferredSize());</span>
+<span class="nc" id="L217">			}</span>
+		};
+		
+<span class="nc" id="L220">		WtWindowManager.getInstance().registerSettingChangeListener(FONT_SIZE_PROPERTY, listener);</span>
+		
+		/*
+		 * Dialogs typically get disposed when they are closed. Remove the
+		 * listener so that the the dialog and its subcomponents can be
+		 * reclaimed by the garbage collector.
+		 */
+<span class="nc bnc" id="L227" title="All 2 branches missed.">		if (component instanceof Window) {</span>
+<span class="nc" id="L228">			((Window) component).addWindowListener(new WindowAdapter() {</span>
+				@Override
+				public void windowClosed(WindowEvent e) {
+<span class="nc" id="L231">					WtWindowManager.getInstance().deregisterSettingChangeListener(FONT_SIZE_PROPERTY, listener);</span>
+<span class="nc" id="L232">				}</span>
+			});
+		}
+<span class="nc" id="L235">	}</span>
+	
+	/**
+	 * Scale the font of a component and its subcomponents.
+	 * 
+	 * @param component root component
+	 * @param size new font size 
+	 */
+	private static void scaleComponentFonts(Component component, float size) {
+<span class="nc" id="L244">		Font f = component.getFont().deriveFont(size);</span>
+<span class="nc" id="L245">		component.setFont(f);</span>
+<span class="nc bnc" id="L246" title="All 2 branches missed.">		if (component instanceof Container) {</span>
+<span class="nc bnc" id="L247" title="All 2 branches missed.">			for (Component child : ((Container) component).getComponents()) {</span>
+<span class="nc" id="L248">				scaleComponentFonts(child, size);</span>
+			}
+		}
+<span class="nc" id="L251">	}</span>
+	
+	/**
+	 * A wrapper for system windows that lets the {@link WtWindowManager} store
+	 * and restore their locations.
+	 */
+	private static class ManagedWindowDecorator implements ManagedWindow {
+		/** The actual window. */
+		private final Window window;
+		/** Window identifier. */
+		private final String name;
+		/** Size restored status of the window. */
+		private boolean restored;
+		
+		/**
+		 * Create a managed window decorator with an identity for a window. 
+		 * 
+		 * @param window window to decorate
+		 * @param windowId identifier of the decorated window
+		 */
+<span class="nc" id="L271">		ManagedWindowDecorator(Window window, String windowId) {</span>
+<span class="nc" id="L272">			this.window = window;</span>
+<span class="nc" id="L273">			name = &quot;system.&quot; + windowId;</span>
+<span class="nc" id="L274">		}</span>
+		
+		/**
+		 * Check if the window is maximized.
+		 * 
+		 * @return &lt;code&gt;true&lt;/code&gt; if the window is maximized, otherwise
+		 * 	&lt;code&gt;false&lt;/code&gt;
+		 */
+		boolean isMaximized() {
+<span class="nc bnc" id="L283" title="All 2 branches missed.">			if (window instanceof Frame) {</span>
+<span class="nc bnc" id="L284" title="All 2 branches missed.">				return ((Frame) window).getExtendedState() == Frame.MAXIMIZED_BOTH;</span>
+			}
+<span class="nc" id="L286">			return false;</span>
+		}
+		
+		/**
+		 * Get the size restoration status of the window. The size has been
+		 * restored if {@link WindowUtils#restoreSize} has been called with the
+		 * window of this decorator as the parameter. 
+		 * 
+		 * @return &lt;code&gt;true&lt;/code&gt; if the window size has been restored,
+		 * otherwise &lt;code&gt;false&lt;/code&gt;
+		 */
+		boolean getRestored() {
+<span class="nc" id="L298">			return restored;</span>
+		}
+		
+		/**
+		 * Set the size restoration status of this window.
+		 * 
+		 * @param restored new status
+		 */
+		void setRestored(boolean restored) {
+<span class="nc" id="L307">			this.restored = restored;</span>
+<span class="nc" id="L308">		}</span>
+		
+		/**
+		 * Get the window width.
+		 * 
+		 * @return width
+		 */
+		int getWidth() {
+<span class="nc" id="L316">			return window.getWidth();</span>
+		}
+		
+		/**
+		 * Get the window height.
+		 * 
+		 * @return height
+		 */
+		int getHeight() {
+<span class="nc" id="L325">			return window.getHeight();</span>
+		}
+		
+		@Override
+		public String getName() {
+<span class="nc" id="L330">			return name;</span>
+		}
+
+		@Override
+		public int getX() {
+<span class="nc" id="L335">			return window.getX();</span>
+		}
+
+		@Override
+		public int getY() {
+<span class="nc" id="L340">			return window.getY();</span>
+		}
+
+		@Override
+		public boolean isMinimized() {
+			// Treat as always visible to avoid confusion
+<span class="nc" id="L346">			return false;</span>
+		}
+
+		@Override
+		public boolean isVisible() {
+			// Treat as always visible to avoid confusion
+<span class="nc" id="L352">			return false;</span>
+		}
+
+		@Override
+		public boolean moveTo(int x, int y) {
+<span class="nc" id="L357">			window.setLocation(x, y);</span>
+<span class="nc" id="L358">			return true;</span>
+		}
+
+		@Override
+		public void setMinimized(boolean minimized) {
+			// ignore
+<span class="nc" id="L364">		}</span>
+
+		@Override
+		public void setVisible(boolean visible) {
+			// ignore
+<span class="nc" id="L369">		}</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

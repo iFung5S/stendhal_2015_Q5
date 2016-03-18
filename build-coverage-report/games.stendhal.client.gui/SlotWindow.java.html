@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SlotWindow.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui</a> &gt; <span class="el_source">SlotWindow.java</span></div><h1>SlotWindow.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui;
+
+import games.stendhal.client.StendhalClient;
+import games.stendhal.client.entity.IEntity;
+import games.stendhal.client.entity.Inspector;
+import games.stendhal.client.entity.User;
+
+import java.awt.Graphics;
+import java.awt.geom.Rectangle2D;
+
+import marauroa.common.game.RPObject;
+
+/**
+ * A window for showing contents of an entity's slot in a grid of ItemPanels
+ */
+public class SlotWindow extends InternalManagedWindow implements Inspectable {
+	/**
+	 * when the player is this far away from the container, the panel is closed.
+	 */
+	private static final int MAX_DISTANCE = 4;
+	
+	private final SlotGrid content;
+	private IEntity parent;
+	
+	/**
+	 * Create a new EntityContainer.
+	 * 
+	 * @param title window title
+	 * @param width number of slot columns
+	 * @param height number of slot rows
+	 */
+	public SlotWindow(String title, int width, int height) {
+<span class="nc" id="L45">		super(title, title);</span>
+		
+<span class="nc" id="L47">		content = new SlotGrid(width, height);</span>
+<span class="nc" id="L48">		setContent(content);</span>
+<span class="nc" id="L49">	}</span>
+	
+	/**
+	 * Set the types the panels can accept.
+	 * 
+	 * @param types accepted types
+	 */
+	@SafeVarargs
+	public final void setAcceptedTypes(Class&lt;? extends IEntity&gt; ... types) {
+<span class="nc" id="L58">		content.setAcceptedTypes(types);</span>
+<span class="nc" id="L59">	}</span>
+	
+	/**
+	 * Sets the parent entity of the window.
+	 * 
+	 * @param parent entity owning the slot presented by the window
+	 * @param slot slot presented
+	 */
+	public void setSlot(final IEntity parent, final String slot) {
+<span class="nc" id="L68">		this.parent = parent;</span>
+<span class="nc" id="L69">		content.setSlot(parent, slot);</span>
+<span class="nc" id="L70">	}</span>
+	
+	/**
+	 * Set the inspector used for the contained entities.
+	 * 
+	 * @param inspector used inspector
+	 */
+	@Override
+	public void setInspector(Inspector inspector) {
+<span class="nc" id="L79">		content.setInspector(inspector);</span>
+<span class="nc" id="L80">	}</span>
+	
+	@Override
+	public void paint(Graphics g) {
+<span class="nc" id="L84">		super.paint(g);</span>
+		/*
+		 * This needs to be done in paint(), not in paintComponent (as far as
+		 * the check is done at paint time). paintComponent does not necessarily
+		 * get called at all due to InternalWindow using cached drawing. 
+		 */
+<span class="nc" id="L90">		checkDistance();</span>
+<span class="nc" id="L91">	}</span>
+	
+	/**
+	 * Check the distance of the player to the base item. When the player is too
+	 * far away, this panel closes itself.
+	 */
+	private void checkDistance() {
+<span class="nc bnc" id="L98" title="All 2 branches missed.">		if (!isCloseEnough()) {</span>
+<span class="nc" id="L99">			close();</span>
+		}
+<span class="nc" id="L101">	}</span>
+	
+	@Override
+	public void close() {
+<span class="nc" id="L105">		content.release();</span>
+<span class="nc" id="L106">		super.close();</span>
+<span class="nc" id="L107">	}</span>
+	
+	/**
+	 * Check if the user is close enough the parent entity of the slot. If
+	 * the user is too far away the window should not be opened, and it should
+	 * be closed if it was already open.
+	 * 
+	 * @return &lt;code&gt;true&lt;/code&gt; if the user is close enough to have the window
+	 * 	open, &lt;code&gt;false&lt;/code&gt; otherwise.
+	 */
+	public boolean isCloseEnough() {
+<span class="nc" id="L118">		final User user = User.get();</span>
+
+<span class="nc bnc" id="L120" title="All 4 branches missed.">		if ((user != null) &amp;&amp; (parent != null)) {</span>
+			// null checks are fixes for Bug 1825678:
+			// NullPointerException happened
+			// after double clicking one
+			// monster and a fast double
+			// click on another monster
+			
+			// Check if the parent is user
+<span class="nc" id="L128">			RPObject root = parent.getRPObject().getBaseContainer();</span>
+			// We don't want to close our own stuff
+			// The root entity may have been removed, but still if it was
+			// the user we do not want to close it.
+			// User may have been changed by the main thread, so we can not rely
+			// on user.getRPObject() being equal to root. (bug #3159058)
+<span class="nc" id="L134">			final String type = root.getRPClass().getName();</span>
+<span class="nc bnc" id="L135" title="All 4 branches missed.">			if (type.equals(&quot;player&quot;) &amp;&amp; root.has(&quot;name&quot;)) {</span>
+<span class="nc bnc" id="L136" title="All 2 branches missed.">				if (StendhalClient.get().getCharacter().equalsIgnoreCase(</span>
+						root.get(&quot;name&quot;))) {
+<span class="nc" id="L138">					return true;</span>
+				}
+			}
+
+<span class="nc" id="L142">			return isCloseEnough(user.getX(), user.getY());</span>
+		}
+
+<span class="nc" id="L145">		return true;</span>
+	}
+	
+	/**
+	 * Check if the user is close enough the parent entity of the slot. If
+	 * the user is too far away the window should not be opened, and it should
+	 * be closed if it was already open.
+	 * 
+	 * @param x x coordinate of the user
+	 * @param y y coordinate of the user
+	 * @return &lt;code&gt;true&lt;/code&gt; if the user is close enough to have the window
+	 * 	open, &lt;code&gt;false&lt;/code&gt; otherwise.
+	 */
+	private boolean isCloseEnough(final double x, final double y) {
+<span class="nc" id="L159">		final int px = (int) x;</span>
+<span class="nc" id="L160">		final int py = (int) y;</span>
+
+<span class="nc" id="L162">		final Rectangle2D orig = parent.getArea();</span>
+<span class="nc" id="L163">		orig.setRect(orig.getX() - MAX_DISTANCE, orig.getY() - MAX_DISTANCE,</span>
+				orig.getWidth() + MAX_DISTANCE * 2, orig.getHeight()
+						+ MAX_DISTANCE * 2);
+
+<span class="nc" id="L167">		return orig.contains(px, py);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

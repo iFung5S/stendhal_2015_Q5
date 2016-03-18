@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>AbstractBehaviourAction.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.npc.action</a> &gt; <span class="el_source">AbstractBehaviourAction.java</span></div><h1>AbstractBehaviourAction.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2011 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.npc.action;
+
+import games.stendhal.common.grammar.ItemParserResult;
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.core.config.annotations.Dev;
+import games.stendhal.server.core.config.annotations.Dev.Category;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.npc.behaviour.impl.Behaviour;
+import games.stendhal.server.entity.player.Player;
+
+/**
+ * AbstractBehaviourAction is the base of ChatActions handling Behaviour requests.
+ * 
+ * @param &lt;B&gt; behavior type
+ */
+@Dev(category=Category.IGNORE)
+abstract class AbstractBehaviourAction&lt;B extends Behaviour&gt; implements ChatAction {
+
+	protected final B behaviour;
+	protected final String userAction;
+	protected final String npcAction;
+
+<span class="fc" id="L36">	public AbstractBehaviourAction(final B behaviour, String userAction, String npcAction) {</span>
+<span class="fc" id="L37">		this.behaviour = behaviour;</span>
+<span class="fc" id="L38">		this.userAction = userAction;</span>
+<span class="fc" id="L39">		this.npcAction = npcAction;</span>
+<span class="fc" id="L40">	}</span>
+
+	@Override
+	public void fire(final Player player, final Sentence sentence, final EventRaiser npc) {
+<span class="pc bpc" id="L44" title="1 of 2 branches missed.">		if (sentence.hasError()) {</span>
+<span class="nc" id="L45">			fireSentenceError(player, sentence, npc);</span>
+		} else {
+<span class="fc" id="L47">			ItemParserResult res = behaviour.parse(sentence);</span>
+
+<span class="fc bfc" id="L49" title="All 2 branches covered.">			if (res.wasFound()) {</span>
+<span class="fc" id="L50">				fireRequestOK(res, player, sentence, npc);</span>
+			} else {
+<span class="fc" id="L52">				fireRequestError(res, player, sentence, npc);</span>
+			}
+		}
+<span class="fc" id="L55">	}</span>
+
+	/**
+	 * The user input could not be parsed in a valid Sentence.
+	 * fireSentenceError() should inform the player about the problem.
+	 * @param player
+	 * @param sentence
+	 * @param npc
+	 */
+	public void fireSentenceError(Player player, Sentence sentence, EventRaiser npc) {
+<span class="nc" id="L65">		npc.say(&quot;Sorry, I did not understand you. &quot; + sentence.getErrorString());</span>
+<span class="nc" id="L66">	}</span>
+
+	/**
+	 * The user input was parsed as a behaviour request.
+	 * fireRequestOK() should check the request and execute an action as appropriate.
+	 *
+	 * @param res
+	 * @param player
+	 * @param sentence
+	 * @param npc
+	 */
+	public abstract void fireRequestOK(ItemParserResult res, Player player, Sentence sentence, EventRaiser npc);
+
+	/**
+	 * The user input was parsed as valid Sentence, but could not transformed into a Behaviour request.
+	 * fireRequestError() should inform the player about the problem.
+	 *
+	 * @param res
+	 * @param player
+	 * @param sentence
+	 * @param npc
+	 */
+	public abstract void fireRequestError(ItemParserResult res, Player player, Sentence sentence, EventRaiser npc);
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+<span class="nc" id="L93">		int result = 1;</span>
+<span class="nc bnc" id="L94" title="All 2 branches missed.">		result = prime * result</span>
+				+ ((behaviour == null) ? 0 : behaviour.hashCode());
+<span class="nc bnc" id="L96" title="All 2 branches missed.">		result = prime * result</span>
+				+ ((npcAction == null) ? 0 : npcAction.hashCode());
+<span class="nc bnc" id="L98" title="All 2 branches missed.">		result = prime * result</span>
+				+ ((userAction == null) ? 0 : userAction.hashCode());
+<span class="nc" id="L100">		return result;</span>
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+<span class="nc bnc" id="L105" title="All 2 branches missed.">		if (this == obj) {</span>
+<span class="nc" id="L106">			return true;</span>
+		}
+<span class="nc bnc" id="L108" title="All 2 branches missed.">		if (obj == null) {</span>
+<span class="nc" id="L109">			return false;</span>
+		}
+<span class="nc bnc" id="L111" title="All 2 branches missed.">		if (getClass() != obj.getClass()) {</span>
+<span class="nc" id="L112">			return false;</span>
+		}
+
+<span class="nc" id="L115">		AbstractBehaviourAction&lt;?&gt; other = (AbstractBehaviourAction&lt;?&gt;) obj;</span>
+<span class="nc bnc" id="L116" title="All 2 branches missed.">		if (behaviour == null) {</span>
+<span class="nc bnc" id="L117" title="All 2 branches missed.">			if (other.behaviour != null) {</span>
+<span class="nc" id="L118">				return false;</span>
+			}
+<span class="nc bnc" id="L120" title="All 2 branches missed.">		} else if (!behaviour.equals(other.behaviour)) {</span>
+<span class="nc" id="L121">			return false;</span>
+		}
+<span class="nc bnc" id="L123" title="All 2 branches missed.">		if (npcAction == null) {</span>
+<span class="nc bnc" id="L124" title="All 2 branches missed.">			if (other.npcAction != null) {</span>
+<span class="nc" id="L125">				return false;</span>
+			}
+<span class="nc bnc" id="L127" title="All 2 branches missed.">		} else if (!npcAction.equals(other.npcAction)) {</span>
+<span class="nc" id="L128">			return false;</span>
+		}
+<span class="nc bnc" id="L130" title="All 2 branches missed.">		if (userAction == null) {</span>
+<span class="nc bnc" id="L131" title="All 2 branches missed.">			if (other.userAction != null) {</span>
+<span class="nc" id="L132">				return false;</span>
+			}
+<span class="nc bnc" id="L134" title="All 2 branches missed.">		} else if (!userAction.equals(other.userAction)) {</span>
+<span class="nc" id="L135">			return false;</span>
+		}
+<span class="nc" id="L137">		return true;</span>
+	}
+
+	
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

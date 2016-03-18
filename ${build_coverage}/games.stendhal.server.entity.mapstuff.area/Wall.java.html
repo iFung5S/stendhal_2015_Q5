@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Wall.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.mapstuff.area</a> &gt; <span class="el_source">Wall.java</span></div><h1>Wall.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2013 - Faiumoni e. V.                   *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.mapstuff.area;
+
+import games.stendhal.server.entity.Entity;
+import games.stendhal.server.entity.RPEntity;
+import marauroa.common.game.RPClass;
+import marauroa.common.game.Definition.Type;
+
+/**
+ * An entity that just acts as a visible obstacle like a wall.
+ */
+public class Wall extends AreaEntity {
+
+	/**
+	 * Create a wall.
+	 * 
+	 * @param width width
+	 * @param height height
+	 */
+	public Wall(int width, int height) {
+<span class="nc" id="L31">		super(width, height);</span>
+
+<span class="nc" id="L33">		setRPClass(&quot;wall&quot;);</span>
+<span class="nc" id="L34">		put(&quot;type&quot;, &quot;wall&quot;);</span>
+<span class="nc" id="L35">		setResistance(100);</span>
+<span class="nc" id="L36">	}</span>
+
+
+	public static void generateRPClass() {
+<span class="fc" id="L40">		final RPClass clazz = new RPClass(&quot;wall&quot;);</span>
+<span class="fc" id="L41">		clazz.isA(&quot;area&quot;);</span>
+<span class="fc" id="L42">		clazz.addAttribute(&quot;class&quot;, Type.STRING);</span>
+<span class="fc" id="L43">	}</span>
+
+	/**
+	 * Determine if this is an obstacle for another entity.
+	 * 
+	 * @param entity
+	 *            The entity to check against.
+	 * 
+	 * @return &lt;code&gt;true&lt;/code&gt; if the other entity is an RPEntity, otherwise
+	 *         the default.
+	 */
+	@Override
+	public boolean isObstacle(final Entity entity) {
+<span class="nc bnc" id="L56" title="All 2 branches missed.">		if (entity instanceof RPEntity) {</span>
+<span class="nc" id="L57">			return true;</span>
+		}
+
+<span class="nc" id="L60">		return super.isObstacle(entity);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

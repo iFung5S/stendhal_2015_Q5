@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Direction.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.common</a> &gt; <span class="el_source">Direction.java</span></div><h1>Direction.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2012 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.common;
+
+import java.awt.geom.Rectangle2D;
+
+/**
+ * a direction to face or walk to
+ *
+ * @author hendrik
+ */
+<span class="pc" id="L22">public enum Direction {</span>
+	/** do not move */
+<span class="fc" id="L24">	STOP(0, 0, 0) {</span>
+		@Override
+		public Direction nextDirection() {
+<span class="fc" id="L27">			return LEFT;</span>
+		}
+		@Override
+		public Direction oppositeDirection() {
+<span class="fc" id="L31">			return STOP;</span>
+		}
+
+	},
+	/** up, away from the screen */
+<span class="fc" id="L36">	UP(1, 0, -1) {</span>
+		@Override
+		public Direction nextDirection() {
+<span class="fc" id="L39">			return RIGHT;</span>
+		}
+		@Override
+		public Direction oppositeDirection() {
+<span class="fc" id="L43">			return DOWN;</span>
+		}
+	},
+	/** to the right */
+<span class="fc" id="L47">	RIGHT(2, 1, 0) {</span>
+		@Override
+		public Direction nextDirection() {
+<span class="fc" id="L50">			return DOWN;</span>
+		}
+		@Override
+		public Direction oppositeDirection() {
+<span class="fc" id="L54">			return LEFT;</span>
+		}
+	},
+	/** down, facing the player */
+<span class="fc" id="L58">	DOWN(3, 0, 1) {</span>
+		@Override
+		public Direction nextDirection() {
+<span class="fc" id="L61">			return LEFT;</span>
+		}
+		@Override
+		public Direction oppositeDirection() {
+<span class="fc" id="L65">			return UP;</span>
+		}
+	},
+	/** to the left */
+<span class="fc" id="L69">	LEFT(4, -1, 0) {</span>
+		@Override
+		public Direction nextDirection() {
+<span class="fc" id="L72">			return UP;</span>
+		}
+		@Override
+		public Direction oppositeDirection() {
+<span class="fc" id="L76">			return RIGHT;</span>
+		}
+	};
+
+	private final int val;
+	private final int dx;
+	private final int dy;
+
+	/**
+	 * converts an integer to a Direction
+	 *
+	 * @param val int
+	 * @return Direction
+	 */
+	public static Direction build(final int val) {
+<span class="fc bfc" id="L91" title="All 10 branches covered.">		switch (val) {</span>
+		case 1:
+<span class="fc" id="L93">			return UP;</span>
+
+		case 2:
+<span class="fc" id="L96">			return RIGHT;</span>
+
+		case 3:
+<span class="fc" id="L99">			return DOWN;</span>
+
+		case 4:
+<span class="fc" id="L102">			return LEFT;</span>
+
+		default:
+<span class="fc" id="L105">			return STOP;</span>
+
+		}
+	}
+
+	/**
+	 * gets the delta on the x-axis
+	 *
+	 * @return delta x
+	 */
+	public int getdx() {
+<span class="fc" id="L116">		return dx;</span>
+	}
+
+	/**
+	 * gets the delta on the y-axis
+	 *
+	 * @return dy
+	 */
+	public int getdy() {
+<span class="fc" id="L125">		return dy;</span>
+	}
+
+	/**
+	 * gets a random direction
+	 *
+	 * @return Direction
+	 */
+	public static Direction rand() {
+<span class="fc" id="L134">		return Direction.values()[Rand.rand(4) + 1];</span>
+	}
+
+	/**
+	 * creates a direction
+	 *
+	 * @param val index
+	 * @param dx  delta on the x-axis
+	 * @param dy  delta on the y-axis
+	 */
+<span class="fc" id="L144">	Direction(final int val, final int dx, final int dy) {</span>
+<span class="fc" id="L145">		this.val = val;</span>
+<span class="fc" id="L146">		this.dx = dx;</span>
+<span class="fc" id="L147">		this.dy = dy;</span>
+<span class="fc" id="L148">	}</span>
+
+	/**
+	 * gets the index
+	 *
+	 * @return index
+	 */
+	public int get() {
+<span class="fc" id="L156">		return val;</span>
+	}
+	
+	/**
+	 * Compares two area and return the direction of area2 towards area1. So if area2 is left of
+	 * area1, it will return Direction.LEFT
+	 * @param area1 The area to compare with
+	 * @param area2 The area to be compared
+	 * @return The Direction of area2 as seen from area1
+	 */
+	public static Direction getAreaDirectionTowardsArea(final Rectangle2D area1, final Rectangle2D area2) {
+<span class="fc" id="L167">		final double x = area2.getCenterX() - area1.getCenterX();</span>
+<span class="fc" id="L168">		final double y = area2.getCenterY() - area1.getCenterY();</span>
+<span class="fc bfc" id="L169" title="All 4 branches covered.">		if (Math.abs(x) &gt; Math.abs(y)) {</span>
+<span class="fc bfc" id="L170" title="All 4 branches covered.">			if (x &gt; 0) {</span>
+<span class="fc" id="L171">				return RIGHT;</span>
+			} else {
+<span class="fc" id="L173">				return LEFT;</span>
+			}
+		} else {
+<span class="fc bfc" id="L176" title="All 4 branches covered.">			if (y &gt; 0) {</span>
+<span class="fc" id="L177">				return DOWN;</span>
+			} else {
+<span class="fc" id="L179">				return UP;</span>
+			}
+		}
+	}
+
+	/**
+	 * gets the opposite direction
+	 *
+	 * @return Direction
+	 */
+	public abstract Direction oppositeDirection();
+
+	/**
+	 * gets the next direction clockwise
+	 *
+	 * @return Direction
+	 */
+	public abstract Direction nextDirection();
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

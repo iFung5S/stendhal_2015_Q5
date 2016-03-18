@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>CommandCenter.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.actions</a> &gt; <span class="el_source">CommandCenter.java</span></div><h1>CommandCenter.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.actions;
+
+import games.stendhal.common.constants.Actions;
+import games.stendhal.common.parser.SimilarExprMatcher;
+import games.stendhal.server.actions.admin.AdministrationAction;
+import games.stendhal.server.actions.admin.BanAction;
+import games.stendhal.server.actions.attack.AttackAction;
+import games.stendhal.server.actions.attack.StopAction;
+import games.stendhal.server.actions.buddy.BuddyAction;
+import games.stendhal.server.actions.chat.AwayAction;
+import games.stendhal.server.actions.chat.ChatAction;
+import games.stendhal.server.actions.chat.StoreMessageAction;
+import games.stendhal.server.actions.equip.DisplaceAction;
+import games.stendhal.server.actions.equip.DropAction;
+import games.stendhal.server.actions.equip.EquipAction;
+import games.stendhal.server.actions.equip.ReorderAction;
+import games.stendhal.server.actions.move.FaceAction;
+import games.stendhal.server.actions.move.MoveAction;
+import games.stendhal.server.actions.move.MoveToAction;
+import games.stendhal.server.actions.move.PushAction;
+import games.stendhal.server.actions.move.AutoWalkAction;
+import games.stendhal.server.actions.pet.ForsakeAction;
+import games.stendhal.server.actions.pet.NameAction;
+import games.stendhal.server.actions.pet.OwnAction;
+import games.stendhal.server.actions.query.InfoAction;
+import games.stendhal.server.actions.query.LanguageAction;
+import games.stendhal.server.actions.query.ListProducersAction;
+import games.stendhal.server.actions.query.LookAction;
+import games.stendhal.server.actions.query.ProgressStatusQueryAction;
+import games.stendhal.server.actions.query.QuestListAction;
+import games.stendhal.server.actions.query.WhereAction;
+import games.stendhal.server.actions.query.WhoAction;
+import games.stendhal.server.actions.spell.CastSpellAction;
+import games.stendhal.server.core.engine.Translate;
+import games.stendhal.server.entity.player.Player;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+
+import marauroa.common.game.RPAction;
+import marauroa.common.game.RPObject;
+
+import org.apache.log4j.Logger;
+
+/**
+ * Handles actions sent by the client. They are dispatched to the
+ * specialized action classes in which they are processed.
+ */
+<span class="nc" id="L62">public class CommandCenter {</span>
+<span class="fc" id="L63">	private static final UnknownAction UNKNOWN_ACTION = new UnknownAction();</span>
+	private static ConcurrentHashMap&lt;String, ActionListener&gt; actionsMap;
+<span class="fc" id="L65">	private static Logger logger = Logger.getLogger(CommandCenter.class);</span>
+
+	private static ConcurrentHashMap&lt;String, ActionListener&gt; getActionsMap() {
+<span class="fc bfc" id="L68" title="All 2 branches covered.">		if (actionsMap == null) {</span>
+<span class="fc" id="L69">			actionsMap = new ConcurrentHashMap&lt;String, ActionListener&gt;();</span>
+<span class="fc" id="L70">			registerActions();</span>
+		}
+<span class="fc" id="L72">		return actionsMap;</span>
+	}
+
+	public static void register(final String action, final ActionListener actionClass) {
+<span class="fc" id="L76">		final ActionListener command = getActionsMap().put(action, actionClass);</span>
+
+		//TODO mf - register slash commands as verbs in WordList
+		//		WordList.getInstance().registerVerb(action);
+<span class="fc bfc" id="L80" title="All 2 branches covered.">		if (command != null) {</span>
+<span class="fc" id="L81">			logger.error(&quot;ActionListener &quot; + command.getClass()</span>
+					+ &quot; for action &quot; + action + &quot; was replaced with  &quot;
+					+ CommandCenter.getAction(action).getClass());
+		}
+<span class="fc" id="L85">	}</span>
+
+	public static void register(final String action, final ActionListener actionClass,
+			final int requiredAdminLevel) {
+<span class="fc" id="L89">		register(action, actionClass);</span>
+<span class="fc" id="L90">		AdministrationAction.registerCommandLevel(action, requiredAdminLevel);</span>
+<span class="fc" id="L91">	}</span>
+
+	private static void registerActions() {
+<span class="fc" id="L94">		AdministrationAction.registerActions();</span>
+<span class="fc" id="L95">		AttackAction.register();</span>
+<span class="fc" id="L96">		AwayAction.register();</span>
+<span class="fc" id="L97">		BanAction.register();</span>
+<span class="fc" id="L98">		BuddyAction.register();</span>
+<span class="fc" id="L99">		CastSpellAction.register();</span>
+<span class="fc" id="L100">		ChatAction.register();</span>
+<span class="fc" id="L101">		CStatusAction.register();</span>
+<span class="fc" id="L102">		DisplaceAction.register();</span>
+<span class="fc" id="L103">		DropAction.register();</span>
+<span class="fc" id="L104">		EquipAction.register();</span>
+<span class="fc" id="L105">		FaceAction.register();</span>
+<span class="fc" id="L106">		ForsakeAction.register();</span>
+<span class="fc" id="L107">		GroupManagementAction.register();</span>
+<span class="fc" id="L108">		KnockAction.register();</span>
+<span class="fc" id="L109">		LanguageAction.register();</span>
+<span class="fc" id="L110">		ListProducersAction.register();</span>
+<span class="fc" id="L111">		LookAction.register();</span>
+<span class="fc" id="L112">		MoveAction.register();</span>
+<span class="fc" id="L113">		MoveToAction.register();</span>
+<span class="fc" id="L114">		NameAction.register();</span>
+<span class="fc" id="L115">		OutfitAction.register();</span>
+<span class="fc" id="L116">		OwnAction.register();</span>
+<span class="fc" id="L117">		ProgressStatusQueryAction.register();</span>
+<span class="fc" id="L118">		PushAction.register();</span>
+<span class="fc" id="L119">		QuestListAction.register();</span>
+<span class="fc" id="L120">		ReorderAction.register();</span>
+<span class="fc" id="L121">		SentenceAction.register();</span>
+<span class="fc" id="L122">		StoreMessageAction.register();</span>
+<span class="fc" id="L123">		StopAction.register();</span>
+<span class="fc" id="L124">		TradeAction.register();</span>
+<span class="fc" id="L125">		UseAction.register();</span>
+<span class="fc" id="L126">		AutoWalkAction.register();</span>
+<span class="fc" id="L127">		WhereAction.register();</span>
+<span class="fc" id="L128">		WhoAction.register();</span>
+<span class="fc" id="L129">		register(&quot;info&quot;, new InfoAction());</span>
+<span class="fc" id="L130">		register(&quot;markscroll&quot;, new MarkScrollAction());</span>
+<span class="fc" id="L131">	}</span>
+
+	/**
+	 * executes an action from the client
+	 *
+	 * @param caster player requesting the action
+	 * @param action action details
+	 * @return true, if it was processed
+	 */
+	public static boolean execute(final RPObject caster, final RPAction action) {
+		try {
+<span class="fc bfc" id="L142" title="All 2 branches covered.">			if (caster instanceof Player) {</span>
+<span class="fc" id="L143">				final Player player = (Player) caster;</span>
+<span class="fc" id="L144">				Translate.setThreadLanguage(player.getLanguage());</span>
+<span class="fc" id="L145">				final ActionListener actionListener = getAction(action);</span>
+<span class="fc" id="L146">				final String type = action.get(Actions.TYPE);</span>
+<span class="fc bfc" id="L147" title="All 2 branches covered.">				if (!AdministrationAction.isPlayerAllowedToExecuteAdminCommand(player, type, true)) {</span>
+<span class="fc" id="L148">					return false;</span>
+				}
+<span class="fc" id="L150">				actionListener.onAction(player, action);</span>
+<span class="fc" id="L151">				Translate.setThreadLanguage(null);</span>
+<span class="fc" id="L152">				return true;</span>
+			} else {
+<span class="fc" id="L154">				logger.error(&quot;caster is no Player; cannot execute action &quot; + action +</span>
+						&quot; send by &quot; + caster, new Throwable());
+<span class="fc" id="L156">				return false;</span>
+			}
+<span class="nc" id="L158">		} catch (final Exception e) {</span>
+<span class="nc" id="L159">			logger.error(&quot;Cannot execute action &quot; + action + &quot; send by &quot;</span>
+					+ caster, e);
+<span class="nc" id="L161">			return false;</span>
+		}
+	}
+
+	private static ActionListener getAction(final RPAction action) {
+<span class="pc bpc" id="L166" title="1 of 2 branches missed.">		if (action == null) {</span>
+<span class="nc" id="L167">			return UNKNOWN_ACTION;</span>
+		} else {
+<span class="fc" id="L169">			String type = action.getRPClass().getName();</span>
+<span class="pc bpc" id="L170" title="1 of 2 branches missed.">			if (type.equals(&quot;&quot;)) {</span>
+<span class="fc" id="L171">				type = action.get(&quot;type&quot;);</span>
+			}
+<span class="fc" id="L173">			return getAction(type);</span>
+		}
+	}
+
+	private static ActionListener getAction(final String type) {
+<span class="fc bfc" id="L178" title="All 2 branches covered.">		if (type == null) {</span>
+<span class="fc" id="L179">			return UNKNOWN_ACTION;</span>
+		}
+
+<span class="fc" id="L182">		ActionListener action = getActionsMap().get(type);</span>
+<span class="fc bfc" id="L183" title="All 2 branches covered.">		if (action == null) {</span>
+			// Look up for close matches that can be suggested to the user.
+<span class="fc" id="L185">			List&lt;String&gt; suggestions = new ArrayList&lt;String&gt;();</span>
+<span class="fc bfc" id="L186" title="All 2 branches covered.">			for (String s : getActionsMap().keySet()) {</span>
+<span class="fc bfc" id="L187" title="All 2 branches covered.">				if (SimilarExprMatcher.isSimilar(type, s, 0.1)) {</span>
+<span class="fc" id="L188">					suggestions.add(s);</span>
+				}
+<span class="fc" id="L190">			}</span>
+<span class="fc bfc" id="L191" title="All 2 branches covered.">			if (suggestions.size() != 0) {</span>
+<span class="fc" id="L192">				return new UnknownAction(suggestions);</span>
+			}
+
+<span class="fc" id="L195">			return UNKNOWN_ACTION;</span>
+		} else {
+<span class="fc" id="L197">			return action;</span>
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

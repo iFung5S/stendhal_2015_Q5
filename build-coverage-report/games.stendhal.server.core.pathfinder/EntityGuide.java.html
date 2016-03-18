@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>EntityGuide.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.core.pathfinder</a> &gt; <span class="el_source">EntityGuide.java</span></div><h1>EntityGuide.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.core.pathfinder;
+
+import games.stendhal.server.entity.GuidedEntity;
+
+import java.util.List;
+
+/**
+ * the guide dog of an Entity. this class takes the goals where an Entity shall
+ * move to via a path. and keeps control over the steps.
+ * 
+ * The guided Entity can always change the destination. Like a blind person can
+ * tell its guide dog.
+ * 
+ * @author astrid
+ * 
+ */
+<span class="fc" id="L29">public class EntityGuide {</span>
+
+	public void guideMe(final GuidedEntity ge) {
+		// empty default implementation
+<span class="fc" id="L33">	}</span>
+
+	/**
+	 * The path.
+	 */
+	public FixedPath path;
+	/**
+	 * current position in the path.
+	 */
+	public int pathPosition;
+
+	public boolean followPath(final GuidedEntity entity) {
+<span class="fc" id="L45">		return Path.followPath(entity);</span>
+	}
+
+	public void clearPath() {
+<span class="fc" id="L49">		path = null;</span>
+<span class="fc" id="L50">		pathPosition = 0;</span>
+
+<span class="fc" id="L52">	}</span>
+	
+	/**
+	 * Turn the entity face the next node on the path.
+	 * If the entity following the path just reached the
+	 * last node, stop the entity.
+	 * 
+	 * @param entity the guided entity
+	 */
+	public void faceNext(GuidedEntity entity) {
+<span class="nc bnc" id="L62" title="All 4 branches missed.">		if (path != null &amp;&amp; nodeReached(entity)) {</span>
+<span class="nc" id="L63">			Node next = nextNode();</span>
+<span class="nc bnc" id="L64" title="All 2 branches missed.">			if (next != null) {</span>
+<span class="nc" id="L65">				entity.faceto(next.getX(), next.getY());</span>
+			} else {
+				// There is no next path; Stop the entity so that the
+				// client gets the information in time
+<span class="nc" id="L69">				entity.stop();</span>
+			}
+		}
+<span class="nc" id="L72">	}</span>
+	
+	/**
+	 * @return
+	 *         Entity's last position
+	 */
+	public int getPreviousPosition() {
+<span class="nc" id="L79">	    int prevPos = pathPosition - 1;</span>
+<span class="nc bnc" id="L80" title="All 2 branches missed.">	    if (prevPos &lt; 0) {</span>
+<span class="nc" id="L81">	        prevPos = path.getNodeList().size() - 1;</span>
+	    }
+	    
+<span class="nc" id="L84">	    return prevPos;</span>
+	}
+	
+	/**
+	 * Get the next node on the path.
+	 * 
+	 * @return The next &lt;code&gt;Node&lt;/code&gt;, or &lt;code&gt;null&lt;/code&gt; if there is no next node.
+	 */
+	private Node nextNode() {
+<span class="nc" id="L93">		final List&lt;Node&gt; nodes = path.getNodeList();</span>
+<span class="nc" id="L94">		int nextPos = pathPosition + 1;</span>
+<span class="nc" id="L95">		Node next = null;</span>
+		
+<span class="nc bnc" id="L97" title="All 2 branches missed.">		if (nextPos &lt; nodes.size()) {</span>
+<span class="nc" id="L98">			next = nodes.get(nextPos);</span>
+<span class="nc bnc" id="L99" title="All 2 branches missed.">		} else if (path.isLoop()) {</span>
+<span class="nc" id="L100">			next = nodes.get(0);</span>
+		}
+		
+<span class="nc" id="L103">		return next;</span>
+	}
+
+	/**
+	 * Check if the entity has reached the current goal.
+	 * 
+	 * @param entity the guided entity
+	 * @return true iff the current goal node has been reached
+	 */
+	private boolean nodeReached(GuidedEntity entity) {
+<span class="nc" id="L113">		Node previous = path.getNodeList().get(pathPosition);</span>
+
+<span class="nc bnc" id="L115" title="All 4 branches missed.">		return ((previous.getX() == entity.getX())</span>
+			&amp;&amp; (previous.getY() == entity.getY()));
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

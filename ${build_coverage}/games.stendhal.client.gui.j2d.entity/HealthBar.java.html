@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>HealthBar.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui.j2d.entity</a> &gt; <span class="el_source">HealthBar.java</span></div><h1>HealthBar.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2012 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui.j2d.entity;
+
+import games.stendhal.client.gui.LinearScalingModel;
+
+import java.awt.Color;
+import java.awt.Graphics;
+import java.awt.image.BufferedImage;
+
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
+
+/**
+ * Health bar for RPEntities.
+ */
+class HealthBar implements ChangeListener {
+	private final int width, height;
+	private BufferedImage image;
+	private final LinearScalingModel model;
+	/** A flag for signaling that the image needs updating. */
+<span class="nc" id="L31">	private volatile boolean needsRedraw = true;</span>
+	
+	/**
+	 * Create a health bar.
+	 * 
+	 * @param width width of the bar
+	 * @param height height of the bar
+	 */
+<span class="nc" id="L39">	HealthBar(int width, int height) {</span>
+<span class="nc" id="L40">		this.width = width;</span>
+<span class="nc" id="L41">		this.height = height;</span>
+<span class="nc" id="L42">		model = new LinearScalingModel(1.0, width - 2);</span>
+<span class="nc" id="L43">		model.addChangeListener(this);</span>
+<span class="nc" id="L44">	}</span>
+	
+	/**
+	 * Get the bar height.
+	 * 
+	 * @return height
+	 */
+	int getHeight() {
+<span class="nc" id="L52">		return height;</span>
+	}
+
+	/**
+	 * Get the bar width.
+	 * 
+	 * @return width
+	 */
+	int getWidth() {
+<span class="nc" id="L61">		return width;</span>
+	}
+	
+	/**
+	 * Set the HP ratio.
+	 * 
+	 * @param hpRatio new HP ratio
+	 */
+	void setHPRatio(double hpRatio) {
+<span class="nc" id="L70">		model.setValue(hpRatio);</span>
+<span class="nc" id="L71">	}</span>
+	
+	/**
+	 * Draw the health bar.
+	 * 
+	 * @param g graphics
+	 * @param x x coordinate of the top left corner
+	 * @param y y coordinate of the top left corner
+	 */
+	void draw(Graphics g, int x, int y) {
+<span class="nc bnc" id="L81" title="All 2 branches missed.">		if (image == null) {</span>
+<span class="nc" id="L82">			image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);</span>
+		}
+
+<span class="nc bnc" id="L85" title="All 2 branches missed.">		if (needsRedraw) {</span>
+			/*
+			 * Toggle the flag first, so that if the game loop changes it to
+			 * true while we are updating the image, it will result in a new
+			 * update at the next screen redraw. The unlikely case that
+			 * game loop sets it to true *again* between the check above and our
+			 * reset of the flag is not a problem - we already have the correct
+			 * data for the second draw request.
+			 */
+<span class="nc" id="L94">			needsRedraw = false;</span>
+<span class="nc" id="L95">			Graphics gr = image.createGraphics();</span>
+<span class="nc" id="L96">			drawImage(gr);</span>
+<span class="nc" id="L97">			gr.dispose();</span>
+		}
+<span class="nc" id="L99">		g.drawImage(image, x, y, null);</span>
+<span class="nc" id="L100">	}</span>
+	
+	/**
+	 * Draw the health bar image.
+	 * 
+	 * @param g graphics
+	 */
+	private void drawImage(Graphics g) {
+<span class="nc" id="L108">		g.setColor(Color.GRAY);</span>
+<span class="nc" id="L109">		g.fillRect(1, 1, width, height);</span>
+
+<span class="nc" id="L111">		g.setColor(determineColor());</span>
+<span class="nc" id="L112">		g.fillRect(1, 1, model.getRepresentation(), height - 2);</span>
+
+<span class="nc" id="L114">		g.setColor(Color.BLACK);</span>
+<span class="nc" id="L115">		g.drawRect(0, 0, width - 1, height - 1);</span>
+<span class="nc" id="L116">	}</span>
+	
+	/**
+	 * Determine the health bar color.
+	 * 
+	 * @return bar color
+	 */
+	private Color determineColor() {
+<span class="nc" id="L124">		float hpRatio = (float) model.getValue();</span>
+
+<span class="nc" id="L126">		float r = Math.min((1.0f - hpRatio) * 2.0f, 1.0f);</span>
+<span class="nc" id="L127">		float g = Math.min(hpRatio * 2.0f, 1.0f);</span>
+<span class="nc" id="L128">		return new Color(r, g, 0.0f);</span>
+	}
+
+	@Override
+	public void stateChanged(ChangeEvent e) {
+		/*
+		 * State changes are originated by the game loop thread. needsRedraw is
+		 * volatile so the model will have correct data for the EDT.
+		 */
+<span class="nc" id="L137">		needsRedraw = true;</span>
+<span class="nc" id="L138">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

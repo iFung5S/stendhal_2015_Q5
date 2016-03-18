@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Spell2DView.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui.j2d.entity</a> &gt; <span class="el_source">Spell2DView.java</span></div><h1>Spell2DView.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui.j2d.entity;
+
+
+import java.awt.Color;
+import java.awt.Graphics2D;
+
+import games.stendhal.client.entity.ActionType;
+import games.stendhal.client.entity.IEntity;
+import games.stendhal.client.gui.j2DClient;
+import games.stendhal.client.gui.j2d.entity.helpers.DrawingHelper;
+import games.stendhal.client.gui.j2d.entity.helpers.HorizontalAlignment;
+import games.stendhal.client.gui.j2d.entity.helpers.VerticalAlignment;
+import games.stendhal.client.sprite.SpriteStore;
+import games.stendhal.client.sprite.TextSprite;
+
+
+import marauroa.common.game.RPObject;
+import marauroa.common.game.RPSlot;
+
+import org.apache.log4j.Logger;
+
+/**
+ * The 2D view of a spell.
+ */
+<span class="nc" id="L37">class Spell2DView extends Entity2DView&lt;IEntity&gt; {</span>
+
+<span class="nc" id="L39">	private static final Logger logger = Logger.getLogger(Spell2DView.class);</span>
+
+	//
+	// Entity2DView
+	//
+
+	/**
+	 * Build the visual representation of this entity.
+	 */
+	@Override
+	protected void buildRepresentation(IEntity entity) {
+<span class="nc" id="L50">		String translate = translate(getClassResourcePath());</span>
+<span class="nc" id="L51">		logger.debug(&quot;Sprite path: &quot; + translate);</span>
+<span class="nc" id="L52">		setSprite(SpriteStore.get()</span>
+				.getSprite(translate));
+<span class="nc" id="L54">	}</span>
+
+
+	/**
+	 * Determines on top of which other entities this entity should be drawn.
+	 * Entities with a high Z index will be drawn on top of ones with a lower Z
+	 * index.
+	 *
+	 * Also, players can only interact with the topmost entity.
+	 *
+	 * @return The drawing index.
+	 */
+	@Override
+	public int getZIndex() {
+<span class="nc" id="L68">		return 7000;</span>
+	}
+
+	/**
+	 * Translate a resource name into it's sprite image path.
+	 *
+	 * @param name
+	 *            The resource name.
+	 *
+	 * @return The full resource name.
+	 */
+	@Override
+	protected String translate(final String name) {
+<span class="nc" id="L81">		String translatedname = translateName(name);</span>
+<span class="nc" id="L82">		return &quot;data/sprites/spells/&quot; + translatedname + &quot;.png&quot;;</span>
+	}
+
+	private String translateName(String name) {
+<span class="nc" id="L86">		return name.replaceAll(&quot; &quot;, &quot;_&quot;);</span>
+	}
+
+	@Override
+	void entityChanged(final Object property) {
+<span class="nc" id="L91">		super.entityChanged(property);</span>
+
+<span class="nc bnc" id="L93" title="All 2 branches missed.">		if (property == IEntity.PROP_CLASS) {</span>
+<span class="nc" id="L94">			representationChanged = true;</span>
+		}
+<span class="nc" id="L96">	}</span>
+
+	//
+	// EntityView
+	//
+
+	/**
+	 * Perform the default action.
+	 */
+	@Override
+	public void onAction() {
+<span class="nc" id="L107">		onAction(ActionType.USE);</span>
+<span class="nc" id="L108">	}</span>
+
+	/**
+	 * Perform an action.
+	 *
+	 * @param at
+	 *            The action.
+	 */
+	@Override
+	public void onAction(final ActionType at) {
+<span class="nc bnc" id="L118" title="All 2 branches missed.">		if (isReleased()) {</span>
+<span class="nc" id="L119">			return;</span>
+		}
+<span class="nc bnc" id="L121" title="All 2 branches missed.">		switch (at) {</span>
+		case USE:
+<span class="nc" id="L123">			j2DClient.get().switchToSpellState(this.entity.getRPObject());</span>
+<span class="nc" id="L124">			break;</span>
+
+		default:
+<span class="nc" id="L127">			super.onAction(at);</span>
+<span class="nc" id="L128">			break;</span>
+		}
+<span class="nc" id="L130">	}</span>
+
+	/**
+	 * Additionally draws the position of this spell in the spells slot
+	 */
+	@Override
+	protected void draw(Graphics2D g2d, int x, int y, int width, int height) {
+<span class="nc" id="L137">		super.draw(g2d, x, y, width, height);</span>
+<span class="nc" id="L138">		TextSprite positionSprite = TextSprite.createTextSprite(getPositionInSlot(), Color.WHITE);</span>
+<span class="nc" id="L139">		DrawingHelper.drawAlignedSprite(g2d, positionSprite, HorizontalAlignment.LEFT, VerticalAlignment.TOP, x, y, width, height);</span>
+<span class="nc" id="L140">	}</span>
+
+
+	private String getPositionInSlot() {
+<span class="nc" id="L144">		RPSlot slot = this.entity.getRPObject().getContainerSlot();</span>
+<span class="nc" id="L145">		Integer position = Integer.valueOf(1);</span>
+<span class="nc bnc" id="L146" title="All 2 branches missed.">		for (RPObject spell : slot) {</span>
+<span class="nc bnc" id="L147" title="All 2 branches missed.">			if(spell.equals(this.entity.getRPObject())) {</span>
+<span class="nc" id="L148">				break;</span>
+			}
+<span class="nc" id="L150">			position = Integer.valueOf(position.intValue() + 1);</span>
+<span class="nc" id="L151">		}</span>
+<span class="nc" id="L152">		return position.toString();</span>
+	}
+	
+	@Override
+	public boolean isMovable() {
+<span class="nc" id="L157">		return true;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

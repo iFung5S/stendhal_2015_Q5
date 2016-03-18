@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>PoisonStatusHandler.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.status</a> &gt; <span class="el_source">PoisonStatusHandler.java</span></div><h1>PoisonStatusHandler.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                (C) Copyright 2005-2013 - Faiumoni e. V.                 *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.status;
+
+import games.stendhal.server.core.events.TurnListener;
+import games.stendhal.server.core.events.TurnNotifier;
+import games.stendhal.server.core.events.TutorialNotifier;
+import games.stendhal.server.entity.Entity;
+import games.stendhal.server.entity.RPEntity;
+import games.stendhal.server.entity.player.Player;
+
+/**
+ * handles ShockStatusHandler
+ */
+<span class="fc" id="L24">public class PoisonStatusHandler implements StatusHandler&lt;PoisonStatus&gt; {</span>
+
+	/**
+	 * inflicts a status
+	 * 
+	 * @param status Status to inflict
+	 * @param statusList StatusList
+	 * @param attacker the attacker
+	 */
+	@Override
+	public void inflict(PoisonStatus status, StatusList statusList, Entity attacker) {
+<span class="fc" id="L35">		RPEntity entity = statusList.getEntity();</span>
+<span class="pc bpc" id="L36" title="1 of 2 branches missed.">		if (entity == null) {</span>
+<span class="nc" id="L37">			return;</span>
+		}
+
+<span class="fc" id="L40">		int count = statusList.countStatusByType(status.getStatusType());</span>
+<span class="pc bpc" id="L41" title="1 of 2 branches missed.">		if (count &lt;= 6) {</span>
+<span class="fc" id="L42">			statusList.addInternal(status);</span>
+		}
+
+<span class="fc" id="L45">		statusList.activateStatusAttribute(&quot;poisoned&quot;);</span>
+<span class="pc bpc" id="L46" title="1 of 2 branches missed.">		if (entity instanceof Player) {</span>
+<span class="fc" id="L47">			TutorialNotifier.poisoned((Player) entity);</span>
+		}
+
+		// activate the turnListener, if this is the first instance of this status
+		// note: the turnListener is called one last time after the last instance was comsumed to cleanup attributes.
+		// So even with count==0, there might still be a listener which needs to be removed
+<span class="pc bpc" id="L53" title="1 of 2 branches missed.">		if (count == 0) {</span>
+<span class="fc" id="L54">			TurnListener turnListener = new PoisonStatusTurnListener(statusList);</span>
+<span class="fc" id="L55">			TurnNotifier.get().dontNotify(turnListener);</span>
+<span class="fc" id="L56">			TurnNotifier.get().notifyInTurns(0, turnListener);</span>
+		}
+<span class="fc" id="L58">	}</span>
+
+	/**
+	 * removes a status
+	 * 
+	 * @param status Status to inflict
+	 * @param statusList StatusList
+	 */
+	@Override
+	public void remove(PoisonStatus status, StatusList statusList) {
+<span class="fc" id="L68">		statusList.removeInternal(status);</span>
+<span class="fc" id="L69">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>PixmapBorder.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui.styled</a> &gt; <span class="el_source">PixmapBorder.java</span></div><h1>PixmapBorder.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui.styled;
+
+import games.stendhal.client.sprite.Sprite;
+
+import java.awt.AlphaComposite;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.GraphicsConfiguration;
+import java.awt.GraphicsEnvironment;
+import java.awt.Image;
+import java.awt.Insets;
+import java.awt.Polygon;
+import java.awt.Rectangle;
+import java.awt.Transparency;
+import java.awt.image.BufferedImage;
+
+import javax.swing.border.Border;
+import javax.swing.JMenuItem;
+import javax.swing.JPopupMenu;
+
+/**
+ * A &lt;code&gt;Border&lt;/code&gt; that draws raised or lowered borders
+ * based on a template image.
+ */
+public class PixmapBorder implements Border {
+	/** Drawing width of the borders */
+	private static final int WIDTH = 2;
+	private static final int NARROW_WIDTH = 1;
+	
+	/** Insets for most components using these borders */
+<span class="nc" id="L45">	private static final Insets insets = new Insets(WIDTH, WIDTH, WIDTH, WIDTH);</span>
+	/**
+	 * Insets for components that should have narrow borders 
+	 * &lt;em&gt;and&lt;/em&gt; no padding.
+	 */
+<span class="nc" id="L50">	private static final Insets smallInsets = new Insets(NARROW_WIDTH,</span>
+		NARROW_WIDTH, NARROW_WIDTH, NARROW_WIDTH);
+
+	
+	/** Image for painting the top and left borders */
+	private final Image topLeftImage;
+	/** Image for painting the bottom and right borders */
+	private final Image bottomRightImage;
+	
+	private final int imageWidth, imageHeight;
+	
+	/**
+	 * Create a new &lt;code&gt;PixmapBorder&lt;/code&gt;.
+	 * 
+	 * @param template {@link Sprite} to be used as the base image for drawing
+	 * 	the border
+	 * @param raised if &lt;code&gt;true&lt;/code&gt;, the border will appear raised, 
+	 * 	otherwise it will look sunken
+	 */
+<span class="nc" id="L69">	public PixmapBorder(Sprite template, boolean raised) {</span>
+<span class="nc bnc" id="L70" title="All 2 branches missed.">		if (raised) {</span>
+<span class="nc" id="L71">			bottomRightImage = makeModifiedImage(template, Color.BLACK);</span>
+<span class="nc" id="L72">			topLeftImage = makeModifiedImage(template, Color.WHITE);</span>
+		} else {
+<span class="nc" id="L74">			bottomRightImage = makeModifiedImage(template, Color.WHITE);</span>
+<span class="nc" id="L75">			topLeftImage = makeModifiedImage(template, Color.BLACK);</span>
+		}
+<span class="nc" id="L77">		imageWidth = template.getWidth();</span>
+<span class="nc" id="L78">		imageHeight = template.getHeight();</span>
+<span class="nc" id="L79">	}</span>
+	
+	/**
+	 * Create a painted over version if a {@link Sprite} image. The image is
+	 * painted over with alpha 0.5.
+	 * 
+	 * @param template {@link Sprite} to used as the original image
+	 * @param color painting color
+	 * @return modified image
+	 */
+	private Image makeModifiedImage(Sprite template, Color color) {
+<span class="nc" id="L90">		final int width = template.getWidth();</span>
+<span class="nc" id="L91">		final int height = template.getHeight();</span>
+		
+<span class="nc" id="L93">		final GraphicsConfiguration gc = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration();</span>
+<span class="nc" id="L94">		final BufferedImage image = gc.createCompatibleImage(width, height, Transparency.OPAQUE);</span>
+		
+<span class="nc" id="L96">		Graphics2D g = image.createGraphics();</span>
+<span class="nc" id="L97">		template.draw(g, 0, 0);</span>
+<span class="nc" id="L98">		g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.5f));</span>
+<span class="nc" id="L99">		g.setColor(color);</span>
+<span class="nc" id="L100">		g.fillRect(0, 0, width, height);</span>
+<span class="nc" id="L101">		g.dispose();</span>
+		
+<span class="nc" id="L103">		return image;</span>
+	}
+	
+	@Override
+	public Insets getBorderInsets(Component component) {
+<span class="nc bnc" id="L108" title="All 2 branches missed.">		if (component instanceof JPopupMenu) {</span>
+<span class="nc" id="L109">			return smallInsets;</span>
+		} else {
+<span class="nc" id="L111">			return insets;</span>
+		}
+	}
+
+	@Override
+	public boolean isBorderOpaque() {
+<span class="nc" id="L117">		return false;</span>
+	}
+
+	@Override
+	public void paintBorder(Component component, Graphics graphics, int x, int y,
+			int width, int height) {
+<span class="nc" id="L123">		Rectangle oldClip = graphics.getClipBounds();</span>
+<span class="nc" id="L124">		Graphics g = graphics.create();</span>
+		
+<span class="nc" id="L126">		int borderWidth = getBorderWidth(component);</span>
+		
+		// *** Clipping for  top and left borders ***
+<span class="nc" id="L129">		Polygon p = new Polygon();</span>
+<span class="nc" id="L130">		p.addPoint(x, y);</span>
+<span class="nc" id="L131">		p.addPoint(x + width, y);</span>
+<span class="nc" id="L132">		p.addPoint(x + width - borderWidth, y + borderWidth);</span>
+<span class="nc" id="L133">		p.addPoint(x + borderWidth, y + borderWidth);</span>
+<span class="nc" id="L134">		p.addPoint(x + borderWidth, y + height - borderWidth);</span>
+<span class="nc" id="L135">		p.addPoint(x, y + height);</span>
+<span class="nc" id="L136">		g.setClip(p);</span>
+<span class="nc" id="L137">		g.clipRect(oldClip.x, oldClip.y, oldClip.width, oldClip.height);</span>
+		
+		// top border
+<span class="nc bnc" id="L140" title="All 2 branches missed.">		for (int i = x; i &lt; x + width; i += imageWidth) {</span>
+<span class="nc" id="L141">			g.drawImage(topLeftImage, i, y, null);</span>
+		}
+		// left border
+<span class="nc bnc" id="L144" title="All 2 branches missed.">		for (int i = y; i &lt; y + height; i += imageHeight) {</span>
+<span class="nc" id="L145">			g.drawImage(topLeftImage, x, i, null);</span>
+		}
+		
+		// *** Clipping for bottom and right borders ***
+		// We have the same number of vertices as before, so it's efficient to 
+		// reuse the polygon  
+<span class="nc" id="L151">		p.reset();</span>
+<span class="nc" id="L152">		p.addPoint(x + width, y);</span>
+<span class="nc" id="L153">		p.addPoint(x + width, y + height);</span>
+<span class="nc" id="L154">		p.addPoint(x, y + height);</span>
+<span class="nc" id="L155">		p.addPoint(x + borderWidth, y + height - borderWidth);</span>
+<span class="nc" id="L156">		p.addPoint(x + width - borderWidth, y + height - borderWidth);</span>
+<span class="nc" id="L157">		p.addPoint(x + width - borderWidth, y + borderWidth);</span>
+<span class="nc" id="L158">		g.setClip(p);</span>
+<span class="nc" id="L159">		g.clipRect(oldClip.x, oldClip.y, oldClip.width, oldClip.height);</span>
+		
+		// Bottom border. More than one y coordinate may be needed in case the
+		// tile border coincides to be inside the bottom border.
+<span class="nc" id="L163">		int startY = y + height - borderWidth - (height - borderWidth) % imageHeight;</span>
+<span class="nc" id="L164">		int endY = y + height - height % imageHeight;</span>
+<span class="nc bnc" id="L165" title="All 2 branches missed.">		for (int borderY = startY; borderY &lt;= endY; borderY += imageHeight) {</span>
+<span class="nc bnc" id="L166" title="All 2 branches missed.">			for (int i = x; i &lt; x + width; i += imageWidth) {</span>
+<span class="nc" id="L167">				g.drawImage(bottomRightImage, i, borderY, null);</span>
+			}
+		}
+		// Right border. More than one x coordinate may be needed in case the
+		// tile border coincides to be inside the right border.
+<span class="nc" id="L172">		int startX = x + width - borderWidth - (width - borderWidth) % imageWidth;</span>
+<span class="nc" id="L173">		int endX = x + width - width % imageWidth;</span>
+<span class="nc bnc" id="L174" title="All 2 branches missed.">		for (int borderX = startX; borderX &lt;= endX; borderX += imageWidth) {</span>
+<span class="nc bnc" id="L175" title="All 2 branches missed.">			for (int i = y; i &lt; y + height; i += imageHeight) {</span>
+<span class="nc" id="L176">				g.drawImage(bottomRightImage, borderX, i, null);</span>
+			}
+		}
+		
+<span class="nc" id="L180">		g.dispose();</span>
+<span class="nc" id="L181">	}</span>
+	
+	/**
+	 * Get the appropriate border draw width for a component.
+	 * 
+	 * @param component
+	 * @return border width
+	 */
+	private int getBorderWidth(Component component) {
+<span class="nc bnc" id="L190" title="All 4 branches missed.">		if ((component instanceof JMenuItem) </span>
+				|| (component instanceof JPopupMenu)) {
+<span class="nc" id="L192">			return NARROW_WIDTH;</span>
+		} else {
+<span class="nc" id="L194">			return WIDTH;</span>
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

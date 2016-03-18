@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Fire.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.mapstuff</a> &gt; <span class="el_source">Fire.java</span></div><h1>Fire.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.mapstuff;
+
+import games.stendhal.server.core.events.UseListener;
+import games.stendhal.server.entity.Entity;
+import games.stendhal.server.entity.RPEntity;
+import marauroa.common.game.RPClass;
+
+/**
+ * Burning fire.
+ */
+public class Fire extends Entity implements UseListener {
+	public static void generateRPClass() {
+<span class="fc" id="L25">		final RPClass fire = new RPClass(&quot;fire&quot;);</span>
+<span class="fc" id="L26">		fire.isA(&quot;entity&quot;);</span>
+<span class="fc" id="L27">	}</span>
+
+	/**
+	 * creates a new fire.
+	 * 
+	 * @param width
+	 *            width in grid units
+	 * @param height
+	 *            height in grid units
+	 */
+<span class="nc" id="L37">	public Fire(final int width, final int height) {</span>
+<span class="nc" id="L38">		setDescription(&quot;You see a flickering light. You are tempted to touch it.&quot;);</span>
+<span class="nc" id="L39">		setRPClass(&quot;fire&quot;);</span>
+<span class="nc" id="L40">		put(&quot;type&quot;, &quot;fire&quot;);</span>
+
+<span class="nc" id="L42">		setSize(width, height);</span>
+<span class="nc" id="L43">		setResistance(100);</span>
+<span class="nc" id="L44">	}</span>
+
+	@Override
+	public boolean onUsed(final RPEntity user) {
+<span class="nc" id="L48">		user.sendPrivateText(&quot;Not a good idea!&quot;);</span>
+<span class="nc" id="L49">		return true;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

@@ -1,0 +1,596 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>KillEnemyArmy.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests</a> &gt; <span class="el_source">KillEnemyArmy.java</span></div><h1>KillEnemyArmy.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests;
+
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+
+import org.apache.log4j.Logger;
+
+import games.stendhal.common.MathHelper;
+import games.stendhal.common.Rand;
+import games.stendhal.common.grammar.Grammar;
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.entity.item.StackableItem;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.action.IncreaseXPAction;
+import games.stendhal.server.entity.npc.action.IncrementQuestAction;
+import games.stendhal.server.entity.npc.action.MultipleActions;
+import games.stendhal.server.entity.npc.action.SayTimeRemainingAction;
+import games.stendhal.server.entity.npc.action.SetQuestAction;
+import games.stendhal.server.entity.npc.action.SetQuestToTimeStampAction;
+import games.stendhal.server.entity.npc.action.StartRecordingKillsAction;
+import games.stendhal.server.entity.npc.condition.AndCondition;
+import games.stendhal.server.entity.npc.condition.KilledInSumForQuestCondition;
+import games.stendhal.server.entity.npc.condition.KillsQuestSlotNeedUpdateCondition;
+import games.stendhal.server.entity.npc.condition.NotCondition;
+import games.stendhal.server.entity.npc.condition.OrCondition;
+import games.stendhal.server.entity.npc.condition.QuestCompletedCondition;
+import games.stendhal.server.entity.npc.condition.QuestInStateCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotInStateCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotStartedCondition;
+import games.stendhal.server.entity.npc.condition.TimePassedCondition;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.maps.Region;
+import marauroa.common.Pair;
+
+
+/**
+ * QUEST: KillEnemyArmy
+ *
+ * PARTICIPANTS: &lt;ul&gt;
+ * &lt;li&gt; Despot Halb Errvl
+ * &lt;li&gt; some creatures
+ * &lt;/ul&gt;
+ *
+ * STEPS:&lt;ul&gt;
+ * &lt;li&gt; Despot asking you to kill some of enemy forces.
+ * &lt;li&gt; Kill them and go back to Despot for your reward.
+ * &lt;/ul&gt;
+ *
+ *
+ * REWARD:&lt;ul&gt;
+ * &lt;li&gt; 100k of XP, or 300 karma.
+ * &lt;li&gt; random moneys - from 10k to 60k, step 10k.
+ * &lt;li&gt; 5 karma for killing 100% creatures
+ * &lt;li&gt; 5 karma for killing every 50% next creatures
+ * &lt;/ul&gt;
+ *
+ * REPETITIONS: &lt;ul&gt;&lt;li&gt; once a week.&lt;/ul&gt;
+ */
+
+ public class KillEnemyArmy extends AbstractQuest {
+
+	private static final String QUEST_NPC = &quot;Despot Halb Errvl&quot;;
+	private static final String QUEST_SLOT = &quot;kill_enemy_army&quot;;
+	private static final int delay = MathHelper.MINUTES_IN_ONE_WEEK;
+
+<span class="fc" id="L85">	protected HashMap&lt;String, Pair&lt;Integer, String&gt;&gt; enemyForces = new HashMap&lt;String, Pair&lt;Integer,String&gt;&gt;();</span>
+<span class="fc" id="L86">	protected HashMap&lt;String, List&lt;String&gt;&gt; enemys = new HashMap&lt;String, List&lt;String&gt;&gt;();</span>
+
+
+
+
+	public KillEnemyArmy() {
+<span class="fc" id="L92">		super();</span>
+		// fill monster types map
+<span class="fc" id="L94">		enemyForces.put(&quot;blordrough&quot;,</span>
+				new Pair&lt;Integer, String&gt;(50,&quot;Blordrough warriors now live in the Ados tunnels. They are extremely strong in battle, that is why Blordrough captured part of Deniran's territory.&quot;));
+<span class="fc" id="L96">		enemyForces.put(&quot;madaram&quot;,</span>
+				new Pair&lt;Integer, String&gt;(100,&quot;Their forces are somewhere under Fado. They are hideous.&quot;));
+<span class="fc" id="L98">		enemyForces.put(&quot;dark elf&quot;,</span>
+				new Pair&lt;Integer, String&gt;(100,&quot;Drows, or dark elves as they are commonly called, can be found under Nalwor. They use poison in battles, gathering it from different poisonous creatures.&quot;));
+<span class="fc" id="L100">		enemyForces.put(&quot;chaos&quot;,</span>
+				new Pair&lt;Integer, String&gt;(150,&quot;They are strong and crazy. Only my elite archers hold them from expanding more.&quot;));
+<span class="fc" id="L102">		enemyForces.put(&quot;mountain dwarf&quot;,</span>
+				new Pair&lt;Integer, String&gt;(150,&quot;They are my historical neighbors, living in Semos mines.&quot;));
+<span class="fc" id="L104">		enemyForces.put(&quot;mountain orc&quot;,</span>
+				new Pair&lt;Integer, String&gt;(150,&quot;Stupid creatures, but very strong. Can be found in Semos mines somewhere.&quot;));
+<span class="fc" id="L106">		enemyForces.put(&quot;imperial&quot;,</span>
+				new Pair&lt;Integer, String&gt;(200,&quot;They come from their castle in the underground Sedah city, ruled by their Emperor Dalmung.&quot;));
+<span class="fc" id="L108">		enemyForces.put(&quot;barbarian&quot;,</span>
+				new Pair&lt;Integer, String&gt;(200,&quot;Different barbarian tribes live on the surface in the North West area of Ados Mountains. Not dangerous but noisy.&quot;));
+<span class="fc" id="L110">		enemyForces.put(&quot;oni&quot;,</span>
+				new Pair&lt;Integer, String&gt;(200,&quot;Very strange race, living in their castle in Fado forest. There are rumors that they have agreed an alliance with the Magic city wizards.&quot;));
+
+
+		/*
+		 * those are not interesting
+		enemyForces.put(&quot;dwarf&quot;,
+				new Pair&lt;Integer, String&gt;(275,&quot;&quot;));
+		enemyForces.put(&quot;elf&quot;,
+				new Pair&lt;Integer, String&gt;(300,&quot;&quot;));
+		enemyForces.put(&quot;skeleton&quot;,
+				new Pair&lt;Integer, String&gt;(500,&quot;&quot;));
+		enemyForces.put(&quot;gnome&quot;,
+				new Pair&lt;Integer, String&gt;(1000,&quot;&quot;));
+		*/
+
+		/*
+		 *  fill creatures map
+		 */
+
+<span class="fc" id="L130">		enemys.put(&quot;blordrough&quot;,</span>
+				Arrays.asList(&quot;blordrough quartermaster&quot;,
+							  &quot;blordrough corporal&quot;,
+							  &quot;blordrough storm trooper&quot;));
+<span class="fc" id="L134">		enemys.put(&quot;dark elf&quot;,</span>
+				Arrays.asList(&quot;child dark elf&quot;,
+							  &quot;dark elf archer&quot;,
+							  &quot;dark elf&quot;,
+							  &quot;dark elf elite archer&quot;,
+							  &quot;dark elf captain&quot;,
+							  &quot;dark elf knight&quot;,
+							  &quot;dark elf general&quot;,
+							  &quot;dark elf wizard&quot;,
+							  &quot;dark elf viceroy&quot;,
+							  &quot;dark elf sacerdotist&quot;,
+							  &quot;dark elf admiral&quot;,
+							  &quot;dark elf master&quot;,
+						&quot;dark elf matronmother&quot;));
+<span class="fc" id="L148">		enemys.put(&quot;chaos&quot;,</span>
+				Arrays.asList(&quot;chaos soldier&quot;,
+							  &quot;chaos warrior&quot;,
+							  &quot;chaos commander&quot;,
+							  &quot;chaos sorcerer&quot;,
+							  &quot;chaos dragonrider&quot;,
+							  &quot;chaos lord&quot;,
+							  &quot;chaos green dragonrider&quot;,
+							  &quot;chaos overlord&quot;,
+							  &quot;chaos red dragonrider&quot;));
+<span class="fc" id="L158">		enemys.put(&quot;mountain dwarf&quot;,</span>
+				Arrays.asList(&quot;mountain dwarf&quot;,
+							  &quot;mountain elder dwarf&quot;,
+							  &quot;mountain dwarf guardian&quot;,
+							  &quot;mountain hero dwarf&quot;,
+							  &quot;mountain leader dwarf&quot;,
+							  &quot;Dhohr Nuggetcutter&quot;,
+							  &quot;giant dwarf&quot;,
+							  &quot;dwarf golem&quot;));
+<span class="fc" id="L167">		enemys.put(&quot;mountain orc&quot;,</span>
+				Arrays.asList(&quot;mountain orc&quot;,
+							  &quot;mountain orc warrior&quot;,
+							  &quot;mountain orc hunter&quot;,
+							  &quot;mountain orc chief&quot;));
+<span class="fc" id="L172">		enemys.put(&quot;imperial&quot;,</span>
+				Arrays.asList(&quot;imperial defender&quot;,
+							  &quot;imperial veteran&quot;,
+							  &quot;imperial archer&quot;,
+							  &quot;imperial priest&quot;,
+							  &quot;imperial elite guardian&quot;,
+							  &quot;imperial scientist&quot;,
+							  &quot;imperial high priest&quot;,
+							  &quot;imperial archer leader&quot;,
+							  &quot;imperial elite archer&quot;,
+							  &quot;imperial leader&quot;,
+							  &quot;imperial chief&quot;,
+							  &quot;imperial knight&quot;,
+							  &quot;imperial commander&quot;,
+							  &quot;imperial experiment&quot;,
+							  &quot;imperial demon servant&quot;,
+							  &quot;imperial mutant&quot;,
+							  &quot;imperial general&quot;,
+							  &quot;imperial demon lord&quot;,
+							  &quot;emperor dalmung&quot;,
+							  &quot;imperial general giant&quot;));
+<span class="fc" id="L193">		enemys.put(&quot;madaram&quot;,</span>
+				Arrays.asList(&quot;madaram peasant&quot;,
+							  &quot;madaram trooper&quot;,
+							  &quot;madaram soldier&quot;,
+							  &quot;madaram healer&quot;,
+							  &quot;madaram axeman&quot;,
+							  &quot;madaram queen&quot;,
+							  &quot;madaram hero&quot;,
+							  &quot;madaram cavalry&quot;,
+							  &quot;madaram stalker&quot;,
+							  &quot;madaram buster blader&quot;,
+							  &quot;madaram archer&quot;,
+							  &quot;madaram windwalker&quot;,
+							  &quot;kasarkutominubat&quot;));
+		/*
+		 * exclude amazoness ( because they dont want to leave their island? )
+		enemys.put(&quot;amazoness&quot;,
+				Arrays.asList(&quot;amazoness archer&quot;,
+						      &quot;amazoness hunter&quot;,
+						      &quot;amazoness coastguard&quot;,
+						      &quot;amazoness archer commander&quot;,
+						      &quot;amazoness elite coastguard&quot;,
+						      &quot;amazoness bodyguard&quot;,
+						      &quot;amazoness coastguard mistress&quot;,
+						      &quot;amazoness commander&quot;,
+						      &quot;amazoness vigilance&quot;,
+						      &quot;amazoness imperator&quot;,
+						      &quot;amazoness giant&quot;));
+		 */
+<span class="fc" id="L222">		enemys.put(&quot;oni&quot;,</span>
+				Arrays.asList(&quot;oni warrior&quot;,
+							  &quot;oni archer&quot;,
+							  &quot;oni priest&quot;,
+							  &quot;oni king&quot;,
+							  &quot;oni queen&quot;));
+<span class="fc" id="L228">		enemys.put(&quot;barbarian&quot;,</span>
+				Arrays.asList(&quot;barbarian&quot;,
+						      &quot;barbarian wolf&quot;,
+						      &quot;barbarian elite&quot;,
+						      &quot;barbarian priest&quot;,
+						      &quot;barbarian chaman&quot;,
+						      &quot;barbarian leader&quot;,
+						      &quot;barbarian king&quot;));
+<span class="fc" id="L236">	}</span>
+
+	/**
+	 * function for choosing random enemy from map
+	 * @return - enemy forces caption
+	 */
+	protected String chooseRandomEnemys() {
+<span class="fc" id="L243">		final List&lt;String&gt; enemyList = new LinkedList&lt;String&gt;(enemyForces.keySet());</span>
+<span class="fc" id="L244">		final int enemySize = enemyList.size();</span>
+<span class="fc" id="L245">		final int position  = Rand.rand(enemySize);</span>
+<span class="fc" id="L246">		return enemyList.get(position);</span>
+	}
+
+	/**
+	 * function returns difference between recorded number of enemy creatures
+	 *     and currently killed creatures numbers.
+	 * @param player - player for who we counting this
+	 * @return - number of killed enemy creatures
+	 */
+	private int getKilledCreaturesNumber(final Player player) {
+<span class="fc" id="L256">		int count = 0;</span>
+		String temp;
+		int solo;
+		int shared;
+		int recsolo;
+		int recshared;
+<span class="fc" id="L262">		final String enemyType = player.getQuest(QUEST_SLOT,1);</span>
+<span class="fc" id="L263">		final List&lt;String&gt; monsters = Arrays.asList(player.getQuest(QUEST_SLOT,2).split(&quot;,&quot;));</span>
+<span class="fc" id="L264">		final List&lt;String&gt; creatures = enemys.get(enemyType);</span>
+<span class="fc bfc" id="L265" title="All 2 branches covered.">		for(int i=0; i&lt;creatures.size(); i++) {</span>
+<span class="fc" id="L266">			String tempName = creatures.get(i);</span>
+<span class="fc" id="L267">			temp = monsters.get(i*5+3);</span>
+<span class="pc bpc" id="L268" title="1 of 2 branches missed.">			if (temp == null) {</span>
+<span class="nc" id="L269">				recsolo = 0;</span>
+			} else {
+<span class="fc" id="L271">				recsolo = Integer.parseInt(temp);</span>
+			}
+<span class="fc" id="L273">			temp = monsters.get(i*5+4);</span>
+<span class="pc bpc" id="L274" title="1 of 2 branches missed.">			if (temp == null) {</span>
+<span class="nc" id="L275">				recshared = 0;</span>
+			} else {
+<span class="fc" id="L277">				recshared = Integer.parseInt(temp);</span>
+			}
+
+<span class="fc" id="L280">			temp = player.getKeyedSlot(&quot;!kills&quot;, &quot;solo.&quot;+tempName);</span>
+<span class="pc bpc" id="L281" title="1 of 2 branches missed.">			if (temp==null) {</span>
+<span class="fc" id="L282">				solo = 0;</span>
+			} else {
+<span class="nc" id="L284">				solo = Integer.parseInt(temp);</span>
+			}
+
+<span class="fc" id="L287">			temp = player.getKeyedSlot(&quot;!kills&quot;, &quot;shared.&quot;+tempName);</span>
+<span class="fc bfc" id="L288" title="All 2 branches covered.">			if (temp==null) {</span>
+<span class="fc" id="L289">				shared = 0;</span>
+			} else {
+<span class="fc" id="L291">				shared = Integer.parseInt(temp);</span>
+			}
+
+<span class="fc" id="L294">			count = count + solo - recsolo + shared - recshared;</span>
+		}
+<span class="fc" id="L296">		return count;</span>
+	}
+
+
+<span class="fc" id="L300">	class GiveQuestAction implements ChatAction {</span>
+		/**
+		 * function will update player quest slot.
+		 * @param player - player for which we will record quest.
+		 */
+		@Override
+		public void fire(final Player player, final Sentence sentence, final EventRaiser speakerNPC) {
+<span class="fc" id="L307">			final String monstersType = chooseRandomEnemys();</span>
+<span class="fc" id="L308">			speakerNPC.say(&quot;I need help to defeat #enemy &quot; + monstersType +</span>
+					&quot; armies. They are a grave concern. Kill at least &quot; + enemyForces.get(monstersType).first()+
+					&quot; of any &quot;+ monstersType +
+					&quot; soldiers and I will reward you.&quot;);
+<span class="fc" id="L312">			final HashMap&lt;String, Pair&lt;Integer, Integer&gt;&gt; toKill = new HashMap&lt;String, Pair&lt;Integer, Integer&gt;&gt;();</span>
+<span class="fc" id="L313">			List&lt;String&gt; sortedcreatures = enemys.get(monstersType);</span>
+<span class="fc" id="L314">			player.setQuest(QUEST_SLOT, 0, &quot;start&quot;);</span>
+<span class="fc" id="L315">			player.setQuest(QUEST_SLOT, 1, monstersType);</span>
+<span class="fc bfc" id="L316" title="All 2 branches covered.">			for(int i=0; i&lt;sortedcreatures.size(); i++) {</span>
+<span class="fc" id="L317">				toKill.put(sortedcreatures.get(i), new Pair&lt;Integer, Integer&gt;(0,0));</span>
+			}
+<span class="fc" id="L319">			new StartRecordingKillsAction(QUEST_SLOT, 2, toKill).fire(player, sentence, speakerNPC);</span>
+<span class="fc" id="L320">		}</span>
+	}
+
+<span class="fc" id="L323">	class RewardPlayerAction implements ChatAction {</span>
+		/**
+		 * function will complete quest and reward player.
+		 * @param player - player to be rewarded.
+		 */
+		@Override
+		public void fire(final Player player, final Sentence sentence, final EventRaiser speakerNPC) {
+<span class="fc" id="L330">			final String monsters = player.getQuest(QUEST_SLOT, 1);</span>
+<span class="fc" id="L331">			int killed=getKilledCreaturesNumber(player);</span>
+<span class="fc" id="L332">			int killsnumber = enemyForces.get(monsters).first();</span>
+<span class="fc" id="L333">			int moneyreward = 10000*Rand.roll1D6();</span>
+<span class="fc bfc" id="L334" title="All 2 branches covered.">			if(killed == killsnumber) {</span>
+				// player killed no more no less then needed soldiers
+<span class="fc" id="L336">				speakerNPC.say(&quot;Good work! Take these &quot; + moneyreward + &quot; coins. And if you need an assassin job again, ask me in one week. My advisors tell me they may try to fight me again.&quot;);</span>
+			} else {
+				// player killed more then needed soldiers
+<span class="fc" id="L339">				speakerNPC.say(&quot;Pretty good! You killed &quot;+(killed-killsnumber)+&quot; extra &quot;+</span>
+						Grammar.plnoun(killed-killsnumber, &quot;soldier&quot;)+&quot;! Take these &quot; + moneyreward + &quot; coins, and remember, I may wish you to do this job again in one week!&quot;);
+			}
+<span class="fc" id="L342">			int karmabonus = 5*(2*killed/killsnumber-1);</span>
+<span class="fc" id="L343">			final StackableItem money = (StackableItem)</span>
+					SingletonRepository.getEntityManager().getItem(&quot;money&quot;);
+<span class="fc" id="L345">			money.setQuantity(moneyreward);</span>
+
+<span class="fc" id="L347">			player.equipOrPutOnGround(money);</span>
+<span class="fc" id="L348">			player.addKarma(karmabonus);</span>
+
+<span class="fc" id="L350">		}</span>
+	}
+
+
+
+	/**
+	 * class for quest talking.
+	 */
+<span class="fc" id="L358">	class ExplainAction implements ChatAction {</span>
+
+		@Override
+		public void fire(Player player, Sentence sentence, EventRaiser npc) {
+<span class="fc" id="L362">				final String monsters = player.getQuest(QUEST_SLOT, 1);</span>
+<span class="fc" id="L363">				int killed=getKilledCreaturesNumber(player);</span>
+<span class="fc" id="L364">				int killsnumber = enemyForces.get(monsters).first();</span>
+
+<span class="fc bfc" id="L366" title="All 2 branches covered.">				if(killed==0) {</span>
+					// player killed no creatures but asked about quest again.
+<span class="fc" id="L368">					npc.say(&quot;I already explained to you what I need. Are you an idiot, as you can't remember this simple thing about the #enemy &quot; + monsters + &quot; armies?&quot;);</span>
+<span class="fc" id="L369">					return;</span>
+				}
+<span class="pc bpc" id="L371" title="1 of 2 branches missed.">				if(killed &lt; killsnumber) {</span>
+					// player killed less then needed soldiers.
+<span class="fc" id="L373">					npc.say(&quot;You killed only &quot;+killed+&quot; &quot;+Grammar.plnoun(killed, player.getQuest(QUEST_SLOT, 1))+</span>
+							&quot;. You have to kill at least &quot;+killsnumber+&quot; &quot;+Grammar.plnoun(killed, player.getQuest(QUEST_SLOT, 1)));
+<span class="fc" id="L375">					return;</span>
+				}
+
+<span class="nc" id="L378">		}</span>
+	}
+
+	/**
+	 * class for quest talking.
+	 */
+<span class="fc" id="L384">	class FixAction implements ChatAction {</span>
+
+		@Override
+		public void fire(Player player, Sentence sentence, EventRaiser npc) {
+				//final String monsters = player.getQuest(QUEST_SLOT, 1);
+<span class="nc" id="L389">			    Logger.getLogger(KillEnemyArmy.class).warn(&quot;Fixing malformed quest string of player &lt;&quot;+</span>
+				                                            player.getName()+
+				                                            &quot;&gt;: (&quot;+
+				                                            player.getQuest(QUEST_SLOT)+
+				                                            &quot;)&quot;);
+<span class="nc" id="L394">				npc.say(&quot;I am sorry, I did not pay attention. &quot; +</span>
+						&quot;What I need now:&quot;);
+<span class="nc" id="L396">				new GiveQuestAction().fire(player, sentence, npc);</span>
+<span class="nc" id="L397">		}</span>
+	}
+
+
+	/**
+	 * add quest state to npc's fsm.
+	 */
+	private void step_1() {
+
+<span class="fc" id="L406">		SpeakerNPC npc = npcs.get(QUEST_NPC);</span>
+
+		// quest can be given
+<span class="fc" id="L409">		npc.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.QUEST_MESSAGES,
+				new OrCondition(
+					new QuestNotStartedCondition(QUEST_SLOT),
+					new AndCondition(
+						new QuestCompletedCondition(QUEST_SLOT),
+						new TimePassedCondition(QUEST_SLOT, 1, delay))),
+				ConversationStates.ATTENDING,
+				null,
+				new GiveQuestAction());
+
+		// time is not over
+<span class="fc" id="L421">		npc.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.QUEST_MESSAGES,
+				new AndCondition(
+						new QuestCompletedCondition(QUEST_SLOT),
+						new NotCondition(
+								new TimePassedCondition(QUEST_SLOT, 1, delay))),
+				ConversationStates.ATTENDING,
+				null,
+				new SayTimeRemainingAction(QUEST_SLOT, 1, delay, &quot;You have to check again in&quot;));
+
+		// explanations
+<span class="fc" id="L432">		npc.add(ConversationStates.ATTENDING,</span>
+				&quot;enemy&quot;,
+				new QuestInStateCondition(QUEST_SLOT, 0, &quot;start&quot;),
+				ConversationStates.ATTENDING,
+				null,
+<span class="fc" id="L437">				new ChatAction() {</span>
+						@Override
+						public void fire(Player player, Sentence sentence, EventRaiser npc) {
+<span class="fc" id="L440">							npc.say(enemyForces.get(player.getQuest(QUEST_SLOT, 1)).second());</span>
+<span class="fc" id="L441">						}</span>
+				});
+
+		// explanations
+<span class="fc" id="L445">		npc.add(ConversationStates.ATTENDING,</span>
+				&quot;enemy&quot;,
+				new QuestNotInStateCondition(QUEST_SLOT, 0, &quot;start&quot;),
+				ConversationStates.ATTENDING,
+				&quot;Yes, my enemies are everywhere, they want to kill me! I guess you are one of them. Stay away from me!&quot;,
+				null);
+
+		// update player's quest slot or blank it if failed...
+<span class="fc" id="L453">		npc.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.QUEST_MESSAGES,
+				new AndCondition(
+						new QuestInStateCondition(QUEST_SLOT, 0, &quot;start&quot;),
+						new KillsQuestSlotNeedUpdateCondition(QUEST_SLOT, 1, enemys, true)),
+				ConversationStates.ATTENDING,
+				null,
+				new FixAction());
+
+		// checking for kills
+<span class="fc" id="L463">		final List&lt;String&gt; creatures = new LinkedList&lt;String&gt;(enemyForces.keySet());</span>
+<span class="fc bfc" id="L464" title="All 2 branches covered.">		for(int i=0; i&lt;enemyForces.size(); i++) {</span>
+<span class="fc" id="L465">			final String enemy = creatures.get(i);</span>
+
+			  // player killed enough enemies.
+<span class="fc" id="L468">		      npc.add(ConversationStates.ATTENDING,</span>
+		    		  ConversationPhrases.QUEST_MESSAGES,
+		    		  new AndCondition(
+		    				  new QuestInStateCondition(QUEST_SLOT, 1, enemy),
+		    				  new KilledInSumForQuestCondition(QUEST_SLOT, 2, enemyForces.get(enemy).first())),
+		    		  ConversationStates.ATTENDING,
+		    		  null,
+		    		  new MultipleActions(
+		    				  new RewardPlayerAction(),
+		    				  new IncreaseXPAction(100000),
+		    				  new IncrementQuestAction(QUEST_SLOT,3,1),
+		    				  // empty the 2nd index as we use it later
+		    				  new SetQuestAction(QUEST_SLOT,2,&quot;&quot;),
+		    				  new SetQuestToTimeStampAction(QUEST_SLOT,1),
+		    				  new SetQuestAction(QUEST_SLOT,0,&quot;done&quot;)));
+
+		      // player killed not enough enemies.
+<span class="fc" id="L485">		      npc.add(ConversationStates.ATTENDING,</span>
+		    		  ConversationPhrases.QUEST_MESSAGES,
+		    		  new AndCondition(
+		    				  new QuestInStateCondition(QUEST_SLOT, 1, enemy),
+		    				  new NotCondition(
+		    						  new KilledInSumForQuestCondition(QUEST_SLOT, 2, enemyForces.get(enemy).first()))),
+		    		  ConversationStates.ATTENDING,
+		    		  null,
+		    		  new ExplainAction());
+
+		}
+<span class="fc" id="L496">	}</span>
+
+	/**
+	 * add quest to the Stendhal world.
+	 */
+	@Override
+	public void addToWorld() {
+<span class="fc" id="L503">		fillQuestInfo(</span>
+				&quot;Kill Enemy Army&quot;,
+				&quot;Despot Halb Errvl has a vendetta against any army who opposes him.&quot;,
+				true);
+<span class="fc" id="L507">		step_1();</span>
+<span class="fc" id="L508">	}</span>
+
+	/**
+	 * return name of quest slot.
+	 */
+	@Override
+	public String getSlotName() {
+<span class="fc" id="L515">		return QUEST_SLOT;</span>
+	}
+
+	/**
+	 * return name of quest.
+	 */
+	@Override
+	public String getName() {
+<span class="nc" id="L523">		return &quot;KillEnemyArmy&quot;;</span>
+	}
+
+	@Override
+	public int getMinLevel() {
+<span class="fc" id="L528">		return 80;</span>
+	}
+
+	@Override
+	public boolean isRepeatable(final Player player) {
+<span class="fc" id="L533">		return	new AndCondition(new QuestCompletedCondition(QUEST_SLOT),</span>
+						 new TimePassedCondition(QUEST_SLOT,1,delay)).fire(player, null, null);
+	}
+
+ 	@Override
+ 	public List&lt;String&gt; getHistory(final Player player) {
+<span class="fc" id="L539"> 		LinkedList&lt;String&gt; history = new LinkedList&lt;String&gt;();</span>
+<span class="pc bpc" id="L540" title="1 of 2 branches missed.">		if (!player.hasQuest(QUEST_SLOT)) {</span>
+<span class="nc" id="L541">			return history;</span>
+		}
+
+<span class="fc bfc" id="L544" title="All 2 branches covered.">		if(player.getQuest(QUEST_SLOT, 0).equals(&quot;start&quot;)) {</span>
+<span class="fc" id="L545">	        final String givenEnemies = player.getQuest(QUEST_SLOT, 1);</span>
+<span class="fc" id="L546">	        final int givenNumber = enemyForces.get(givenEnemies).first();</span>
+	        // updating firstly
+<span class="pc bpc" id="L548" title="1 of 2 branches missed.">			if(new KillsQuestSlotNeedUpdateCondition(QUEST_SLOT, 2, enemys.get(givenEnemies), true).fire(player, null, null)) {</span>
+				// still need update??
+			}
+<span class="fc" id="L551">	        final int killedNumber = getKilledCreaturesNumber(player);</span>
+
+<span class="fc" id="L553">			history.add(&quot;Despot Halb Errvl asked me to kill &quot;+</span>
+					givenNumber+&quot; &quot;+
+					Grammar.plnoun(givenNumber, givenEnemies));
+<span class="fc" id="L556">			String kn = Integer.valueOf(killedNumber).toString();</span>
+<span class="fc bfc" id="L557" title="All 2 branches covered.">			if(killedNumber == 0) {</span>
+<span class="fc" id="L558">				kn=&quot;no&quot;;</span>
+			}
+<span class="fc" id="L560">			history.add(&quot;Currently I have killed &quot;+</span>
+					kn+&quot; &quot;+
+					Grammar.plnoun(killedNumber, givenEnemies));
+<span class="fc bfc" id="L563" title="All 2 branches covered.">			if(new KilledInSumForQuestCondition(QUEST_SLOT, 2, givenNumber).fire(player, null, null)) {</span>
+<span class="fc" id="L564">				history.add(&quot;I have killed enough creatures to get my reward now.&quot;);</span>
+			} else {
+<span class="fc" id="L566">				history.add(givenNumber-killedNumber+&quot; &quot;+</span>
+						Grammar.plnoun(givenNumber-killedNumber, givenEnemies)+&quot; left to kill.&quot;);
+			}
+		}
+
+<span class="fc bfc" id="L571" title="All 2 branches covered.">		if(isCompleted(player)) {</span>
+<span class="fc" id="L572">			history.add(&quot;I completed Despot's Halb Errvl task and got my reward!&quot;);</span>
+		}
+<span class="pc bpc" id="L574" title="1 of 2 branches missed.">		if (isRepeatable(player)) {</span>
+<span class="nc" id="L575">			history.add(&quot;Despot Halb Errvl is getting paranoid again about his safety, I can offer my services now.&quot;);</span>
+		}
+<span class="fc" id="L577">		int repetitions = player.getNumberOfRepetitions(getSlotName(), 3);</span>
+<span class="fc bfc" id="L578" title="All 2 branches covered.">		if (repetitions &gt; 0) {</span>
+<span class="fc" id="L579">			history.add(&quot;I've bloodthirstily slain &quot;</span>
+					+ Grammar.quantityplnoun(repetitions, &quot;whole army&quot;) + &quot; for Despot Halb Errvl.&quot;);
+		}
+<span class="fc" id="L582">		return history;</span>
+ 	}
+
+	@Override
+	public String getNPCName() {
+<span class="nc" id="L587">		return &quot;Despot Halb Errvl&quot;;</span>
+	}
+
+	@Override
+	public String getRegion() {
+<span class="nc" id="L592">		return Region.SEMOS_SURROUNDS;</span>
+	}
+}
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>AdosHouseSeller.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests.houses</a> &gt; <span class="el_source">AdosHouseSeller.java</span></div><h1>AdosHouseSeller.java</h1><pre class="source lang-java linenums">/**
+ * 
+ */
+package games.stendhal.server.maps.quests.houses;
+
+import games.stendhal.common.parser.ExpressionType;
+import games.stendhal.common.parser.JokerExprMatcher;
+import games.stendhal.server.core.pathfinder.FixedPath;
+import games.stendhal.server.core.pathfinder.Node;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.condition.AgeGreaterThanCondition;
+import games.stendhal.server.entity.npc.condition.AndCondition;
+import games.stendhal.server.entity.npc.condition.NotCondition;
+import games.stendhal.server.entity.npc.condition.QuestCompletedCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotStartedCondition;
+import games.stendhal.server.entity.npc.condition.TextHasNumberCondition;
+
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
+
+final class AdosHouseSeller extends HouseSellerNPCBase {
+	/** Cost to buy house in ados. */
+	private static final int COST_ADOS = 120000;
+	private static final String ANNA_QUEST_SLOT = &quot;toys_collector&quot;;
+	private static final String KEYRING_QUEST_SLOT = &quot;hungry_joshua&quot;;
+	private static final String GHOSTS_QUEST_SLOT = &quot;find_ghosts&quot;;
+	private static final String DAILY_ITEM_QUEST_SLOT = &quot;daily_item&quot;;
+	private static final String FISHROD_QUEST_SLOT = &quot;get_fishing_rod&quot;;
+	private static final String ZARA_QUEST_SLOT = &quot;suntan_cream_zara&quot;;
+
+	AdosHouseSeller(final String name, final String location, final HouseTax houseTax) {
+<span class="fc" id="L33">		super(name, location, houseTax);</span>
+<span class="fc" id="L34">		init();</span>
+<span class="fc" id="L35">	}</span>
+
+	private void init() {
+		// Other than the condition that you must not already own a house, there are a number of conditions a player must satisfy. 
+		// For definiteness we will check these conditions in a set order. 
+		// So then the NPC doesn't have to choose which reason to reject the player for (appears as a WARN from engine if he has to choose)
+		
+		// player is not old enough
+<span class="fc" id="L43">		add(ConversationStates.ATTENDING, </span>
+				 Arrays.asList(&quot;cost&quot;, &quot;house&quot;, &quot;buy&quot;, &quot;purchase&quot;),
+				 new NotCondition(new AgeGreaterThanCondition(HouseSellerNPCBase.REQUIRED_AGE)),
+				 ConversationStates.ATTENDING,
+				 &quot;The cost of a new house in Ados is &quot;
+				 + getCost()
+				 + &quot; money. But I am afraid I cannot trust you with house ownership just yet, come back when you have spent at least &quot; 
+				 + Integer.toString((HouseSellerNPCBase.REQUIRED_AGE / 60)) + &quot; hours on Faiumoni.&quot;,
+					null);
+		
+		
+		// player doesn't have a house and is old enough but has not done required quests
+<span class="fc" id="L55">		add(ConversationStates.ATTENDING, </span>
+				 Arrays.asList(&quot;cost&quot;, &quot;house&quot;, &quot;buy&quot;, &quot;purchase&quot;),
+				 new AndCondition(new AgeGreaterThanCondition(HouseSellerNPCBase.REQUIRED_AGE), 
+								  new QuestNotStartedCondition(HouseSellerNPCBase.QUEST_SLOT),
+								  new NotCondition(
+													  new AndCondition(
+																	   new QuestCompletedCondition(AdosHouseSeller.DAILY_ITEM_QUEST_SLOT),
+																	   new QuestCompletedCondition(AdosHouseSeller.ANNA_QUEST_SLOT),
+																	   new QuestCompletedCondition(AdosHouseSeller.KEYRING_QUEST_SLOT),
+																	   new QuestCompletedCondition(AdosHouseSeller.FISHROD_QUEST_SLOT),
+																	   new QuestCompletedCondition(AdosHouseSeller.GHOSTS_QUEST_SLOT),
+																	   new QuestCompletedCondition(AdosHouseSeller.ZARA_QUEST_SLOT)))),
+				 ConversationStates.ATTENDING, 
+				 &quot;The cost of a new house in Ados is &quot;
+				 + getCost()
+				 + &quot; money. But I am afraid I cannot sell you a house yet as you must first prove yourself a worthy #citizen.&quot;,
+				 null);
+		
+		// player is eligible to buy a house
+<span class="fc" id="L74">		add(ConversationStates.ATTENDING, </span>
+					Arrays.asList(&quot;cost&quot;, &quot;house&quot;, &quot;buy&quot;, &quot;purchase&quot;),
+				 new AndCondition(new QuestNotStartedCondition(HouseSellerNPCBase.QUEST_SLOT), 
+								  new AgeGreaterThanCondition(HouseSellerNPCBase.REQUIRED_AGE), 
+								  new QuestCompletedCondition(AdosHouseSeller.DAILY_ITEM_QUEST_SLOT),
+								  new QuestCompletedCondition(AdosHouseSeller.ANNA_QUEST_SLOT),
+								  new QuestCompletedCondition(AdosHouseSeller.KEYRING_QUEST_SLOT),
+								  new QuestCompletedCondition(AdosHouseSeller.FISHROD_QUEST_SLOT),
+								  new QuestCompletedCondition(AdosHouseSeller.GHOSTS_QUEST_SLOT),
+								  new QuestCompletedCondition(AdosHouseSeller.ZARA_QUEST_SLOT)),
+				 ConversationStates.QUEST_OFFERED, 
+				 &quot;The cost of a new house in Ados is &quot;
+				 + getCost()
+				 + &quot; money. Also, you must pay a house tax of &quot; + HouseTax.BASE_TAX
+				 + &quot; money, every month. If you have a house in mind, please tell me the number now. I will check availability. &quot;
+				 + &quot;The Ados houses are numbered from &quot; 
+				 + getLowestHouseNumber() + &quot; to &quot; + getHighestHouseNumber() + &quot;.&quot;,
+				 null);
+		
+		// handle house numbers getLowestHouseNumber() - getHighestHouseNumber()
+<span class="fc" id="L94">		addMatching(ConversationStates.QUEST_OFFERED,</span>
+				 // match for all numbers as trigger expression
+				ExpressionType.NUMERAL, new JokerExprMatcher(),
+				new TextHasNumberCondition(getLowestHouseNumber(), getHighestHouseNumber()),
+				ConversationStates.ATTENDING, 
+				null,
+				new BuyHouseChatAction(getCost(), QUEST_SLOT));
+		
+<span class="fc" id="L102">		addJob(&quot;I'm an estate agent. In simple terms, I sell houses for the city of Ados. Please ask about the #cost if you are interested. Our brochure is at #http://stendhalgame.org/wiki/StendhalHouses.&quot;);</span>
+<span class="fc" id="L103">		addReply(&quot;citizen&quot;, &quot;I conduct an informal survey amongst the Ados residents. If you have helped everyone in Ados, I see no reason why they shouldn't recommend you. I speak with my friend Joshua, the Mayor, the little girl Anna, Pequod the fisherman, Zara, and I even commune with Carena, of the spirit world. Together they give a reliable opinion.&quot;);</span>
+
+<span class="fc" id="L105">		setDescription(&quot;You see a smart looking man.&quot;);</span>
+<span class="fc" id="L106">		setEntityClass(&quot;estateagent2npc&quot;);</span>
+<span class="fc" id="L107">		setPosition(37, 13);</span>
+<span class="fc" id="L108">		initHP(100);</span>
+		
+<span class="fc" id="L110">	}</span>
+
+	@Override
+	protected int getCost() {
+<span class="fc" id="L114">		return AdosHouseSeller.COST_ADOS;</span>
+	}
+
+	@Override
+	protected void createPath() {
+<span class="fc" id="L119">		final List&lt;Node&gt; nodes = new LinkedList&lt;Node&gt;();</span>
+<span class="fc" id="L120">		nodes.add(new Node(37, 13));</span>
+<span class="fc" id="L121">		nodes.add(new Node(31, 13));</span>
+<span class="fc" id="L122">		nodes.add(new Node(31, 10));</span>
+<span class="fc" id="L123">		nodes.add(new Node(35, 10));</span>
+<span class="fc" id="L124">		nodes.add(new Node(35, 4));</span>
+<span class="fc" id="L125">		nodes.add(new Node(25, 4));</span>
+<span class="fc" id="L126">		nodes.add(new Node(25, 15));</span>
+<span class="fc" id="L127">		nodes.add(new Node(15, 15));</span>
+<span class="fc" id="L128">		nodes.add(new Node(15, 9));</span>
+<span class="fc" id="L129">		nodes.add(new Node(18, 9));</span>
+<span class="fc" id="L130">		nodes.add(new Node(18, 4));</span>
+<span class="fc" id="L131">		nodes.add(new Node(18, 10));</span>
+<span class="fc" id="L132">		nodes.add(new Node(15, 10));</span>
+<span class="fc" id="L133">		nodes.add(new Node(15, 16));</span>
+<span class="fc" id="L134">		nodes.add(new Node(25, 16));</span>
+<span class="fc" id="L135">		nodes.add(new Node(25, 3));</span>
+<span class="fc" id="L136">		nodes.add(new Node(35, 3));</span>
+<span class="fc" id="L137">		nodes.add(new Node(35, 10));</span>
+<span class="fc" id="L138">		nodes.add(new Node(37, 10));</span>
+<span class="fc" id="L139">		setPath(new FixedPath(nodes, true));</span>
+<span class="fc" id="L140">	}</span>
+
+	@Override
+	protected int getHighestHouseNumber() {
+<span class="fc" id="L144">		return 77;</span>
+	}
+
+	@Override
+	protected int getLowestHouseNumber() {
+<span class="fc" id="L149">		return 50;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

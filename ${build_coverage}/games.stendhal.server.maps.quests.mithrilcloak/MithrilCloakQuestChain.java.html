@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>MithrilCloakQuestChain.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests.mithrilcloak</a> &gt; <span class="el_source">MithrilCloakQuestChain.java</span></div><h1>MithrilCloakQuestChain.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests.mithrilcloak;
+
+/**
+ * QUEST: Mithril Cloak
+ * &lt;p&gt;
+ * PARTICIPANTS:
+ * &lt;ul&gt;
+ * &lt;li&gt;Ida, a seamstress in Ados.&lt;/li&gt;
+ * &lt;li&gt;Imperial scientists, in kalavan basement&lt;/li&gt;
+ * &lt;li&gt;Mithrilbourgh wizards, in kirdneh and magic city&lt;/li&gt;
+ * &lt;li&gt;Hogart, a retired master dwarf smith, forgotten below the dwarf mines in
+ * Orril.&lt;/li&gt;
+ * &lt;li&gt;Terry, the dragon hatcher in semos caves.&lt;/li&gt;
+ * &lt;li&gt;Ritati Dragontracker, odds and ends buyer in ados abandoned keep&lt;/li&gt;
+ * &lt;li&gt;Pdiddi, the dodgy dealer from Semos&lt;/li&gt;
+ * &lt;li&gt;Josephine, young woman from Fado&lt;/li&gt;
+ * &lt;li&gt;Pedinghaus, the mithril casting wizard in Ados&lt;/li&gt;
+ * &lt;/ul&gt;
+ * &lt;p&gt;
+ * STEPS:
+ * &lt;ul&gt;
+ * &lt;li&gt;Ida needs sewing machine fixed, with one of three items from a list&lt;/li&gt;
+ * &lt;li&gt;Once machine fixed and if you have done mithril shield quest, Ida offers you cloak&lt;/li&gt;
+ * &lt;li&gt;Kampusch tells you to how to make the fabric&lt;/li&gt;
+ * &lt;li&gt;Imperial scientists take silk glands and make silk thread&lt;/li&gt;
+ * &lt;li&gt;Kampusch fuses mithril nuggets into the silk thread&lt;/li&gt;
+ * &lt;li&gt;Whiggins weaves mithril thread into mithril fabric&lt;/li&gt;
+ * &lt;li&gt;Ida takes fabric then asks for scissors&lt;/li&gt;
+ * &lt;li&gt;Hogart makes the scissors which need eggshells&lt;/li&gt;
+ * &lt;li&gt;Terry swaps eggshells for poisons&lt;/li&gt;
+ * &lt;li&gt;Ida takes the scissors then asks for needles&lt;/li&gt;
+ * &lt;li&gt;Needles come from Ritati Dragontracker&lt;/li&gt;
+ * &lt;li&gt;Ida breaks a random number of needles, meaning you need to get more each time&lt;/li&gt;
+ * &lt;li&gt;Ida pricks her finger on the last needle and goes to twilight zone&lt;/li&gt;
+ * &lt;li&gt;Pdiddi sells the moss to get to twilight zone&lt;/li&gt; 
+ * &lt;li&gt;A creature in the twilight zone drops the elixir to heal lda&lt;/li&gt;
+ * &lt;li&gt;After being ill Ida asks you to take a blue striped cloak to Josephine&lt;/li&gt;
+ * &lt;li&gt;After taking cloak to Josephine and telling Ida she asks for mithril clasp&lt;/li&gt;
+ * &lt;li&gt;Pedinghaus makes mithril clasp&lt;/li&gt;
+ * &lt;li&gt;The clasp completes the cloak&lt;/li&gt;
+ * &lt;/ul&gt;
+ * &lt;p&gt;
+ * REWARD:
+ * &lt;ul&gt;
+ * &lt;li&gt;Mithril Cloak&lt;/li&gt;
+ * &lt;li&gt; XP&lt;/li&gt;
+ * &lt;li&gt; Karma&lt;/li&gt;
+ * &lt;/ul&gt;
+ * &lt;p&gt;
+ * REPETITIONS:
+ * &lt;ul&gt;
+ * &lt;li&gt;None&lt;/li&gt;
+ * &lt;/ul&gt;
+ *
+ * @author kymara
+*/
+
+<span class="fc" id="L70">public class MithrilCloakQuestChain  {</span>
+<span class="fc" id="L71">	private static MithrilCloakQuestInfo mithrilcloak = new MithrilCloakQuestInfo();</span>
+
+	public void addToWorld() {
+<span class="fc" id="L74">		new InitialSteps(mithrilcloak).addToWorld();</span>
+<span class="fc" id="L75">		new MakingFabric(mithrilcloak).addToWorld();</span>
+<span class="fc" id="L76">		new GettingTools(mithrilcloak).addToWorld();</span>
+<span class="fc" id="L77">		new TwilightZone(mithrilcloak).addToWorld();</span>
+<span class="fc" id="L78">		new CloakForJosephine(mithrilcloak).addToWorld();</span>
+<span class="fc" id="L79">		new MakingClasp(mithrilcloak).addToWorld();</span>
+<span class="fc" id="L80">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

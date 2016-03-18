@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>UpdateProgressBarWindowListener.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.update</a> &gt; <span class="el_source">UpdateProgressBarWindowListener.java</span></div><h1>UpdateProgressBarWindowListener.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2011 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.update;
+
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowListener;
+
+import javax.swing.JOptionPane;
+
+/**
+ * Ask for confirmation and exists the JVM if the user closes the progress bar window.
+ */
+<span class="nc" id="L22">class UpdateProgressBarWindowListener implements WindowListener {</span>
+
+	@Override
+	public void windowOpened(WindowEvent e) {
+		// do nothing
+<span class="nc" id="L27">	}</span>
+
+	/**
+	 * Ask for confirmation and closes the JVM
+	 */
+	@Override
+	public void windowClosing(WindowEvent e) {
+<span class="nc" id="L34">		int result = JOptionPane.showConfirmDialog(e.getWindow(),</span>
+				&quot;Are you sure you want to cancel the download?&quot;, &quot;Confirmation&quot;,
+				JOptionPane.YES_NO_OPTION);
+<span class="nc bnc" id="L37" title="All 2 branches missed.">		if (result == JOptionPane.YES_OPTION) {</span>
+<span class="nc" id="L38">			e.getWindow().dispose();</span>
+<span class="nc" id="L39">			System.exit(1);</span>
+		}
+<span class="nc" id="L41">	}</span>
+
+	@Override
+	public void windowClosed(WindowEvent e) {
+		// do nothing
+<span class="nc" id="L46">	}</span>
+
+	@Override
+	public void windowIconified(WindowEvent e) {
+		// do nothing
+<span class="nc" id="L51">	}</span>
+
+	@Override
+	public void windowDeiconified(WindowEvent e) {
+		// do nothing
+<span class="nc" id="L56">	}</span>
+
+	@Override
+	public void windowActivated(WindowEvent e) {
+		// do nothing
+<span class="nc" id="L61">	}</span>
+
+	@Override
+	public void windowDeactivated(WindowEvent e) {
+		// do nothing
+<span class="nc" id="L66">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

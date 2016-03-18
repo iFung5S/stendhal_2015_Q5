@@ -1,0 +1,308 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>PaperChase.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests</a> &gt; <span class="el_source">PaperChase.java</span></div><h1>PaperChase.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests;
+
+import games.stendhal.common.MathHelper;
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.core.events.TeleportListener;
+import games.stendhal.server.core.events.TeleportNotifier;
+import games.stendhal.server.entity.mapstuff.sign.Sign;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.action.EquipItemAction;
+import games.stendhal.server.entity.npc.action.IncreaseKarmaAction;
+import games.stendhal.server.entity.npc.action.IncreaseXPAction;
+import games.stendhal.server.entity.npc.action.LoadSignFromHallOfFameAction;
+import games.stendhal.server.entity.npc.action.MultipleActions;
+import games.stendhal.server.entity.npc.action.SetHallOfFameToAgeDiffAction;
+import games.stendhal.server.entity.npc.action.SetQuestAction;
+import games.stendhal.server.entity.npc.action.SetQuestToPlayerAgeAction;
+import games.stendhal.server.entity.npc.action.SetQuestToYearAction;
+import games.stendhal.server.entity.npc.condition.AndCondition;
+import games.stendhal.server.entity.npc.condition.QuestInStateCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotInStateCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotStartedCondition;
+import games.stendhal.server.entity.npc.condition.QuestStartedCondition;
+import games.stendhal.server.entity.npc.condition.SystemPropertyCondition;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.maps.Region;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * A kind of paper chase.
+ *
+ * @author hendrik
+ */
+<span class="nc" id="L54">public class PaperChase extends AbstractQuest implements TeleportListener {</span>
+	private static final String QUEST_SLOT = &quot;paper_chase_20[year]&quot;;
+<span class="nc" id="L56">	private static final String FAME_TYPE = QUEST_SLOT.substring(QUEST_SLOT.length() - 1);</span>
+	
+	private static final int TELEPORT_PENALTY_IN_MINUTES = 10;
+
+<span class="nc" id="L60">	private static final List&lt;String&gt; NPC_IDLE = Arrays.asList(&quot;Tad&quot;, &quot;Haunchy Meatoch&quot;, &quot;Pdiddi&quot;, &quot;Ketteh Wehoh&quot;);</span>
+
+<span class="nc" id="L62">	private List&lt;String&gt; points = Arrays.asList(&quot;Nishiya&quot;, &quot;Marcus&quot;, &quot;Eheneumniranin&quot;, &quot;Balduin&quot;, &quot;Rachel&quot;, &quot;Fritz&quot;, </span>
+												&quot;Alice Farmer&quot;, &quot;Elisabeth&quot;, &quot;Sue&quot;, &quot;Old Mother Helena&quot;, &quot;Hazel&quot;,
+												&quot;Captain Brownbeard&quot;, &quot;Jane&quot;, &quot;Seremela&quot;, &quot;Phalk&quot;, &quot;Fidorea&quot;);
+
+<span class="nc" id="L66">	private Map&lt;String, String&gt; texts = new HashMap&lt;String, String&gt;();</span>
+
+<span class="nc" id="L68">	private Map&lt;String, String&gt; greetings = new HashMap&lt;String, String&gt;();</span>
+
+	private LoadSignFromHallOfFameAction loadSignFromHallOfFame;
+
+
+	private void setupGreetings() {
+		// Each greeting is said by the previous NPC to point to the NPC in the key.
+<span class="nc" id="L75">		greetings.put(&quot;Marcus&quot;, &quot;My sheep knew that you were on the way to me. &quot;);</span>
+<span class="nc" id="L76">		greetings.put(&quot;Eheneumniranin&quot;, &quot;Long time ago that someone visited me here. Nice that you found me. &quot;);</span>
+<span class="nc" id="L77">		greetings.put(&quot;Balduin&quot;, &quot;Ahh, you found me while gathering sheaves of grain with my sickle. Great! &quot;);</span>
+<span class="nc" id="L78">		greetings.put(&quot;Rachel&quot;, &quot;It's windy here, isn't it? Hope the latest hint how to find me wasn't too easy. &quot;);</span>
+<span class="nc" id="L79">		greetings.put(&quot;Fritz&quot;, &quot;Oh I love customers of Ados bank! They are so sweet! &quot;);</span>
+<span class="nc" id="L80">		greetings.put(&quot;Alice Farmer&quot;, &quot;Smelling fish here, right? That's the spirit of the ocean! &quot;);</span>
+<span class="nc" id="L81">		greetings.put(&quot;Elisabeth&quot;, &quot;Fantastic vacation so far and so much to explore! &quot;);</span>
+<span class="nc" id="L82">		greetings.put(&quot;Sue&quot;, &quot;I love chocolate! You found me, maybe you can bring me a bar next time. &quot;);</span>
+<span class="nc" id="L83">		greetings.put(&quot;Old Mother Helena&quot;, &quot;All of these flowers around give me a warm feeling. Hope you enjoy them too, thanks for visiting me! &quot;);</span>
+<span class="nc" id="L84">		greetings.put(&quot;Hazel&quot;, &quot;Oh hello, so nice that you found me here. Come and join me again soon to let me cook some nice soup for you. &quot;);</span>
+<span class="nc" id="L85">		greetings.put(&quot;Captain Brownbeard&quot;, &quot;The museum really is a lovely place to work at. Wonderful that you found me here. &quot;);</span>
+<span class="nc" id="L86">		greetings.put(&quot;Jane&quot;, &quot;Yaaarrrr! My boatey will bring you over the sea, the sea! *sing* &quot;);</span>
+<span class="nc" id="L87">		greetings.put(&quot;Seremela&quot;, &quot;It's hot here at the beach, hope you used some suntan cream. &quot;);</span>
+<span class="nc" id="L88">		greetings.put(&quot;Phalk&quot;, &quot;Beautiful flowers in this city here! Unfortunately those elves don't appreciate them much. &quot;);</span>
+<span class="nc" id="L89">		greetings.put(&quot;Fidorea&quot;, &quot;Young warrior, you did great things on your journey! Now return to finish it. You must be thirsty! &quot;);</span>
+<span class="nc" id="L90">	}</span>
+	
+
+	private void setupTexts() {
+<span class="nc" id="L94">		texts.put(&quot;Marcus&quot;, &quot;The next person you should find takes care of thieves and other criminals. &quot;</span>
+				  + &quot;He works in a fort near Semos.&quot;);
+<span class="nc" id="L96">		texts.put(&quot;Eheneumniranin&quot;, &quot;You'll have to find the half sickling elf on Ados farm, next. He is always busy while gathering grain.&quot;);</span>
+<span class="nc" id="L97">		texts.put(&quot;Balduin&quot;, &quot;The next person on your trail sits on top of a really windy mountain.&quot;);</span>
+<span class="nc" id="L98">		texts.put(&quot;Rachel&quot;, &quot;The next lady to find works in a bank and can tell you all about her job.&quot;);</span>
+<span class="nc" id="L99">		texts.put(&quot;Fritz&quot;, &quot;Please go and find the old fisherman in Ados who can tell you great stories about fish. He also has a daughter named Caroline.&quot;);</span>
+<span class="nc" id="L100">		texts.put(&quot;Alice Farmer&quot;, &quot;The next person you'll have to seek out is on vacation in Ados, together with her whole family. She also knows everything about food and drinks.&quot;);</span>
+<span class="nc" id="L101">		texts.put(&quot;Elisabeth&quot;, &quot;Now you have to find a young girl who plays on a playground in Kirdneh and loves chocolate.&quot;); </span>
+<span class="nc" id="L102">		texts.put(&quot;Sue&quot;, &quot;Please go and find the nice gardener who owns some greenhouses with tomatoes inside near Kalavan.&quot;);</span>
+<span class="nc" id="L103">		texts.put(&quot;Old Mother Helena&quot;, &quot;Now please go and try to find a nice old woman who is really famous for her soups which can keep you warm and healthy. She might ask you about them first, just try to put her off for now :)&quot;);</span>
+<span class="nc" id="L104">		texts.put(&quot;Hazel&quot;, &quot;I know a really nice lady who can help you next. She works in a museum and loves her job.&quot;);</span>
+<span class="nc" id="L105">		texts.put(&quot;Captain Brownbeard&quot;, &quot;Now you have to travel on a ferry and talk to an old salt who will lead you to the next person to meet up with.&quot;);</span>
+<span class="nc" id="L106">		texts.put(&quot;Jane&quot;, &quot;Harrr yarrr the next lady enjoys a sunbath together with her husband on Athor beach.&quot;);</span>
+<span class="nc" id="L107">		texts.put(&quot;Seremela&quot;, &quot;It's not long ago that the next person you have to find opened a beautiful flowershop. I've seen lots of long eared creatures walking around her, hidden in a city which lays in a forest.&quot;);</span>
+<span class="nc" id="L108">		texts.put(&quot;Phalk&quot;, &quot;The next person you have to find is an old warrior who guards the mines, north to Semos.&quot;);</span>
+<span class="nc" id="L109">		texts.put(&quot;Fidorea&quot;, &quot;The final person to talk to, is the one who started all this.&quot;);</span>
+<span class="nc" id="L110">	}</span>
+	
+	/**
+	 * Handles all normal points in this paper chase (without the first and last.
+	 * one)
+	 */
+<span class="nc" id="L116">	private class PaperChasePoint implements ChatAction {</span>
+		private final int idx;
+
+<span class="nc" id="L119">		PaperChasePoint(final int idx) {</span>
+<span class="nc" id="L120">			this.idx = idx;</span>
+<span class="nc" id="L121">		}</span>
+
+		@Override
+		public void fire(final Player player, final Sentence sentence, final EventRaiser raiser) {
+<span class="nc" id="L125">			final String state = points.get(idx);</span>
+<span class="nc" id="L126">			final String next = points.get(idx + 1);</span>
+<span class="nc" id="L127">			final String questState = player.getQuest(QUEST_SLOT, 0);</span>
+
+			// player does not have this quest or finished it
+<span class="nc bnc" id="L130" title="All 2 branches missed.">			if (questState == null) {</span>
+<span class="nc" id="L131">				raiser.say(&quot;Please talk to Fidorea in the Mine Town north of Semos to start the paper chase.&quot;);</span>
+<span class="nc" id="L132">				return;</span>
+			}
+
+<span class="nc" id="L135">			final String nextNPC = questState;</span>
+
+			// is the player supposed to speak to another NPC?
+<span class="nc bnc" id="L138" title="All 2 branches missed.">			if (!nextNPC.equals(state)) {</span>
+<span class="nc" id="L139">				raiser.say(&quot;What do you say? \&quot;&quot; + texts.get(nextNPC) + &quot;\&quot; That's obviously not me.&quot;);</span>
+<span class="nc" id="L140">				return;</span>
+			}
+
+			// send player to the next NPC and record it in quest state
+<span class="nc" id="L144">			raiser.say(greetings.get(next) + texts.get(next) + &quot; Good luck!&quot;);</span>
+<span class="nc" id="L145">			player.setQuest(QUEST_SLOT, 0, next);</span>
+<span class="nc" id="L146">			player.addXP((idx + 1) * 10);</span>
+<span class="nc" id="L147">		}</span>
+
+	}
+
+	@Override
+	public String getSlotName() {
+<span class="nc" id="L153">		return QUEST_SLOT;</span>
+	}
+
+	/**
+	 * Adds the task to the specified NPC. Note that the start and end of this
+	 * quest have to be coded specially.
+	 *
+	 * @param idx
+	 *            index of way point
+	 */
+	private void addTaskToNPC(final int idx) {
+<span class="nc" id="L164">		final String state = points.get(idx);</span>
+<span class="nc" id="L165">		final SpeakerNPC npc = npcs.get(state);</span>
+<span class="nc" id="L166">		npc.add(ConversationStates.ATTENDING, Arrays.asList(&quot;paper&quot;, &quot;chase&quot;, &quot;paperchase&quot;), new SystemPropertyCondition(&quot;stendhal.minetown&quot;),</span>
+				ConversationStates.ATTENDING, null, new PaperChasePoint(idx));
+<span class="nc bnc" id="L168" title="All 2 branches missed.">		if (NPC_IDLE.contains(state)) {</span>
+<span class="nc" id="L169">			npc.add(ConversationStates.ANY, Arrays.asList(&quot;paper&quot;, &quot;chase&quot;, &quot;paperchase&quot;), new SystemPropertyCondition(&quot;stendhal.minetown&quot;),</span>
+					ConversationStates.ANY, null, new PaperChasePoint(idx));
+		}
+<span class="nc" id="L172">	}</span>
+
+
+	private void createHallOfFameSign() {
+<span class="nc" id="L176">		loadSignFromHallOfFame = new LoadSignFromHallOfFameAction(null, &quot;Those who travelled the world on behalf of Fidorea:\n&quot;, FAME_TYPE, 2000, true);</span>
+<span class="nc" id="L177">		loadSignFromHallOfFame.fire(null, null, null);</span>
+<span class="nc" id="L178">	}</span>
+
+	/**
+	 * sets the sign to show the hall of fame
+	 *
+	 * @param sign a Sign or &lt;code&gt;null&lt;/code&gt;.
+	 */
+	public void setSign(Sign sign) {
+<span class="nc" id="L186">		loadSignFromHallOfFame.setSign(sign);</span>
+<span class="nc" id="L187">		loadSignFromHallOfFame.fire(null, null, null);</span>
+<span class="nc" id="L188">	}</span>
+
+	public void addToStarterNPCs() {
+<span class="nc" id="L191">		SpeakerNPC npc = npcs.get(&quot;Fidorea&quot;);</span>
+
+<span class="nc" id="L193">		ChatAction startAction = new MultipleActions(</span>
+			new SetQuestAction(QUEST_SLOT, 0, points.get(0)), 
+			new SetQuestToPlayerAgeAction(QUEST_SLOT, 1),
+			new SetQuestToYearAction(QUEST_SLOT, 2));
+
+		// Fidorea introduces the quests
+<span class="nc" id="L199">		npc.add(</span>
+			ConversationStates.ATTENDING,
+			ConversationPhrases.QUEST_MESSAGES,
+			new AndCondition(new QuestStartedCondition(QUEST_SLOT), new SystemPropertyCondition(&quot;stendhal.minetown&quot;)),
+			ConversationStates.ATTENDING,
+			&quot;I have nothing to do for you. But thanks for asking.&quot;,
+			null);
+<span class="nc" id="L206">		npc.add(</span>
+			ConversationStates.ATTENDING,
+			ConversationPhrases.QUEST_MESSAGES,
+			new AndCondition(new QuestNotStartedCondition(QUEST_SLOT), new SystemPropertyCondition(&quot;stendhal.minetown&quot;)),
+			ConversationStates.QUEST_OFFERED,
+			&quot;Those who had to stay at home because of their duties, have prepared a #paper #chase.&quot;,
+			null);
+<span class="nc" id="L213">		npc.add(</span>
+			ConversationStates.QUEST_OFFERED,
+			Arrays.asList(&quot;paper&quot;, &quot;chase&quot;),
+			new SystemPropertyCondition(&quot;stendhal.minetown&quot;),
+			ConversationStates.ATTENDING,
+			&quot;You must ask every person on the trail about the #paper #chase. Your journey starts in Semos Village, where you find a sheep loving and sheep selling man. &quot;
+			+ &quot;And just a warning: you may teleport on your journey, but every teleport will count as &quot; + TELEPORT_PENALTY_IN_MINUTES + &quot; minutes on the high score sign.&quot;,
+			startAction);
+
+
+		// add normal way points (without first and last)
+<span class="nc bnc" id="L224" title="All 2 branches missed.">		for (int i = 0; i &lt; points.size() - 1; i++) {</span>
+<span class="nc" id="L225">			addTaskToNPC(i);</span>
+		}
+
+		// Fidorea does the post processing of this quest
+<span class="nc" id="L229">		npc.add(ConversationStates.ATTENDING, Arrays.asList(&quot;paper&quot;, &quot;chase&quot;), </span>
+				new AndCondition(new QuestNotStartedCondition(QUEST_SLOT), new SystemPropertyCondition(&quot;stendhal.minetown&quot;)),
+			ConversationStates.ATTENDING, &quot;Oh, that is a nice #quest.&quot;, null);
+<span class="nc" id="L232">		npc.add(ConversationStates.ATTENDING, Arrays.asList(&quot;paper&quot;, &quot;chase&quot;), </span>
+			new AndCondition(
+					new QuestStartedCondition(QUEST_SLOT), 
+					new QuestNotInStateCondition(QUEST_SLOT, 0, &quot;Fidorea&quot;),
+					new QuestNotInStateCondition(QUEST_SLOT, 0, &quot;done&quot;),
+					new SystemPropertyCondition(&quot;stendhal.minetown&quot;)),
+			ConversationStates.ATTENDING, &quot;I guess you still have to talk to some people.&quot;, null);
+
+<span class="nc" id="L240">		ChatAction reward = new MultipleActions(</span>
+			new IncreaseKarmaAction(15), 
+			new IncreaseXPAction(400), 
+			new SetQuestAction(QUEST_SLOT, 0, &quot;done&quot;),
+			new EquipItemAction(&quot;empty scroll&quot;, 5),
+			new SetHallOfFameToAgeDiffAction(QUEST_SLOT, 1, FAME_TYPE),
+			loadSignFromHallOfFame);
+	
+<span class="nc" id="L248">		npc.add(ConversationStates.ATTENDING, Arrays.asList(&quot;paper&quot;, &quot;chase&quot;), </span>
+				new AndCondition(new QuestInStateCondition(QUEST_SLOT, 0, &quot;Fidorea&quot;), new SystemPropertyCondition(&quot;stendhal.minetown&quot;)),
+			ConversationStates.ATTENDING, 
+			&quot;Very good. You did the complete quest, talking to all those people around the world. I will add your name to the sign for everyone to see. And here are some magic scrolls as reward. They will help you on further travels.&quot;,
+			reward);
+<span class="nc" id="L253">	}</span>
+
+
+	@Override
+	public void addToWorld() {
+<span class="nc" id="L258">		fillQuestInfo(</span>
+				&quot;Paper Chase&quot;,
+				&quot;Some rumours are going around in Faiumoni. Maybe some of the guys who live around there know something.&quot;,
+				false);
+<span class="nc" id="L262">		setupGreetings();</span>
+<span class="nc" id="L263">		setupTexts();</span>
+<span class="nc" id="L264">		createHallOfFameSign();</span>
+<span class="nc" id="L265">		TeleportNotifier.get().registerListener(this);</span>
+<span class="nc" id="L266">	}</span>
+
+
+	@Override
+	public String getName() {
+<span class="nc" id="L271">		return &quot;PaperChase&quot;;</span>
+	}
+	
+	@Override
+	public boolean isVisibleOnQuestStatus() {
+<span class="nc" id="L276">		return false;</span>
+	}
+	
+	@Override
+	public List&lt;String&gt; getHistory(final Player player) {
+<span class="nc" id="L281">		return new ArrayList&lt;String&gt;();</span>
+	}
+
+
+	@Override
+	public void onTeleport(Player player, boolean playerAction) {
+<span class="nc bnc" id="L287" title="All 2 branches missed.">		if (!playerAction) {</span>
+<span class="nc" id="L288">			return;</span>
+		}
+
+<span class="nc bnc" id="L291" title="All 4 branches missed.">		if (player.hasQuest(QUEST_SLOT) &amp;&amp; !player.getQuest(QUEST_SLOT, 0).equals(&quot;done&quot;)) {</span>
+<span class="nc" id="L292">			int startAgeWithPenalty = MathHelper.parseIntDefault(player.getQuest(QUEST_SLOT, 1), 0) - TELEPORT_PENALTY_IN_MINUTES;</span>
+<span class="nc" id="L293">			player.setQuest(QUEST_SLOT, 1, Integer.toString(startAgeWithPenalty));</span>
+		}
+<span class="nc" id="L295">	}</span>
+
+
+	@Override
+	public String getNPCName() {
+<span class="nc" id="L300">		return &quot;Fidorea&quot;;</span>
+	}
+	
+	@Override
+	public String getRegion() {
+<span class="nc" id="L305">		return Region.SEMOS_SURROUNDS;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

@@ -1,0 +1,999 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Entity2DView.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui.j2d.entity</a> &gt; <span class="el_source">Entity2DView.java</span></div><h1>Entity2DView.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui.j2d.entity;
+
+//
+//
+
+import games.stendhal.client.IGameScreen;
+import games.stendhal.client.stendhal;
+import games.stendhal.client.entity.ActionType;
+import games.stendhal.client.entity.EntityChangeListener;
+import games.stendhal.client.entity.IEntity;
+import games.stendhal.client.entity.ImageEventProperty;
+import games.stendhal.client.entity.Inspector;
+import games.stendhal.client.entity.User;
+import games.stendhal.client.gui.j2DClient;
+import games.stendhal.client.gui.j2d.ImageEffect;
+import games.stendhal.client.gui.j2d.entity.helpers.HorizontalAlignment;
+import games.stendhal.client.gui.j2d.entity.helpers.VerticalAlignment;
+import games.stendhal.client.gui.styled.cursor.StendhalCursor;
+import games.stendhal.client.sprite.AnimatedSprite;
+import games.stendhal.client.sprite.Sprite;
+import games.stendhal.client.sprite.SpriteStore;
+
+import java.awt.AlphaComposite;
+import java.awt.Color;
+import java.awt.Composite;
+import java.awt.Graphics2D;
+import java.awt.Rectangle;
+import java.awt.geom.Rectangle2D;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
+
+import org.apache.log4j.Logger;
+
+/**
+ * The 2D view of an entity.
+ * 
+ * @param &lt;T&gt; type of entity
+ */
+<span class="fc" id="L54">public abstract class Entity2DView&lt;T extends IEntity&gt; implements EntityView&lt;T&gt; {</span>
+	/**
+	 * The entity this view is for.
+	 */
+	protected T entity;
+	
+	/**
+	 * The entity drawing composite.
+	 */
+	private Composite entityComposite;
+	
+	/**
+	 * Model values affecting animation.
+	 */
+	protected volatile boolean animatedChanged;
+
+	/**
+	 * The position value changed.
+	 */
+	private volatile boolean positionChanged;
+
+	/**
+	 * Model values affecting visual representation changed.
+	 */
+	protected volatile boolean representationChanged;
+
+	/**
+	 * The visibility value changed.
+	 */
+	protected volatile boolean visibilityChanged;
+	
+	/**
+	 * The screen X coordinate.
+	 */
+	private int x;
+
+	/**
+	 * The X alignment offset.
+	 */
+	private int xoffset;
+
+	/**
+	 * The screen Y coordinate.
+	 */
+	private int y;
+
+	/**
+	 * The Y alignment offset.
+	 */
+	private int yoffset;
+
+	/**
+	 * The entity image (or current one at least).
+	 */
+	private Sprite sprite;
+
+	/**
+	 * Whether this view is contained.
+	 */
+	private boolean contained;
+<span class="fc" id="L114">	private HorizontalAlignment xAlign = HorizontalAlignment.CENTER;</span>
+<span class="fc" id="L115">	private VerticalAlignment yAlign = VerticalAlignment.MIDDLE;</span>
+	
+	/**
+	 * Some model value changed.
+	 */
+	private volatile boolean changed;
+	/** Additional sprites attached to the view. */
+	private Collection&lt;AttachedSprite&gt; attachedSprites;
+	
+	/**
+	 * Flag for detecting that the view has been released &lt;code&gt;true&lt;/code&gt; if
+	 * the view has been released, &lt;code&gt;false&lt;/code&gt; otherwise.
+	 */
+<span class="fc" id="L128">	private volatile boolean released = false;</span>
+	/**
+	 * Listener for entity changes. Forwards the changes to the the EntityView.
+	 * The purpose is that extending classes get a chance to process the changes
+	 * before the {@link #changed} flag is toggled.
+	 */
+<span class="fc" id="L134">	private final UpdateListener updateListener = new UpdateListener();</span>
+	/**
+	 * The area rectangle. Reused because it's otherwise one of the most
+	 * allocated objects.
+	 */
+<span class="fc" id="L139">	private final Rectangle area = new Rectangle();</span>
+
+	@Override
+	public void initialize(final T entity) {
+<span class="pc bpc" id="L143" title="1 of 2 branches missed.">		if (entity == null) {</span>
+<span class="nc" id="L144">			throw new IllegalArgumentException(&quot;entity must not be null&quot;);</span>
+		}
+<span class="pc bpc" id="L146" title="1 of 2 branches missed.">		if (this.entity != null) {</span>
+<span class="nc" id="L147">			this.entity.removeChangeListener(updateListener);</span>
+		}
+<span class="fc" id="L149">		this.entity = entity;</span>
+
+<span class="fc" id="L151">		x = 0;</span>
+<span class="fc" id="L152">		y = 0;</span>
+<span class="fc" id="L153">		xoffset = 0;</span>
+<span class="fc" id="L154">		yoffset = 0;</span>
+
+<span class="fc" id="L156">		entityComposite = AlphaComposite.SrcOver;</span>
+<span class="fc" id="L157">		contained = false;</span>
+<span class="fc" id="L158">		animatedChanged = false;</span>
+<span class="fc" id="L159">		changed = true;</span>
+<span class="fc" id="L160">		positionChanged = true;</span>
+<span class="fc" id="L161">		visibilityChanged = true;</span>
+<span class="fc" id="L162">		representationChanged = true;</span>
+
+<span class="fc" id="L164">		entity.addChangeListener(updateListener);</span>
+<span class="fc" id="L165">	}</span>
+
+	//
+	// Entity2DView
+	//
+
+	/**
+	 * Handle entity changes.
+	 */
+	@Override
+	public void applyChanges() {
+<span class="nc bnc" id="L176" title="All 2 branches missed.">		if (changed) {</span>
+<span class="nc" id="L177">			changed = false;</span>
+<span class="nc" id="L178">			update();</span>
+		}
+<span class="nc" id="L180">	}</span>
+
+	/**
+	 * Build a list of entity specific actions. &lt;strong&gt;NOTE: The first entry
+	 * should be the default.&lt;/strong&gt;
+	 * 
+	 * @param list
+	 *            The list to populate.
+	 */
+	protected void buildActions(final List&lt;String&gt; list) {
+<span class="nc bnc" id="L190" title="All 2 branches missed.">		if (entity.getRPObject().has(&quot;menu&quot;)) {</span>
+<span class="nc" id="L191">			list.add(entity.getRPObject().get(&quot;menu&quot;));</span>
+		}
+<span class="nc" id="L193">		list.add(ActionType.LOOK.getRepresentation());</span>
+<span class="nc" id="L194">	}</span>
+
+	/**
+	 * Rebuild the representation using the base entity.
+	 * 
+	 * @param entity the eEntity to build the representation for
+	 */
+	protected void buildRepresentation(T entity) {
+<span class="nc" id="L202">		setSprite(SpriteStore.get().getSprite(translate(entity.getType())));</span>
+<span class="nc" id="L203">		calculateOffset(entity, getWidth(), getHeight());</span>
+<span class="nc" id="L204">	}</span>
+	
+	/**
+	 * Set the alignment of the sprite.
+	 * 
+	 * @param xAlign horizontal position
+	 * @param yAlign vertical position
+	 */
+	void setSpriteAlignment(HorizontalAlignment xAlign, VerticalAlignment yAlign) {
+<span class="nc" id="L213">		this.xAlign = xAlign;</span>
+<span class="nc" id="L214">		this.yAlign = yAlign;</span>
+<span class="nc" id="L215">	}</span>
+
+	/**
+	 * Calculate sprite image offset for the entity.
+	 * 
+	 * @param entity entity
+	 * @param swidth
+	 *            The sprite width (in pixels).
+	 * @param sheight
+	 *            The sprite height (in pixels).
+	 */
+	protected void calculateOffset(T entity, final int swidth, final int sheight) {
+<span class="nc" id="L227">		final Rectangle2D area = entity.getArea();</span>
+
+<span class="nc" id="L229">		calculateOffset(swidth, sheight, (int) (IGameScreen.SIZE_UNIT_PIXELS * area.getWidth()),</span>
+				(int) (IGameScreen.SIZE_UNIT_PIXELS * area.getHeight()));
+<span class="nc" id="L231">	}</span>
+
+	/**
+	 * Calculate sprite image offset The result depends on the alignment
+	 * specified with 
+	 * {@link #setSpriteAlignment(HorizontalAlignment, VerticalAlignment)}. The
+	 * default if centered in both directions.
+	 * 
+	 * @param swidth
+	 *            The sprite width (in pixels).
+	 * @param sheight
+	 *            The sprite height (in pixels).
+	 * @param ewidth
+	 *            The entity width (in pixels).
+	 * @param eheight
+	 *            The entity height (in pixels).
+	 */
+	private void calculateOffset(final int swidth, final int sheight,
+			final int ewidth, final int eheight) {
+<span class="nc bnc" id="L250" title="All 3 branches missed.">		switch (xAlign) {</span>
+		case LEFT:
+<span class="nc" id="L252">			xoffset = 0;</span>
+<span class="nc" id="L253">			break;</span>
+		case RIGHT:
+<span class="nc" id="L255">			xoffset = ewidth - swidth;</span>
+<span class="nc" id="L256">			break;</span>
+		default:
+<span class="nc" id="L258">			xoffset = (ewidth - swidth) / 2;</span>
+		}
+<span class="nc bnc" id="L260" title="All 3 branches missed.">		switch (yAlign) {</span>
+		case TOP:
+<span class="nc" id="L262">			yoffset = 0;</span>
+<span class="nc" id="L263">			break;</span>
+		case BOTTOM:
+<span class="nc" id="L265">			yoffset = eheight - sheight;</span>
+<span class="nc" id="L266">			break;</span>
+		default:
+<span class="nc" id="L268">			yoffset = (eheight - sheight) / 2;</span>
+		}
+<span class="nc" id="L270">	}</span>
+
+	/**
+	 * Mark this as changed. This will force the &lt;code&gt;update()&lt;/code&gt; method to
+	 * be called.
+	 */
+	void markChanged() {
+<span class="nc" id="L277">		changed = true;</span>
+<span class="nc" id="L278">	}</span>
+	
+	/**
+	 * Attach a sprite to the view. These are drawn on top of the main view
+	 * sprite. 
+	 * 
+	 * @param sprite 
+	 * @param xAlign alignment in horizontal direction
+	 * @param yAlign alignment in vertical direction
+	 * @param xOffset x coordinate offset that is used &lt;b&gt;in addition&lt;/b&gt; to
+	 * 	the alignment information 
+	 * @param yOffset y coordinate offset that is used &lt;b&gt;in addition&lt;/b&gt; to
+	 * 	the alignment information
+	 */
+	public void attachSprite(Sprite sprite, HorizontalAlignment xAlign,
+			VerticalAlignment yAlign, int xOffset, int yOffset) {
+<span class="nc" id="L294">		int x = xOffset;</span>
+<span class="nc bnc" id="L295" title="All 4 branches missed.">		switch (xAlign) {</span>
+		case LEFT:
+<span class="nc" id="L297">			break;</span>
+		case RIGHT:
+<span class="nc" id="L299">			x += getWidth() - sprite.getWidth();</span>
+<span class="nc" id="L300">			break;</span>
+		case CENTER:
+<span class="nc" id="L302">			x += (getWidth() - sprite.getWidth()) / 2;</span>
+			break;
+		}
+		
+<span class="nc" id="L306">		int y = yOffset;</span>
+<span class="nc bnc" id="L307" title="All 4 branches missed.">		switch (yAlign) {</span>
+		case TOP:
+<span class="nc" id="L309">			break;</span>
+		case MIDDLE:
+<span class="nc" id="L311">			y += (getHeight() - sprite.getHeight()) / 2;</span>
+<span class="nc" id="L312">			break;</span>
+		case BOTTOM:
+<span class="nc" id="L314">			y += getHeight() - sprite.getHeight();</span>
+			break;
+		}
+	
+<span class="nc" id="L318">		synchronized (this) {</span>
+<span class="nc bnc" id="L319" title="All 2 branches missed.">			if (attachedSprites == null) {</span>
+<span class="nc" id="L320">				attachedSprites = new ConcurrentLinkedQueue&lt;AttachedSprite&gt;();</span>
+			}
+<span class="nc" id="L322">		}</span>
+<span class="nc" id="L323">		attachedSprites.add(new AttachedSprite(sprite, x, y));</span>
+<span class="nc" id="L324">	}</span>
+	
+	/**
+	 * Detach a sprite that has been previously attached to the view.
+	 * 
+	 * @param sprite sprite to be detached
+	 */
+	public void detachSprite(Sprite sprite) {
+<span class="nc" id="L332">		Collection&lt;AttachedSprite&gt; sprites = attachedSprites;</span>
+<span class="nc bnc" id="L333" title="All 2 branches missed.">		if (sprites != null) {</span>
+<span class="nc" id="L334">			Iterator&lt;AttachedSprite&gt; it = sprites.iterator();</span>
+<span class="nc bnc" id="L335" title="All 2 branches missed.">			while (it.hasNext()) {</span>
+<span class="nc" id="L336">				AttachedSprite as = it.next();</span>
+<span class="nc bnc" id="L337" title="All 2 branches missed.">				if (as.sprite == sprite) {</span>
+<span class="nc" id="L338">					it.remove();</span>
+<span class="nc" id="L339">					break;</span>
+				}
+<span class="nc" id="L341">			}</span>
+		}
+<span class="nc" id="L343">	}</span>
+
+	/**
+	 * Draw the entity.
+	 * 
+	 * @param g2d
+	 *            The graphics to drawn on.
+	 */	
+	@Override
+	public void draw(final Graphics2D g2d) {
+<span class="nc" id="L353">		applyChanges();</span>
+
+<span class="nc" id="L355">		final Rectangle r = getDrawingArea();</span>
+
+<span class="nc bnc" id="L357" title="All 2 branches missed.">		if (isContained()) {</span>
+<span class="nc" id="L358">			r.setLocation(0, 0);</span>
+		} else {
+<span class="nc bnc" id="L360" title="All 2 branches missed.">			if (!isOnScreen(g2d, r)) {</span>
+<span class="nc" id="L361">				return;</span>
+			}
+		}
+
+<span class="nc" id="L365">		final Composite oldComposite = g2d.getComposite();</span>
+
+		try {
+<span class="nc" id="L368">			g2d.setComposite(entityComposite);</span>
+<span class="nc" id="L369">			draw(g2d, r.x, r.y, r.width, r.height);</span>
+		} finally {
+<span class="nc" id="L371">			g2d.setComposite(oldComposite);</span>
+<span class="nc" id="L372">		}</span>
+<span class="nc" id="L373">	}</span>
+	
+	private boolean isOnScreen(Graphics2D g2d, Rectangle r) {
+<span class="nc" id="L376">		Rectangle clip = g2d.getClipBounds();</span>
+<span class="nc bnc" id="L377" title="All 4 branches missed.">		return ((clip == null) || r.intersects(g2d.getClipBounds()));</span>
+	}
+
+	/**
+	 * Draw the entity.
+	 * 
+	 * @param g2d
+	 *            The graphics context.
+	 * @param x
+	 *            The drawn X coordinate.
+	 * @param y
+	 *            The drawn Y coordinate.
+	 * @param width
+	 *            The drawn entity width.
+	 * @param height
+	 *            The drawn entity height.
+	 */
+	protected void draw(final Graphics2D g2d, final int x, final int y,
+			final int width, final int height) {
+<span class="nc" id="L396">		drawEntity(g2d, x, y, width, height);</span>
+
+		if (stendhal.SHOW_COLLISION_DETECTION) {
+			g2d.setColor(Color.blue);
+			g2d.drawRect(x, y, width, height);
+
+			g2d.setColor(Color.green);
+			g2d.draw(entity.getArea());
+		}
+		
+<span class="nc" id="L406">		drawAttachedSprites(g2d, x, y);</span>
+<span class="nc" id="L407">	}</span>
+	
+	/**
+	 * Draw all attached sprites.
+	 * 
+	 * @param g2d graphics
+	 * @param x x position of the view
+	 * @param y y position of the view
+	 */
+	private void drawAttachedSprites(Graphics2D g2d, int x, int y) {
+<span class="nc" id="L417">		Collection&lt;AttachedSprite&gt; sprites = attachedSprites;</span>
+<span class="nc bnc" id="L418" title="All 2 branches missed.">		if (sprites != null) {</span>
+<span class="nc bnc" id="L419" title="All 2 branches missed.">			for (AttachedSprite sprite : sprites) {</span>
+<span class="nc" id="L420">				sprite.draw(g2d, x, y);</span>
+<span class="nc" id="L421">			}</span>
+		}
+<span class="nc" id="L423">	}</span>
+
+	/**
+	 * Draw the base entity part.
+	 * 
+	 * @param g2d
+	 *            The graphics context.
+	 * @param x
+	 *            The drawn X coordinate.
+	 * @param y
+	 *            The drawn Y coordinate.
+	 * @param width
+	 *            The drawn entity width.
+	 * @param height
+	 *            The drawn entity height. 
+	 */
+	protected void drawEntity(final Graphics2D g2d, final int x, final int y,
+			final int width, final int height) {
+<span class="nc" id="L441">		getSprite().draw(g2d, x, y);</span>
+<span class="nc" id="L442">	}</span>
+
+	/**
+	 * Draw the top layer parts of an entity. This will be on down after all
+	 * other game layers are rendered.
+	 * 
+	 * @param g2d
+	 *            The graphics to drawn on.
+	 */
+	@Override
+	public void drawTop(final Graphics2D g2d) {
+<span class="nc" id="L453">		final Rectangle r = getArea();</span>
+
+<span class="nc bnc" id="L455" title="All 2 branches missed.">		if (isContained()) {</span>
+<span class="nc" id="L456">			r.setLocation(0, 0);</span>
+		} else {
+<span class="nc bnc" id="L458" title="All 2 branches missed.">			if (!isOnScreen(g2d, r)) {</span>
+<span class="nc" id="L459">				return;</span>
+			}
+		}
+
+<span class="nc" id="L463">		final Composite oldComposite = g2d.getComposite();</span>
+
+		try {
+<span class="nc" id="L466">			g2d.setComposite(entityComposite);</span>
+<span class="nc" id="L467">			drawTop(g2d, r.x, r.y, r.width, r.height);</span>
+		} finally {
+<span class="nc" id="L469">			g2d.setComposite(oldComposite);</span>
+<span class="nc" id="L470">		}</span>
+<span class="nc" id="L471">	}</span>
+
+	/**
+	 * Draw the entity.
+	 * 
+	 * @param g2d
+	 *            The graphics context.
+	 * @param x
+	 *            The drawn X coordinate.
+	 * @param y
+	 *            The drawn Y coordinate.
+	 * @param width
+	 *            The drawn entity width.
+	 * @param height
+	 *            The drawn entity height.
+	 */
+	protected void drawTop(final Graphics2D g2d, final int x, final int y,
+			final int width, final int height) {
+<span class="nc" id="L489">	}</span>
+
+	/**
+	 * Get the screen area this is drawn in. NOTE: This only covers the area for
+	 * the main sprite.
+	 * 
+	 * @return The area this draws in.
+	 */
+	@Override
+	public Rectangle getArea() {
+<span class="nc" id="L499">		area.setBounds(getX() + getXOffset(), getY() + getYOffset(), getWidth(), getHeight());</span>
+<span class="nc" id="L500">		return area;</span>
+	}
+	
+	/**
+	 * Get the drawn area used by the entity. Used for checking if the entity
+	 * should be drawn. By default the same as getArea(), but extending classes
+	 * can override it to return a different area if they need it.
+	 *  
+	 * @return The area this draws in.
+	 */
+	protected Rectangle getDrawingArea() {
+<span class="nc" id="L511">		return getArea();</span>
+	}
+
+	/**
+	 * Get the class resource sub-path. The is the base sprite image name,
+	 * relative to &lt;code&gt;translate()&lt;/code&gt;.
+	 * 
+	 * @return The resource path.
+	 */
+	protected String getClassResourcePath() {
+<span class="nc" id="L521">		String rpath = entity.getEntityClass();</span>
+
+<span class="nc bnc" id="L523" title="All 2 branches missed.">		if (rpath != null) {</span>
+<span class="nc" id="L524">			final String subclass = entity.getEntitySubclass();</span>
+
+<span class="nc bnc" id="L526" title="All 2 branches missed.">			if (subclass != null) {</span>
+<span class="nc" id="L527">				rpath += &quot;/&quot; + subclass;</span>
+			}
+		}
+
+<span class="nc" id="L531">		return rpath;</span>
+	}
+
+	/**
+	 * Get the drawing composite.
+	 * 
+	 * @return The drawing composite.
+	 */
+	protected AlphaComposite getComposite() {
+<span class="nc" id="L540">		final int visibility = getVisibility();</span>
+<span class="nc bnc" id="L541" title="All 2 branches missed.">		if (visibility &gt;= 100) {</span>
+<span class="nc" id="L542">			return AlphaComposite.SrcOver;</span>
+<span class="nc bnc" id="L543" title="All 2 branches missed.">		} else if (visibility &lt;= 0) {</span>
+<span class="nc" id="L544">			return AlphaComposite.Dst;</span>
+		} else {
+<span class="nc" id="L546">			return AlphaComposite.getInstance(AlphaComposite.SRC_OVER,</span>
+					visibility / 100.0f);
+		}
+	}
+
+	/**
+	 * Get the height.
+	 * 
+	 * @return The height (in pixels).
+	 */
+	public int getHeight() {
+<span class="nc bnc" id="L557" title="All 2 branches missed.">		if (sprite != null) {</span>
+<span class="nc" id="L558">			return sprite.getHeight();</span>
+		}
+<span class="nc" id="L560">		return IGameScreen.SIZE_UNIT_PIXELS;</span>
+	}
+
+	/**
+	 * Get the sprite image for this entity.
+	 * 
+	 * @return The image representation.
+	 */
+	public Sprite getSprite() {
+<span class="nc" id="L569">		return sprite;</span>
+	}
+
+	/**
+	 * Get the entity's visibility.
+	 * 
+	 * @return The visibility value (0-100).
+	 */
+	protected int getVisibility() {
+<span class="nc" id="L578">		return entity.getVisibility();</span>
+	}
+
+	/**
+	 * Get the width.
+	 * 
+	 * @return The width (in pixels).
+	 */
+	public int getWidth() {
+<span class="nc bnc" id="L587" title="All 2 branches missed.">		if (sprite != null) {</span>
+<span class="nc" id="L588">			return sprite.getWidth();</span>
+		}
+<span class="nc" id="L590">		return IGameScreen.SIZE_UNIT_PIXELS;</span>
+	}
+
+	/**
+	 * Get the entity's X coordinate.
+	 * 
+	 * @return The X coordinate (in pixels).
+	 */
+	protected int getX() {
+<span class="nc" id="L599">		return x;</span>
+	}
+
+	/**
+	 * Get the X offset alignment adjustment.
+	 * 
+	 * @return The X offset (in pixels).
+	 */
+	protected int getXOffset() {
+<span class="nc" id="L608">		return xoffset;</span>
+	}
+
+	/**
+	 * Get the entity's Y coordinate.
+	 * 
+	 * @return The Y coordinate (in pixels).
+	 */
+	protected int getY() {
+<span class="nc" id="L617">		return y;</span>
+	}
+
+	/**
+	 * Get the Y offset alignment adjustment.
+	 * 
+	 * @return The Y offset (in pixels).
+	 */
+	protected int getYOffset() {
+<span class="nc" id="L626">		return yoffset;</span>
+	}
+
+	/**
+	 * Determines on top of which other entities this entity should be drawn.
+	 * Entities with a high Z index will be drawn on top of ones with a lower Z
+	 * index.
+	 * 
+	 * Also, players can only interact with the topmost entity.
+	 * 
+	 * @return The drawing index.
+	 */
+	@Override
+	public int getZIndex() {
+<span class="nc" id="L640">		return 10000;</span>
+	}
+
+	/**
+	 * Determine if this view is currently animatable.
+	 * 
+	 * @return &lt;code&gt;true&lt;/code&gt; if animating enabled.
+	 */
+	protected boolean isAnimating() {
+		// Allow sprites to animate by default
+<span class="nc" id="L650">		return true;</span>
+	}
+
+	/**
+	 * Determine if this view is contained, and should render in a compressed
+	 * (it's defined) area without clipping anything important.
+	 * 
+	 * @return &lt;code&gt;true&lt;/code&gt; if contained.
+	 */
+	public boolean isContained() {
+<span class="nc" id="L660">		return contained;</span>
+	}
+
+	/**
+	 * Reorder the actions list (if needed). Please use as last resort.
+	 * 
+	 * @param list
+	 *            The list to reorder.
+	 */
+	protected void reorderActions(final List&lt;String&gt; list) {
+<span class="nc" id="L670">	}</span>
+
+	/**
+	 * Set the sprite's animation state (if applicable).
+	 * 
+	 * @param sprite
+	 *            The sprite.
+	 */
+	private void setAnimation(final Sprite sprite) {
+<span class="nc bnc" id="L679" title="All 2 branches missed.">		if (sprite instanceof AnimatedSprite) {</span>
+<span class="nc" id="L680">			final AnimatedSprite asprite = (AnimatedSprite) sprite;</span>
+
+<span class="nc bnc" id="L682" title="All 2 branches missed.">			if (isAnimating()) {</span>
+<span class="nc" id="L683">				asprite.start();</span>
+			} else {
+<span class="nc" id="L685">				asprite.stop();</span>
+<span class="nc bnc" id="L686" title="All 2 branches missed.">				if (this instanceof ActiveEntity2DView) {</span>
+					// Use index 1 to show active entities as standing
+<span class="nc" id="L688">					asprite.reset(1);</span>
+				} else {
+<span class="nc" id="L690">					asprite.reset(0);</span>
+				}
+			}
+		}
+<span class="nc" id="L694">	}</span>
+
+	/**
+	 * Set whether this view is contained, and should render in a compressed
+	 * (it's defined) area without clipping anything important.
+	 * 
+	 * @param contained
+	 *            &lt;code&gt;true&lt;/code&gt; if contained.
+	 */
+	@Override
+	public void setContained(final boolean contained) {
+<span class="fc" id="L705">		this.contained = contained;</span>
+<span class="fc" id="L706">	}</span>
+
+	/**
+	 * Set the content inspector for this entity (if needed).
+	 * 
+	 * @param inspector
+	 *            The inspector.
+	 */
+	@Override
+	public void setInspector(final Inspector inspector) {
+<span class="nc" id="L716">	}</span>
+
+	/**
+	 * Set the sprite.
+	 * 
+	 * @param sprite
+	 *            The sprite.
+	 */
+	protected void setSprite(final Sprite sprite) {
+<span class="nc" id="L725">		setAnimation(sprite);</span>
+<span class="nc" id="L726">		animatedChanged = false;</span>
+
+<span class="nc" id="L728">		this.sprite = sprite;</span>
+<span class="nc" id="L729">	}</span>
+
+	/**
+	 * Translate a resource name into it's sprite image path.
+	 * 
+	 * @param name
+	 *            The resource name.
+	 * 
+	 * @return The full resource name.
+	 */
+	protected String translate(final String name) {
+<span class="nc" id="L740">		return &quot;data/sprites/&quot; + name + &quot;.png&quot;;</span>
+	}
+
+	/**
+	 * Handle updates.
+	 */
+	protected void update() {
+<span class="nc" id="L747">		T entity = this.entity;</span>
+<span class="nc bnc" id="L748" title="All 2 branches missed.">		if (entity == null) {</span>
+<span class="nc" id="L749">			return;</span>
+		}
+		/*
+		 * The flags are reseted *before* reading the relevant data to ensure
+		 * that we get up to date data from the game loop thread. (So that if
+		 * the data changes during we are reading it, the flags will force
+		 * reread at the next draw).
+		 */
+<span class="nc bnc" id="L757" title="All 2 branches missed.">		if (representationChanged) {</span>
+<span class="nc" id="L758">			representationChanged = false;</span>
+<span class="nc" id="L759">			buildRepresentation(entity);</span>
+		}
+
+<span class="nc bnc" id="L762" title="All 2 branches missed.">		if (positionChanged) {</span>
+<span class="nc" id="L763">			positionChanged = false;</span>
+<span class="nc" id="L764">			x = (int) (IGameScreen.SIZE_UNIT_PIXELS * entity.getX());</span>
+<span class="nc" id="L765">			y = (int) (IGameScreen.SIZE_UNIT_PIXELS * entity.getY());</span>
+		}
+
+<span class="nc bnc" id="L768" title="All 2 branches missed.">		if (visibilityChanged) {</span>
+<span class="nc" id="L769">			visibilityChanged = false;</span>
+<span class="nc" id="L770">			entityComposite = getComposite();</span>
+		}
+
+<span class="nc bnc" id="L773" title="All 2 branches missed.">		if (animatedChanged) {</span>
+<span class="nc" id="L774">			animatedChanged = false;</span>
+<span class="nc" id="L775">			setAnimation(getSprite());</span>
+		}
+<span class="nc" id="L777">	}</span>
+
+	/**
+	 * A property of the entity changed.
+	 * 
+	 * @param property
+	 *            The property identifier.
+	 */
+	void entityChanged(final Object property) {
+<span class="nc bnc" id="L786" title="All 2 branches missed.">		if (property == IEntity.PROP_ANIMATED) {</span>
+<span class="nc" id="L787">			animatedChanged = true;</span>
+<span class="nc bnc" id="L788" title="All 2 branches missed.">		} else if (property == IEntity.PROP_POSITION) {</span>
+<span class="nc" id="L789">			positionChanged = true;</span>
+<span class="nc bnc" id="L790" title="All 2 branches missed.">		} else if (property == IEntity.PROP_VISIBILITY) {</span>
+<span class="nc" id="L791">			visibilityChanged = true;</span>
+<span class="nc bnc" id="L792" title="All 2 branches missed.">		} else if (property instanceof ImageEventProperty) {</span>
+<span class="nc" id="L793">			new ImageEffect(this, ((ImageEventProperty) property).getImageName());</span>
+		}
+<span class="nc" id="L795">	}</span>
+
+	//
+	// EntityView
+	//
+
+	/**
+	 * Get the list of actions.
+	 * 
+	 * @return The list of actions.
+	 */
+	@Override
+	public final String[] getActions() {
+<span class="nc" id="L808">		final List&lt;String&gt; list = new ArrayList&lt;String&gt;();</span>
+
+<span class="nc" id="L810">		buildActions(list);</span>
+
+		/*
+		 * Special admin options
+		 */
+<span class="nc bnc" id="L815" title="All 2 branches missed.">		if (User.isAdmin()) {</span>
+<span class="nc" id="L816">			list.add(ActionType.ADMIN_INSPECT.getRepresentation());</span>
+<span class="nc" id="L817">			list.add(ActionType.ADMIN_DESTROY.getRepresentation());</span>
+<span class="nc bnc" id="L818" title="All 2 branches missed.">			if (!this.isContained()) {</span>
+<span class="nc" id="L819">				list.add(ActionType.ADMIN_ALTER.getRepresentation());</span>
+			}
+		}
+
+<span class="nc" id="L823">		reorderActions(list);</span>
+
+<span class="nc" id="L825">		return list.toArray(new String[list.size()]);</span>
+	}
+
+	/**
+	 * Get the view's entity.
+	 * 
+	 * @return The view's entity.
+	 */
+	@Override
+	public T getEntity() {
+<span class="fc" id="L835">		return entity;</span>
+	}
+
+	/**
+	 * Determine if this entity can be moved (e.g. via dragging).
+	 * 
+	 * @return &lt;code&gt;true&lt;/code&gt; if the entity is movable.
+	 */
+	@Override
+	public boolean isMovable() {
+<span class="nc" id="L845">		return false;</span>
+	}
+
+	/**
+	 * Perform the default action.
+	 */
+	@Override
+	public void onAction() {
+<span class="nc" id="L853">		onAction(ActionType.LOOK);</span>
+<span class="nc" id="L854">	}</span>
+
+
+	/**
+	 * Perform the default action unless it is not safe.
+	 *
+	 * @return &lt;code&gt;true&lt;/code&gt; if the action was performed, &lt;code&gt;false&lt;/code&gt; if nothing was done
+	 */
+	@Override
+	public boolean onHarmlessAction() {
+<span class="nc" id="L864">		onAction();</span>
+<span class="nc" id="L865">		return true;</span>
+	}
+
+	/**
+	 * Perform an action.
+	 * 
+	 * @param at
+	 *            The action.
+	 */
+	@Override
+	public void onAction(final ActionType at) {
+<span class="nc" id="L876">		IEntity entity = this.entity;</span>
+		// return prematurely if view has already been released
+<span class="nc bnc" id="L878" title="All 2 branches missed.">		if (isReleased()) {</span>
+<span class="nc" id="L879">			Logger.getLogger(Entity2DView.class).debug(</span>
+					&quot;View &quot; + this + &quot; already released - action not processed: &quot; + at);
+<span class="nc" id="L881">			return;</span>
+		}
+
+<span class="nc" id="L884">		final int id = entity.getID().getObjectID();</span>
+
+<span class="nc bnc" id="L886" title="All 3 branches missed.">		switch (at) {</span>
+		case LOOK:
+		case ADMIN_INSPECT:
+		case ADMIN_DESTROY:
+<span class="nc" id="L890">			at.send(at.fillTargetInfo(entity));</span>
+<span class="nc" id="L891">			break;</span>
+
+		case ADMIN_ALTER:
+<span class="nc" id="L894">			j2DClient.get().setChatLine(&quot;/alter #&quot; + id + &quot; &quot;);</span>
+<span class="nc" id="L895">			break;</span>
+
+		default:
+<span class="nc" id="L898">			Logger.getLogger(Entity2DView.class).error(</span>
+					&quot;Unknown action not processed: &quot; + at);
+			break;
+		}
+<span class="nc" id="L902">	}</span>
+
+	/**
+	 * is this entity interactive so that the player can click or move it?
+	 * 
+	 * @return true if the player can interact with it, false otherwise.
+	 */
+	@Override
+	public boolean isInteractive() {
+<span class="nc" id="L911">		return true;</span>
+	}
+
+	/**
+	 * Release any view resources. This view should not be used after this is
+	 * called.
+	 */
+	@Override
+	public void release() {
+<span class="fc" id="L920">		entity.removeChangeListener(updateListener);</span>
+<span class="fc" id="L921">		released = true;</span>
+<span class="fc" id="L922">	}</span>
+	
+	/**
+	 * Check if the view has been released. Usually a released view should not
+	 * be used anymore, but in certain situations it may be preferable to send
+	 * an action for a deleted entity to the server anyway. That can happen for
+	 * example with items in bag, where a new view gets created after an item
+	 * has changed, but the new view represents the same item stack as the old
+	 * one.
+	 * 
+	 * @return &lt;code&gt;true&lt;/code&gt; if the view has been released, 
+	 * 	&lt;code&gt;false&lt;/code&gt; otherwise 
+	 */
+	protected boolean isReleased() {
+<span class="nc" id="L936">		return released;</span>
+	}
+
+	/**
+	 * gets the mouse cursor image to use for this entity.
+	 *
+	 * @return StendhalCursor
+	 */
+	@Override
+	public StendhalCursor getCursor() {
+<span class="nc" id="L946">		String cursorName = entity.getCursor();</span>
+<span class="nc" id="L947">		return StendhalCursor.valueOf(cursorName, StendhalCursor.UNKNOWN);</span>
+	}
+	
+	/**
+	 * Container for sprites attached to the view.
+	 */
+	private static class AttachedSprite {
+		/** Attached sprite. */
+		final Sprite sprite;
+		/** x offset compared to the EntityView's location. */
+		int xOffset;
+		/** y offset compared to the EntityView's location. */
+		int yOffset;
+		
+		/**
+		 * Create a new AttachedSprite.
+		 * 
+		 * @param sprite
+		 * @param x x position relative to the EntityView
+		 * @param y y position relative to the EntityView
+		 */
+<span class="nc" id="L968">		AttachedSprite(Sprite sprite, int x, int y) {</span>
+<span class="nc" id="L969">			this.sprite = sprite;</span>
+<span class="nc" id="L970">			this.xOffset = x;</span>
+<span class="nc" id="L971">			this.yOffset = y;</span>
+<span class="nc" id="L972">		}</span>
+		
+		/**
+		 * Draw the sprite at the EntityView's location.
+		 * 
+		 * @param g
+		 * @param x x coordinate of the view
+		 * @param y y coordinate of the view
+		 */
+		void draw(Graphics2D g, int x, int y) {
+<span class="nc" id="L982">			sprite.draw(g, x + xOffset, y + yOffset);</span>
+<span class="nc" id="L983">		}</span>
+	}
+	
+	/**
+	 * Helper for monitoring entity changes.
+	 */
+<span class="fc" id="L989">	private class UpdateListener implements EntityChangeListener&lt;T&gt; {</span>
+		@Override
+		public void entityChanged(T entity, Object property) {
+			// In this order, to ensure the changed flag is toggled only after
+			// all the changes have been made.
+<span class="nc" id="L994">			Entity2DView.this.entityChanged(property);</span>
+<span class="nc" id="L995">			markChanged();</span>
+<span class="nc" id="L996">		}</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

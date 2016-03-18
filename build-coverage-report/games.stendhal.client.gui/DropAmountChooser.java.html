@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>DropAmountChooser.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui</a> &gt; <span class="el_source">DropAmountChooser.java</span></div><h1>DropAmountChooser.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui;
+
+import games.stendhal.client.entity.StackableItem;
+import games.stendhal.client.gui.layout.SBoxLayout;
+
+import java.awt.Component;
+import java.awt.Point;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
+
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JComponent;
+import javax.swing.JPopupMenu;
+import javax.swing.JSpinner;
+import javax.swing.JTextField;
+import javax.swing.SpinnerModel;
+import javax.swing.SpinnerNumberModel;
+import javax.swing.SwingUtilities;
+import javax.swing.text.DocumentFilter;
+import javax.swing.text.JTextComponent;
+import javax.swing.text.PlainDocument;
+
+import org.apache.log4j.Logger;
+
+/**
+ * A class for showing a selector for dropped item amounts and taking control
+ * of the drop handling of those drops.
+ */
+class DropAmountChooser {
+	/** Space between the popup border and actual content components. */
+	private static final int BORDER = 2;
+	
+	/** Item to be dropped. */
+	private final StackableItem item;
+	/** Target where the user is dropping the item. */
+	private final DropTarget target;
+	/** Drop location within the target component. */
+	private final Point location;
+	/** Created selector popup menu. */
+	private final JPopupMenu popup;
+	/** Number selector within the popup menu. */
+	private JSpinner spinner;
+	
+	/**
+	 * Create a new DropAmountChooser.
+	 * 
+	 * @param item the item whose drop should be handled by the DropAmountChooser
+	 * @param target target where the item should be dropped if the user chooses
+	 * 	an amount greater than 0
+	 * @param point drop location
+	 */
+<span class="nc" id="L66">	DropAmountChooser(StackableItem item, DropTarget target, Point point) {</span>
+<span class="nc" id="L67">		this.item = item;</span>
+<span class="nc" id="L68">		this.target = target;</span>
+<span class="nc" id="L69">		location = point;</span>
+<span class="nc" id="L70">		popup = createPopup();</span>
+		
+		/*
+		 * Select the text when the the popup is displayed. Unfortunately the
+		 * selection is normally cleared when the text field gets focus, so we
+		 * need to do it in a focus listener. Also the focus listener gets run
+		 * before the selection is cleared so to get the desired effect the
+		 * selection needs to be pushed to the event queue.
+		 */
+<span class="nc" id="L79">		final JComponent field = getTextField();</span>
+<span class="nc" id="L80">		field.addFocusListener(new FocusAdapter() {</span>
+			@Override
+			public void focusGained(FocusEvent e) {
+<span class="nc" id="L83">				SwingUtilities.invokeLater(new Runnable() {</span>
+					@Override
+					public void run() {
+<span class="nc" id="L86">						((JTextComponent) field).selectAll();</span>
+<span class="nc" id="L87">					}</span>
+				});
+<span class="nc" id="L89">			}</span>
+		});
+<span class="nc" id="L91">	}</span>
+	
+	/**
+	 * Show the chooser popup.
+	 * 
+	 * @param parent parent component
+	 * @param location location of the popup in parent coordinates
+	 */
+	protected void show(Component parent, Point location) {
+<span class="nc" id="L100">		popup.show(parent, location.x, location.y);</span>
+		/*
+		 * Needs to be after show(). Also, heavy weight popups need time to
+		 * appear, so the focus request needs to be pushed to the end of the
+		 * event queue. 
+		 */
+<span class="nc" id="L106">		SwingUtilities.invokeLater(new Runnable() {</span>
+			@Override
+			public void run() {
+<span class="nc" id="L109">				getTextField().requestFocus();</span>
+<span class="nc" id="L110">			}</span>
+		});
+<span class="nc" id="L112">	}</span>
+	
+	/**
+	 * Construct the popup.
+	 * 
+	 * @return popup
+	 */
+	private JPopupMenu createPopup() {
+<span class="nc" id="L120">		JPopupMenu menu = new JPopupMenu();</span>
+		
+<span class="nc" id="L122">		SpinnerModel model = new SpinnerNumberModel(1, 0, item.getQuantity(), 1);</span>
+<span class="nc" id="L123">		spinner = new JSpinner(model);</span>
+		// Special document for editing numbers
+<span class="nc" id="L125">		PlainDocument doc = new PlainDocument() {</span>
+			private DocumentFilter filter;
+			@Override
+			public DocumentFilter getDocumentFilter() {
+<span class="nc bnc" id="L129" title="All 2 branches missed.">				if (filter == null) {</span>
+<span class="nc" id="L130">					filter = new NumberDocumentFilter(getTextField(), true);</span>
+				}
+<span class="nc" id="L132">				return filter;</span>
+			}
+		};
+<span class="nc" id="L135">		getTextField().setDocument(doc);</span>
+
+<span class="nc" id="L137">		JButton button = new JButton(&quot;Drop&quot;);</span>
+
+<span class="nc" id="L139">		ActionListener dropAction = new ActionListener() {</span>
+			@Override
+			public void actionPerformed(ActionEvent e) {
+<span class="nc" id="L142">				doDrop();</span>
+<span class="nc" id="L143">			}</span>
+		};
+		/* 
+		 * Drop items at either clicking the drop button, or when enter is
+		 * pressed.
+		 */
+<span class="nc" id="L149">		getTextField().addActionListener(dropAction);</span>
+<span class="nc" id="L150">		button.addActionListener(dropAction);</span>
+		
+<span class="nc" id="L152">		JComponent content = SBoxLayout.createContainer(SBoxLayout.HORIZONTAL, SBoxLayout.COMMON_PADDING);</span>
+<span class="nc" id="L153">		content.setBorder(BorderFactory.createEmptyBorder(BORDER, BORDER, BORDER, BORDER));</span>
+<span class="nc" id="L154">		content.add(spinner);</span>
+<span class="nc" id="L155">		content.add(button);</span>
+<span class="nc" id="L156">		menu.add(content);</span>
+		
+<span class="nc" id="L158">		return menu;</span>
+	}
+	
+	/**
+	 * Perform the drop.
+	 */
+	private void doDrop() {
+<span class="nc" id="L165">		Object value = spinner.getValue();</span>
+<span class="nc bnc" id="L166" title="All 2 branches missed.">		if (value instanceof Integer) {</span>
+<span class="nc" id="L167">			int amount = (Integer) value;</span>
+			// No need to send drop commands if the user does not want to
+			// drop anything
+<span class="nc bnc" id="L170" title="All 2 branches missed.">			if (amount &gt; 0) {</span>
+<span class="nc" id="L171">				target.dropEntity(item, amount, location);</span>
+			}
+<span class="nc" id="L173">			popup.setVisible(false);</span>
+		}
+<span class="nc" id="L175">	}</span>
+	
+	/**
+	 * Get the editable text field component of the spinner.
+	 * 
+	 * @return text field
+	 */
+	private JTextField getTextField() {
+		// There really seems to be no simpler way to do this
+<span class="nc" id="L184">		JComponent editor = spinner.getEditor();</span>
+<span class="nc bnc" id="L185" title="All 2 branches missed.">		if (editor instanceof JSpinner.DefaultEditor) {</span>
+<span class="nc" id="L186">			return ((JSpinner.DefaultEditor) editor).getTextField();</span>
+		} else {
+<span class="nc" id="L188">			Logger.getLogger(DropAmountChooser.class).error(&quot;Unknown editor type&quot;, new Throwable());</span>
+			// This will not work, but at least it won't crash the client
+<span class="nc" id="L190">			return new JTextField();</span>
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

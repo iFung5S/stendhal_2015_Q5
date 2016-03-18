@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>AttackStrategyFactory.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.creature.impl.attack</a> &gt; <span class="el_source">AttackStrategyFactory.java</span></div><h1>AttackStrategyFactory.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.creature.impl.attack;
+
+import java.util.Map;
+
+<span class="nc" id="L17">public class AttackStrategyFactory {</span>
+<span class="fc" id="L18">	private static final AttackStrategy HAND_TO_HAND = new HandToHand();</span>
+<span class="fc" id="L19">	private static final AttackStrategy COWARD = new Coward();</span>
+<span class="fc" id="L20">	private static final AttackStrategy STUPID_COWARD = new StupidCoward();</span>
+<span class="fc" id="L21">	private static final AttackStrategy GANDHI = new Gandhi();</span>
+<span class="fc" id="L22">	private static final AttackStrategy ATTACK_WEAKEST = new AttackWeakest();</span>
+
+<span class="fc" id="L24">    private static final AttackStrategy CAMOUFLAGED = new DecamouflageAttackStrategy(HAND_TO_HAND);</span>
+
+	
+	public static AttackStrategy get(final Map&lt;String, String&gt; aiProfiles) {
+		
+<span class="fc bfc" id="L29" title="All 2 branches covered.">		if (aiProfiles.containsKey(&quot;archer&quot;)) {</span>
+<span class="fc" id="L30">			return new RangeAttack(aiProfiles.get(&quot;archer&quot;));</span>
+<span class="fc bfc" id="L31" title="All 2 branches covered.">		} else if (aiProfiles.containsKey(&quot;coward&quot;)) {</span>
+<span class="fc" id="L32">			return COWARD;</span>
+<span class="fc bfc" id="L33" title="All 2 branches covered.">		} else if (aiProfiles.containsKey(&quot;gandhi&quot;)) {</span>
+<span class="fc" id="L34">			return GANDHI;</span>
+<span class="fc bfc" id="L35" title="All 2 branches covered.">		} else if (aiProfiles.containsKey(&quot;stupid coward&quot;)) {</span>
+<span class="fc" id="L36">			return STUPID_COWARD;</span>
+<span class="fc bfc" id="L37" title="All 2 branches covered.">		} else if (aiProfiles.containsKey(&quot;attack weakest&quot;)) {</span>
+<span class="fc" id="L38">			return ATTACK_WEAKEST;</span>
+<span class="fc bfc" id="L39" title="All 2 branches covered.">		} else if (aiProfiles.containsKey(&quot;strategy&quot;)) {</span>
+<span class="fc" id="L40">			return CompoundAttackStrategy.create(aiProfiles.get(&quot;strategy&quot;));</span>
+<span class="pc bpc" id="L41" title="1 of 2 branches missed.">        } else if (aiProfiles.containsKey(&quot;camouflage&quot;)) {</span>
+<span class="nc" id="L42">            return CAMOUFLAGED;</span>
+		}
+
+<span class="fc" id="L45">		return HAND_TO_HAND;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

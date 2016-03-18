@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SayTimeRemainingAction.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.npc.action</a> &gt; <span class="el_source">SayTimeRemainingAction.java</span></div><h1>SayTimeRemainingAction.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.npc.action;
+
+import static com.google.common.base.Preconditions.checkNotNull;
+import games.stendhal.common.MathHelper;
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.core.config.annotations.Dev;
+import games.stendhal.server.core.config.annotations.Dev.Category;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.util.TimeUtil;
+
+import org.apache.log4j.Logger;
+
+/**
+ * Tells the time remaining between the timestamp on quest slot + delay time, and now.
+ *
+ * @see games.stendhal.server.entity.npc.condition.TimePassedCondition
+ * @see games.stendhal.server.entity.npc.action.SetQuestToTimeStampAction *
+ */
+@Dev(category=Category.TIME, label=&quot;\&quot;...\&quot;&quot;)
+public class SayTimeRemainingAction implements ChatAction {
+
+<span class="fc" id="L36">	private static final Logger logger = Logger.getLogger(SayTimeRemainingAction.class);</span>
+
+	private final String questname;
+	private final String message;
+	private final int delay;
+	private final int index;
+
+	/**
+	 * Creates a new SayTimeRemainingAction.
+	 *
+	 * @param questname
+	 *            name of quest-slot to check
+	 * @param index
+	 *            index of sub state
+	 * @param delay
+	 *            delay in minutes
+	 * @param message
+	 *            message to come before statement of remaining time
+	 *
+	 */
+	@Dev
+<span class="fc" id="L57">	public SayTimeRemainingAction(final String questname, @Dev(defaultValue=&quot;1&quot;) final int index, final int delay, final String message) {</span>
+<span class="fc" id="L58">		this.questname = checkNotNull(questname);</span>
+<span class="fc" id="L59">		this.message = checkNotNull(message);</span>
+<span class="fc" id="L60">		this.delay = delay;</span>
+<span class="fc" id="L61">		this.index = index;</span>
+<span class="fc" id="L62">	}</span>
+
+	/**
+	 * Creates a new SayTimeRemainingAction.
+	 *
+	 * @param questname
+	 *            name of quest-slot to check
+	 * @param delay
+	 *            delay in minutes
+	 * @param message
+	 *            message to come before statement of remaining time
+	 *
+	 */
+
+<span class="fc" id="L76">	public SayTimeRemainingAction(final String questname, final int delay, final String message) {</span>
+<span class="fc" id="L77">		this.questname = checkNotNull(questname);</span>
+<span class="fc" id="L78">		this.message = checkNotNull(message);</span>
+<span class="fc" id="L79">		this.delay = delay;</span>
+<span class="fc" id="L80">		this.index = 0;</span>
+<span class="fc" id="L81">	}</span>
+
+	@Override
+	public void fire(final Player player, final Sentence sentence, final EventRaiser raiser) {
+<span class="pc bpc" id="L85" title="1 of 2 branches missed.">		if (!player.hasQuest(questname)) {</span>
+<span class="nc" id="L86">			return;</span>
+		} else {
+<span class="fc" id="L88">			final String[] tokens = player.getQuest(questname).split(&quot;;&quot;);</span>
+<span class="fc" id="L89">			final long delayInMilliseconds = delay * MathHelper.MILLISECONDS_IN_ONE_MINUTE;</span>
+<span class="pc bpc" id="L90" title="1 of 2 branches missed.">			if (tokens.length - 1 &lt; index) {</span>
+<span class="nc" id="L91">				logger.warn(&quot;Incorrect argument &quot; + index + &quot; given for quest slot &quot; + questname);</span>
+<span class="nc" id="L92">				return;</span>
+			}
+			// timeRemaining is ''time when quest was done +
+			// delay - time now''
+			// if this is &gt; 0, the time has not yet passed
+<span class="fc" id="L97">			final long timeRemaining = (MathHelper.parseLong(tokens[index]) + delayInMilliseconds)</span>
+				- System.currentTimeMillis();
+			// MathHelper.parseLong will catch the number format exception in case tokens[arg] is no number and return 0
+			// we trim the message of whitespace so that if the developer added a space at the end we don't now duplicate it
+<span class="fc" id="L101">			raiser.say(message.trim() + &quot; &quot; + TimeUtil.approxTimeUntil((int) (timeRemaining / 1000L)) + &quot;.&quot;);</span>
+		}
+<span class="fc" id="L103">	}</span>
+
+	@Override
+	public String toString() {
+<span class="nc" id="L107">		return &quot;SayTimeRemainingAction&lt;&quot; + questname + &quot;[&quot; + index + &quot;],\&quot;&quot; + message + &quot;\&quot;,&quot;</span>
+				 + &quot;\&quot;,&quot; + delay + &quot;&gt;&quot;;
+	}
+
+	@Override
+	public int hashCode() {
+<span class="nc" id="L113">		return 5419 * (questname.hashCode() + 5431 * (message.hashCode() + 5437 * (index + 5441 * delay)));</span>
+	}
+
+	@Override
+	public boolean equals(final Object obj) {
+<span class="pc bpc" id="L118" title="1 of 2 branches missed.">		if (!(obj instanceof SayTimeRemainingAction)) {</span>
+<span class="nc" id="L119">			return false;</span>
+		}
+<span class="fc" id="L121">		SayTimeRemainingAction other = (SayTimeRemainingAction) obj;</span>
+<span class="pc bpc" id="L122" title="4 of 8 branches missed.">		return (index == other.index)</span>
+			&amp;&amp; (delay == other.delay)
+			&amp;&amp; questname.equals(other.questname)
+			&amp;&amp; message.equals(other.message);
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

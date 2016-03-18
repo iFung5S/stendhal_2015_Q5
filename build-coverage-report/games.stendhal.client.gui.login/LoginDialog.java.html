@@ -1,0 +1,766 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>LoginDialog.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui.login</a> &gt; <span class="el_source">LoginDialog.java</span></div><h1>LoginDialog.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                 (C) Copyright 2003 - 2015 Faiumoni e.V.                 *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui.login;
+
+import java.awt.Component;
+import java.awt.Frame;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.URL;
+
+import javax.swing.BorderFactory;
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
+import javax.swing.JComponent;
+import javax.swing.JDialog;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPasswordField;
+import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+import javax.swing.text.AbstractDocument;
+import javax.swing.text.Document;
+
+import org.apache.log4j.Logger;
+
+import games.stendhal.client.StendhalClient;
+import games.stendhal.client.stendhal;
+import games.stendhal.client.gui.NumberDocumentFilter;
+import games.stendhal.client.gui.ProgressBar;
+import games.stendhal.client.gui.WindowUtils;
+import games.stendhal.client.gui.layout.SBoxLayout;
+import games.stendhal.client.sprite.DataLoader;
+import games.stendhal.client.update.ClientGameConfiguration;
+import marauroa.client.BannedAddressException;
+import marauroa.client.LoginFailedException;
+import marauroa.client.TimeoutException;
+import marauroa.common.io.Persistence;
+import marauroa.common.net.InvalidVersionException;
+import marauroa.common.net.message.MessageS2CLoginNACK;
+
+/**
+ * Server login dialog.
+ */
+public class LoginDialog extends JDialog {
+	private ProfileList profiles;
+
+	private JComboBox&lt;Profile&gt; profilesComboBox;
+
+	private JCheckBox saveLoginBox;
+
+	private JCheckBox savePasswordBox;
+
+	private JTextField usernameField;
+
+	private JPasswordField passwordField;
+
+	private JTextField serverField;
+
+	private JTextField serverPortField;
+
+	private JButton loginButton;
+
+	private JButton removeButton;
+
+	private final StendhalClient client;
+
+	private ProgressBar progressBar;
+	/** Object checking that all required fields are filled */
+	private DataValidator fieldValidator;
+
+	/**
+	 * Create a new LoginDialog.
+	 * 
+	 * @param owner parent window
+	 * @param client client
+	 */
+	public LoginDialog(final Frame owner, final StendhalClient client) {
+<span class="nc" id="L103">		super(owner, true);</span>
+<span class="nc" id="L104">		this.client = client;</span>
+<span class="nc" id="L105">		initializeComponent();</span>
+<span class="nc" id="L106">		WindowUtils.closeOnEscape(this);</span>
+<span class="nc" id="L107">	}</span>
+
+	/**
+	 * Create the dialog contents.
+	 */
+	private void initializeComponent() {
+<span class="nc" id="L113">		setDefaultCloseOperation(DISPOSE_ON_CLOSE);</span>
+<span class="nc bnc" id="L114" title="All 2 branches missed.">		if (getOwner() != null) {</span>
+<span class="nc" id="L115">			addWindowListener(new WindowAdapter() {</span>
+				@Override
+				public void windowClosing(WindowEvent e) {
+<span class="nc" id="L118">					getOwner().setEnabled(true);</span>
+<span class="nc" id="L119">				}</span>
+			});
+		}
+
+		JLabel l;
+
+<span class="nc" id="L125">		this.setTitle(&quot;Login to Server&quot;);</span>
+<span class="nc" id="L126">		this.setResizable(false);</span>
+
+		//
+		// contentPane
+		//
+<span class="nc" id="L131">		JComponent contentPane = (JComponent) getContentPane();</span>
+<span class="nc" id="L132">		contentPane.setLayout(new GridBagLayout());</span>
+		final int pad = SBoxLayout.COMMON_PADDING;
+<span class="nc" id="L134">		contentPane.setBorder(BorderFactory.createEmptyBorder(pad, pad, pad, pad));</span>
+
+<span class="nc" id="L136">		final GridBagConstraints c = new GridBagConstraints();</span>
+<span class="nc" id="L137">		c.anchor = GridBagConstraints.LINE_START;</span>
+
+		/*
+		 * Profiles
+		 */
+<span class="nc" id="L142">		l = new JLabel(&quot;Account profiles&quot;);</span>
+
+<span class="nc" id="L144">		c.insets = new Insets(4, 4, 15, 4);</span>
+		// column
+<span class="nc" id="L146">		c.gridx = 0;</span>
+		 // row
+<span class="nc" id="L148">		c.gridy = 0;</span>
+<span class="nc" id="L149">		contentPane.add(l, c);</span>
+
+<span class="nc" id="L151">		profilesComboBox = new JComboBox&lt;Profile&gt;();</span>
+<span class="nc" id="L152">		profilesComboBox.addActionListener(new ProfilesCB());</span>
+
+		/*
+		 * Remove profile button
+		 */
+<span class="nc" id="L157">		removeButton = createRemoveButton();</span>
+
+		// Container for the profiles list and the remove button
+<span class="nc" id="L160">		JComponent box = SBoxLayout.createContainer(SBoxLayout.HORIZONTAL, pad);</span>
+<span class="nc" id="L161">		profilesComboBox.setAlignmentY(Component.CENTER_ALIGNMENT);</span>
+<span class="nc" id="L162">		box.add(profilesComboBox);</span>
+<span class="nc" id="L163">		box.add(removeButton);</span>
+
+<span class="nc" id="L165">		c.gridx = 1;</span>
+<span class="nc" id="L166">		c.gridy = 0;</span>
+<span class="nc" id="L167">		c.fill = GridBagConstraints.BOTH;</span>
+<span class="nc" id="L168">		contentPane.add(box, c);</span>
+
+		/*
+		 * Server Host
+		 */
+<span class="nc" id="L173">		l = new JLabel(&quot;Server name&quot;);</span>
+<span class="nc" id="L174">		c.insets = new Insets(4, 4, 4, 4);</span>
+		// column
+<span class="nc" id="L176">		c.gridx = 0;</span>
+		 // row
+<span class="nc" id="L178">		c.gridy = 1;</span>
+<span class="nc" id="L179">		contentPane.add(l, c);</span>
+
+<span class="nc" id="L181">		serverField = new JTextField(</span>
+				ClientGameConfiguration.get(&quot;DEFAULT_SERVER&quot;));
+<span class="nc" id="L183">		c.gridx = 1;</span>
+<span class="nc" id="L184">		c.gridy = 1;</span>
+<span class="nc" id="L185">		c.fill = GridBagConstraints.BOTH;</span>
+<span class="nc" id="L186">		contentPane.add(serverField, c);</span>
+
+		/*
+		 * Server Port
+		 */
+<span class="nc" id="L191">		l = new JLabel(&quot;Server port&quot;);</span>
+<span class="nc" id="L192">		c.insets = new Insets(4, 4, 4, 4);</span>
+<span class="nc" id="L193">		c.gridx = 0;</span>
+<span class="nc" id="L194">		c.gridy = 2;</span>
+<span class="nc" id="L195">		contentPane.add(l, c);</span>
+
+<span class="nc" id="L197">		serverPortField = new JTextField(</span>
+				ClientGameConfiguration.get(&quot;DEFAULT_PORT&quot;));
+<span class="nc" id="L199">		((AbstractDocument) serverPortField.getDocument()).setDocumentFilter(new NumberDocumentFilter(serverPortField, false));</span>
+<span class="nc" id="L200">		c.gridx = 1;</span>
+<span class="nc" id="L201">		c.gridy = 2;</span>
+<span class="nc" id="L202">		c.insets = new Insets(4, 4, 4, 4);</span>
+<span class="nc" id="L203">		c.fill = GridBagConstraints.BOTH;</span>
+<span class="nc" id="L204">		contentPane.add(serverPortField, c);</span>
+
+		/*
+		 * Username
+		 */
+<span class="nc" id="L209">		l = new JLabel(&quot;Type your username&quot;);</span>
+<span class="nc" id="L210">		c.insets = new Insets(4, 4, 4, 4);</span>
+<span class="nc" id="L211">		c.gridx = 0;</span>
+<span class="nc" id="L212">		c.gridy = 3;</span>
+<span class="nc" id="L213">		contentPane.add(l, c);</span>
+
+<span class="nc" id="L215">		usernameField = new JTextField();</span>
+
+<span class="nc" id="L217">		c.gridx = 1;</span>
+<span class="nc" id="L218">		c.gridy = 3;</span>
+<span class="nc" id="L219">		c.fill = GridBagConstraints.BOTH;</span>
+<span class="nc" id="L220">		contentPane.add(usernameField, c);</span>
+
+		/*
+		 * Password
+		 */
+<span class="nc" id="L225">		l = new JLabel(&quot;Type your password&quot;);</span>
+
+<span class="nc" id="L227">		c.gridx = 0;</span>
+<span class="nc" id="L228">		c.gridy = 4;</span>
+<span class="nc" id="L229">		c.fill = GridBagConstraints.NONE;</span>
+<span class="nc" id="L230">		contentPane.add(l, c);</span>
+
+<span class="nc" id="L232">		passwordField = new JPasswordField();</span>
+
+<span class="nc" id="L234">		c.gridx = 1;</span>
+<span class="nc" id="L235">		c.gridy = 4;</span>
+<span class="nc" id="L236">		c.fill = GridBagConstraints.BOTH;</span>
+<span class="nc" id="L237">		contentPane.add(passwordField, c);</span>
+
+		/*
+		 * Save Profile/Login
+		 */
+<span class="nc" id="L242">		saveLoginBox = new JCheckBox(&quot;Save login profile locally&quot;);</span>
+<span class="nc" id="L243">		saveLoginBox.setSelected(false);</span>
+
+<span class="nc" id="L245">		c.gridx = 0;</span>
+<span class="nc" id="L246">		c.gridy = 5;</span>
+<span class="nc" id="L247">		c.fill = GridBagConstraints.NONE;</span>
+<span class="nc" id="L248">		contentPane.add(saveLoginBox, c);</span>
+
+		/*
+		 * Save Profile Password
+		 */
+<span class="nc" id="L253">		savePasswordBox = new JCheckBox(&quot;Save password&quot;);</span>
+<span class="nc" id="L254">		savePasswordBox.setSelected(true);</span>
+<span class="nc" id="L255">		savePasswordBox.setEnabled(false);</span>
+
+<span class="nc" id="L257">		c.gridx = 0;</span>
+<span class="nc" id="L258">		c.gridy = 6;</span>
+<span class="nc" id="L259">		c.fill = GridBagConstraints.NONE;</span>
+<span class="nc" id="L260">		c.insets = new Insets(0, 20, 0, 0);</span>
+<span class="nc" id="L261">		contentPane.add(savePasswordBox, c);</span>
+
+<span class="nc" id="L263">		loginButton = new JButton();</span>
+<span class="nc" id="L264">		loginButton.setText(&quot;Login to Server&quot;);</span>
+<span class="nc" id="L265">		loginButton.setMnemonic(KeyEvent.VK_L);</span>
+<span class="nc" id="L266">		this.rootPane.setDefaultButton(loginButton);</span>
+
+<span class="nc" id="L268">		loginButton.addActionListener(new ActionListener() {</span>
+			@Override
+			public void actionPerformed(final ActionEvent e) {
+<span class="nc" id="L271">				loginButtonActionPerformed();</span>
+<span class="nc" id="L272">			}</span>
+		});
+
+<span class="nc" id="L275">		JComponent buttonBox = SBoxLayout.createContainer(SBoxLayout.HORIZONTAL, SBoxLayout.COMMON_PADDING);</span>
+<span class="nc" id="L276">		JButton cancelButton = new JButton(&quot;Cancel&quot;);</span>
+<span class="nc" id="L277">		cancelButton.setMnemonic(KeyEvent.VK_C);</span>
+<span class="nc" id="L278">		cancelButton.addActionListener(new ActionListener() {</span>
+			@Override
+			public void actionPerformed(ActionEvent e) {
+<span class="nc" id="L281">				dispatchEvent(new WindowEvent(LoginDialog.this, WindowEvent.WINDOW_CLOSING));</span>
+<span class="nc" id="L282">			}</span>
+		});
+<span class="nc" id="L284">		buttonBox.add(cancelButton);</span>
+<span class="nc" id="L285">		buttonBox.add(loginButton);</span>
+
+<span class="nc" id="L287">		c.gridx = 1;</span>
+<span class="nc" id="L288">		c.gridy = 5;</span>
+<span class="nc" id="L289">		c.gridheight = 2;</span>
+<span class="nc" id="L290">		c.anchor = GridBagConstraints.LAST_LINE_END;</span>
+<span class="nc" id="L291">		c.insets = new Insets(0, 0, SBoxLayout.COMMON_PADDING, SBoxLayout.COMMON_PADDING);</span>
+<span class="nc" id="L292">		contentPane.add(buttonBox, c);</span>
+		
+		// Before loading profiles so that we can catch the data filled from
+		// there
+<span class="nc" id="L296">		bindEditListener();</span>
+
+		/*
+		 * Load saved profiles
+		 */
+<span class="nc" id="L301">		profiles = loadProfiles();</span>
+<span class="nc" id="L302">		populateProfiles(profiles);</span>
+
+		/*
+		 * Add this callback after everything is initialized
+		 */
+<span class="nc" id="L307">		saveLoginBox.addChangeListener(new SaveProfileStateCB());</span>
+
+		//
+		// Dialog
+		//
+
+<span class="nc" id="L313">		this.pack();</span>
+<span class="nc" id="L314">		usernameField.requestFocusInWindow();</span>
+<span class="nc bnc" id="L315" title="All 2 branches missed.">		if (getOwner() != null) {</span>
+<span class="nc" id="L316">			getOwner().setEnabled(false);</span>
+<span class="nc" id="L317">			this.setLocationRelativeTo(getOwner());</span>
+		}
+<span class="nc" id="L319">	}</span>
+	
+	/**
+	 * Prepare the field validator and bind it to the relevant text fields.
+	 */
+	private void bindEditListener() {
+<span class="nc" id="L325">		fieldValidator = new DataValidator(loginButton,</span>
+				serverField.getDocument(), serverPortField.getDocument(),
+				usernameField.getDocument(), passwordField.getDocument());
+<span class="nc" id="L328">	}</span>
+
+	/**
+	 * Create the remove character button.
+	 *
+	 * @return JButton
+	 */
+	private JButton createRemoveButton() {
+<span class="nc" id="L336">		final URL url = DataLoader.getResource(&quot;data/gui/trash.png&quot;);</span>
+<span class="nc" id="L337">		ImageIcon icon = new ImageIcon(url);</span>
+<span class="nc" id="L338">		JButton button = new JButton(icon);</span>
+		// Clear the margins that buttons normally add
+<span class="nc" id="L340">		button.setMargin(new Insets(0, 0, 0, 0));</span>
+<span class="nc" id="L341">		button.setToolTipText(&quot;Remove the selected account from the list&quot;);</span>
+
+<span class="nc" id="L343">		button.addActionListener(new ActionListener() {</span>
+			@Override
+			public void actionPerformed(final ActionEvent e) {
+<span class="nc" id="L346">				removeButtonActionPerformed();</span>
+<span class="nc" id="L347">			}</span>
+		});
+
+<span class="nc" id="L350">		return button;</span>
+	}
+
+	/**
+	 * Called when the login button is activated.
+	 */
+	private void loginButtonActionPerformed() {
+		// If this window isn't enabled, we shouldn't act.
+<span class="nc bnc" id="L358" title="All 2 branches missed.">		if (!isEnabled()) {</span>
+<span class="nc" id="L359">			return;</span>
+		}
+<span class="nc" id="L361">		setEnabled(false);</span>
+
+		Profile profile;
+<span class="nc" id="L364">		profile = new Profile();</span>
+
+<span class="nc" id="L366">		profile.setHost((serverField.getText()).trim());</span>
+
+		try {
+<span class="nc" id="L369">			profile.setPort(Integer.parseInt(serverPortField.getText().trim()));</span>
+
+			// Support for saving port number. Only save when input is a number
+			// intensifly@gmx.com
+
+<span class="nc" id="L374">		} catch (final NumberFormatException ex) {</span>
+<span class="nc" id="L375">			JOptionPane.showMessageDialog(this,</span>
+					&quot;That is not a valid port number. Please try again.&quot;,
+					&quot;Invalid port&quot;, JOptionPane.WARNING_MESSAGE);
+<span class="nc" id="L378">			return;</span>
+<span class="nc" id="L379">		}</span>
+
+<span class="nc" id="L381">		profile.setUser(usernameField.getText().trim());</span>
+<span class="nc" id="L382">		profile.setPassword(new String(passwordField.getPassword()));</span>
+
+		/*
+		 * Save profile?
+		 */
+<span class="nc bnc" id="L387" title="All 2 branches missed.">		if (saveLoginBox.isSelected()) {</span>
+<span class="nc" id="L388">			profiles.add(profile);</span>
+<span class="nc" id="L389">			populateProfiles(profiles);</span>
+
+<span class="nc bnc" id="L391" title="All 2 branches missed.">			if (savePasswordBox.isSelected()) {</span>
+<span class="nc" id="L392">				saveProfiles(profiles);</span>
+			} else {
+<span class="nc" id="L394">				final String pw = profile.getPassword();</span>
+<span class="nc" id="L395">				profile.setPassword(&quot;&quot;);</span>
+<span class="nc" id="L396">				saveProfiles(profiles);</span>
+<span class="nc" id="L397">				profile.setPassword(pw);</span>
+			}
+
+		}
+
+		/*
+		 * Run the connection procces in separate thread. added by TheGeneral
+		 */
+<span class="nc" id="L405">		final Thread t = new Thread(new ConnectRunnable(profile), &quot;Login&quot;);</span>
+<span class="nc" id="L406">		t.start();</span>
+<span class="nc" id="L407">	}</span>
+
+	/**
+	 * Called when the remove profile button is activated.
+	 */
+	private void removeButtonActionPerformed() {
+		// If this window isn't enabled, we shouldn't act.
+<span class="nc bnc" id="L414" title="All 4 branches missed.">		if (!isEnabled() || (profiles.profiles.size() == 0)) {</span>
+<span class="nc" id="L415">			return;</span>
+		}
+<span class="nc" id="L417">		setEnabled(false);</span>
+
+		Profile profile;
+
+<span class="nc" id="L421">		profile = (Profile) profilesComboBox.getSelectedItem();</span>
+<span class="nc" id="L422">		Object[] options = { &quot;Remove&quot;, &quot;Cancel&quot; };</span>
+
+<span class="nc" id="L424">		Integer confirmRemoveProfile = JOptionPane.showOptionDialog(this,</span>
+			&quot;This will permanently remove a user profile from your local list of accounts.\n&quot;
+			+ &quot;It will not delete an account on any servers.\n&quot;
+			+ &quot;Are you sure you want to remove \'&quot; + profile.getUser() + &quot;@&quot; + profile.getHost() + &quot;\' profile?&quot;,
+			&quot;Remove user profile from local list of accounts&quot;,
+			JOptionPane.OK_CANCEL_OPTION,
+			JOptionPane.QUESTION_MESSAGE,
+			null,
+			options,
+			options[1]);
+
+<span class="nc bnc" id="L435" title="All 2 branches missed.">		if (confirmRemoveProfile == 0) {</span>
+<span class="nc" id="L436">			profiles.remove(profile);</span>
+<span class="nc" id="L437">			saveProfiles(profiles);</span>
+<span class="nc" id="L438">			profiles = loadProfiles();</span>
+<span class="nc" id="L439">			populateProfiles(profiles);</span>
+		}
+
+<span class="nc" id="L442">		setEnabled(true);</span>
+<span class="nc" id="L443">	}</span>
+
+	@Override
+	public void setEnabled(final boolean b) {
+<span class="nc" id="L447">		super.setEnabled(b);</span>
+		// Enabling login button is conditional
+<span class="nc" id="L449">		fieldValidator.revalidate();</span>
+<span class="nc" id="L450">		removeButton.setEnabled(b);</span>
+<span class="nc" id="L451">	}</span>
+	
+	/**
+	 * Connect to a server using a given profile.
+	 * 
+	 * @param profile profile used for login
+	 */
+	public void connect(final Profile profile) {
+		// We are not in EDT
+<span class="nc" id="L460">		SwingUtilities.invokeLater(new Runnable() {</span>
+			@Override
+			public void run() {
+<span class="nc" id="L463">				progressBar = new ProgressBar(LoginDialog.this);</span>
+<span class="nc" id="L464">				progressBar.start();</span>
+<span class="nc" id="L465">			}</span>
+		});
+
+		try {
+<span class="nc" id="L469">			client.connect(profile.getHost(), profile.getPort());</span>
+
+			// for each major connection milestone call step(). progressBar is
+			// created in EDT, so it is not guaranteed non null in the main
+			// thread.
+<span class="nc" id="L474">			SwingUtilities.invokeLater(new Runnable() {</span>
+				@Override
+				public void run() {
+<span class="nc" id="L477">					progressBar.step();</span>
+<span class="nc" id="L478">				}</span>
+			});
+<span class="nc" id="L480">		} catch (final Exception ex) {</span>
+			// if something goes horribly just cancel the progressbar
+<span class="nc" id="L482">			SwingUtilities.invokeLater(new Runnable() {</span>
+				@Override
+				public void run() {
+<span class="nc" id="L485">					progressBar.cancel();</span>
+<span class="nc" id="L486">					setEnabled(true);</span>
+<span class="nc" id="L487">				}</span>
+			});
+<span class="nc" id="L489">			String message = &quot;unable to connect to server&quot;;</span>
+
+<span class="nc bnc" id="L491" title="All 2 branches missed.">			if (profile != null) {</span>
+<span class="nc" id="L492">				message = message + &quot; &quot; + profile.getHost() + &quot;:&quot; + profile.getPort();</span>
+			} else {
+<span class="nc" id="L494">				message = message + &quot;, because profile was null&quot;;</span>
+			}
+<span class="nc" id="L496">			Logger.getLogger(LoginDialog.class).error(message, ex);</span>
+<span class="nc" id="L497">			handleError(&quot;Unable to connect to server. Did you misspell the server name?&quot;, &quot;Connection failed&quot;);</span>
+<span class="nc" id="L498">			return;</span>
+<span class="nc" id="L499">		}</span>
+
+		try {
+<span class="nc" id="L502">			client.setAccountUsername(profile.getUser());</span>
+<span class="nc" id="L503">			client.setCharacter(profile.getCharacter());</span>
+<span class="nc" id="L504">			client.login(profile.getUser(), profile.getPassword(), profile.getSeed());</span>
+<span class="nc" id="L505">			SwingUtilities.invokeLater(new Runnable() {</span>
+				@Override
+				public void run() {
+<span class="nc" id="L508">					progressBar.finish();</span>
+					// workaround near failures in AWT at openjdk (tested on openjdk-1.6.0.0)
+					try {
+<span class="nc" id="L511">						setVisible(false);</span>
+<span class="nc" id="L512">					} catch (NullPointerException npe) {</span>
+<span class="nc" id="L513">						Logger.getLogger(LoginDialog.class).error(&quot;Error probably related to bug in JRE occured&quot;, npe);</span>
+<span class="nc" id="L514">						LoginDialog.this.dispose();</span>
+<span class="nc" id="L515">					}</span>
+<span class="nc" id="L516">				}</span>
+			});
+
+<span class="nc" id="L519">		} catch (final InvalidVersionException e) {</span>
+<span class="nc" id="L520">			handleError(&quot;You are running an incompatible version of Stendhal. Please update&quot;,</span>
+					&quot;Invalid version&quot;);
+<span class="nc" id="L522">		} catch (final TimeoutException e) {</span>
+<span class="nc" id="L523">			handleError(&quot;Server is not available right now.\nThe server may be down or, if you are using a custom server,\nyou may have entered its name and port number incorrectly.&quot;,</span>
+					&quot;Error Logging In&quot;);
+<span class="nc" id="L525">		} catch (final LoginFailedException e) {</span>
+<span class="nc" id="L526">			handleError(e.getMessage(), &quot;Login failed&quot;);</span>
+<span class="nc bnc" id="L527" title="All 2 branches missed.">			if (e.getReason() == MessageS2CLoginNACK.Reasons.SEED_WRONG) {</span>
+<span class="nc" id="L528">				System.exit(1);</span>
+			}
+<span class="nc" id="L530">		} catch (final BannedAddressException e) {</span>
+<span class="nc" id="L531">			handleError(&quot;Your IP is banned. If you think this is not right, please send a Support Request to http://sourceforge.net/tracker/?func=add&amp;group_id=1111&amp;atid=201111&quot;,</span>
+					&quot;IP Banned&quot;);
+<span class="nc" id="L533">		}</span>
+<span class="nc" id="L534">	}</span>
+
+	/**
+	 * Displays the error message, removes the progress bar and
+	 * either enabled the login dialog in interactive mode or exits
+	 * the client in non interactive mode.
+	 *
+	 * @param errorMessage error message
+	 * @param errorTitle   title of error dialog box
+	 */
+	private void handleError(final String errorMessage, final String errorTitle) {
+<span class="nc" id="L545">		SwingUtilities.invokeLater(new Runnable() {</span>
+			@Override
+			public void run() {
+<span class="nc" id="L548">				progressBar.cancel();</span>
+<span class="nc" id="L549">				JOptionPane.showMessageDialog(</span>
+						LoginDialog.this, errorMessage, errorTitle, JOptionPane.ERROR_MESSAGE);
+
+<span class="nc bnc" id="L552" title="All 2 branches missed.">				if (isVisible()) {</span>
+<span class="nc" id="L553">					setEnabled(true);</span>
+				} else {
+					// Hack for non interactive login
+<span class="nc" id="L556">					System.exit(1);</span>
+				}
+<span class="nc" id="L558">			}</span>
+		});
+<span class="nc" id="L560">	}</span>
+
+	/**
+	 * Load saves profiles.
+	 * @return ProfileList
+	 */
+	private ProfileList loadProfiles() {
+<span class="nc" id="L567">		final ProfileList tmpProfiles = new ProfileList();</span>
+
+		try {
+<span class="nc" id="L570">			final InputStream is = Persistence.get().getInputStream(false, stendhal.getGameFolder(),</span>
+					&quot;user.dat&quot;);
+
+			try {
+<span class="nc" id="L574">				tmpProfiles.load(is);</span>
+			} finally {
+<span class="nc" id="L576">				is.close();</span>
+<span class="nc" id="L577">			}</span>
+<span class="nc" id="L578">		} catch (final FileNotFoundException fnfe) {</span>
+			// Ignore
+<span class="nc" id="L580">		} catch (final IOException ioex) {</span>
+<span class="nc" id="L581">			JOptionPane.showMessageDialog(this,</span>
+					&quot;An error occurred while loading your login information&quot;,
+					&quot;Error Loading Login Information&quot;,
+					JOptionPane.WARNING_MESSAGE);
+<span class="nc" id="L585">		}</span>
+
+<span class="nc" id="L587">		return tmpProfiles;</span>
+	}
+
+	/**
+	 * Populate the profiles combobox and select the default.
+	 * 
+	 * @param profiles profile data
+	 */
+	private void populateProfiles(final ProfileList profiles) {
+<span class="nc" id="L596">		profilesComboBox.removeAllItems();</span>
+
+<span class="nc bnc" id="L598" title="All 2 branches missed.">		for (Profile p : profiles) {</span>
+<span class="nc" id="L599">			profilesComboBox.addItem(p);</span>
+<span class="nc" id="L600">		}</span>
+
+		/*
+		 * The last profile (if any) is the default.
+		 */
+<span class="nc" id="L605">		final int count = profilesComboBox.getItemCount();</span>
+<span class="nc bnc" id="L606" title="All 2 branches missed.">		if (count != 0) {</span>
+<span class="nc" id="L607">			profilesComboBox.setSelectedIndex(count - 1);</span>
+		}
+<span class="nc" id="L609">	}</span>
+
+	/**
+	 * Called when a profile selection is changed.
+	 */
+	private void profilesCB() {
+		Profile profile;
+		String host;
+
+		// This *should* be generic in swing, but it is not
+<span class="nc" id="L619">		profile = (Profile) profilesComboBox.getSelectedItem();</span>
+
+<span class="nc bnc" id="L621" title="All 2 branches missed.">		if (profile != null) {</span>
+<span class="nc" id="L622">			host = profile.getHost();</span>
+<span class="nc" id="L623">			serverField.setText(host);</span>
+
+<span class="nc" id="L625">			serverPortField.setText(String.valueOf(profile.getPort()));</span>
+
+<span class="nc" id="L627">			usernameField.setText(profile.getUser());</span>
+<span class="nc" id="L628">			passwordField.setText(profile.getPassword());</span>
+		} else {
+
+<span class="nc" id="L631">			serverPortField.setText(String.valueOf(Profile.DEFAULT_SERVER_PORT));</span>
+
+<span class="nc" id="L633">			usernameField.setText(&quot;&quot;);</span>
+<span class="nc" id="L634">			passwordField.setText(&quot;&quot;);</span>
+		}
+<span class="nc" id="L636">	}</span>
+	
+	/**
+	 * Checks that a group of Documents (text fields) is not empty, and enables
+	 * or disables a JComponent on that condition. 
+	 */
+	private static class DataValidator implements DocumentListener {
+		private final Document[] documents;
+		private final JComponent component;
+		
+		/**
+		 * Create a new DataValidator.
+		 * 
+		 * @param component component to be enabled depending on the state of
+		 *  documents 
+		 * @param docs documents
+		 */
+<span class="nc" id="L653">		DataValidator(JComponent component, Document... docs) {</span>
+<span class="nc" id="L654">			this.component = component;</span>
+<span class="nc" id="L655">			documents = docs;</span>
+<span class="nc bnc" id="L656" title="All 2 branches missed.">			for (Document doc : docs) {</span>
+<span class="nc" id="L657">				doc.addDocumentListener(this);</span>
+			}
+<span class="nc" id="L659">			revalidate();</span>
+<span class="nc" id="L660">		}</span>
+		
+		@Override
+		public void insertUpdate(DocumentEvent e) {
+<span class="nc" id="L664">			revalidate();</span>
+<span class="nc" id="L665">		}</span>
+
+		@Override
+		public void removeUpdate(DocumentEvent e) {
+<span class="nc bnc" id="L669" title="All 2 branches missed.">			if (e.getDocument().getLength() == 0) {</span>
+<span class="nc" id="L670">				component.setEnabled(false);</span>
+			}
+<span class="nc" id="L672">		}</span>
+
+		@Override
+		public void changedUpdate(DocumentEvent e) {
+			// Attribute change - ignore
+<span class="nc" id="L677">		}</span>
+		
+		/**
+		 * Do a full document state check and set the component status according
+		 * to the result. 
+		 */
+		final void revalidate() {
+<span class="nc bnc" id="L684" title="All 2 branches missed.">			for (Document doc : documents) {</span>
+<span class="nc bnc" id="L685" title="All 2 branches missed.">				if (doc.getLength() == 0) {</span>
+<span class="nc" id="L686">					component.setEnabled(false);</span>
+<span class="nc" id="L687">					return;</span>
+				}
+			}
+<span class="nc" id="L690">			component.setEnabled(true);</span>
+<span class="nc" id="L691">		}</span>
+	}
+
+	/*
+	 * Author: Da_MusH Description: Methods for saving and loading login
+	 * information to disk. These should probably make a separate class in the
+	 * future, but it will work for now. comment: Thegeneral has added encoding
+	 * for password and username. Changed for multiple profiles.
+	 */
+	private void saveProfiles(final ProfileList profiles) {
+		try {
+<span class="nc" id="L702">			final OutputStream os = Persistence.get().getOutputStream(false,</span>
+					stendhal.getGameFolder(), &quot;user.dat&quot;);
+
+			try {
+<span class="nc" id="L706">				profiles.save(os);</span>
+			} finally {
+<span class="nc" id="L708">				os.close();</span>
+<span class="nc" id="L709">			}</span>
+<span class="nc" id="L710">		} catch (final IOException ioex) {</span>
+<span class="nc" id="L711">			JOptionPane.showMessageDialog(this,</span>
+					&quot;An error occurred while saving your login information&quot;,
+					&quot;Error Saving Login Information&quot;,
+					JOptionPane.WARNING_MESSAGE);
+<span class="nc" id="L715">		}</span>
+<span class="nc" id="L716">	}</span>
+
+	/**
+	 * Called when save profile selection change.
+	 */
+	private void saveProfileStateCB() {
+<span class="nc" id="L722">		savePasswordBox.setEnabled(saveLoginBox.isSelected());</span>
+<span class="nc" id="L723">	}</span>
+
+	/**
+	 * Server connect thread runnable.
+	 */
+	private final class ConnectRunnable implements Runnable {
+		private final Profile profile;
+
+		/**
+		 * Create a new ConnectRunnable.
+		 * 
+		 * @param profile profile used for connection
+		 */
+<span class="nc" id="L736">		private ConnectRunnable(final Profile profile) {</span>
+<span class="nc" id="L737">			this.profile = profile;</span>
+<span class="nc" id="L738">		}</span>
+
+		@Override
+		public void run() {
+<span class="nc" id="L742">			connect(profile);</span>
+<span class="nc" id="L743">		}</span>
+	}
+
+	/**
+	 * Profiles combobox selection change listener.
+	 */
+<span class="nc" id="L749">	private class ProfilesCB implements ActionListener {</span>
+		@Override
+		public void actionPerformed(final ActionEvent e) {
+<span class="nc" id="L752">			profilesCB();</span>
+<span class="nc" id="L753">		}</span>
+	}
+
+	/**
+	 * Save profile selection change.
+	 */
+<span class="nc" id="L759">	private class SaveProfileStateCB implements ChangeListener {</span>
+		@Override
+		public void stateChanged(final ChangeEvent ev) {
+<span class="nc" id="L762">			saveProfileStateCB();</span>
+<span class="nc" id="L763">		}</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

@@ -1,0 +1,464 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>EmotionCrystals.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests</a> &gt; <span class="el_source">EmotionCrystals.java</span></div><h1>EmotionCrystals.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2013 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests;
+
+import games.stendhal.common.grammar.Grammar;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.action.DecreaseKarmaAction;
+import games.stendhal.server.entity.npc.action.DropItemAction;
+import games.stendhal.server.entity.npc.action.EquipItemAction;
+import games.stendhal.server.entity.npc.action.IncreaseKarmaAction;
+import games.stendhal.server.entity.npc.action.IncreaseXPAction;
+import games.stendhal.server.entity.npc.action.MultipleActions;
+import games.stendhal.server.entity.npc.action.SayTimeRemainingAction;
+import games.stendhal.server.entity.npc.action.SetQuestAction;
+import games.stendhal.server.entity.npc.action.SetQuestToTimeStampAction;
+import games.stendhal.server.entity.npc.condition.AndCondition;
+import games.stendhal.server.entity.npc.condition.NotCondition;
+import games.stendhal.server.entity.npc.condition.OrCondition;
+import games.stendhal.server.entity.npc.condition.PlayerHasItemWithHimCondition;
+import games.stendhal.server.entity.npc.condition.QuestActiveCondition;
+import games.stendhal.server.entity.npc.condition.QuestInStateCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotCompletedCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotInStateCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotStartedCondition;
+import games.stendhal.server.entity.npc.condition.TimePassedCondition;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.maps.Region;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
+
+/**
+ * QUEST: Emotion Crystals
+ *
+ * PARTICIPANTS:
+ * &lt;ul&gt;
+ * &lt;li&gt;Julius (the Soldier who guards the entrance to Ados City)&lt;/li&gt;
+ * &lt;li&gt;Crystal NPCs around Faiumoni&lt;/li&gt;
+ * &lt;/ul&gt;
+ *
+ * STEPS:
+ * &lt;ul&gt;
+ * &lt;li&gt;Julius wants some precious stones for his wife.&lt;/li&gt;
+ * &lt;li&gt;Find the 5 crystals and solve their riddles.&lt;/li&gt;
+ * &lt;li&gt;Bring the crystals to Julius.&lt;/li&gt;
+ * &lt;/ul&gt;
+ *
+ * REWARD:
+ * &lt;ul&gt;
+ * &lt;li&gt;2000 XP&lt;/li&gt;
+ * &lt;li&gt;stone legs&lt;/li&gt;
+ * &lt;li&gt;Karma: 15&lt;/li&gt;
+ * &lt;/ul&gt;
+ *
+ * REPETITIONS:
+ * &lt;ul&gt;
+ * &lt;li&gt;None&lt;/li&gt;
+ * &lt;/ul&gt;
+ *
+ * @author AntumDeluge
+ */
+<span class="nc" id="L76">public class EmotionCrystals extends AbstractQuest {</span>
+	private static final String QUEST_SLOT = &quot;emotion_crystals&quot;;
+
+<span class="nc" id="L79">	private static final String[] crystalColors = { &quot;red&quot;, &quot;purple&quot;, &quot;yellow&quot;, &quot;pink&quot;, &quot;blue&quot; };</span>
+
+	// Amount of time, in minutes, player must wait before retrying the riddle (24 hours)
+	private static final int WAIT_TIME_WRONG = 24 * 60;
+	private static final int WAIT_TIME_RETRY = 7 * 24 * 60;
+
+	private static final int OFFSET_TIMESTAMPS = 1;
+	private static final int OFFSET_SUCCESS_MARKER = 6;
+
+	@Override
+	public List&lt;String&gt; getHistory(final Player player) {
+<span class="nc" id="L90">		final List&lt;String&gt; res = new ArrayList&lt;String&gt;();</span>
+<span class="nc bnc" id="L91" title="All 2 branches missed.">		if (!player.hasQuest(QUEST_SLOT)) {</span>
+<span class="nc" id="L92">			return res;</span>
+		}
+
+		// Only include Julius in the quest log if player has spoken to him
+<span class="nc bnc" id="L96" title="All 4 branches missed.">		if (player.isQuestInState(QUEST_SLOT, 0, &quot;start&quot;) || player.isQuestInState(QUEST_SLOT, 0,  &quot;rejected&quot;)) {</span>
+<span class="nc" id="L97">			res.add(&quot;I have talked to Julius, the soldier that guards the entrance to Ados.&quot;);</span>
+<span class="nc bnc" id="L98" title="All 2 branches missed.">			if (player.isQuestInState(QUEST_SLOT, 0, &quot;rejected&quot;)) {</span>
+<span class="nc" id="L99">				res.add(&quot;I'm emotionally incapable and have rejected his request.&quot;);</span>
+			}
+			else {
+<span class="nc" id="L102">				res.add(&quot;I promised to gather five crystals from all across Faiumoni.&quot;);</span>
+			}
+		}
+
+<span class="nc" id="L106">		List&lt;String&gt; gatheredCrystals = new ArrayList&lt;String&gt;();</span>
+<span class="nc" id="L107">		boolean hasAllCrystals = true;</span>
+
+<span class="nc bnc" id="L109" title="All 2 branches missed.">		for (String color : crystalColors) {</span>
+<span class="nc bnc" id="L110" title="All 2 branches missed.">			if (player.isEquipped(color + &quot; emotion crystal&quot;)) {</span>
+<span class="nc" id="L111">				gatheredCrystals.add(color + &quot; emotion crystal&quot;);</span>
+			} else {
+<span class="nc" id="L113">				hasAllCrystals = false;</span>
+			}
+		}
+<span class="nc bnc" id="L116" title="All 2 branches missed.">		if (!gatheredCrystals.isEmpty()) {</span>
+<span class="nc" id="L117">			String tell = &quot;I have found the following crystals: &quot;;</span>
+<span class="nc" id="L118">			tell += Grammar.enumerateCollection(gatheredCrystals);</span>
+<span class="nc" id="L119">			res.add(tell);</span>
+		}
+
+<span class="nc bnc" id="L122" title="All 2 branches missed.">		if (hasAllCrystals) {</span>
+<span class="nc" id="L123">			res.add(&quot;I have obtained all of the emotion crystals and should bring them to Julius in Ados.&quot;);</span>
+		}
+		
+<span class="nc bnc" id="L126" title="All 2 branches missed.">		if (player.isQuestInState(QUEST_SLOT, 0, &quot;done&quot;)) {</span>
+<span class="nc" id="L127">			res.add(&quot;I gave the crystals to Julius for his wife. I got some experience, karma and useful stone legs.&quot;);</span>
+		}
+<span class="nc" id="L129">		return res;</span>
+	}
+
+	private void prepareRequestingStep() {
+<span class="nc" id="L133">		final SpeakerNPC npc = npcs.get(&quot;Julius&quot;);</span>
+
+
+		// Player asks for quest
+<span class="nc" id="L137">		npc.add(ConversationStates.ATTENDING,</span>
+			ConversationPhrases.QUEST_MESSAGES,
+			new AndCondition(new QuestNotInStateCondition(QUEST_SLOT, 0, &quot;start&quot;),
+					new QuestNotCompletedCondition(QUEST_SLOT)),
+			ConversationStates.QUEST_OFFERED,
+			&quot;I don't get to see my wife very often because I am so busy guarding this entrance. I would like to do something for her. Would you help me?&quot;,
+			null);
+
+		// Player accepts quest
+<span class="nc" id="L146">		npc.add(</span>
+			ConversationStates.QUEST_OFFERED,
+			ConversationPhrases.YES_MESSAGES,
+			null,
+			ConversationStates.ATTENDING,
+			&quot;Thank you. I would like to gather five #emotion #crystals as a gift for my wife. Please find all that you can and bring them to me.&quot;,
+			new MultipleActions(
+					new SetQuestAction(QUEST_SLOT, 0, &quot;start&quot;),
+					new IncreaseKarmaAction(5)));
+
+		// Player rejects quest
+<span class="nc" id="L157">		npc.add(</span>
+			ConversationStates.QUEST_OFFERED,
+			ConversationPhrases.NO_MESSAGES,
+			null,
+			// Julius walks away
+			ConversationStates.IDLE,
+			&quot;Hmph! I'll ask someone else then.&quot;,
+			new MultipleActions(
+					new SetQuestAction(QUEST_SLOT, 0, &quot;rejected&quot;),
+					new DecreaseKarmaAction(5)));
+
+		// Player tries to leave without accepting/rejecting the quest
+<span class="nc" id="L169">		npc.add(</span>
+			ConversationStates.QUEST_OFFERED,
+			ConversationPhrases.GOODBYE_MESSAGES,
+			null,
+			ConversationStates.QUEST_OFFERED,
+			&quot;That is not a \&quot;yes\&quot; or \&quot;no\&quot; question. I said, would you do a favor for me?&quot;,
+			null);
+
+		// Player asks about crystals
+<span class="nc" id="L178">		npc.add(</span>
+			ConversationStates.ATTENDING,
+			Arrays.asList(&quot;crystal&quot;, &quot;crystals&quot;, &quot;emotion&quot;, &quot;emotions&quot;, &quot;emotion crystal&quot;, &quot;emotion crystals&quot;, &quot;emotions crystal&quot;, &quot;emotions crystals&quot;),
+			new QuestActiveCondition(QUEST_SLOT),
+			ConversationStates.ATTENDING,
+			&quot;Don't you know what emotions are? Surely you've experienced joy or sadness. I've heard that there are crystals scattered throughout Faiumoni, special crystals that can bring out any emotion. There are five in all, hidden in dungeons, on mountains and in forests. I've even heard of some that have been found near houses.&quot;,
+			null);
+
+		// Player asks for quest after completed
+<span class="nc" id="L187">		npc.add(ConversationStates.ATTENDING,</span>
+			ConversationPhrases.QUEST_MESSAGES,
+			new QuestInStateCondition(QUEST_SLOT, 0, &quot;done&quot;),
+			ConversationStates.ATTENDING,
+			&quot;My wife is sure to love these emotion crystals.&quot;,
+			null);
+
+		// Player asks for quest after already started
+<span class="nc" id="L195">		npc.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.QUEST_MESSAGES,
+				new QuestActiveCondition(QUEST_SLOT),
+				ConversationStates.ATTENDING,
+				&quot;I believe I already asked you to get me some #crystals.&quot;,
+				null);
+<span class="nc" id="L201">	}</span>
+
+
+	private void prepareRiddlesStep() {
+		// List of NPCs
+<span class="nc" id="L206">		final List&lt;SpeakerNPC&gt; npcList = new ArrayList&lt;SpeakerNPC&gt;();</span>
+
+		// Add the crystals to the NPC list with their riddle
+<span class="nc bnc" id="L209" title="All 2 branches missed.">		for (String color : crystalColors) {</span>
+<span class="nc" id="L210">			npcList.add(npcs.get(Character.toUpperCase(color.charAt(0)) + color.substring(1) + &quot; Crystal&quot;));</span>
+		}
+
+		// Riddles
+<span class="nc" id="L214">		final List&lt;String&gt; riddles = new ArrayList&lt;String&gt;();</span>
+		// Answers to riddles
+<span class="nc" id="L216">		final List&lt;List&lt;String&gt;&gt; answers = new ArrayList&lt;List&lt;String&gt;&gt;();</span>
+
+		// Red Crystal (crystal of anger)
+<span class="nc" id="L219">		riddles.add(&quot;I burn like fire. My presence is not enjoyed. Those who test me will feel my wrath. What am I?&quot;);</span>
+<span class="nc" id="L220">		answers.add(Arrays.asList(&quot;anger&quot;, &quot;angry&quot;, &quot;mad&quot;, &quot;offended&quot;, &quot;hostility&quot;, &quot;hostile&quot;, &quot;hate&quot;, &quot;hatred&quot;, &quot;animosity&quot;));</span>
+		// Purple Crystal (crystal of fear)
+<span class="nc" id="L222">		riddles.add(&quot;I dare not come out and avoid the consequence. They try and convince my but I shall not. Trembling is my favorite activity. What am I?&quot;);</span>
+<span class="nc" id="L223">		answers.add(Arrays.asList(&quot;fear&quot;, &quot;fearful&quot;, &quot;fearfullness&quot;, &quot;fright&quot;, &quot;frightened&quot;, &quot;afraid&quot;, &quot;scared&quot;));</span>
+		// Yellow Crystal (crystal of joy)
+<span class="nc" id="L225">		riddles.add(&quot;I can't be stopped. Only positive, no negative, can exist in my heart. If you spread me life will be as sunshine. What am I?&quot;);</span>
+<span class="nc" id="L226">		answers.add(Arrays.asList(&quot;joy&quot;, &quot;joyful&quot;, &quot;joyfulness&quot;, &quot;happy&quot;, &quot;happiness&quot;, &quot;happyness&quot;, &quot;cheer&quot;, &quot;cheery&quot;,</span>
+						&quot;cheerful&quot;, &quot;cheerfulness&quot;));
+		// Pink Crystal (crystal of love)
+<span class="nc" id="L229">		riddles.add(&quot;I care for all things. I am purest of all. If you share me I'm sure I will be reciprocated. What am I?&quot;);</span>
+<span class="nc" id="L230">		answers.add(Arrays.asList(&quot;love&quot;, &quot;amor&quot;, &quot;amour&quot;, &quot;amity&quot;, &quot;compassion&quot;));</span>
+		// Blue Crystal (crystal of peace)
+<span class="nc" id="L232">		riddles.add(&quot;I do not let things bother me. I never get overly energetic. Meditation is my forte. What am I?&quot;);</span>
+<span class="nc" id="L233">		answers.add(Arrays.asList(&quot;peace&quot;, &quot;peaceful&quot;, &quot;peacefullness&quot;, &quot;serenity&quot;, &quot;serene&quot;, &quot;calmness&quot;, &quot;calm&quot;));</span>
+
+		// Add conversation states
+<span class="nc bnc" id="L236" title="All 2 branches missed.">		for (int n = 0; n &lt; npcList.size(); n++)</span>
+		{
+<span class="nc" id="L238">			SpeakerNPC crystalNPC = npcList.get(n);</span>
+<span class="nc" id="L239">			String rewardItem = crystalColors[n] + &quot; emotion crystal&quot;;</span>
+<span class="nc" id="L240">			String crystalRiddle = riddles.get(n);</span>
+<span class="nc" id="L241">			List&lt;String&gt; crystalAnswers = answers.get(n);</span>
+
+			// In place of QUEST_SLOT
+			//String RIDDLER_SLOT = crystalColors.get(n) + &quot;_crystal_riddle&quot;;
+
+<span class="nc" id="L246">			final List&lt;ChatAction&gt; rewardAction = new LinkedList&lt;ChatAction&gt;();</span>
+<span class="nc" id="L247">			rewardAction.add(new EquipItemAction(rewardItem,1,true));</span>
+<span class="nc" id="L248">			rewardAction.add(new IncreaseKarmaAction(5));</span>
+<span class="nc" id="L249">			rewardAction.add(new SetQuestToTimeStampAction(QUEST_SLOT, OFFSET_TIMESTAMPS + n));</span>
+<span class="nc" id="L250">			rewardAction.add(new SetQuestAction(QUEST_SLOT, OFFSET_SUCCESS_MARKER + n, &quot;riddle_solved&quot;));</span>
+
+<span class="nc" id="L252">			final List&lt;ChatAction&gt; wrongGuessAction = new LinkedList&lt;ChatAction&gt;();</span>
+<span class="nc" id="L253">			wrongGuessAction.add(new SetQuestToTimeStampAction(QUEST_SLOT, OFFSET_TIMESTAMPS + n));</span>
+<span class="nc" id="L254">			wrongGuessAction.add(new SetQuestAction(QUEST_SLOT, OFFSET_SUCCESS_MARKER + n, &quot;wrong&quot;));</span>
+
+			// Player asks about riddle
+<span class="nc" id="L257">			crystalNPC.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.QUEST_MESSAGES,
+				new AndCondition(
+					new QuestInStateCondition(QUEST_SLOT, 0, &quot;start&quot;),
+					new OrCondition(
+						new QuestNotInStateCondition(QUEST_SLOT, OFFSET_SUCCESS_MARKER + n, &quot;riddle_solved&quot;),
+						new AndCondition(
+							new QuestInStateCondition(QUEST_SLOT, OFFSET_SUCCESS_MARKER + n, &quot;riddle_solved&quot;),
+							new NotCondition(new PlayerHasItemWithHimCondition(rewardItem)),
+							new TimePassedCondition(QUEST_SLOT, OFFSET_TIMESTAMPS + n, WAIT_TIME_RETRY)
+						)
+					)
+				),
+				ConversationStates.ATTENDING,
+				&quot;Please answer the #riddle which I have for you...&quot;,
+				null);
+
+			// Player asks about riddle
+<span class="nc" id="L275">			crystalNPC.add(ConversationStates.ATTENDING,</span>
+					Arrays.asList(&quot;riddle&quot;, &quot;question&quot;, &quot;query&quot;, &quot;puzzle&quot;),
+					new AndCondition(
+						new QuestInStateCondition(QUEST_SLOT, 0, &quot;start&quot;),
+						new OrCondition(
+							new QuestNotInStateCondition(QUEST_SLOT, OFFSET_SUCCESS_MARKER + n, &quot;riddle_solved&quot;),
+							new AndCondition(
+								new QuestInStateCondition(QUEST_SLOT, OFFSET_SUCCESS_MARKER + n, &quot;riddle_solved&quot;),
+								new NotCondition(new PlayerHasItemWithHimCondition(rewardItem)),
+								new TimePassedCondition(QUEST_SLOT, OFFSET_TIMESTAMPS + n, WAIT_TIME_RETRY)
+							)
+						)
+					),
+					ConversationStates.ATTENDING,
+					crystalRiddle,
+					new SetQuestAction(QUEST_SLOT, OFFSET_SUCCESS_MARKER + n, &quot;riddle&quot;));
+
+			// Player gets the riddle right
+<span class="nc" id="L293">			crystalNPC.add(ConversationStates.ATTENDING,</span>
+					crystalAnswers,
+					new QuestInStateCondition(QUEST_SLOT, OFFSET_SUCCESS_MARKER + n, &quot;riddle&quot;),
+					ConversationStates.IDLE,
+					&quot;That is correct. Take this crystal as a reward.&quot;,
+					new MultipleActions(rewardAction));
+
+
+			// Player gets the riddle wrong
+<span class="nc" id="L302">			crystalNPC.add(ConversationStates.ATTENDING,</span>
+					&quot;&quot;,
+					new QuestInStateCondition(QUEST_SLOT, OFFSET_SUCCESS_MARKER + n, &quot;riddle&quot;),
+					ConversationStates.IDLE,
+					&quot;I'm sorry, that is incorrect.&quot;,
+					new MultipleActions(wrongGuessAction));
+
+			// Player returns before time is up, to get another chance
+<span class="nc" id="L310">			crystalNPC.add(ConversationStates.IDLE,</span>
+					ConversationPhrases.GREETING_MESSAGES,
+					new AndCondition(
+						new QuestInStateCondition(QUEST_SLOT, OFFSET_SUCCESS_MARKER + n, &quot;wrong&quot;),
+						new NotCondition(new TimePassedCondition(QUEST_SLOT, OFFSET_TIMESTAMPS + n, WAIT_TIME_WRONG))
+					),
+					ConversationStates.IDLE,
+					null,
+					new SayTimeRemainingAction(QUEST_SLOT, OFFSET_TIMESTAMPS + n, WAIT_TIME_WRONG, &quot;Think hard on your answer and return to me again in&quot;));
+
+			// Player returns before time is up, to get another crystal
+<span class="nc" id="L321">			crystalNPC.add(ConversationStates.IDLE,</span>
+					ConversationPhrases.GREETING_MESSAGES,
+					new AndCondition(
+						new QuestInStateCondition(QUEST_SLOT, OFFSET_SUCCESS_MARKER + n, &quot;riddle_solved&quot;),
+						new NotCondition(new PlayerHasItemWithHimCondition(rewardItem)),
+						new NotCondition(new TimePassedCondition(QUEST_SLOT, OFFSET_TIMESTAMPS + n, WAIT_TIME_RETRY))
+					),
+					ConversationStates.IDLE,
+					null,
+					new SayTimeRemainingAction(QUEST_SLOT, OFFSET_TIMESTAMPS + n, WAIT_TIME_RETRY, &quot;Oh, did you lose my crystal? I can give you a new one in&quot;));
+
+			// Player can't do riddle twice while they still have the reward
+<span class="nc" id="L333">			crystalNPC.add(ConversationStates.IDLE,</span>
+					ConversationPhrases.GREETING_MESSAGES,
+					new AndCondition(
+						new QuestInStateCondition(QUEST_SLOT, 0, &quot;start&quot;),
+						new PlayerHasItemWithHimCondition(rewardItem)
+					),
+					ConversationStates.ATTENDING,
+					&quot;I hope you make someone happy with your crystal!&quot;,
+					null);
+
+
+			// Player asks for quest without talking to Julius first
+<span class="nc" id="L345">			crystalNPC.add(ConversationStates.ATTENDING,</span>
+					ConversationPhrases.QUEST_MESSAGES,
+					new QuestNotStartedCondition(QUEST_SLOT),
+					ConversationStates.ATTENDING,
+					&quot;Sorry, but I have nothing to offer you. Maybe someone needs a sparkling #crystal soon...&quot;,
+					null);
+
+<span class="nc" id="L352">			crystalNPC.add(ConversationStates.ATTENDING,</span>
+					Arrays.asList(&quot;crystal&quot;, &quot;sparkling crystal&quot;),
+					new QuestNotStartedCondition(QUEST_SLOT),
+					ConversationStates.ATTENDING,
+					&quot;There is a soldier in Ados who used some beautiful crystals in jewellery for his wife...&quot;,
+					null);
+
+		}
+<span class="nc" id="L360">	}</span>
+
+
+	private void prepareBringingStep() {
+<span class="nc" id="L364">		final SpeakerNPC npc = npcs.get(&quot;Julius&quot;);</span>
+
+		// Reward
+<span class="nc" id="L367">		final List&lt;ChatAction&gt; rewardAction = new LinkedList&lt;ChatAction&gt;();</span>
+<span class="nc bnc" id="L368" title="All 2 branches missed.">		for (String color : crystalColors) {</span>
+<span class="nc" id="L369">			rewardAction.add(new DropItemAction(color + &quot; emotion crystal&quot;));</span>
+		}
+<span class="nc" id="L371">		rewardAction.add(new EquipItemAction(&quot;stone legs&quot;, 1, true));</span>
+<span class="nc" id="L372">		rewardAction.add(new IncreaseXPAction(2000));</span>
+<span class="nc" id="L373">		rewardAction.add(new IncreaseKarmaAction(15));</span>
+<span class="nc" id="L374">		rewardAction.add(new SetQuestAction(QUEST_SLOT, 0, &quot;done&quot;));</span>
+
+		// Player has all crystals
+<span class="nc" id="L377">		npc.add(ConversationStates.IDLE,</span>
+				ConversationPhrases.GREETING_MESSAGES,
+				new AndCondition(
+						new QuestActiveCondition(QUEST_SLOT),
+						new PlayerHasItemWithHimCondition(&quot;red emotion crystal&quot;),
+						new PlayerHasItemWithHimCondition(&quot;purple emotion crystal&quot;),
+						new PlayerHasItemWithHimCondition(&quot;yellow emotion crystal&quot;),
+						new PlayerHasItemWithHimCondition(&quot;pink emotion crystal&quot;),
+						new PlayerHasItemWithHimCondition(&quot;blue emotion crystal&quot;)),
+				ConversationStates.QUEST_ITEM_BROUGHT,
+				&quot;Did you bring the crystals?&quot;,
+				null);
+
+		// Player is not carrying all the crystals
+<span class="nc" id="L391">		npc.add(ConversationStates.IDLE,</span>
+				ConversationPhrases.GREETING_MESSAGES,
+				new AndCondition(
+						new QuestInStateCondition(QUEST_SLOT, 0, &quot;start&quot;),
+						new OrCondition(
+								new NotCondition(new PlayerHasItemWithHimCondition(&quot;red emotion crystal&quot;)),
+								new NotCondition(new PlayerHasItemWithHimCondition(&quot;purple emotion crystal&quot;)),
+								new NotCondition(new PlayerHasItemWithHimCondition(&quot;yellow emotion crystal&quot;)),
+								new NotCondition(new PlayerHasItemWithHimCondition(&quot;pink emotion crystal&quot;)),
+								new NotCondition(new PlayerHasItemWithHimCondition(&quot;blue emotion crystal&quot;)))),
+			ConversationStates.ATTENDING,
+			&quot;Please bring me all the emotion crystals you can find.&quot;,
+			null);
+
+		// Player says &quot;yes&quot; (has brought crystals)
+<span class="nc" id="L406">		npc.add(ConversationStates.QUEST_ITEM_BROUGHT,</span>
+				ConversationPhrases.YES_MESSAGES,
+				null,
+				ConversationStates.IDLE,
+				&quot;Thank you so much! I'm sure these will make my wife feel much better. Please, take these stone legs as a reward.&quot;,
+				new MultipleActions(rewardAction));
+
+		// Player says &quot;no&quot; (has not brought crystals)
+<span class="nc" id="L414">		npc.add(ConversationStates.QUEST_ITEM_BROUGHT,</span>
+				ConversationPhrases.NO_MESSAGES,
+				null,
+				ConversationStates.ATTENDING,
+				&quot;Please keep looking. In the meantime, how can I help you?&quot;,
+				null);
+
+<span class="nc" id="L421">	}</span>
+
+	@Override
+	public void addToWorld() {
+<span class="nc" id="L425">		fillQuestInfo(</span>
+				&quot;Emotion Crystals&quot;,
+				&quot;Julius needs to get some crystals for his wife which are spread across Faiumoni.&quot;,
+				false);
+<span class="nc" id="L429">		prepareRequestingStep();</span>
+<span class="nc" id="L430">		prepareRiddlesStep();</span>
+<span class="nc" id="L431">		prepareBringingStep();</span>
+<span class="nc" id="L432">	}</span>
+
+	@Override
+	public String getSlotName() {
+<span class="nc" id="L436">		return QUEST_SLOT;</span>
+	}
+
+	@Override
+	public String getName() {
+<span class="nc" id="L441">		return &quot;EmotionCrystals&quot;;</span>
+	}
+
+	public String getTitle() {
+
+<span class="nc" id="L446">		return &quot;Emotion Crystals&quot;;</span>
+	}
+
+	@Override
+	public int getMinLevel() {
+<span class="nc" id="L451">		return 70;</span>
+	}
+
+	@Override
+	public String getRegion() {
+<span class="nc" id="L456">		return Region.ADOS_CITY;</span>
+	}
+
+	@Override
+	public String getNPCName() {
+<span class="nc" id="L461">		return &quot;Julius&quot;;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

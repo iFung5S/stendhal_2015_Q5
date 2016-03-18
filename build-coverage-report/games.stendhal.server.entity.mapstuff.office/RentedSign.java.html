@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>RentedSign.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.mapstuff.office</a> &gt; <span class="el_source">RentedSign.java</span></div><h1>RentedSign.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2011 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.mapstuff.office;
+
+import games.stendhal.server.entity.mapstuff.sign.Sign;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.util.TimeUtil;
+import marauroa.common.game.Definition;
+import marauroa.common.game.RPClass;
+import marauroa.common.game.RPObject;
+import marauroa.common.game.Definition.Type;
+
+
+/**
+ * A sign rented by a player for a fixed amount of time.
+ *
+ * @author hendrik
+ */
+public class RentedSign extends Sign implements StorableEntity {
+	public static final String RPCLASS_NAME = &quot;rented_sign&quot;;
+	private static final String RENTER = &quot;renter&quot;;
+	private static final String TIMESTAMP = &quot;timestamp&quot;;
+
+	public static void generateRPClass() {
+<span class="fc" id="L35">		final RPClass clazz = new RPClass(RPCLASS_NAME);</span>
+<span class="fc" id="L36">		clazz.isA(&quot;sign&quot;);</span>
+<span class="fc" id="L37">		clazz.addAttribute(RENTER, Type.STRING, Definition.HIDDEN);</span>
+<span class="fc" id="L38">		clazz.addAttribute(TIMESTAMP, Type.FLOAT, Definition.HIDDEN);</span>
+<span class="fc" id="L39">	}</span>
+
+	/**
+	 * Creates a RentedSign.
+	 *
+	 * @param renter player who rented this sign
+	 * @param text text to display on this sign
+	 */
+<span class="nc" id="L47">	public RentedSign(final Player renter, final String text) {</span>
+<span class="nc" id="L48">		setRPClass(RPCLASS_NAME);</span>
+<span class="nc" id="L49">		store();</span>
+<span class="nc" id="L50">		put(RENTER, renter.getName());</span>
+<span class="nc" id="L51">		put(TIMESTAMP, System.currentTimeMillis());</span>
+<span class="nc" id="L52">		super.setText(text);</span>
+<span class="nc" id="L53">	}</span>
+
+	/**
+	 * Creates a RentedSign based on an existing RPObject. This is just for loading 
+	 * a sign from the database, use the other constructors.
+	 * @param rpobject 
+	 */
+	public RentedSign(final RPObject rpobject) {
+<span class="nc" id="L61">	    super(rpobject);</span>
+<span class="nc" id="L62">	    store();</span>
+<span class="nc" id="L63">    }</span>
+
+	/**
+	 * returns the owner.
+	 *
+	 * @return name of owner
+	 */
+    public String getRenter() {
+<span class="nc" id="L71">    	return get(RENTER);</span>
+    }
+
+    /**
+     * Returns the timestamp when this entity was created.
+     *
+     * @return timestamp in milliseconds
+     */
+	public long getTimestamp() {
+<span class="nc" id="L80">		return (long) Float.parseFloat(get(TIMESTAMP));</span>
+	}
+
+	@Override
+	public String describe() {
+<span class="nc" id="L85">		String text = super.describe();</span>
+
+		// add renter and age to the text. We use a relative time because
+		// a fixed timestamp is meaningless for players from
+		// other timezones.
+<span class="nc" id="L90">		final int seconds = (int) ((System.currentTimeMillis() - getTimestamp()) / 1000);</span>
+<span class="nc" id="L91">		text = text + &quot;\nThis sign was rented by &quot; + get(RENTER) + &quot; &quot; + TimeUtil.approxTimeUntil(seconds) + &quot; ago.&quot;;</span>
+<span class="nc" id="L92">		return text;</span>
+	}
+	
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

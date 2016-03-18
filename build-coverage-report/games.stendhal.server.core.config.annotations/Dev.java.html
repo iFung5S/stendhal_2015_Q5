@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Dev.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.core.config.annotations</a> &gt; <span class="el_source">Dev.java</span></div><h1>Dev.java</h1><pre class="source lang-java linenums">package games.stendhal.server.core.config.annotations;
+
+import java.lang.annotation.Documented;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+/**
+ * annotations for the StendhalDeveloper.
+ *
+ * At the class level it indicates to include the marked class
+ * and to sort it into the specified category.
+ *
+ * If at least one constructor is marked, only marked constructors
+ * are used, unmarked ones are ignored.
+ *
+ * At the parameter level it can be used to specify a default value.
+ *
+ * @author hendrik
+ */
+@Documented
+@Retention(value=RetentionPolicy.SOURCE)
+@Target(value={ElementType.CONSTRUCTOR, ElementType.PARAMETER, ElementType.TYPE})
+public @interface Dev {
+
+	/** the category of this building block */
+	Category category() default Category.IGNORE;
+
+	/** an optional default value */
+	String defaultValue() default &quot;&quot;;
+
+	/** a short label */
+	String label() default &quot;&quot;;
+
+	/**
+	 * a category for building block
+	 *
+	 * @author hendrik
+	 */
+<span class="nc" id="L41">	public static enum Category {</span>
+		/** chatting, emoting and private messages */
+<span class="nc" id="L43">		CHAT,</span>
+		/** environment such as java system properties */
+<span class="nc" id="L45">		ENVIRONMENT,</span>
+		/** location in the world, zones */
+<span class="nc" id="L47">		LOCATION,</span>
+		/** logic true, false, and, or, not */
+<span class="nc" id="L49">		LOGIC,</span>
+		/** do not show this building block in the designer */
+<span class="nc" id="L51">		IGNORE,</span>
+		/** player outfits */
+<span class="nc" id="L53">		OUTFIT,</span>
+		/** quest slot memory */
+<span class="nc" id="L55">		QUEST_SLOT,</span>
+		/** items looted by the player in the past */
+<span class="nc" id="L57">		ITEMS_LOOTED,</span>
+		/** items owned by the player right now*/
+<span class="nc" id="L59">		ITEMS_OWNED,</span>
+		/** item producer */
+<span class="nc" id="L61">		ITEMS_PRODUCER,</span>
+		/** stats of the player, e. g. level, karma */
+<span class="nc" id="L63">		STATS,</span>
+		/** kills of creatures */
+<span class="nc" id="L65">		KILLS,</span>
+		/** time */
+<span class="nc" id="L67">		TIME,</span>
+		/** none of the above */
+<span class="nc" id="L69">		OTHER;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

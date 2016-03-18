@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>StartItemsCollectionWithLimitAction.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.npc.action</a> &gt; <span class="el_source">StartItemsCollectionWithLimitAction.java</span></div><h1>StartItemsCollectionWithLimitAction.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2013 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.npc.action;
+
+import static com.google.common.base.Preconditions.checkNotNull;
+import games.stendhal.common.Rand;
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.player.Player;
+
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
+
+/**
+ * For quests that use collections with random quantities for each item.
+ * 
+ * @author AntumDeluge
+ */
+public class StartItemsCollectionWithLimitAction implements ChatAction {
+	private final List&lt;String&gt; items;
+	private final int limit;
+
+	/** Quest slot name. */
+	private final String questSlot;
+	/** Index of sub state. */
+<span class="pc" id="L37">	private int itemIndex = 1;</span>
+
+	/**
+	 * Creates a new StartItemsCollectionWithLimitsAction.
+	 * 
+	 * @param quest
+	 * 			Quest slot name
+	 * @param items
+	 * 			List of items required
+	 * @param limit
+	 * 			The sum of all items
+	 */
+<span class="nc" id="L49">	public StartItemsCollectionWithLimitAction(final String quest, final List&lt;String&gt; items, int limit) {</span>
+<span class="nc" id="L50">		this.questSlot = checkNotNull(quest);</span>
+<span class="nc" id="L51">		this.items = new LinkedList&lt;String&gt;(items);</span>
+<span class="nc" id="L52">		this.limit = limit;</span>
+<span class="nc" id="L53">	}</span>
+	
+	/**
+	 * Creates a new StartItemsCollectionWithLimitsAction.
+	 * 
+	 * @param quest
+	 * 			Quest slot name
+	 * @param index
+	 * 			index of sub state
+	 * @param items
+	 * 			List of items required
+	 * @param limit
+	 * 			The sum of all items
+	 */
+<span class="fc" id="L67">	public StartItemsCollectionWithLimitAction(final String quest, final int index, final List&lt;String&gt; items, int limit) {</span>
+<span class="fc" id="L68">		this.questSlot = checkNotNull(quest);</span>
+<span class="fc" id="L69">		this.items = new LinkedList&lt;String&gt;(items);</span>
+<span class="fc" id="L70">		this.limit = limit;</span>
+<span class="fc" id="L71">		this.itemIndex = index;</span>
+<span class="fc" id="L72">	}</span>
+	
+	@Override
+	public void fire(final Player player, final Sentence sentence, final EventRaiser npc) {
+<span class="fc" id="L76">		int[] requestedQuantities = randomVector(items.size(), limit);</span>
+		
+<span class="fc" id="L78">		final StringBuilder sb = new StringBuilder(&quot;&quot;);</span>
+
+<span class="fc bfc" id="L80" title="All 2 branches covered.">		for (int i = 0; i &lt; items.size(); i++) {</span>
+<span class="fc" id="L81">			int quantity = requestedQuantities[i];</span>
+<span class="pc bpc" id="L82" title="1 of 2 branches missed.">			if (quantity != 0) {</span>
+<span class="fc" id="L83">				sb.append(items.get(i) + &quot;=&quot; + quantity + &quot;;&quot;);</span>
+			}
+		}
+		
+<span class="fc" id="L87">		final String result = sb.toString().substring(0, sb.toString().length() - 1);</span>
+<span class="fc" id="L88">		player.setQuest(questSlot, itemIndex, result);</span>
+<span class="fc" id="L89">	}</span>
+	
+	/**
+	 * Create an integer array of defined length, and random contents with a
+	 * defined total sum.
+	 * 
+	 * @param length length of the requested array
+	 * @param sum sum of the array contents
+	 * @return array of random integers
+	 */
+	private int[] randomVector(int length, int sum) {
+<span class="fc" id="L100">		int[] values = new int[length];</span>
+<span class="fc" id="L101">		values[0] = sum;</span>
+<span class="fc bfc" id="L102" title="All 2 branches covered.">		for (int i = 1; i &lt; values.length; i++) {</span>
+<span class="fc" id="L103">			values[i] = Rand.randUniform(0, sum);</span>
+		}
+<span class="fc" id="L105">		Arrays.sort(values);</span>
+<span class="fc" id="L106">		int low = 0;</span>
+<span class="fc bfc" id="L107" title="All 2 branches covered.">		for (int i = 0; i &lt; values.length; i++) {</span>
+<span class="fc" id="L108">			int rnd = values[i] - low;</span>
+<span class="fc" id="L109">			low = values[i];</span>
+<span class="fc" id="L110">			values[i] = rnd;</span>
+		}
+<span class="fc" id="L112">		return values;</span>
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+<span class="nc" id="L118">		int result = 1;</span>
+<span class="nc" id="L119">		result = prime * result + itemIndex;</span>
+<span class="nc" id="L120">		result = prime * result + items.hashCode();</span>
+<span class="nc" id="L121">		result = prime * result + limit;</span>
+<span class="nc" id="L122">		result = prime * result + questSlot.hashCode();</span>
+<span class="nc" id="L123">		return result;</span>
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+<span class="nc bnc" id="L128" title="All 2 branches missed.">		if (!(obj instanceof StartItemsCollectionWithLimitAction)) {</span>
+<span class="nc" id="L129">			return false;</span>
+		}
+<span class="nc" id="L131">		StartItemsCollectionWithLimitAction other = (StartItemsCollectionWithLimitAction) obj;</span>
+<span class="nc bnc" id="L132" title="All 2 branches missed.">		if (itemIndex != other.itemIndex) {</span>
+<span class="nc" id="L133">			return false;</span>
+		}
+<span class="nc bnc" id="L135" title="All 2 branches missed.">		if (!items.equals(other.items)) {</span>
+<span class="nc" id="L136">			return false;</span>
+		}
+<span class="nc bnc" id="L138" title="All 2 branches missed.">		if (limit != other.limit) {</span>
+<span class="nc" id="L139">			return false;</span>
+		}
+<span class="nc bnc" id="L141" title="All 2 branches missed.">		if (!questSlot.equals(other.questSlot)) {</span>
+<span class="nc" id="L142">			return false;</span>
+		}
+<span class="nc" id="L144">		return true;</span>
+	}
+
+	
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

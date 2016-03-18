@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>PlayerInAreaCondition.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.npc.condition</a> &gt; <span class="el_source">PlayerInAreaCondition.java</span></div><h1>PlayerInAreaCondition.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.npc.condition;
+
+import static com.google.common.base.Preconditions.checkNotNull;
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.core.config.annotations.Dev;
+import games.stendhal.server.core.config.annotations.Dev.Category;
+import games.stendhal.server.entity.Entity;
+import games.stendhal.server.entity.npc.ChatCondition;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.util.Area;
+
+/**
+ * Is the player in the specified area?
+ */
+@Dev(category=Category.LOCATION, label=&quot;Zone?&quot;)
+public class PlayerInAreaCondition implements ChatCondition {
+
+	private final Area area;
+
+	/**
+	 * Creates a new PlayerInAreaCondition.
+	 *
+	 * @param area
+	 *            Area
+	 */
+<span class="fc" id="L38">	public PlayerInAreaCondition(final Area area) {</span>
+<span class="fc" id="L39">		this.area = checkNotNull(area);</span>
+<span class="fc" id="L40">	}</span>
+
+	@Override
+	public boolean fire(final Player player, final Sentence sentence, final Entity entity) {
+<span class="fc" id="L44">		return area.contains(player);</span>
+	}
+
+	@Override
+	public String toString() {
+<span class="fc" id="L49">		return &quot;player in &lt;&quot; + area + &quot;&gt;&quot;;</span>
+	}
+
+	@Override
+	public int hashCode() {
+<span class="fc" id="L54">		return 43969 * area.hashCode();</span>
+	}
+
+	@Override
+	public boolean equals(final Object obj) {
+<span class="pc bpc" id="L59" title="1 of 2 branches missed.">		if (!(obj instanceof PlayerInAreaCondition)) {</span>
+<span class="nc" id="L60">			return false;</span>
+		}
+<span class="fc" id="L62">		PlayerInAreaCondition other = (PlayerInAreaCondition) obj;</span>
+<span class="fc" id="L63">		return area.equals(other.area);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

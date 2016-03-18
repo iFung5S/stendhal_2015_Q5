@@ -1,0 +1,302 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Snowballs.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests</a> &gt; <span class="el_source">Snowballs.java</span></div><h1>Snowballs.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests;
+
+import games.stendhal.common.Rand;
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.entity.item.StackableItem;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.action.DropItemAction;
+import games.stendhal.server.entity.npc.action.IncreaseXPAction;
+import games.stendhal.server.entity.npc.action.MultipleActions;
+import games.stendhal.server.entity.npc.action.SayTimeRemainingAction;
+import games.stendhal.server.entity.npc.action.SetQuestAction;
+import games.stendhal.server.entity.npc.action.SetQuestAndModifyKarmaAction;
+import games.stendhal.server.entity.npc.action.SetQuestToTimeStampAction;
+import games.stendhal.server.entity.npc.condition.AndCondition;
+import games.stendhal.server.entity.npc.condition.GreetingMatchesNameCondition;
+import games.stendhal.server.entity.npc.condition.NotCondition;
+import games.stendhal.server.entity.npc.condition.PlayerHasItemWithHimCondition;
+import games.stendhal.server.entity.npc.condition.QuestInStateCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotInStateCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotStartedCondition;
+import games.stendhal.server.entity.npc.condition.QuestStartedCondition;
+import games.stendhal.server.entity.npc.condition.TimePassedCondition;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.maps.Region;
+
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+
+/**
+ * QUEST: Snowballs
+ * &lt;p&gt;
+ * PARTICIPANTS:
+ * &lt;li&gt; Mr. Yeti, a creature in a dungeon needs help
+ * &lt;p&gt;
+ * STEPS:
+ * &lt;li&gt; Mr. Yeti asks for some snow, and wants you to get 25 snowballs.
+ * &lt;li&gt; You collect 25 snowballs from ice golems.
+ * &lt;li&gt; You give the snowballs to Mr. Yeti.
+ * &lt;li&gt; Mr. Yeti gives you 20 cod or perch.
+ * &lt;p&gt;
+ * REWARD: &lt;li&gt; 20 cod or perch &lt;li&gt; 50 XP &lt;li&gt; 20 karma in total
+ * &lt;p&gt;
+ * REPETITIONS: &lt;li&gt; Unlimited, but 2 hours of waiting is
+ * required between repetitions
+ */
+ 
+<span class="fc" id="L65">public class Snowballs extends AbstractQuest {</span>
+
+	private static final int REQUIRED_SNOWBALLS = 25;
+	
+	private static final int REQUIRED_MINUTES = 120;
+
+	private static final String QUEST_SLOT = &quot;snowballs&quot;;
+
+	@Override
+	public String getSlotName() {
+<span class="fc" id="L75">		return QUEST_SLOT;</span>
+	}
+
+	@Override
+	public boolean isCompleted(final Player player) {
+<span class="nc bnc" id="L80" title="All 6 branches missed.">		return player.hasQuest(QUEST_SLOT)</span>
+				&amp;&amp; !player.getQuest(QUEST_SLOT).equals(&quot;start&quot;) 
+				&amp;&amp; !player.getQuest(QUEST_SLOT).equals(&quot;rejected&quot;);
+	}
+
+	@Override
+	public boolean isRepeatable(final Player player) {
+<span class="nc" id="L87">		return new AndCondition(new QuestNotInStateCondition(QUEST_SLOT, &quot;start&quot;), new QuestStartedCondition(QUEST_SLOT), new TimePassedCondition(QUEST_SLOT,REQUIRED_MINUTES)).fire(player, null, null);</span>
+	}
+
+	@Override
+	public List&lt;String&gt; getHistory(final Player player) {
+<span class="nc" id="L92">		final List&lt;String&gt; res = new ArrayList&lt;String&gt;();</span>
+<span class="nc bnc" id="L93" title="All 2 branches missed.">		if (!player.hasQuest(QUEST_SLOT)) {</span>
+<span class="nc" id="L94">			return res;</span>
+		}
+<span class="nc" id="L96">		res.add(&quot;I went down into the icy caves and met Mr. Yeti.&quot;);</span>
+<span class="nc" id="L97">		final String questState = player.getQuest(QUEST_SLOT);</span>
+<span class="nc bnc" id="L98" title="All 2 branches missed.">		if (questState.equals(&quot;rejected&quot;)) {</span>
+<span class="nc" id="L99">			res.add(&quot;I didn't want to help Mr. Yeti out this time and he harshly send me away...&quot;);</span>
+<span class="nc" id="L100">			return res;</span>
+		}
+<span class="nc" id="L102">		res.add(&quot;Mr. Yeti asked me to collect some snowballs for him and I promised it.&quot;);</span>
+<span class="nc bnc" id="L103" title="All 4 branches missed.">		if (player.isEquipped(&quot;snowball&quot;, REQUIRED_SNOWBALLS) || isCompleted(player)) {</span>
+<span class="nc" id="L104">			res.add(&quot;I found some snowballs after killing some ice golems.&quot;);</span>
+		}
+<span class="nc bnc" id="L106" title="All 2 branches missed.">		if (isCompleted(player)) {</span>
+<span class="nc" id="L107">			res.add(&quot;I made Mr. Yeti happy when I gave him the snowballs he wanted.&quot;);</span>
+		}
+<span class="nc bnc" id="L109" title="All 2 branches missed.">		if(isRepeatable(player)){</span>
+<span class="nc" id="L110">			res.add(&quot;Mr. Yeti needs snowballs again!&quot;);</span>
+		} 
+<span class="nc" id="L112">		return res;</span>
+	}
+
+	private void prepareRequestingStep() {
+<span class="fc" id="L116">		final SpeakerNPC npc = npcs.get(&quot;Mr. Yeti&quot;);</span>
+
+		// says hi without having started quest before
+<span class="fc" id="L119">		npc.add(ConversationStates.IDLE, </span>
+				ConversationPhrases.GREETING_MESSAGES,
+				new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+						new QuestNotStartedCondition(QUEST_SLOT)),
+				ConversationStates.ATTENDING,
+				&quot;Greetings stranger! Have you seen my snow sculptures? I need a #favor from someone friendly like you.&quot;,
+				null);
+		
+		// says hi - got the snow yeti asked for 
+<span class="fc" id="L128">		npc.add(ConversationStates.IDLE, </span>
+				ConversationPhrases.GREETING_MESSAGES,
+				new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+						new QuestInStateCondition(QUEST_SLOT, &quot;start&quot;),
+						new PlayerHasItemWithHimCondition(&quot;snowball&quot;, REQUIRED_SNOWBALLS)),
+				ConversationStates.QUEST_ITEM_BROUGHT, 
+				&quot;Greetings stranger! I see you have the snow I asked for. Are these snowballs for me?&quot;,
+				null);
+
+		// says hi - didn't get the snow yeti asked for 
+<span class="fc" id="L138">		npc.add(ConversationStates.IDLE, </span>
+				ConversationPhrases.GREETING_MESSAGES,
+				new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+						new QuestInStateCondition(QUEST_SLOT, &quot;start&quot;),
+						new NotCondition(new PlayerHasItemWithHimCondition(&quot;snowball&quot;, REQUIRED_SNOWBALLS))),
+				ConversationStates.ATTENDING, 
+				&quot;You're back already? Don't forget that you promised to collect a bunch of snowballs for me!&quot;,
+				null);
+		
+		// says hi - quest was done before and is now repeatable
+<span class="fc" id="L148">		npc.add(ConversationStates.IDLE, </span>
+				ConversationPhrases.GREETING_MESSAGES,
+				new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+						new QuestStartedCondition(QUEST_SLOT),
+						new QuestNotInStateCondition(QUEST_SLOT, &quot;start&quot;),
+						new TimePassedCondition(QUEST_SLOT, REQUIRED_MINUTES)),
+				ConversationStates.ATTENDING,
+				&quot;Greetings again! Have you seen my latest snow sculptures? I need a #favor again ...&quot;,
+				null);
+		
+		// says hi - quest was done before and is not yet repeatable
+<span class="fc" id="L159">		npc.add(ConversationStates.IDLE, </span>
+				ConversationPhrases.GREETING_MESSAGES,
+				new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+						new QuestStartedCondition(QUEST_SLOT),
+						new QuestNotInStateCondition(QUEST_SLOT, &quot;start&quot;),
+						new NotCondition(new TimePassedCondition(QUEST_SLOT, REQUIRED_MINUTES))),
+				ConversationStates.ATTENDING,
+				null,
+				new SayTimeRemainingAction(QUEST_SLOT, REQUIRED_MINUTES, &quot;I have enough snow for my new sculpture. Thank you for helping! &quot; 
+						+ &quot;I might start a new one in&quot; ));
+
+		// asks about quest - has never started it
+<span class="fc" id="L171">		npc.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.QUEST_MESSAGES,
+				new QuestNotStartedCondition(QUEST_SLOT),
+				ConversationStates.QUEST_OFFERED,
+				&quot;I like to make snow sculptures, but the snow in this cavern is not good enough. Would you help me and get some snowballs? I need twenty five of them.&quot;,
+				null);
+		
+		// asks about quest but already on it
+<span class="fc" id="L179">		npc.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.QUEST_MESSAGES, 
+				new QuestInStateCondition(QUEST_SLOT, &quot;start&quot;),
+				ConversationStates.ATTENDING,
+				&quot;You already promised me to bring some snowballs! Twenty five pieces, remember ...&quot;,
+				null);
+		
+		// asks about quest - has done it but it's repeatable now
+<span class="fc" id="L187">		npc.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.QUEST_MESSAGES,
+				new AndCondition(new QuestStartedCondition(QUEST_SLOT), new QuestNotInStateCondition(QUEST_SLOT, &quot;start&quot;), new TimePassedCondition(QUEST_SLOT, REQUIRED_MINUTES)),
+				ConversationStates.QUEST_OFFERED,
+				&quot;I like to make snow sculptures, but the snow in this cavern is not good enough. Would you help me and get some snowballs? I need twenty five of them.&quot;,
+				null);
+		
+		// asks about quest - has done it and it's too soon to do again
+<span class="fc" id="L195">		npc.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.QUEST_MESSAGES,
+				new AndCondition(new QuestStartedCondition(QUEST_SLOT), new QuestNotInStateCondition(QUEST_SLOT, &quot;start&quot;), new NotCondition(new TimePassedCondition(QUEST_SLOT, REQUIRED_MINUTES))),
+				ConversationStates.ATTENDING,
+				&quot;I have enough snow to finish my sculpture, but thanks for asking.&quot;,
+				null);
+
+		// player is willing to help
+<span class="fc" id="L203">		npc.add(ConversationStates.QUEST_OFFERED,</span>
+				ConversationPhrases.YES_MESSAGES,
+				null,
+				ConversationStates.ATTENDING,
+				&quot;Fine. You can loot the snowballs from the ice golem in this cavern, but be careful there is something huge nearby! Come back when you get twenty five snowballs.&quot;,
+				new SetQuestAction(QUEST_SLOT, &quot;start&quot;));
+
+		// player is not willing to help
+<span class="fc" id="L211">		npc.add(ConversationStates.QUEST_OFFERED,</span>
+				ConversationPhrases.NO_MESSAGES,
+				null,
+				ConversationStates.ATTENDING,
+				&quot;So what are you doing here? Go away!&quot;,
+				new SetQuestAndModifyKarmaAction(QUEST_SLOT, &quot;rejected&quot;, -5.0));
+<span class="fc" id="L217">	}</span>
+
+	private void prepareBringingStep() {
+		
+<span class="fc" id="L221">		final SpeakerNPC npc = npcs.get(&quot;Mr. Yeti&quot;);</span>
+		
+<span class="fc" id="L223">		final List&lt;ChatAction&gt; reward = new LinkedList&lt;ChatAction&gt;();</span>
+<span class="fc" id="L224">		reward.add(new DropItemAction(&quot;snowball&quot;, REQUIRED_SNOWBALLS));</span>
+<span class="fc" id="L225">		reward.add(new IncreaseXPAction(50));</span>
+<span class="fc" id="L226">		reward.add(new SetQuestToTimeStampAction(QUEST_SLOT));</span>
+		// player gets either cod or perch, which we don't have a standard action for
+		// and the npc says the name of the reward, too
+<span class="fc" id="L229">		reward.add(new ChatAction() {</span>
+					@Override
+					public void fire(final Player player, final Sentence sentence, final EventRaiser npc) {
+						String rewardClass;
+<span class="pc bpc" id="L233" title="1 of 2 branches missed.">						if (Rand.throwCoin() == 1) {</span>
+<span class="nc" id="L234">							rewardClass = &quot;cod&quot;;</span>
+						} else {
+<span class="fc" id="L236">							rewardClass = &quot;perch&quot;;</span>
+						}
+<span class="fc" id="L238">						npc.say(&quot;Thank you! Here, take some &quot; + rewardClass + &quot;! I do not like to eat them.&quot;);</span>
+<span class="fc" id="L239">						final StackableItem reward = (StackableItem) SingletonRepository.getEntityManager().getItem(rewardClass);</span>
+<span class="fc" id="L240">						reward.setQuantity(20);</span>
+<span class="fc" id="L241">						player.equipOrPutOnGround(reward);</span>
+<span class="fc" id="L242">						player.addKarma(20.0);</span>
+<span class="fc" id="L243">						player.notifyWorldAboutChanges();</span>
+<span class="fc" id="L244">					}</span>
+				});
+		
+<span class="fc" id="L247">		npc.add(ConversationStates.QUEST_ITEM_BROUGHT,</span>
+			ConversationPhrases.YES_MESSAGES, 
+			new PlayerHasItemWithHimCondition(&quot;snowball&quot;, REQUIRED_SNOWBALLS),
+			ConversationStates.ATTENDING,
+			null,
+			new MultipleActions(reward));
+
+<span class="fc" id="L254">		npc.add(ConversationStates.QUEST_ITEM_BROUGHT,</span>
+			ConversationPhrases.YES_MESSAGES, 
+			new NotCondition(new PlayerHasItemWithHimCondition(&quot;snowball&quot;, REQUIRED_SNOWBALLS)),
+			ConversationStates.ATTENDING, 
+			&quot;Hey! Where did you put the snowballs?&quot;,
+			null);
+
+<span class="fc" id="L261">		npc.add(</span>
+			ConversationStates.QUEST_ITEM_BROUGHT,
+			ConversationPhrases.NO_MESSAGES,
+			null,
+			ConversationStates.ATTENDING,
+			&quot;Oh I hope you bring me them soon! I would like to finish my sculpture!&quot;,
+			null);
+<span class="fc" id="L268">	}</span>
+
+	@Override
+	public void addToWorld() {
+<span class="fc" id="L272">		fillQuestInfo(</span>
+				&quot;Snowballs for Mr. Yeti&quot;,
+				&quot;The inhabitant of the icy region in Faiumoni needs your help to collect some snowballs for him.&quot;,
+				false);
+<span class="fc" id="L276">		prepareRequestingStep();</span>
+<span class="fc" id="L277">		prepareBringingStep();</span>
+<span class="fc" id="L278">	}</span>
+
+	@Override
+	public String getName() {
+<span class="nc" id="L282">		return &quot;Snowballs&quot;;</span>
+	}
+	
+	// the djinns, ice golems and ice elementals on the way to yeti caves are quite dangerous
+	@Override
+	public int getMinLevel() {
+<span class="fc" id="L288">		return 60;</span>
+	}
+
+	@Override
+	public String getNPCName() {
+<span class="nc" id="L293">		return &quot;Mr. Yeti&quot;;</span>
+	}
+	
+	@Override
+	public String getRegion() {
+<span class="nc" id="L298">		return Region.SEMOS_YETI_CAVE;</span>
+	}
+	
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

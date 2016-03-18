@@ -1,0 +1,603 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ZonesXMLLoader.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.core.config</a> &gt; <span class="el_source">ZonesXMLLoader.java</span></div><h1>ZonesXMLLoader.java</h1><pre class="source lang-java linenums">/*
+ * @(#) src/games/stendhal/server/config/ZonesXMLLoader.java
+ *
+ * $Id$
+ */
+
+package games.stendhal.server.core.config;
+
+//
+//
+
+import games.stendhal.common.tiled.LayerDefinition;
+import games.stendhal.common.tiled.StendhalMapStructure;
+import games.stendhal.server.core.config.zone.AttributesXMLReader;
+import games.stendhal.server.core.config.zone.ConfiguratorXMLReader;
+import games.stendhal.server.core.config.zone.EntitySetupXMLReader;
+import games.stendhal.server.core.config.zone.PortalSetupXMLReader;
+import games.stendhal.server.core.config.zone.RegionNameSubstitutionHelper;
+import games.stendhal.server.core.config.zone.SetupDescriptor;
+import games.stendhal.server.core.config.zone.SetupXMLReader;
+import games.stendhal.server.core.config.zone.TMXLoader;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.engine.StendhalRPWorld;
+import games.stendhal.server.core.engine.StendhalRPZone;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
+import org.apache.log4j.Logger;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.xml.sax.SAXException;
+
+/**
+ * Load and configure zones via an XML configuration file.
+ */
+public final class ZonesXMLLoader {
+
+	/**
+	 * Logger.
+	 */
+<span class="fc" id="L49">	private static final Logger logger = Logger.getLogger(ZonesXMLLoader.class);</span>
+
+	/** Zone attributes reader. */
+<span class="fc" id="L52">	private static final SetupXMLReader attributesReader = new AttributesXMLReader();</span>
+	/**
+	 * The ConfiguratorDescriptor XML reader.
+	 */
+<span class="fc" id="L56">	private static final SetupXMLReader configuratorReader = new ConfiguratorXMLReader();</span>
+
+	/**
+	 * The EntitySetupDescriptor XML reader.
+	 */
+<span class="fc" id="L61">	private static final SetupXMLReader entitySetupReader = new EntitySetupXMLReader();</span>
+
+	/**
+	 * The PortalSetupDescriptor XML reader.
+	 */
+<span class="fc" id="L66">	private static final SetupXMLReader portalSetupReader = new PortalSetupXMLReader();</span>
+
+	/**
+	 * The zone group file.
+	 */
+	private final URI uri;
+
+	/**
+	 * Create an XML based loader of zones.
+	 * @param uri the zone group file
+	 */
+<span class="fc" id="L77">	public ZonesXMLLoader(final URI uri) {</span>
+<span class="fc" id="L78">		this.uri = uri;</span>
+<span class="fc" id="L79">	}</span>
+
+	//
+	// ZonesXMLLoader
+	//
+
+	/**
+	 * Load a group of zones into a world.
+	 *
+	 * @throws SAXException
+	 *             If a SAX error occurred.
+	 * @throws IOException
+	 *             If an I/O error occurred.
+	 * @throws FileNotFoundException
+	 *             If the resource was not found.
+	 */
+	public void load() throws SAXException, IOException {
+<span class="fc" id="L96">		final InputStream in = ZonesXMLLoader.class.getResourceAsStream(uri.getPath());</span>
+
+<span class="pc bpc" id="L98" title="1 of 2 branches missed.">		if (in == null) {</span>
+<span class="nc" id="L99">			throw new FileNotFoundException(&quot;Cannot find resource: &quot; + uri);</span>
+		}
+
+		try {
+<span class="fc" id="L103">			load(in);</span>
+		} finally {
+<span class="pc" id="L105">			in.close();</span>
+<span class="fc" id="L106">		}</span>
+<span class="fc" id="L107">	}</span>
+
+	/**
+	 * Loads a group of zones into a world using a config file.
+	 *
+	 * @param in
+	 *            The config file stream.
+	 *
+	 * @throws SAXException
+	 *             If a SAX error occurred.
+	 * @throws IOException
+	 *             If an I/O error occurred.
+	 */
+	protected void load(final InputStream in) throws SAXException, IOException {
+<span class="fc" id="L121">		final Document doc = XMLUtil.parse(in);</span>
+
+		// just to speed up starting of the server in while developing
+		// add -Dstendhal.zone.regex=&quot;.*semos.*&quot; (for example) to your server start script just after the &quot;java &quot;
+		// or for multiple regions: -Dstendhal.zone.regex=&quot;.*semos.*|.*fado.*&quot;
+		// it's a good idea to keep semos loaded as that's a default place to put the character
+		// if there is a problem with the zone
+<span class="fc" id="L128">		final String regex = System.getProperty(&quot;stendhal.zone.regex&quot;, &quot;.*&quot;);</span>
+
+		/*
+		 * Load each zone
+		 */
+<span class="fc bfc" id="L133" title="All 2 branches covered.">		for (final Element element : XMLUtil.getElements(doc.getDocumentElement(), &quot;zone&quot;)) {</span>
+<span class="fc" id="L134">			final ZoneDesc zdesc = readZone(element);</span>
+
+<span class="fc bfc" id="L136" title="All 2 branches covered.">			if (zdesc == null) {</span>
+<span class="fc" id="L137">				continue;</span>
+			}
+
+<span class="fc" id="L140">			final String name = zdesc.getName();</span>
+<span class="pc bpc" id="L141" title="5 of 6 branches missed.">			if (!name.matches(regex) &amp;&amp; !name.equals(&quot;int_semos_townhall&quot;) &amp;&amp; !name.equals(&quot;int_semos_guard_house&quot;)) {</span>
+<span class="nc" id="L142">				continue;</span>
+			}
+
+<span class="fc" id="L145">			logger.info(&quot;Loading zone: &quot; + name);</span>
+
+			try {
+<span class="fc" id="L148">				final StendhalMapStructure zonedata = TMXLoader.load(StendhalRPWorld.MAPS_FOLDER</span>
+						+ zdesc.getFile());
+
+<span class="pc bpc" id="L151" title="1 of 2 branches missed.">				if (verifyMap(zdesc, zonedata)) {</span>
+<span class="fc" id="L152">					final StendhalRPZone zone = load(zdesc, zonedata);</span>
+
+					/*
+					 * Setup Descriptors
+					 */
+<span class="fc" id="L157">					final Iterator&lt;SetupDescriptor&gt; diter = zdesc.getDescriptors();</span>
+
+<span class="pc bpc" id="L159" title="1 of 2 branches missed.">					while (diter.hasNext()) {</span>
+<span class="nc" id="L160">						diter.next().setup(zone);</span>
+					}
+					// Zone configurators can add creatures, so this should be
+					// done after them
+<span class="fc" id="L164">					zone.calculateDangerLevel();</span>
+				}
+<span class="nc" id="L166">			} catch (final Exception ex) {</span>
+<span class="nc" id="L167">				logger.error(&quot;Error loading zone: &quot; + name, ex);</span>
+<span class="fc" id="L168">			}</span>
+<span class="fc" id="L169">		}</span>
+<span class="fc" id="L170">	}</span>
+
+<span class="fc" id="L172">	private static final String[] REQUIRED_LAYERS = { &quot;0_floor&quot;, &quot;1_terrain&quot;,</span>
+			&quot;2_object&quot;, &quot;objects&quot;, &quot;collision&quot;, &quot;protection&quot; };
+
+	private boolean verifyMap(final ZoneDesc zdesc, final StendhalMapStructure zonedata) {
+<span class="fc bfc" id="L176" title="All 2 branches covered.">		for (final String layer : REQUIRED_LAYERS) {</span>
+<span class="pc bpc" id="L177" title="1 of 2 branches missed.">			if (!zonedata.hasLayer(layer)) {</span>
+<span class="nc" id="L178">				logger.error(&quot;Required layer &quot; + layer + &quot; missing in zone &quot;</span>
+						+ zdesc.getFile());
+<span class="nc" id="L180">				return false;</span>
+			}
+		}
+<span class="fc" id="L183">		return true;</span>
+	}
+
+	/**
+	 * Load zone data and create a new zone from it. Most of this should be moved
+	 * directly into ZoneXMLLoader.
+	 * @param desc the zone's descriptor
+	 * @param zonedata to be loaded
+	 * @return the created zone
+	 * @throws SAXException if any xml parsing error happened
+	 * @throws IOException if any IO error happened
+	 *
+	 *
+	 */
+	protected StendhalRPZone load(final ZoneDesc desc, final StendhalMapStructure zonedata)
+			throws SAXException, IOException {
+<span class="fc" id="L199">		final String name = desc.getName();</span>
+
+		final StendhalRPZone zone;
+<span class="pc bpc" id="L202" title="1 of 2 branches missed.">		if (desc.getImplementation() == null) {</span>
+<span class="fc" id="L203">			zone = new StendhalRPZone(name);</span>
+		} else {
+<span class="nc" id="L205">			zone = createZone(desc, name);</span>
+		}
+
+<span class="fc" id="L208">		zone.addTilesets(name + &quot;.tilesets&quot;, zonedata.getTilesets());</span>
+<span class="fc" id="L209">		zone.addLayer(name + &quot;.0_floor&quot;, zonedata.getLayer(&quot;0_floor&quot;));</span>
+<span class="fc" id="L210">		zone.addLayer(name + &quot;.1_terrain&quot;, zonedata.getLayer(&quot;1_terrain&quot;));</span>
+<span class="fc" id="L211">		zone.addLayer(name + &quot;.2_object&quot;, zonedata.getLayer(&quot;2_object&quot;));</span>
+
+		// Roof layers are optional
+<span class="fc" id="L214">		loadOptionalLayer(zone, zonedata, &quot;3_roof&quot;);</span>
+<span class="fc" id="L215">		loadOptionalLayer(zone, zonedata, &quot;4_roof_add&quot;);</span>
+		// Effect layers are optional too
+<span class="fc" id="L217">		loadOptionalLayer(zone, zonedata, &quot;blend_ground&quot;);</span>
+<span class="fc" id="L218">		loadOptionalLayer(zone, zonedata, &quot;blend_roof&quot;);</span>
+
+<span class="fc" id="L220">		zone.addCollisionLayer(name + &quot;.collision&quot;,</span>
+				zonedata.getLayer(&quot;collision&quot;));
+<span class="fc" id="L222">		zone.addProtectionLayer(name + &quot;.protection&quot;,</span>
+				zonedata.getLayer(&quot;protection&quot;));
+
+<span class="fc bfc" id="L225" title="All 2 branches covered.">		if (desc.isInterior()) {</span>
+<span class="fc" id="L226">			zone.setPosition();</span>
+		} else {
+<span class="fc" id="L228">			zone.setPosition(desc.getLevel(), desc.getX(), desc.getY());</span>
+		}
+
+<span class="fc" id="L231">		zone.setPublicAccessible(desc.accessible);</span>
+
+<span class="fc" id="L233">		SingletonRepository.getRPWorld().addRPZone(desc.getRegion(), zone);</span>
+
+		try {
+<span class="fc" id="L236">			zone.onInit();</span>
+<span class="nc" id="L237">		} catch (final Exception e) {</span>
+<span class="nc" id="L238">			logger.error(e, e);</span>
+<span class="fc" id="L239">		}</span>
+
+<span class="fc" id="L241">		zone.populate(zonedata.getLayer(&quot;objects&quot;));</span>
+
+<span class="fc" id="L243">		return zone;</span>
+	}
+
+	/**
+	 * Load an optional layer, if present, to a zone.
+	 *
+	 * @param zone
+	 * @param zonedata
+	 * @param layerName
+	 * @throws IOException
+	 */
+	private void loadOptionalLayer(StendhalRPZone zone,
+			StendhalMapStructure zonedata, String layerName) throws IOException {
+<span class="fc" id="L256">		LayerDefinition layer = zonedata.getLayer(layerName);</span>
+<span class="fc bfc" id="L257" title="All 2 branches covered.">		if (layer != null) {</span>
+<span class="fc" id="L258">			zone.addLayer(zone.getName() + &quot;.&quot; + layerName, layer);</span>
+		}
+<span class="fc" id="L260">	}</span>
+
+	@SuppressWarnings(&quot;unchecked&quot;)
+	private StendhalRPZone createZone(final ZoneDesc desc, final String name)  {
+		try {
+<span class="nc" id="L265">			Class&lt;StendhalRPZone&gt; zoneclass = (Class&lt;StendhalRPZone&gt;) Class.forName(desc.getImplementation());</span>
+<span class="nc" id="L266">			Constructor&lt;StendhalRPZone&gt; constr = zoneclass.getConstructor(String.class);</span>
+<span class="nc" id="L267">			return constr.newInstance(name);</span>
+<span class="nc" id="L268">		} catch (ClassNotFoundException e) {</span>
+<span class="nc" id="L269">			logger.error(e, e);</span>
+<span class="nc" id="L270">		} catch (SecurityException e) {</span>
+<span class="nc" id="L271">			logger.error(e, e);</span>
+<span class="nc" id="L272">		} catch (NoSuchMethodException e) {</span>
+<span class="nc" id="L273">			logger.error(e, e);</span>
+<span class="nc" id="L274">		} catch (IllegalArgumentException e) {</span>
+<span class="nc" id="L275">			logger.error(e, e);</span>
+<span class="nc" id="L276">		} catch (InstantiationException e) {</span>
+<span class="nc" id="L277">			logger.error(e, e);</span>
+<span class="nc" id="L278">		} catch (IllegalAccessException e) {</span>
+<span class="nc" id="L279">			logger.error(e, e);</span>
+<span class="nc" id="L280">		} catch (InvocationTargetException e) {</span>
+<span class="nc" id="L281">			logger.error(e, e);</span>
+<span class="nc" id="L282">		}</span>
+<span class="nc" id="L283">		return new StendhalRPZone(name);</span>
+	}
+
+	public ZoneDesc readZone(final Element element) {
+<span class="pc bpc" id="L287" title="1 of 2 branches missed.">		if (!element.hasAttribute(&quot;name&quot;)) {</span>
+<span class="nc" id="L288">			logger.error(&quot;Unnamed zone&quot;);</span>
+<span class="nc" id="L289">			return null;</span>
+		}
+
+<span class="fc" id="L292">		final String name = element.getAttribute(&quot;name&quot;);</span>
+
+<span class="fc bfc" id="L294" title="All 2 branches covered.">		if (!element.hasAttribute(&quot;file&quot;)) {</span>
+<span class="fc" id="L295">			logger.error(&quot;Zone [&quot; + name + &quot;] without 'file' attribute&quot;);</span>
+<span class="fc" id="L296">			return null;</span>
+		}
+
+<span class="fc" id="L299">		String file = element.getAttribute(&quot;file&quot;);</span>
+
+		int level;
+		int x;
+		int y;
+
+		/**
+		 * Interior zones don't have levels (why not?)
+		 */
+<span class="fc bfc" id="L308" title="All 2 branches covered.">		if (element.hasAttribute(&quot;level&quot;)) {</span>
+<span class="fc" id="L309">			String s = element.getAttribute(&quot;level&quot;);</span>
+
+			try {
+<span class="fc" id="L312">				level = Integer.parseInt(s);</span>
+<span class="nc" id="L313">			} catch (final NumberFormatException ex) {</span>
+<span class="nc" id="L314">				logger.error(&quot;Zone [&quot; + name + &quot;] has invalid level: &quot; + s);</span>
+<span class="nc" id="L315">				return null;</span>
+<span class="fc" id="L316">			}</span>
+
+<span class="pc bpc" id="L318" title="1 of 2 branches missed.">			if (!element.hasAttribute(&quot;x&quot;)) {</span>
+<span class="nc" id="L319">				logger.error(&quot;Zone [&quot; + name + &quot;] without x coordinate&quot;);</span>
+<span class="nc" id="L320">				return null;</span>
+			} else {
+<span class="fc" id="L322">				s = element.getAttribute(&quot;x&quot;);</span>
+
+				try {
+<span class="fc" id="L325">					x = Integer.parseInt(s);</span>
+<span class="nc" id="L326">				} catch (final NumberFormatException ex) {</span>
+<span class="nc" id="L327">					logger.error(&quot;Zone [&quot; + name</span>
+							+ &quot;] has invalid x coordinate: &quot; + s);
+<span class="nc" id="L329">					return null;</span>
+<span class="fc" id="L330">				}</span>
+			}
+
+<span class="pc bpc" id="L333" title="1 of 2 branches missed.">			if (!element.hasAttribute(&quot;y&quot;)) {</span>
+<span class="nc" id="L334">				logger.error(&quot;Zone [&quot; + name + &quot;] without y coordinate&quot;);</span>
+<span class="nc" id="L335">				return null;</span>
+			} else {
+<span class="fc" id="L337">				s = element.getAttribute(&quot;y&quot;);</span>
+
+				try {
+<span class="fc" id="L340">					y = Integer.parseInt(s);</span>
+<span class="nc" id="L341">				} catch (final NumberFormatException ex) {</span>
+<span class="nc" id="L342">					logger.error(&quot;Zone [&quot; + name</span>
+							+ &quot;] has invalid y coordinate: &quot; + s);
+<span class="nc" id="L344">					return null;</span>
+<span class="fc" id="L345">				}</span>
+			}
+<span class="fc" id="L347">		} else {</span>
+<span class="fc" id="L348">			level = ZoneDesc.UNSET;</span>
+<span class="fc" id="L349">			x = ZoneDesc.UNSET;</span>
+<span class="fc" id="L350">			y = ZoneDesc.UNSET;</span>
+		}
+
+<span class="fc" id="L353">		String region = parseRegionFromZone(name);</span>
+
+<span class="fc" id="L355">		boolean accessible = true;</span>
+<span class="fc bfc" id="L356" title="All 2 branches covered.">		if (element.hasAttribute(&quot;accessible&quot;)) {</span>
+<span class="fc" id="L357">			accessible = Boolean.parseBoolean(element.getAttribute(&quot;accessible&quot;));</span>
+		}
+<span class="fc" id="L359">		final ZoneDesc desc = new ZoneDesc(name, file, region, level, x, y, accessible );</span>
+
+		/*
+		 * Title element
+		 */
+<span class="fc" id="L364">		final List&lt;Element&gt; list = XMLUtil.getElements(element, &quot;title&quot;);</span>
+
+<span class="pc bpc" id="L366" title="1 of 2 branches missed.">		if (!list.isEmpty()) {</span>
+<span class="nc bnc" id="L367" title="All 2 branches missed.">			if (list.size() &gt; 1) {</span>
+<span class="nc" id="L368">				logger.error(&quot;Zone [&quot; + name + &quot;] has multiple title elements&quot;);</span>
+			}
+
+<span class="nc" id="L371">			desc.setTitle(XMLUtil.getText(list.get(0)).trim());</span>
+		}
+
+		/*
+		 * Setup elements
+		 */
+<span class="pc bpc" id="L377" title="1 of 2 branches missed.">		for (final Element child : XMLUtil.getElements(element)) {</span>
+<span class="nc" id="L378">			final String tag = child.getTagName();</span>
+
+<span class="nc bnc" id="L380" title="All 2 branches missed.">			if (!XMLUtil.checkCondition(child.getAttribute(&quot;condition&quot;))) {</span>
+<span class="nc" id="L381">				continue;</span>
+			}
+
+<span class="nc" id="L384">			SetupDescriptor setupDesc = null;</span>
+
+<span class="nc bnc" id="L386" title="All 2 branches missed.">			if (tag.equals(&quot;attributes&quot;)) {</span>
+<span class="nc" id="L387">				setupDesc = attributesReader.read(child);</span>
+<span class="nc bnc" id="L388" title="All 2 branches missed.">				if (setupDesc.getParameters().get(&quot;file&quot;) != null) {</span>
+<span class="nc" id="L389">					desc.file = setupDesc.getParameters().get(&quot;file&quot;);</span>
+				}
+<span class="nc bnc" id="L391" title="All 2 branches missed.">			} else if (tag.equals(&quot;configurator&quot;)) {</span>
+<span class="nc" id="L392">				setupDesc = configuratorReader.read(child);</span>
+<span class="nc bnc" id="L393" title="All 2 branches missed.">			} else if (tag.equals(&quot;implementation&quot;)) {</span>
+<span class="nc" id="L394">				desc.setImplementation(child.getAttribute(&quot;class-name&quot;));</span>
+
+<span class="nc bnc" id="L396" title="All 2 branches missed.">			} else if (tag.equals(&quot;entity&quot;)) {</span>
+<span class="nc" id="L397">				setupDesc = entitySetupReader.read(child);</span>
+<span class="nc bnc" id="L398" title="All 2 branches missed.">			} else if (tag.equals(&quot;portal&quot;)) {</span>
+<span class="nc" id="L399">				setupDesc = portalSetupReader.read(child);</span>
+<span class="nc bnc" id="L400" title="All 4 branches missed.">			} else if (tag.equals(&quot;title&quot;) || tag.equals(&quot;point-of-interest&quot;)) {</span>
+				// Ignore
+<span class="nc" id="L402">				continue;</span>
+			} else {
+<span class="nc" id="L404">				logger.warn(&quot;Zone [&quot; + name + &quot;] has unknown element: &quot; + tag);</span>
+<span class="nc" id="L405">				continue;</span>
+			}
+
+<span class="nc bnc" id="L408" title="All 2 branches missed.">			if (setupDesc != null) {</span>
+<span class="nc" id="L409">				desc.addDescriptor(setupDesc);</span>
+			}
+<span class="nc" id="L411">		}</span>
+
+<span class="fc" id="L413">		return desc;</span>
+	}
+
+
+	//
+	//
+
+	/**
+	 * Extracts the region out of the given zone name
+	 * Basic zone name convention:
+	 * exteriors:
+	 * lvl_region_zonename_orientation (i.e. 0 or n1)
+	 * interiors:
+	 * int_region_zonename_number (number for houses)
+	 * @param name the name of the zone to parse
+	 * 
+	 * @return region name
+	 */
+	private String parseRegionFromZone(String name) {
+<span class="fc" id="L432">		String[] split = name.split(&quot;_&quot;);</span>
+		// standard exterior and interior zones have more than 3 parts
+<span class="pc bpc" id="L434" title="1 of 2 branches missed.">		if (split.length &gt; 1) {</span>
+<span class="fc" id="L435">			return RegionNameSubstitutionHelper.get().replaceRegionName(split[1]);</span>
+		}
+		//each zone that shouldn't be accounted as a region would be considered as &quot;no region&quot;
+<span class="nc" id="L438">		return RegionNameSubstitutionHelper.get().getDefaultRegion();</span>
+	}
+
+	/*
+	 *  THIS REQUIRES StendhalRPWorld SETUP (i.e. marauroa.ini) XXX
+	 */
+	public static void main(final String[] args) throws Exception {
+<span class="nc bnc" id="L445" title="All 2 branches missed.">		if (args.length != 1) {</span>
+<span class="nc" id="L446">			System.err.println(&quot;Usage: java &quot; + ZonesXMLLoader.class.getName()</span>
+					+ &quot; &lt;filename&gt;&quot;);
+<span class="nc" id="L448">			System.exit(1);</span>
+		}
+
+<span class="nc" id="L451">		final ZonesXMLLoader loader = new ZonesXMLLoader(new URI(args[0]));</span>
+
+		try {
+<span class="nc" id="L454">			loader.load();</span>
+<span class="nc" id="L455">		} catch (final org.xml.sax.SAXParseException ex) {</span>
+<span class="nc" id="L456">			System.err.print(&quot;Source &quot; + args[0] + &quot;:&quot; + ex.getLineNumber()</span>
+					+ &quot;&lt;&quot; + ex.getColumnNumber() + &quot;&gt;&quot;);
+
+<span class="nc" id="L459">			throw ex;</span>
+<span class="nc" id="L460">		}</span>
+<span class="nc" id="L461">	}</span>
+
+	//
+	//
+
+	/**
+	 * A zone descriptor.
+	 */
+	protected static class ZoneDesc {
+		public static final int UNSET = Integer.MIN_VALUE;
+
+		protected String name;
+
+		protected String file;
+
+		protected String title;
+
+		protected String region;
+
+		protected int level;
+
+		protected int x;
+
+		protected int y;
+
+		protected ArrayList&lt;SetupDescriptor&gt; descriptors;
+
+		private String implementation;
+
+		private final boolean accessible;
+
+<span class="fc" id="L492">		public ZoneDesc(final String name, final String file, final String region, final int level, final int x, final int y, final boolean accessible) {</span>
+<span class="fc" id="L493">			this.name = name;</span>
+<span class="fc" id="L494">			this.file = file;</span>
+<span class="fc" id="L495">			this.level = level;</span>
+<span class="fc" id="L496">			this.x = x;</span>
+<span class="fc" id="L497">			this.y = y;</span>
+<span class="fc" id="L498">			this.accessible = accessible;</span>
+<span class="fc" id="L499">			this.region = region;</span>
+
+<span class="fc" id="L501">			descriptors = new ArrayList&lt;SetupDescriptor&gt;();</span>
+<span class="fc" id="L502">		}</span>
+
+		public void setImplementation(final String imclass) {
+<span class="nc" id="L505">			implementation = imclass;</span>
+<span class="nc" id="L506">		}</span>
+
+		//
+		// ZoneDesc
+		//
+
+		public String getImplementation() {
+<span class="fc" id="L513">			return implementation;</span>
+		}
+
+		/**
+		 * Add a setup descriptor.
+		 * @param desc
+		 *
+		 */
+		public void addDescriptor(final SetupDescriptor desc) {
+<span class="nc" id="L522">			descriptors.add(desc);</span>
+<span class="nc" id="L523">		}</span>
+
+		/**
+		 * Get the zone file.
+		 * @return the file name
+		 *
+		 */
+		public String getFile() {
+<span class="fc" id="L531">			return file;</span>
+		}
+
+		/**
+		 * Get the level.
+		 * @return the level of the zone
+		 *
+		 */
+		public int getLevel() {
+<span class="fc" id="L540">			return level;</span>
+		}
+
+		/**
+		 * Get the zone name.
+		 * @return the name of the zone
+		 *
+		 */
+		public String getName() {
+<span class="fc" id="L549">			return name;</span>
+		}
+
+		/**
+		 * Get an iterator of setup descriptors.
+		 * @return an iterator over the descriptors
+		 *
+		 */
+		public Iterator&lt;SetupDescriptor&gt; getDescriptors() {
+<span class="fc" id="L558">			return descriptors.iterator();</span>
+		}
+
+		/**
+		 * Gets the zone's title.
+		 * @return the zone's title
+		 *
+		 */
+		public String getTitle() {
+<span class="nc" id="L567">			return title;</span>
+		}
+
+		/**
+		 * @return the zone's region
+		 */
+		public String getRegion() {
+<span class="fc" id="L574">			return region;</span>
+		}
+
+		public int getX() {
+<span class="fc" id="L578">			return x;</span>
+		}
+
+		public int getY() {
+<span class="fc" id="L582">			return y;</span>
+		}
+
+		public boolean isInterior() {
+<span class="fc bfc" id="L586" title="All 2 branches covered.">			return (getLevel() == UNSET);</span>
+		}
+
+		/**
+		 * Sets the zone title.
+		 * @param title of the zone
+		 *
+		 */
+		public void setTitle(final String title) {
+<span class="nc" id="L595">			this.title = title;</span>
+<span class="nc" id="L596">		}</span>
+
+		public boolean isAccessible() {
+<span class="nc" id="L599">			return accessible;</span>
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

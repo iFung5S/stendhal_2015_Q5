@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>CloakForJosephine.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests.mithrilcloak</a> &gt; <span class="el_source">CloakForJosephine.java</span></div><h1>CloakForJosephine.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests.mithrilcloak;
+
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.npc.NPCList;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.action.DropItemAction;
+import games.stendhal.server.entity.npc.action.MultipleActions;
+import games.stendhal.server.entity.npc.action.SetQuestAction;
+import games.stendhal.server.entity.npc.action.SetQuestAndModifyKarmaAction;
+import games.stendhal.server.entity.npc.condition.AndCondition;
+import games.stendhal.server.entity.npc.condition.PlayerHasItemWithHimCondition;
+import games.stendhal.server.entity.npc.condition.QuestInStateCondition;
+import games.stendhal.server.entity.player.Player;
+
+import java.util.Arrays;
+
+
+/**
+ * @author kymara
+*/
+
+class CloakForJosephine {
+	
+	private final MithrilCloakQuestInfo mithrilcloak;
+	
+<span class="fc" id="L42">	private final NPCList npcs = SingletonRepository.getNPCList();</span>
+
+<span class="fc" id="L44">	public CloakForJosephine(final MithrilCloakQuestInfo mithrilcloak) {</span>
+<span class="fc" id="L45">		this.mithrilcloak = mithrilcloak;</span>
+<span class="fc" id="L46">	}</span>
+
+	private void takeStripedCloakStep() {
+
+		// Deliberately overlap with conversation states from the cloak collector quests.
+		// Since if you're on one of these quests she will always ask 'did you bring any cloaks?' 
+		// and waits for you to say yes or the name of the cloak you brought
+		// if she just said about 'blue striped cloak' &quot;well i don't want that&quot; then that's confusing for player
+		// so we let player give her that cloak even if she was asking about the other quests
+		// of course, she will only take it from ida if player was in quest state for teh mithril cloak quest of &quot;taking_striped_cloak&quot;
+
+<span class="fc" id="L57">		final SpeakerNPC npc = npcs.get(&quot;Josephine&quot;);</span>
+
+		// overlapping with CloaksCollector quest deliberately
+<span class="fc" id="L60">		npc.add(ConversationStates.QUESTION_1, &quot;blue striped cloak&quot;, new QuestInStateCondition(mithrilcloak.getQuestSlot(), &quot;taking_striped_cloak&quot;),</span>
+			ConversationStates.QUESTION_1, null,
+<span class="fc" id="L62">			new ChatAction() {</span>
+					@Override
+					public void fire(final Player player, final Sentence sentence, final EventRaiser npc) {
+<span class="nc bnc" id="L65" title="All 2 branches missed.">						if (player.drop(&quot;blue striped cloak&quot;)) {</span>
+<span class="nc" id="L66">							npc.say(&quot;Oh, wait, that's from Ida isn't it?! Oh yay! Thank you! Please tell her thanks from me!!&quot;);</span>
+<span class="nc" id="L67">							player.setQuest(mithrilcloak.getQuestSlot(), &quot;gave_striped_cloak&quot;);</span>
+<span class="nc" id="L68">							npc.setCurrentState(ConversationStates.ATTENDING);</span>
+						} else {
+<span class="nc" id="L70">							npc.say(&quot;You don't have a blue striped cloak with you.&quot;);</span>
+						}						
+<span class="nc" id="L72">					}</span>
+			});
+
+		// overlapping with CloaksCollector2 quest deliberately
+<span class="fc" id="L76">		npc.add(ConversationStates.QUESTION_2, &quot;blue striped cloak&quot;, new QuestInStateCondition(mithrilcloak.getQuestSlot(), &quot;taking_striped_cloak&quot;),</span>
+				ConversationStates.QUESTION_2, null,
+<span class="fc" id="L78">				new ChatAction() {</span>
+					@Override
+					public void fire(final Player player, final Sentence sentence, final EventRaiser npc) {
+<span class="pc bpc" id="L81" title="1 of 2 branches missed.">						if (player.drop(&quot;blue striped cloak&quot;)) {</span>
+<span class="fc" id="L82">							npc.say(&quot;Oh, wait, that's from Ida isn't it?! Oh yay! Thank you! Please tell her thanks from me!!&quot;);</span>
+<span class="fc" id="L83">							npc.setCurrentState(ConversationStates.ATTENDING);</span>
+<span class="fc" id="L84">							player.setQuest(mithrilcloak.getQuestSlot(), &quot;gave_striped_cloak&quot;);</span>
+						} else {
+<span class="nc" id="L86">							npc.say(&quot;You don't have a blue striped cloak with you.&quot;);</span>
+						}						
+<span class="fc" id="L88">					}</span>
+			});
+				
+<span class="fc" id="L91">		npc.add(ConversationStates.ATTENDING,</span>
+				Arrays.asList(&quot;blue striped cloak&quot;, &quot;mithril&quot;, &quot;mithril cloak&quot;, &quot;ida&quot;),
+				new AndCondition(new QuestInStateCondition(mithrilcloak.getQuestSlot(), &quot;taking_striped_cloak&quot;), new PlayerHasItemWithHimCondition(&quot;blue striped cloak&quot;)),
+				ConversationStates.ATTENDING,
+				&quot;Oh that's from Ida isn't it?! Oh yay! Thank you! Please tell her thanks from me!!&quot;,
+				new MultipleActions(
+									 new DropItemAction(&quot;blue striped cloak&quot;), 
+									 new SetQuestAction(mithrilcloak.getQuestSlot(), &quot;gave_striped_cloak&quot;) 
+									 )
+				);
+
+
+<span class="fc" id="L103">	}</span>
+	private void askforClaspStep() {
+		
+<span class="fc" id="L106">		final SpeakerNPC npc = npcs.get(&quot;Ida&quot;);</span>
+		
+		// acknowledge that player took cloak and ask for clasp
+<span class="fc" id="L109">		npc.add(ConversationStates.ATTENDING,</span>
+				Arrays.asList(&quot;thanks&quot;, &quot;josephine&quot;, &quot;mithril&quot;, &quot;cloak&quot;, &quot;mithril cloak&quot;, &quot;task&quot;, &quot;quest&quot;),
+				new QuestInStateCondition(mithrilcloak.getQuestSlot(), &quot;gave_striped_cloak&quot;),
+				ConversationStates.ATTENDING,
+				&quot;Aw, Josephine is so sweet. I'm glad she liked her blue striped cloak. Now, YOUR cloak is nearly ready, it just needs a clasp to fasten it! My friend #Pedinghaus will make it for you, if you go and ask him.&quot;,
+				new SetQuestAndModifyKarmaAction(mithrilcloak.getQuestSlot(), &quot;need_clasp&quot;, 10.0)
+				);
+
+<span class="fc" id="L117">		npc.addReply(&quot;Josephine&quot;, &quot;Surely you know Josephine? That flirty flighty girl from Fado, bless her heart.&quot;);</span>
+<span class="fc" id="L118">		npc.addReply(&quot;Pedinghaus&quot;, &quot;I mean the wizard who works with Joshua in the Ados smithy.&quot;);</span>
+<span class="fc" id="L119">	}</span>
+	
+	public void addToWorld() {
+<span class="fc" id="L122">		takeStripedCloakStep();</span>
+<span class="fc" id="L123">		askforClaspStep();</span>
+
+<span class="fc" id="L125">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

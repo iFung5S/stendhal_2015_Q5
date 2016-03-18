@@ -1,0 +1,859 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Entity.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.entity</a> &gt; <span class="el_source">Entity.java</span></div><h1>Entity.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                      (C) Copyright 2003 - Marauroa                      *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.entity;
+
+import games.stendhal.client.listener.RPObjectChangeListener;
+
+import java.awt.Rectangle;
+import java.awt.geom.Rectangle2D;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+
+import marauroa.common.game.RPObject;
+import marauroa.common.game.RPSlot;
+
+public class Entity implements RPObjectChangeListener, IEntity {
+	/** The current x location of this entity. */
+	protected double x;
+
+	/** The current y location of this entity. */
+	protected double y;
+
+	/**
+	 * Amount of entity-to-entity resistance (0-100).
+	 */
+	private int resistance;
+
+	/**
+	 * The entity visibility.
+	 */
+	private int visibility;
+
+	/**
+	 * Change listeners.
+	 */
+<span class="fc" id="L46">	private final List&lt;EntityChangeListener&lt;? extends IEntity&gt;&gt; changeListeners = new CopyOnWriteArrayList&lt;EntityChangeListener&lt;? extends IEntity&gt;&gt;(); </span>
+<span class="fc" id="L47">	private final List&lt;ContentChangeListener&gt; contentChangeListeners = new CopyOnWriteArrayList&lt;ContentChangeListener&gt;(); </span>
+
+	/** The arianne object associated with this game entity. */
+	protected RPObject rpObject;
+
+	/**
+	 * The entity class.
+	 */
+	protected String clazz;
+
+	/**
+	 * The entity name.
+	 */
+	protected String name;
+
+	/**
+	 * The entity sub-class.
+	 */
+	private String subclazz;
+
+	/**
+	 * The entity title.
+	 */
+	protected String title;
+
+	/**
+	 * The entity type.
+	 */
+	protected String type;
+
+	/**
+	 * Quick work-around to prevent fireMovementEvent() from calling in
+	 * onChangedAdded() from other initialize() hack. 
+	 * TODO: get rid off inAdd variable.
+	 */
+	protected boolean inAdd;
+	
+	/**
+	 * The entity width.
+	 */
+	private double width;
+
+	/**
+	 * The entity height.
+	 */
+	private double height;
+	
+	/**
+	 * Entity area rectangle. Kept in memory because it is the most allocated
+	 * resource after the Graphics2D objects we can do nothing about.
+	 */
+	private Rectangle2D.Double area;
+
+<span class="fc" id="L100">	public Entity() {</span>
+<span class="fc" id="L101">		clazz = null;</span>
+<span class="fc" id="L102">		name = null;</span>
+<span class="fc" id="L103">		subclazz = null;</span>
+<span class="fc" id="L104">		title = null;</span>
+<span class="fc" id="L105">		type = null;</span>
+<span class="fc" id="L106">		x = 0.0;</span>
+<span class="fc" id="L107">		y = 0.0;</span>
+<span class="fc" id="L108">	}</span>
+
+	//
+	// Entity
+	//
+
+	/* (non-Javadoc)
+	 * @see games.stendhal.client.entity.IEntity#addChangeListener(games.stendhal.client.entity.EntityChangeListener)
+	 */
+	@Override
+	public void addChangeListener(final EntityChangeListener&lt;?&gt; listener) {
+<span class="fc" id="L119">		changeListeners.add(listener);</span>
+<span class="fc" id="L120">	}</span>
+
+	@Override
+	public void addContentChangeListener(final ContentChangeListener listener) {
+<span class="nc" id="L124">		contentChangeListeners.add(listener);</span>
+<span class="nc" id="L125">	}</span>
+
+	@Override
+	public void removeContentChangeListener(final ContentChangeListener listener) {
+<span class="nc" id="L129">		contentChangeListeners.remove(listener);</span>
+<span class="nc" id="L130">	}</span>
+
+	/**
+	 * Fire change to all registered listeners.
+	 * 
+	 * @param property
+	 *            The changed property.
+	 */
+	@SuppressWarnings({ &quot;unchecked&quot;, &quot;rawtypes&quot; })
+	public void fireChange(final  Property property) {
+<span class="pc bpc" id="L140" title="1 of 2 branches missed.">		for (final EntityChangeListener l : changeListeners) {</span>
+<span class="nc" id="L141">			l.entityChanged(this, property);</span>
+<span class="nc" id="L142">		}</span>
+<span class="fc" id="L143">	}</span>
+	
+	/*
+	 * (non-Javadoc)
+	 * @see games.stendhal.client.entity.IEntity#isUser()
+	 */
+	@Override
+	public boolean isUser() {
+<span class="fc" id="L151">		return false;</span>
+	}
+	
+	/* (non-Javadoc)
+	 * @see games.stendhal.client.entity.IEntity#getArea()
+	 */
+	@Override
+	public Rectangle2D getArea() {
+<span class="nc bnc" id="L159" title="All 2 branches missed.">		if (area == null) {</span>
+<span class="nc" id="L160">			area = new Rectangle.Double(getX(), getY(), getWidth(), getHeight());</span>
+		} else {
+<span class="nc" id="L162">			area.x = getX();</span>
+<span class="nc" id="L163">			area.y = getY();</span>
+<span class="nc" id="L164">			area.width = getWidth();</span>
+<span class="nc" id="L165">			area.height = getHeight();</span>
+		}
+<span class="nc" id="L167">		return area;</span>
+	}
+
+	/* (non-Javadoc)
+	 * @see games.stendhal.client.entity.IEntity#getVisibility()
+	 */
+	@Override
+	public int getVisibility() {
+<span class="nc" id="L175">		return visibility;</span>
+	}
+
+	/* (non-Javadoc)
+	 * @see games.stendhal.client.entity.IEntity#getHeight()
+	 */
+	@Override
+	public double getHeight() {
+<span class="fc" id="L183">		return height;</span>
+	}
+
+	/* (non-Javadoc)
+	 * @see games.stendhal.client.entity.IEntity#getID()
+	 */
+	@Override
+	public final RPObject.ID getID() {
+<span class="pc bpc" id="L191" title="1 of 2 branches missed.">		if (rpObject == null) {</span>
+<span class="nc" id="L192">			return null;</span>
+		} else {
+<span class="fc" id="L194">			return rpObject.getID();</span>
+		}
+	}
+
+	/* (non-Javadoc)
+	 * @see games.stendhal.client.entity.IEntity#getID()
+	 */
+	public final int getObjectID() {
+<span class="pc bpc" id="L202" title="1 of 2 branches missed.">		if (rpObject == null) {</span>
+<span class="nc" id="L203">			return -1;</span>
+		} else {
+<span class="fc" id="L205">			return rpObject.getInt(&quot;id&quot;);</span>
+		}
+	}
+
+	
+	/* (non-Javadoc)
+	 * @see games.stendhal.client.entity.IEntity#getEntityClass()
+	 */
+	@Override
+	public String getEntityClass() {
+<span class="fc" id="L215">		return clazz;</span>
+	}
+
+	/* (non-Javadoc)
+	 * @see games.stendhal.client.entity.IEntity#getName()
+	 */
+	@Override
+	public String getName() {
+<span class="fc" id="L223">		return name;</span>
+	}
+
+	/* (non-Javadoc)
+	 * @see games.stendhal.client.entity.IEntity#getEntitySubclass()
+	 */
+	@Override
+	public String getEntitySubclass() {
+<span class="fc" id="L231">		return subclazz;</span>
+	}
+
+	/* (non-Javadoc)
+	 * @see games.stendhal.client.entity.IEntity#getTitle()
+	 */
+	@Override
+	public String getTitle() {
+<span class="nc bnc" id="L239" title="All 2 branches missed.">		if (title != null) {</span>
+<span class="nc" id="L240">			return title;</span>
+<span class="nc bnc" id="L241" title="All 2 branches missed.">		} else if (name != null) {</span>
+<span class="nc" id="L242">			return name;</span>
+<span class="nc bnc" id="L243" title="All 2 branches missed.">		} else if (type != null) {</span>
+<span class="nc" id="L244">			return type;</span>
+		} else {
+<span class="nc" id="L246">			return null;</span>
+		}
+	}
+
+	/* (non-Javadoc)
+	 * @see games.stendhal.client.entity.IEntity#getType()
+	 */
+	@Override
+	public String getType() {
+<span class="fc" id="L255">		return type;</span>
+	}
+
+	/* (non-Javadoc)
+	 * @see games.stendhal.client.entity.IEntity#getX()
+	 */
+	@Override
+	public double getX() {
+<span class="fc" id="L263">		return x;</span>
+	}
+
+	/* (non-Javadoc)
+	 * @see games.stendhal.client.entity.IEntity#getY()
+	 */
+	@Override
+	public double getY() {
+<span class="fc" id="L271">		return y;</span>
+	}
+
+	/* (non-Javadoc)
+	 * @see games.stendhal.client.entity.IEntity#getRPObject()
+	 */
+	@Override
+	public RPObject getRPObject() {
+<span class="nc" id="L279">		return rpObject;</span>
+	}
+
+	/* (non-Javadoc)
+	 * @see games.stendhal.client.entity.IEntity#getWidth()
+	 */
+	@Override
+	public double getWidth() {
+<span class="fc" id="L287">		return width;</span>
+	}
+
+	
+	/* (non-Javadoc)
+	 * @see games.stendhal.client.entity.IEntity#isOnGround()
+	 */
+	@Override
+	public boolean isOnGround() {
+<span class="nc bnc" id="L296" title="All 2 branches missed.">		return !rpObject.isContained();</span>
+	}
+
+	/**
+	 * Process attribute changes that may affect positioning. This is needed
+	 * because different entities may want to process coordinate changes more
+	 * gracefully.
+	 * 
+	 * @param base
+	 *            The previous values.
+	 * @param diff
+	 *            The changes.
+	 */
+	protected void processPositioning(final RPObject base, final RPObject diff) {
+<span class="nc" id="L310">		boolean moved = false;</span>
+
+<span class="nc bnc" id="L312" title="All 2 branches missed.">		if (diff.has(&quot;x&quot;)) {</span>
+<span class="nc" id="L313">			final int nx = diff.getInt(&quot;x&quot;);</span>
+
+<span class="nc bnc" id="L315" title="All 2 branches missed.">			if (nx != x) {</span>
+<span class="nc" id="L316">				x = nx;</span>
+<span class="nc" id="L317">				moved = true;</span>
+			}
+		}
+
+<span class="nc bnc" id="L321" title="All 2 branches missed.">		if (diff.has(&quot;y&quot;)) {</span>
+<span class="nc" id="L322">			final int ny = diff.getInt(&quot;y&quot;);</span>
+
+<span class="nc bnc" id="L324" title="All 2 branches missed.">			if (ny != y) {</span>
+<span class="nc" id="L325">				y = ny;</span>
+<span class="nc" id="L326">				moved = true;</span>
+			}
+		}
+
+<span class="nc bnc" id="L330" title="All 2 branches missed.">		if (moved) {</span>
+<span class="nc" id="L331">			onPosition(x, y);</span>
+		}
+<span class="nc" id="L333">	}</span>
+
+	/**
+	 * When the entity's position changed.
+	 * 
+	 * @param x
+	 *            The new X coordinate.
+	 * @param y
+	 *            The new Y coordinate.
+	 */
+	protected void onPosition(final double x, final double y) {
+<span class="fc" id="L344">		fireChange(PROP_POSITION);</span>
+<span class="fc" id="L345">	}</span>
+
+	/* (non-Javadoc)
+	 * @see games.stendhal.client.entity.IEntity#getResistance()
+	 */
+	@Override
+	public int getResistance() {
+<span class="nc" id="L352">		return resistance;</span>
+	}
+
+	/* (non-Javadoc)
+	 * @see games.stendhal.client.entity.IEntity#getResistance(games.stendhal.client.entity.IEntity)
+	 */
+	@Override
+	public int getResistance(final IEntity entity) {
+<span class="nc" id="L360">		return ((getResistance() * entity.getResistance()) / 100);</span>
+	}
+
+	/* (non-Javadoc)
+	 * @see games.stendhal.client.entity.IEntity#getSlot(java.lang.String)
+	 */
+	@Override
+	public RPSlot getSlot(final String name) {
+<span class="fc bfc" id="L368" title="All 2 branches covered.">		if (rpObject.hasSlot(name)) {</span>
+<span class="fc" id="L369">			return rpObject.getSlot(name);</span>
+		}
+
+<span class="fc" id="L372">		return null;</span>
+	}
+
+	/* (non-Javadoc)
+	 * @see games.stendhal.client.entity.IEntity#initialize(marauroa.common.game.RPObject)
+	 */
+	@Override
+	public void initialize(final RPObject object) {
+<span class="fc" id="L380">		rpObject = object;</span>
+
+		/*
+		 * Class
+		 */
+<span class="fc bfc" id="L385" title="All 2 branches covered.">		if (object.has(&quot;class&quot;)) {</span>
+<span class="fc" id="L386">			clazz = object.get(&quot;class&quot;);</span>
+		} else {
+<span class="fc" id="L388">			clazz = null;</span>
+		}
+
+		/*
+		 * Name
+		 */
+<span class="fc bfc" id="L394" title="All 2 branches covered.">		if (object.has(&quot;name&quot;)) {</span>
+<span class="fc" id="L395">			name = object.get(&quot;name&quot;);</span>
+		} else {
+<span class="fc" id="L397">			name = null;</span>
+		}
+
+		/*
+		 * Sub-Class
+		 */
+<span class="fc bfc" id="L403" title="All 2 branches covered.">		if (object.has(&quot;subclass&quot;)) {</span>
+<span class="fc" id="L404">			subclazz = object.get(&quot;subclass&quot;);</span>
+		} else {
+<span class="fc" id="L406">			subclazz = null;</span>
+		}
+
+		/*
+		 * Size
+		 */
+<span class="fc bfc" id="L412" title="All 2 branches covered.">		if (object.has(&quot;height&quot;)) {</span>
+<span class="fc" id="L413">			height = object.getDouble(&quot;height&quot;);</span>
+		} else {
+<span class="fc" id="L415">			height = 1.0;</span>
+		}
+
+<span class="fc bfc" id="L418" title="All 2 branches covered.">		if (object.has(&quot;width&quot;)) {</span>
+<span class="fc" id="L419">			width = object.getDouble(&quot;width&quot;);</span>
+		} else {
+<span class="fc" id="L421">			width = 1.0;</span>
+		}
+
+		/*
+		 * Title
+		 */
+<span class="pc bpc" id="L427" title="1 of 2 branches missed.">		if (object.has(&quot;title&quot;)) {</span>
+<span class="nc" id="L428">			title = object.get(&quot;title&quot;);</span>
+		} else {
+<span class="fc" id="L430">			title = null;</span>
+		}
+
+		/*
+		 * Resistance
+		 */
+<span class="fc bfc" id="L436" title="All 2 branches covered.">		if (object.has(&quot;resistance&quot;)) {</span>
+<span class="fc" id="L437">			resistance = object.getInt(&quot;resistance&quot;);</span>
+		} else {
+<span class="fc" id="L439">			resistance = 0;</span>
+		}
+
+		/*
+		 * Visibility
+		 */
+<span class="fc bfc" id="L445" title="All 2 branches covered.">		if (object.has(&quot;visibility&quot;)) {</span>
+<span class="fc" id="L446">			visibility = object.getInt(&quot;visibility&quot;);</span>
+		} else {
+<span class="fc" id="L448">			visibility = 100;</span>
+		}
+
+		/*
+		 * Coordinates
+		 */
+<span class="fc bfc" id="L454" title="All 2 branches covered.">		if (object.has(&quot;x&quot;)) {</span>
+<span class="fc" id="L455">			x = object.getInt(&quot;x&quot;);</span>
+		} else {
+<span class="fc" id="L457">			x = 0.0;</span>
+		}
+
+<span class="fc bfc" id="L460" title="All 2 branches covered.">		if (object.has(&quot;y&quot;)) {</span>
+<span class="fc" id="L461">			y = object.getInt(&quot;y&quot;);</span>
+		} else {
+<span class="fc" id="L463">			y = 0.0;</span>
+		}
+
+		/*
+		 * Notify placement
+		 */
+<span class="fc" id="L469">		onPosition(x, y);</span>
+		/*
+		 * Type
+		 */
+<span class="fc" id="L473">		type = object.getRPClass().getName();</span>
+
+<span class="fc" id="L475">		inAdd = true;</span>
+<span class="fc" id="L476">		onChangedAdded(new RPObject(), object);</span>
+<span class="fc" id="L477">		inAdd = false;</span>
+<span class="fc" id="L478">	}</span>
+
+	/* (non-Javadoc)
+	 * @see games.stendhal.client.entity.IEntity#isObstacle(games.stendhal.client.entity.IEntity)
+	 */
+	@Override
+	public boolean isObstacle(final IEntity entity) {
+<span class="nc bnc" id="L485" title="All 4 branches missed.">		return ((entity != this) &amp;&amp; (getResistance(entity) &gt; 95));</span>
+	}
+
+	/* (non-Javadoc)
+	 * @see games.stendhal.client.entity.IEntity#release()
+	 */
+	@Override
+	public void release() {
+		// ignored
+<span class="nc" id="L494">	}</span>
+
+	/* (non-Javadoc)
+	 * @see games.stendhal.client.entity.IEntity#removeChangeListener(games.stendhal.client.entity.EntityChangeListener)
+	 */
+	@Override
+	public void removeChangeListener(final EntityChangeListener&lt;?&gt; listener) {
+<span class="fc" id="L501">		changeListeners.remove(listener);</span>
+<span class="fc" id="L502">	}</span>
+
+	/* (non-Javadoc)
+	 * @see games.stendhal.client.entity.IEntity#update(int)
+	 */
+	@Override
+	public void update(final int delta) {
+<span class="nc" id="L509">	}</span>
+
+	//
+	// RPObjectChangeListener
+	//
+
+	/**
+	 * An object was added.
+	 * 
+	 * @param object
+	 *            The object.
+	 */
+	@Override
+	public final void onAdded(final RPObject object) {
+		// DEPRECATED - Moving to different listener. Use initialize().
+<span class="nc" id="L524">	}</span>
+
+	/**
+	 * The object added/changed attribute(s).
+	 * 
+	 * @param object
+	 *            The base object.
+	 * @param changes
+	 *            The changes.
+	 */
+	@Override
+	public void onChangedAdded(final RPObject object, final RPObject changes) {
+<span class="fc bfc" id="L536" title="All 2 branches covered.">		if (inAdd) {</span>
+<span class="fc" id="L537">			return;</span>
+		}
+
+		/*
+		 * Class
+		 */
+<span class="pc bpc" id="L543" title="1 of 2 branches missed.">		if (changes.has(&quot;class&quot;)) {</span>
+<span class="nc" id="L544">			clazz = changes.get(&quot;class&quot;);</span>
+<span class="nc" id="L545">			fireChange(PROP_CLASS);</span>
+		}
+
+		/*
+		 * Name
+		 */
+<span class="pc bpc" id="L551" title="1 of 2 branches missed.">		if (changes.has(&quot;name&quot;)) {</span>
+<span class="nc" id="L552">			name = changes.get(&quot;name&quot;);</span>
+<span class="nc" id="L553">			fireChange(PROP_NAME);</span>
+<span class="nc" id="L554">			fireChange(PROP_TITLE);</span>
+		}
+
+		/*
+		 * Sub-Class
+		 */
+<span class="pc bpc" id="L560" title="1 of 2 branches missed.">		if (changes.has(&quot;subclass&quot;)) {</span>
+<span class="nc" id="L561">			subclazz = changes.get(&quot;subclass&quot;);</span>
+<span class="nc" id="L562">			fireChange(PROP_CLASS);</span>
+		}
+
+		/*
+		 * Size
+		 */
+<span class="fc" id="L568">		boolean sizeChange = false;</span>
+
+<span class="pc bpc" id="L570" title="1 of 2 branches missed.">		if (changes.has(&quot;width&quot;)) {</span>
+<span class="nc" id="L571">			width = changes.getDouble(&quot;width&quot;);</span>
+<span class="nc" id="L572">			sizeChange = true;</span>
+		}
+
+<span class="pc bpc" id="L575" title="1 of 2 branches missed.">		if (changes.has(&quot;height&quot;)) {</span>
+<span class="nc" id="L576">			height = changes.getDouble(&quot;height&quot;);</span>
+<span class="nc" id="L577">			sizeChange = true;</span>
+		}
+
+<span class="pc bpc" id="L580" title="1 of 2 branches missed.">		if (sizeChange) {</span>
+<span class="nc" id="L581">			fireChange(PROP_SIZE);</span>
+		}
+
+		/*
+		 * Title
+		 */
+<span class="pc bpc" id="L587" title="1 of 2 branches missed.">		if (changes.has(&quot;title&quot;)) {</span>
+<span class="nc" id="L588">			title = changes.get(&quot;title&quot;);</span>
+<span class="nc" id="L589">			fireChange(PROP_TITLE);</span>
+		}
+
+
+		/*
+		 * State
+		 */
+		// TODO: move into child class?
+<span class="pc bpc" id="L597" title="1 of 2 branches missed.">		if (changes.has(&quot;state&quot;)) {</span>
+<span class="nc" id="L598">			fireChange(PROP_STATE);</span>
+		}
+
+		/*
+		 * Resistance
+		 */
+<span class="pc bpc" id="L604" title="1 of 2 branches missed.">		if (changes.has(&quot;resistance&quot;)) {</span>
+<span class="nc" id="L605">			resistance = changes.getInt(&quot;resistance&quot;);</span>
+		}
+
+		/*
+		 * Entity visibility
+		 */
+<span class="pc bpc" id="L611" title="1 of 2 branches missed.">		if (changes.has(&quot;visibility&quot;)) {</span>
+<span class="nc" id="L612">			visibility = changes.getInt(&quot;visibility&quot;);</span>
+<span class="nc" id="L613">			fireChange(PROP_VISIBILITY);</span>
+		}
+		
+		/*
+		 * Content changes
+		 */
+<span class="pc bpc" id="L619" title="1 of 2 branches missed.">		for (RPSlot slot : changes.slots()) {</span>
+<span class="nc bnc" id="L620" title="All 2 branches missed.">			for (ContentChangeListener listener : contentChangeListeners) {</span>
+<span class="nc" id="L621">				listener.contentAdded(slot);</span>
+<span class="nc" id="L622">			}</span>
+<span class="nc" id="L623">		}</span>
+
+		/*
+		 * Position changes
+		 */
+<span class="fc" id="L628">		processPositioning(object, changes);</span>
+<span class="fc" id="L629">	}</span>
+
+	/**
+	 * The object removed attribute(s).
+	 * 
+	 * @param object
+	 *            The base object.
+	 * @param changes
+	 *            The changes.
+	 */
+	@Override
+	public void onChangedRemoved(final RPObject object, final RPObject changes) {
+		/*
+		 * Class
+		 */
+<span class="pc bpc" id="L644" title="1 of 2 branches missed.">		if (changes.has(&quot;class&quot;)) {</span>
+<span class="nc" id="L645">			clazz = null;</span>
+<span class="nc" id="L646">			fireChange(PROP_CLASS);</span>
+		}
+
+		/*
+		 * Name
+		 */
+<span class="pc bpc" id="L652" title="1 of 2 branches missed.">		if (changes.has(&quot;name&quot;)) {</span>
+<span class="nc" id="L653">			name = null;</span>
+<span class="nc" id="L654">			fireChange(PROP_NAME);</span>
+<span class="nc" id="L655">			fireChange(PROP_TITLE);</span>
+		}
+
+		/*
+		 * Sub-Class
+		 */
+<span class="pc bpc" id="L661" title="1 of 2 branches missed.">		if (changes.has(&quot;subclass&quot;)) {</span>
+<span class="nc" id="L662">			subclazz = null;</span>
+<span class="nc" id="L663">			fireChange(PROP_CLASS);</span>
+		}
+
+		/*
+		 * Size
+		 */
+<span class="fc" id="L669">		boolean sizeChange = false;</span>
+
+<span class="pc bpc" id="L671" title="1 of 2 branches missed.">		if (changes.has(&quot;width&quot;)) {</span>
+<span class="nc" id="L672">			width = 1.0;</span>
+<span class="nc" id="L673">			sizeChange = true;</span>
+		}
+
+<span class="pc bpc" id="L676" title="1 of 2 branches missed.">		if (changes.has(&quot;height&quot;)) {</span>
+<span class="nc" id="L677">			height = 1.0;</span>
+<span class="nc" id="L678">			sizeChange = true;</span>
+		}
+
+<span class="pc bpc" id="L681" title="1 of 2 branches missed.">		if (sizeChange) {</span>
+<span class="nc" id="L682">			fireChange(PROP_SIZE);</span>
+		}
+
+		/*
+		 * Title
+		 */
+<span class="pc bpc" id="L688" title="1 of 2 branches missed.">		if (changes.has(&quot;title&quot;)) {</span>
+<span class="nc" id="L689">			title = null;</span>
+<span class="nc" id="L690">			fireChange(PROP_TITLE);</span>
+		}
+
+		/*
+		 * Resistance
+		 */
+<span class="pc bpc" id="L696" title="1 of 2 branches missed.">		if (changes.has(&quot;resistance&quot;)) {</span>
+<span class="nc" id="L697">			resistance = 0;</span>
+		}
+
+		/*
+		 * Visibility
+		 */
+<span class="pc bpc" id="L703" title="1 of 2 branches missed.">		if (changes.has(&quot;visibility&quot;)) {</span>
+<span class="nc" id="L704">			visibility = 100;</span>
+<span class="nc" id="L705">			fireChange(PROP_VISIBILITY);</span>
+		}
+		
+		/*
+		 * Content changes
+		 */
+<span class="pc bpc" id="L711" title="1 of 2 branches missed.">		for (RPSlot slot : changes.slots()) {</span>
+<span class="nc bnc" id="L712" title="All 2 branches missed.">			for (ContentChangeListener listener : contentChangeListeners) {</span>
+<span class="nc" id="L713">				listener.contentRemoved(slot);</span>
+<span class="nc" id="L714">			}</span>
+<span class="nc" id="L715">		}</span>
+<span class="fc" id="L716">	}</span>
+
+	/**
+	 * An object was removed.
+	 * 
+	 * @param object
+	 *            The object.
+	 * @deprecated Moving to different listener. Use release().
+	 */
+	@Override
+	@Deprecated
+	public final void onRemoved(final RPObject object) {
+<span class="nc" id="L728">	}</span>
+
+	/**
+	 * A slot object was added.
+	 * 
+	 * @param object
+	 *            The container object.
+	 * @param slotName
+	 *            The slot name.
+	 * @param sobject
+	 *            The slot object.
+	 */
+	@Override
+	public void onSlotAdded(final RPObject object, final String slotName,
+			final RPObject sobject) {
+<span class="nc" id="L743">	}</span>
+
+	/**
+	 * A slot object added/changed attribute(s).
+	 * 
+	 * @param object
+	 *            The base container object.
+	 * @param slotName
+	 *            The container's slot name.
+	 * @param sobject
+	 *            The slot object.
+	 * @param schanges
+	 *            The slot object changes.
+	 */
+	@Override
+	public void onSlotChangedAdded(final RPObject object,
+			final String slotName, final RPObject sobject,
+			final RPObject schanges) {
+<span class="nc" id="L761">	}</span>
+
+	/**
+	 * A slot object removed attribute(s).
+	 * 
+	 * @param object
+	 *            The base container object.
+	 * @param slotName
+	 *            The container's slot name.
+	 * @param sobject
+	 *            The slot object.
+	 * @param schanges
+	 *            The slot object changes.
+	 */
+	@Override
+	public void onSlotChangedRemoved(final RPObject object,
+			final String slotName, final RPObject sobject,
+			final RPObject schanges) {
+<span class="nc" id="L779">	}</span>
+
+	/**
+	 * A slot object was removed.
+	 * 
+	 * @param object
+	 *            The container object.
+	 * @param slotName
+	 *            The slot name.
+	 * @param sobject
+	 *            The slot object.
+	 */
+	@Override
+	public void onSlotRemoved(final RPObject object, final String slotName,
+			final RPObject sobject) {
+<span class="nc" id="L794">	}</span>
+
+	//
+	// Object
+	//
+
+	@Override
+	public String toString() {
+<span class="nc" id="L802">		final StringBuilder sbuf = new StringBuilder();</span>
+
+<span class="nc" id="L804">		sbuf.append(getClass().getName());</span>
+
+		/*
+		 * Technically not all entities have 'name', but enough to debug most
+		 * when used
+		 */
+<span class="nc bnc" id="L810" title="All 4 branches missed.">		if ((rpObject != null) &amp;&amp; rpObject.has(&quot;name&quot;)) {</span>
+<span class="nc" id="L811">			sbuf.append('[');</span>
+<span class="nc" id="L812">			sbuf.append(rpObject.get(&quot;name&quot;));</span>
+<span class="nc" id="L813">			sbuf.append(']');</span>
+		}
+
+<span class="nc" id="L816">		sbuf.append('@');</span>
+<span class="nc" id="L817">		sbuf.append(System.identityHashCode(this));</span>
+
+<span class="nc" id="L819">		return sbuf.toString();</span>
+	}
+
+
+	/**
+	 * gets the name of the cursor to use for this entity
+	 *
+	 * @return name of cursor
+	 */
+	@Override
+	public String getCursor() {
+<span class="nc bnc" id="L830" title="All 2 branches missed.">		if (!rpObject.has(&quot;cursor&quot;)) {</span>
+<span class="nc" id="L831">			return null;</span>
+		}
+<span class="nc" id="L833">		return rpObject.get(&quot;cursor&quot;);</span>
+	}
+
+	/**
+	 * Get identifier path for the entity.
+	 * 
+	 * @return List of object identifiers and slot names that make up the
+	 * 	complete path to the entity
+	 */
+	@Override
+	public List&lt;String&gt; getPath() {
+<span class="nc" id="L844">		LinkedList&lt;String&gt; path = new LinkedList&lt;String&gt;();</span>
+<span class="nc" id="L845">		RPObject object = getRPObject();</span>
+<span class="nc bnc" id="L846" title="All 2 branches missed.">		while (object != null) {</span>
+			// Prepend the items; They'll be in a nice container-slot-content
+			// order for the server
+<span class="nc" id="L849">			path.add(0, Integer.toString(object.getID().getObjectID()));</span>
+<span class="nc" id="L850">			RPSlot slot = object.getContainerSlot();</span>
+<span class="nc bnc" id="L851" title="All 2 branches missed.">			if (slot != null) {</span>
+<span class="nc" id="L852">				path.add(0, slot.getName());</span>
+			}
+<span class="nc" id="L854">			object = object.getContainer();</span>
+<span class="nc" id="L855">		}</span>
+<span class="nc" id="L856">		return path;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

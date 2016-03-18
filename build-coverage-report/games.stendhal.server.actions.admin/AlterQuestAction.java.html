@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>AlterQuestAction.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.actions.admin</a> &gt; <span class="el_source">AlterQuestAction.java</span></div><h1>AlterQuestAction.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2016 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.actions.admin;
+
+import games.stendhal.common.NotificationType;
+import games.stendhal.server.actions.CommandCenter;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.engine.StendhalRPRuleProcessor;
+import games.stendhal.server.entity.player.Player;
+import marauroa.common.game.RPAction;
+
+<span class="fc" id="L21">class AlterQuestAction extends AdministrationAction {</span>
+
+	private static final int REQUIREDLEVEL = 900;
+
+	@Override
+	protected void perform(final Player player, final RPAction action) {
+
+
+		// find player
+<span class="fc" id="L30">		final StendhalRPRuleProcessor rules = SingletonRepository.getRuleProcessor();</span>
+<span class="fc" id="L31">		final Player target = rules.getPlayer(action.get(&quot;target&quot;));</span>
+<span class="pc bpc" id="L32" title="1 of 2 branches missed.">		if (target != null) {</span>
+
+			// old state
+<span class="fc" id="L35">			final String questName = action.get(&quot;name&quot;);</span>
+<span class="fc" id="L36">			String oldQuestState = null;</span>
+<span class="fc bfc" id="L37" title="All 2 branches covered.">			if (target.hasQuest(questName)) {</span>
+<span class="fc" id="L38">				oldQuestState = target.getQuest(questName);</span>
+			}
+
+			// new state (or null to remove the quest)
+<span class="fc" id="L42">			final String newQuestState = action.get(&quot;state&quot;);</span>
+
+
+			// set the quest
+<span class="fc" id="L46">			target.setQuest(questName, newQuestState);</span>
+
+			// notify admin and altered player
+<span class="fc" id="L49">			target.sendPrivateText(NotificationType.SUPPORT,</span>
+					&quot;Admin &quot; + player.getTitle()
+					+ &quot; changed your state of the quest '&quot; + questName
+					+ &quot;' from '&quot; + oldQuestState + &quot;' to '&quot; + newQuestState
+					+ &quot;'&quot;);
+<span class="fc" id="L54">			player.sendPrivateText(&quot;Changed the state of quest '&quot; + questName</span>
+					+ &quot;' from '&quot; + oldQuestState + &quot;' to '&quot; + newQuestState
+					+ &quot;'&quot;);
+<span class="fc" id="L57">		} else {</span>
+<span class="nc" id="L58">			player.sendPrivateText(action.get(&quot;target&quot;) + &quot; is not logged in&quot;);</span>
+		}
+
+<span class="fc" id="L61">	}</span>
+
+	public static void register() {
+<span class="fc" id="L64">		CommandCenter.register(&quot;alterquest&quot;, new AlterQuestAction(), REQUIREDLEVEL);</span>
+<span class="fc" id="L65">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

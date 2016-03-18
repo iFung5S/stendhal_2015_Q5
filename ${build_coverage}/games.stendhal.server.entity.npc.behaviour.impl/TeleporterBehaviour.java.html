@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>TeleporterBehaviour.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.npc.behaviour.impl</a> &gt; <span class="el_source">TeleporterBehaviour.java</span></div><h1>TeleporterBehaviour.java</h1><pre class="source lang-java linenums">// $Id$
+package games.stendhal.server.entity.npc.behaviour.impl;
+
+import games.stendhal.common.Direction;
+import games.stendhal.common.Rand;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.engine.StendhalRPWorld;
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.core.events.TurnListener;
+import games.stendhal.server.core.pathfinder.FixedPath;
+import games.stendhal.server.core.pathfinder.Node;
+import games.stendhal.server.core.pathfinder.Path;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
+import marauroa.common.game.IRPZone;
+
+import org.apache.log4j.Logger;
+
+/**
+ * teleports the SpeakerNPC to a random location on the outside world and causes
+ * it to walk a random path
+ * 
+ * @author hendrik
+ */
+public class TeleporterBehaviour implements TurnListener {
+
+<span class="fc" id="L32">	private static Logger logger = Logger.getLogger(TeleporterBehaviour.class);</span>
+
+	private StendhalRPZone zone;
+
+	private ArrayList&lt;StendhalRPZone&gt; zones;
+
+	private final SpeakerNPC speakerNPC;
+	private final String repeatedText;
+	
+	/**
+	 * Creates a new TeleporterBehaviour.
+	 * 
+	 * @param speakerNPC
+	 *            SpeakerNPC
+	 * @param repeatedText
+	 *            text to repeat
+	 */
+	public TeleporterBehaviour(final SpeakerNPC speakerNPC,
+<span class="fc" id="L50">			final String repeatedText) {</span>
+<span class="fc" id="L51">		this.speakerNPC = speakerNPC;</span>
+<span class="fc" id="L52">		this.repeatedText = repeatedText;</span>
+<span class="fc" id="L53">		listZones();</span>
+<span class="fc" id="L54">		SingletonRepository.getTurnNotifier().notifyInTurns(60, this);</span>
+		// say something every minute so that can be noticed more easily
+<span class="fc" id="L56">		SingletonRepository.getTurnNotifier().notifyInTurns(60, new TurnListener() {</span>
+
+			@Override
+			public void onTurnReached(final int currentTurn) {
+<span class="nc" id="L60">				doRegularBehaviour();</span>
+<span class="nc" id="L61">				SingletonRepository.getTurnNotifier().notifyInTurns(60 * 3, this);</span>
+<span class="nc" id="L62">			}</span>
+		});
+<span class="fc" id="L64">	}</span>
+
+	/**
+	 * Creates a new TeleporterBehaviour.
+	 * 
+	 * @param speakerNPC
+	 *            SpeakerNPC
+	 * @param repeatedText
+	 *            text to repeat
+	 * @param useHighProbabilityZones
+	 *            true to make teleportation to a hand 
+	 *            selected list of zones more likely
+	 */
+	public TeleporterBehaviour(final SpeakerNPC speakerNPC, final String repeatedText, final boolean useHighProbabilityZones) {
+<span class="nc" id="L78">		this(speakerNPC, repeatedText);</span>
+<span class="nc bnc" id="L79" title="All 2 branches missed.">		if (useHighProbabilityZones) {</span>
+<span class="nc" id="L80">			addHighProbability();</span>
+		}
+<span class="nc" id="L82">	}</span>
+
+	protected void doRegularBehaviour() {
+<span class="nc" id="L85">		speakerNPC.say(repeatedText);</span>
+<span class="nc" id="L86">	}</span>
+	
+	private void addHighProbability() {
+<span class="nc" id="L89">		final StendhalRPWorld world = SingletonRepository.getRPWorld();</span>
+<span class="nc bnc" id="L90" title="All 2 branches missed.">		for (int i = 0; i &lt; 10; i++) {</span>
+<span class="nc" id="L91">			zones.add(world.getZone(&quot;0_semos_city&quot;));</span>
+<span class="nc" id="L92">			zones.add(world.getZone(&quot;0_semos_village_w&quot;));</span>
+<span class="nc" id="L93">			zones.add(world.getZone(&quot;0_semos_plains_n&quot;));</span>
+<span class="nc" id="L94">			zones.add(world.getZone(&quot;0_semos_plains_ne&quot;));</span>
+<span class="nc" id="L95">			zones.add(world.getZone(&quot;0_semos_road_e&quot;));</span>
+<span class="nc" id="L96">			zones.add(world.getZone(&quot;0_semos_plains_s&quot;));</span>
+		}
+<span class="nc" id="L98">	}</span>
+
+	/**
+	 * Creates an ArrayList of &quot;outside&quot; zones for NPC.
+	 */
+	private void listZones() {
+<span class="fc" id="L104">		final Iterator&lt;IRPZone&gt; itr = SingletonRepository.getRPWorld().iterator();</span>
+<span class="fc" id="L105">		zones = new ArrayList&lt;StendhalRPZone&gt;();</span>
+<span class="fc" id="L106">		final List&lt;String&gt; badZones = new ArrayList&lt;String&gt;();</span>
+		// the following are too dangerous
+<span class="fc" id="L108">		badZones.add(&quot;0_nalwor_city&quot;);</span>
+<span class="fc" id="L109">		badZones.add(&quot;0_orril_castle&quot;);</span>
+<span class="fc" id="L110">		badZones.add(&quot;0_ados_swamp&quot;);</span>
+<span class="fc" id="L111">		badZones.add(&quot;0_ados_outside_w&quot;);</span>
+<span class="fc" id="L112">		badZones.add(&quot;0_ados_wall_n&quot;);</span>
+<span class="fc" id="L113">		badZones.add(&quot;0_fado_forest_se&quot;);</span>
+<span class="fc" id="L114">		badZones.add(&quot;0_fado_forest_s_e2&quot;);</span>
+<span class="fc" id="L115">		badZones.add(&quot;0_semos_mountain_n_w4&quot;);</span>
+		// the following have historically been very hard to find a path in
+<span class="fc" id="L117">		badZones.add(&quot;0_ados_city_n&quot;);	</span>
+<span class="fc" id="L118">		badZones.add(&quot;0_ados_ocean_e&quot;);</span>
+<span class="fc" id="L119">		badZones.add(&quot;0_athor_island_w&quot;);</span>
+<span class="fc" id="L120">		badZones.add(&quot;0_nalwor_forest_n&quot;);</span>
+<span class="fc" id="L121">		badZones.add(&quot;0_nalwor_river_s&quot;);</span>
+<span class="fc bfc" id="L122" title="All 2 branches covered.">		while (itr.hasNext()) {</span>
+<span class="fc" id="L123">			final StendhalRPZone aZone = (StendhalRPZone) itr.next();</span>
+<span class="fc" id="L124">			final String zoneName = aZone.getName();</span>
+<span class="pc bpc" id="L125" title="1 of 4 branches missed.">			if (zoneName.startsWith(&quot;0&quot;) &amp;&amp; !badZones.contains(zoneName)) {</span>
+<span class="fc" id="L126">				zones.add(aZone);</span>
+			}
+<span class="fc" id="L128">		}</span>
+<span class="fc" id="L129">	}</span>
+
+	@Override
+	public void onTurnReached(final int currentTurn) {
+<span class="nc bnc" id="L133" title="All 2 branches missed.">		if (speakerNPC.getEngine().getCurrentState() != ConversationStates.IDLE) {</span>
+<span class="nc" id="L134">			speakerNPC.say(&quot;Bye.&quot;);</span>
+<span class="nc" id="L135">			speakerNPC.setCurrentState(ConversationStates.IDLE);</span>
+		}
+		// remove NPC from old zone
+<span class="nc" id="L138">		zone = speakerNPC.getZone();</span>
+<span class="nc" id="L139">		zone.remove(speakerNPC);</span>
+
+		// Teleport to another random place
+<span class="nc" id="L142">		boolean found = false;</span>
+<span class="nc" id="L143">		int x = -1;</span>
+<span class="nc" id="L144">		int y = -1;</span>
+<span class="nc bnc" id="L145" title="All 2 branches missed.">		while (!found) {</span>
+<span class="nc" id="L146">			zone = zones.get(Rand.rand(zones.size()));</span>
+<span class="nc" id="L147">			x = Rand.rand(zone.getWidth() - 4) + 2;</span>
+<span class="nc" id="L148">			y = Rand.rand(zone.getHeight() - 5) + 2;</span>
+<span class="nc bnc" id="L149" title="All 4 branches missed.">			if (!zone.collides(x, y) &amp;&amp; !zone.collides(x, y + 1)) {</span>
+<span class="nc" id="L150">				speakerNPC.setPosition(x, y);</span>
+<span class="nc" id="L151">				speakerNPC.setDirection(Direction.RIGHT);</span>
+
+<span class="nc" id="L153">				zone.add(speakerNPC);</span>
+<span class="nc" id="L154">				found = true;</span>
+<span class="nc" id="L155">				logger.debug(&quot;Placing teleporting NPC at &quot; + zone.getName()</span>
+						+ &quot; &quot; + x + &quot; &quot; + y);
+			} else {
+<span class="nc" id="L158">				logger.info(&quot;Cannot place teleporting NPC &quot; + speakerNPC.getName() + &quot; at &quot; + zone.getName()</span>
+						+ &quot; &quot; + x + &quot; &quot; + y);
+			}
+		}
+
+		// try to build a path (but give up after 10 failed tries)
+<span class="nc bnc" id="L164" title="All 2 branches missed.">		for (int i = 0; i &lt; 10; i++) {</span>
+<span class="nc" id="L165">			final int tx = Rand.rand(zone.getWidth() - 4) + 2;</span>
+<span class="nc" id="L166">			final int ty = Rand.rand(zone.getHeight() - 5) + 2;</span>
+<span class="nc" id="L167">			final List&lt;Node&gt; path = Path.searchPath(speakerNPC, tx, ty);</span>
+<span class="nc bnc" id="L168" title="All 4 branches missed.">			if ((path != null) &amp;&amp; (path.size() &gt; 1)) {</span>
+				// create path back
+<span class="nc bnc" id="L170" title="All 2 branches missed.">				for (int j = path.size() - 1; j &gt; 0; j--) {</span>
+<span class="nc" id="L171">					path.add(path.get(j));</span>
+				}
+<span class="nc" id="L173">				logger.debug(path);</span>
+<span class="nc" id="L174">				speakerNPC.setPath(new FixedPath(path, true));</span>
+<span class="nc" id="L175">				break;</span>
+			}
+		}
+
+		// Schedule so we are notified again in 5 minutes
+<span class="nc" id="L180">		SingletonRepository.getTurnNotifier().notifyInTurns(5 * 60 * 3, this);</span>
+<span class="nc" id="L181">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

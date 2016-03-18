@@ -1,0 +1,270 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>GoodiesForRudolph.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests</a> &gt; <span class="el_source">GoodiesForRudolph.java</span></div><h1>GoodiesForRudolph.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2011 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests;
+
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.action.DropItemAction;
+import games.stendhal.server.entity.npc.action.EquipItemAction;
+import games.stendhal.server.entity.npc.action.IncreaseKarmaAction;
+import games.stendhal.server.entity.npc.action.IncreaseXPAction;
+import games.stendhal.server.entity.npc.action.InflictStatusOnNPCAction;
+import games.stendhal.server.entity.npc.action.MultipleActions;
+import games.stendhal.server.entity.npc.action.SetQuestAction;
+import games.stendhal.server.entity.npc.action.SetQuestAndModifyKarmaAction;
+import games.stendhal.server.entity.npc.action.SetQuestToTimeStampAction;
+import games.stendhal.server.entity.npc.condition.AndCondition;
+import games.stendhal.server.entity.npc.condition.GreetingMatchesNameCondition;
+import games.stendhal.server.entity.npc.condition.NotCondition;
+import games.stendhal.server.entity.npc.condition.PlayerHasItemWithHimCondition;
+import games.stendhal.server.entity.npc.condition.QuestInStateCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotCompletedCondition;
+import games.stendhal.server.entity.npc.condition.QuestStateStartsWithCondition;
+import games.stendhal.server.entity.npc.condition.TimePassedCondition;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.maps.Region;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
+
+/**
+ * QUEST: Christmas Goodies For Rudolph
+ *
+ * PARTICIPANTS:
+ * &lt;ul&gt;
+ * &lt;li&gt;Rudolph (the Red-Nosed Reindeer) - walking around Semos during Christmas season.&lt;/li&gt;
+ * &lt;/ul&gt;
+ *
+ * STEPS:
+ * &lt;ul&gt;
+ * &lt;li&gt;Rudolph asks you for some reindeer moss, carrots and apples.&lt;/li&gt;
+ * &lt;li&gt;You get his goodies by collecting them from around Semos..&lt;/li&gt;
+ * &lt;li&gt;Rudolph sees you have collected goodies and asks for them and then thanks you.&lt;/li&gt;
+ * &lt;/ul&gt;
+ *
+ * REWARD:
+ * &lt;ul&gt;
+ * &lt;li&gt;100 XP&lt;/li&gt;
+ * &lt;li&gt;50 gold&lt;/li&gt;
+ * &lt;li&gt;Karma: 60&lt;/li&gt;
+ * &lt;li&gt;snowglobe&lt;/li&gt;
+ * &lt;/ul&gt;
+ *
+ * REPETITIONS:
+ * &lt;ul&gt;
+ * &lt;li&gt;Once every 11 months.&lt;/li&gt;
+ * &lt;/ul&gt;
+ */
+<span class="fc" id="L72">public class GoodiesForRudolph extends AbstractQuest {</span>
+
+	private static final String QUEST_SLOT = &quot;goodies_rudolph&quot;;
+
+	private static final int REQUIRED_MONTHS = 11;
+	private static final int REQUIRED_MINUTES = 60 * 24 * 30 * REQUIRED_MONTHS;
+
+	private static final String RUDOLPH_TALK_QUEST_ACCEPT = &quot;I heard about the wonderful #goodies you have here in Semos. If you get 5 reindeer moss, 10 apples and 10 carrots, I'll give you a reward.&quot;;
+	private static final String RUDOLPH_TALK_QUEST_OFFER_AGAIN = RUDOLPH_TALK_QUEST_ACCEPT;
+
+	@Override
+	public List&lt;String&gt; getHistory(final Player player) {
+<span class="fc" id="L84">		final List&lt;String&gt; res = new ArrayList&lt;String&gt;();</span>
+<span class="fc bfc" id="L85" title="All 2 branches covered.">		if (!player.hasQuest(QUEST_SLOT)) {</span>
+<span class="fc" id="L86">			return res;</span>
+		}
+<span class="fc" id="L88">		res.add(&quot;I have met Rudolph. He is the Red-Nosed Reindeer running around in Semos.&quot;);</span>
+<span class="fc" id="L89">		final String questStateFull = player.getQuest(QUEST_SLOT);</span>
+<span class="fc" id="L90">		final String[] parts = questStateFull.split(&quot;;&quot;);</span>
+<span class="fc" id="L91">		final String questState = parts[0];</span>
+
+<span class="fc bfc" id="L93" title="All 2 branches covered.">		if (&quot;rejected&quot;.equals(questState)) {</span>
+<span class="fc" id="L94">			res.add(&quot;He asked me to find goodies for him but I rejected his request.&quot;);</span>
+		}
+<span class="fc bfc" id="L96" title="All 2 branches covered.">		if (player.isQuestInState(QUEST_SLOT, 0, &quot;start&quot;, &quot;done&quot;)) {</span>
+<span class="fc" id="L97">			res.add(&quot;I promised to find goodies for him because he is a nice reindeer.&quot;);</span>
+		}
+<span class="pc bpc" id="L99" title="2 of 10 branches missed.">		if (&quot;start&quot;.equals(questState) &amp;&amp; player.isEquipped(&quot;reindeer moss&quot;, 5)  &amp;&amp; player.isEquipped(&quot;carrot&quot;, 10) &amp;&amp; player.isEquipped(&quot;apple&quot;, 10) || &quot;done&quot;.equals(questState)) {</span>
+<span class="fc" id="L100">			res.add(&quot;I got all the goodies and will take them to Rudolph.&quot;);</span>
+		}
+<span class="fc bfc" id="L102" title="All 2 branches covered.">		if (isCompleted(player)) {</span>
+<span class="fc bfc" id="L103" title="All 2 branches covered.">			if (isRepeatable(player)) {</span>
+<span class="fc" id="L104">				res.add(&quot;It's been a year since I helped Rudolph. I should ask him if he needs help again.&quot;);</span>
+			} else {
+<span class="fc" id="L106">				res.add(&quot;I took the goodies to Rudolph. As a little thank you, he gave ME some goodies. :)&quot;);</span>
+			}
+		}
+<span class="fc" id="L109">		return res;</span>
+	}
+
+	private void prepareRequestingStep() {
+<span class="fc" id="L113">		final SpeakerNPC npc = npcs.get(&quot;Rudolph&quot;);</span>
+
+<span class="fc" id="L115">		npc.add(</span>
+			ConversationStates.ATTENDING,
+			ConversationPhrases.QUEST_MESSAGES,
+			new QuestNotCompletedCondition(QUEST_SLOT),
+			ConversationStates.QUEST_OFFERED,
+			&quot;I want some delicious goodies only you can help me get. Do you think you can help me?&quot;,
+			null);
+
+<span class="fc" id="L123">		npc.add(</span>
+			ConversationStates.ATTENDING,
+			ConversationPhrases.QUEST_MESSAGES,
+			new AndCondition(new NotCondition(new TimePassedCondition(QUEST_SLOT, 1, REQUIRED_MINUTES))),
+			ConversationStates.ATTENDING,
+			&quot;Thank you very much for the goodies, but I don't have any other task for you this year. Have a wonderful holiday season.&quot;,
+			null);
+
+<span class="fc" id="L131">		npc.add(</span>
+			ConversationStates.ATTENDING,
+			ConversationPhrases.QUEST_MESSAGES,
+			new AndCondition(new QuestStateStartsWithCondition(QUEST_SLOT, &quot;done&quot;), new TimePassedCondition(QUEST_SLOT, 1, REQUIRED_MINUTES)),
+			ConversationStates.ATTENDING,
+			RUDOLPH_TALK_QUEST_OFFER_AGAIN,
+			null);
+
+		// player is willing to help
+<span class="fc" id="L140">		npc.add(</span>
+			ConversationStates.QUEST_OFFERED,
+			ConversationPhrases.YES_MESSAGES,
+			null,
+			ConversationStates.ATTENDING,
+			RUDOLPH_TALK_QUEST_ACCEPT,
+			new SetQuestAction(QUEST_SLOT, &quot;start&quot;));
+
+		// player is not willing to help
+<span class="fc" id="L149">		npc.add(</span>
+			ConversationStates.QUEST_OFFERED,
+			ConversationPhrases.NO_MESSAGES, null,
+			ConversationStates.ATTENDING,
+			&quot;Well, then I guess I'll just ask someone else for them. Woe is me.&quot;,
+			new SetQuestAndModifyKarmaAction(QUEST_SLOT, &quot;rejected&quot;, -5.0));
+
+		// player wants to know what goodies he is referring to
+<span class="fc" id="L157">		npc.add(</span>
+			ConversationStates.ATTENDING,
+			Arrays.asList(&quot;goodies&quot;),
+			null,
+			ConversationStates.ATTENDING,
+			&quot;Reindeer moss is a pale green patch of wonderfulness which grows all around this city. Apples are found at the farm to the east of the city, and carrots are to the northeast of the city.&quot;,
+			null);
+<span class="fc" id="L164">	}</span>
+
+	private void prepareBringingStep() {
+<span class="fc" id="L167">		final SpeakerNPC npc = npcs.get(&quot;Rudolph&quot;);</span>
+
+		// player returns while quest is still active
+<span class="fc" id="L170">		npc.add(ConversationStates.IDLE, ConversationPhrases.GREETING_MESSAGES,</span>
+			new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+				new QuestInStateCondition(QUEST_SLOT, &quot;start&quot;),
+				new AndCondition(
+					new PlayerHasItemWithHimCondition(&quot;reindeer moss&quot;, 5),
+					new PlayerHasItemWithHimCondition(&quot;apple&quot;, 10),
+					new PlayerHasItemWithHimCondition(&quot;carrot&quot;, 10))),
+			ConversationStates.QUEST_ITEM_BROUGHT,
+			&quot;Excuse me, please! I see you have delicious goodies. Are they for me?&quot;,
+			null);
+
+<span class="fc" id="L181">		npc.add(ConversationStates.IDLE, ConversationPhrases.GREETING_MESSAGES,</span>
+			new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+				new QuestInStateCondition(QUEST_SLOT, &quot;start&quot;),
+				new NotCondition(new AndCondition(
+					new PlayerHasItemWithHimCondition(&quot;reindeer moss&quot;, 5),
+					new PlayerHasItemWithHimCondition(&quot;apple&quot;, 10),
+					new PlayerHasItemWithHimCondition(&quot;carrot&quot;, 10)))),
+			ConversationStates.ATTENDING,
+			&quot;Oh my. I am so in anticipation of those goodies which I have asked you for. Hopefully it will not be much longer before you can bring them to me.&quot;,
+			null);
+
+<span class="fc" id="L192">		final List&lt;ChatAction&gt; reward = new LinkedList&lt;ChatAction&gt;();</span>
+<span class="fc" id="L193">        reward.add(new DropItemAction(&quot;reindeer moss&quot;, 5));</span>
+<span class="fc" id="L194">        reward.add(new DropItemAction(&quot;carrot&quot;, 10));</span>
+<span class="fc" id="L195">        reward.add(new DropItemAction(&quot;apple&quot;, 10));</span>
+<span class="fc" id="L196">		reward.add(new EquipItemAction(&quot;money&quot;, 50));</span>
+<span class="fc" id="L197">		reward.add(new EquipItemAction(&quot;snowglobe&quot;));</span>
+<span class="fc" id="L198">		reward.add(new IncreaseXPAction(100));</span>
+<span class="fc" id="L199">		reward.add(new SetQuestAction(QUEST_SLOT, &quot;done&quot;));</span>
+<span class="fc" id="L200">		reward.add(new IncreaseKarmaAction(60));</span>
+<span class="fc" id="L201">		reward.add(new InflictStatusOnNPCAction(&quot;apple&quot;));</span>
+<span class="fc" id="L202">		reward.add(new SetQuestToTimeStampAction(QUEST_SLOT, 1));</span>
+<span class="fc" id="L203">		reward.add(new SetQuestAction(QUEST_SLOT, 0, &quot;done&quot;));</span>
+
+<span class="fc" id="L205">		npc.add(</span>
+			ConversationStates.QUEST_ITEM_BROUGHT,
+			ConversationPhrases.YES_MESSAGES,
+			// make sure the player isn't cheating by putting the goodies
+			// away and then saying &quot;yes&quot;
+
+			new AndCondition(
+					new PlayerHasItemWithHimCondition(&quot;reindeer moss&quot;, 5),
+					new PlayerHasItemWithHimCondition(&quot;apple&quot;, 10),
+					new PlayerHasItemWithHimCondition(&quot;carrot&quot;, 10)),
+
+			ConversationStates.ATTENDING, &quot;Oh, I am so excited! I have wanted to eat these things for so long. Thanks so much. And to borrow a phrase, Ho Ho Ho, Merry Christmas.&quot;,
+			new MultipleActions(reward));
+
+
+<span class="fc" id="L220">		npc.add(</span>
+			ConversationStates.QUEST_ITEM_BROUGHT,
+			ConversationPhrases.NO_MESSAGES,
+			null,
+			ConversationStates.ATTENDING,
+			&quot;Well then, I certainly hope you find those goodies before I pass out from hunger.&quot;,
+			null);
+<span class="fc" id="L227">	}</span>
+
+	@Override
+	public void addToWorld() {
+<span class="fc" id="L231">		fillQuestInfo(</span>
+				&quot;Goodies for Rudolph&quot;,
+				&quot;Rudolph, Santa's favorite reindeer, desperately wants some goodies.&quot;,
+				false);
+<span class="fc" id="L235">		prepareRequestingStep();</span>
+<span class="fc" id="L236">		prepareBringingStep();</span>
+<span class="fc" id="L237">	}</span>
+
+	@Override
+	public String getSlotName() {
+<span class="fc" id="L241">		return QUEST_SLOT;</span>
+	}
+
+	@Override
+	public String getName() {
+<span class="nc" id="L246">		return &quot;GoodiesForRudolph&quot;;</span>
+	}
+
+	@Override
+	public int getMinLevel() {
+<span class="fc" id="L251">		return 0;</span>
+	}
+
+	@Override
+	public boolean isRepeatable(final Player player) {
+<span class="fc" id="L256">		return new AndCondition(new QuestStateStartsWithCondition(QUEST_SLOT, &quot;done&quot;),</span>
+				 new TimePassedCondition(QUEST_SLOT, 1, REQUIRED_MINUTES)).fire(player, null, null);
+	}
+
+	@Override
+	public String getRegion() {
+<span class="nc" id="L262">		return Region.SEMOS_CITY;</span>
+	}
+
+	@Override
+	public String getNPCName() {
+<span class="nc" id="L267">		return &quot;Rudolph&quot;;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

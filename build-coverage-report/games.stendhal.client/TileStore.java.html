@@ -1,0 +1,313 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>TileStore.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client</a> &gt; <span class="el_source">TileStore.java</span></div><h1>TileStore.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                      (C) Copyright 2003 - Marauroa                      *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client;
+
+import games.stendhal.client.sprite.DataLoader;
+import games.stendhal.client.sprite.Sprite;
+import games.stendhal.client.sprite.SpriteStore;
+import games.stendhal.client.sprite.SpriteTileset;
+import games.stendhal.client.sprite.Tileset;
+import games.stendhal.client.sprite.TilesetAnimationMap;
+import games.stendhal.client.sprite.TilesetGroupAnimationMap;
+import games.stendhal.common.tiled.TileSetDefinition;
+
+import java.awt.Color;
+import java.awt.Composite;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
+
+import marauroa.common.net.InputSerializer;
+
+import org.apache.log4j.Logger;
+
+/** It is class to get tiles from the tileset. */
+class TileStore implements Tileset {
+	/** the logger instance. */
+<span class="nc" id="L39">	private static final Logger logger = Logger.getLogger(TileStore.class);</span>
+
+	/**
+	 * The base directory for tileset resources.
+	 */
+<span class="nc" id="L44">	private static final String baseFolder = getResourceBase();</span>
+
+	/**
+	 * The tileset animation map.
+	 */
+<span class="nc" id="L49">	private static final TilesetGroupAnimationMap animationMap = createAnimationMap();</span>
+
+	/**
+	 * A cache of loaded tilesets.
+	 */
+<span class="nc" id="L54">	private static final MemoryCache&lt;String, Tileset&gt; tilesetsLoaded = new MemoryCache&lt;String, Tileset&gt;();</span>
+
+	/**
+	 * The sprite store.
+	 */
+	private final SpriteStore store;
+
+	/**
+	 * The tile sprites.
+	 */
+	private final ArrayList&lt;Sprite&gt; tiles;
+	/** Tilesets waiting to be added to the store. */
+<span class="nc" id="L66">	private final List&lt;TileSetDefinition&gt; tilesets = new ArrayList&lt;TileSetDefinition&gt;();</span>
+	/**
+	 * &lt;code&gt;true&lt;/code&gt;, if the store has been successfully validated,
+	 *	otherwise &lt;code&gt;false&lt;/code&gt;.
+	 */
+	private boolean validated;
+	
+	/**
+	 * Get the animation map.
+	 * 
+	 * @return animation map
+	 */
+	public static TilesetGroupAnimationMap getAnimationMap() {
+<span class="nc" id="L79">		return animationMap;</span>
+	}
+
+	/**
+	 * Create a tile store.
+	 */
+	public TileStore() {
+<span class="nc" id="L86">		this(SpriteStore.get());</span>
+<span class="nc" id="L87">	}</span>
+
+	/**
+	 * Create a tile store with a specific sprite store.
+	 *
+	 * @param store
+	 *            A sprite store.
+	 */
+<span class="nc" id="L95">	private TileStore(final SpriteStore store) {</span>
+<span class="nc" id="L96">		this.store = store;</span>
+
+<span class="nc" id="L98">		tiles = new ArrayList&lt;Sprite&gt;();</span>
+<span class="nc" id="L99">		tiles.add(store.getEmptySprite());</span>
+<span class="nc" id="L100">	}</span>
+
+	//
+	// TileStore
+	//
+
+	/**
+	 * Add a tileset.
+	 *
+	 * @param tsdef
+	 *            The tileset definition.
+	 * @param color Color for modifying the tileset image, or &lt;code&gt;null&lt;/code&gt;
+	 * @param blend Blend mode for applying the adjustment color, or
+	 * 	&lt;code&gt;null&lt;/code&gt;
+	 */
+	private void add(final TileSetDefinition tsdef, Color color, Composite blend) {
+<span class="nc" id="L116">		String ref = tsdef.getSource();</span>
+<span class="nc" id="L117">		final int baseindex = tsdef.getFirstGid();</span>
+
+		/*
+		 * Strip off leading path info TODO: Remove this earlier in the stage
+		 * (server side?)
+		 */
+<span class="nc bnc" id="L123" title="All 2 branches missed.">		if (ref.startsWith(&quot;../../&quot;)) {</span>
+<span class="nc" id="L124">			ref = ref.substring(6);</span>
+		}
+
+		/*
+		 * Make sure we are the right size
+		 */
+<span class="nc" id="L130">		final int mapsize = tiles.size();</span>
+
+<span class="nc bnc" id="L132" title="All 2 branches missed.">		if (mapsize &gt; baseindex) {</span>
+<span class="nc" id="L133">			logger.debug(&quot;Tileset base index mismatch (&quot; + mapsize + &quot; &gt; &quot;</span>
+					+ baseindex + &quot;): &quot; + ref);
+<span class="nc bnc" id="L135" title="All 2 branches missed.">			for (int i = baseindex; i &lt; mapsize; i++) {</span>
+<span class="nc" id="L136">				tiles.remove(baseindex);</span>
+			}
+<span class="nc bnc" id="L138" title="All 2 branches missed.">		} else if (mapsize &lt; baseindex) {</span>
+<span class="nc" id="L139">			logger.debug(&quot;Tileset base index mismatch (&quot; + mapsize + &quot; &lt; &quot;</span>
+					+ baseindex + &quot;): &quot; + ref);
+			/*
+			 * Pad missing entries
+			 */
+<span class="nc bnc" id="L144" title="All 2 branches missed.">			for (int i = mapsize; i &lt; baseindex; i++) {</span>
+<span class="nc" id="L145">				tiles.add(null);</span>
+			}
+		}
+
+		String realRef;
+<span class="nc bnc" id="L150" title="All 4 branches missed.">		if ((color != null) &amp;&amp; (blend != null)) {</span>
+<span class="nc" id="L151">			realRef = store.createModifiedRef(ref, color, blend);</span>
+		} else {
+<span class="nc" id="L153">			realRef = ref;</span>
+		}
+<span class="nc" id="L155">		Tileset tileset = tilesetsLoaded.get(realRef);</span>
+
+<span class="nc bnc" id="L157" title="All 2 branches missed.">		if (tileset == null) {</span>
+<span class="nc" id="L158">			tileset = new SpriteTileset(store, baseFolder + ref, color, blend);</span>
+<span class="nc" id="L159">			tilesetsLoaded.put(realRef, tileset);</span>
+		}
+
+<span class="nc" id="L162">		final int size = tileset.getSize();</span>
+
+<span class="nc" id="L164">		tiles.ensureCapacity(baseindex + size);</span>
+
+<span class="nc bnc" id="L166" title="All 2 branches missed.">		for (int i = 0; i &lt; size; i++) {</span>
+<span class="nc" id="L167">			tiles.add(tileset.getSprite(i));</span>
+		}
+
+		/*
+		 * Override the animated tiles (if any)
+		 */
+<span class="nc" id="L173">		final TilesetAnimationMap tsam = animationMap.get(ref);</span>
+
+<span class="nc bnc" id="L175" title="All 2 branches missed.">		if (tsam != null) {</span>
+<span class="nc bnc" id="L176" title="All 2 branches missed.">			for (int i = 0; i &lt; size; i++) {</span>
+<span class="nc" id="L177">				final Sprite sprite = tsam.getSprite(tileset, i);</span>
+
+<span class="nc bnc" id="L179" title="All 2 branches missed.">				if (sprite != null) {</span>
+<span class="nc" id="L180">					tiles.set(baseindex + i, sprite);</span>
+				}
+			}
+		}
+<span class="nc" id="L184">	}</span>
+
+	/**
+	 * Add tilesets. The store will require validating afterwards.
+	 *
+	 * @param in
+	 *            The object stream.
+	 * 	&lt;code&gt;null&lt;/code&gt;
+	 *
+	 * @throws IOException
+	 * @throws ClassNotFoundException
+	 */
+	void addTilesets(final InputSerializer in) throws IOException,
+			ClassNotFoundException {
+<span class="nc" id="L198">		final int amount = in.readInt();</span>
+
+<span class="nc bnc" id="L200" title="All 2 branches missed.">		for (int i = 0; i &lt; amount; i++) {</span>
+<span class="nc" id="L201">			final TileSetDefinition tileset = (TileSetDefinition) in.readObject(new TileSetDefinition(null, null, -1));</span>
+<span class="nc" id="L202">			tilesets.add(tileset);</span>
+		}
+<span class="nc" id="L204">	}</span>
+	/**
+	 * Try finishing the tile store withan adjustment color and blend mode for
+	 * the tilesets.
+	 *
+	 * @param color Color for adjusting the tileset, or &lt;code&gt;null&lt;/code&gt;
+	 * @param blend blend mode for applying the adjustment color, or
+	 * @return &lt;code&gt;true&lt;/code&gt; if the store has been validated successfully,
+	 * 	&lt;code&gt;false&lt;/code&gt; otherwise
+	 */
+	boolean validate(final Color color, final Composite blend) {
+<span class="nc bnc" id="L215" title="All 2 branches missed.">		if (!validated) {</span>
+<span class="nc bnc" id="L216" title="All 2 branches missed.">			if (!tilesets.isEmpty()) {</span>
+<span class="nc bnc" id="L217" title="All 2 branches missed.">				for (TileSetDefinition def : tilesets) {</span>
+<span class="nc" id="L218">					add(def, color, blend);</span>
+<span class="nc" id="L219">				}</span>
+<span class="nc" id="L220">				tilesets.clear();</span>
+<span class="nc" id="L221">				validated = true;</span>
+<span class="nc" id="L222">				return true;</span>
+			}
+<span class="nc" id="L224">			return false;</span>
+		}
+<span class="nc" id="L226">		return true;</span>
+	}
+
+	/**
+	 * Create the tileset animation map.
+	 *
+	 * @return A tileset animation map.
+	 */
+	private static TilesetGroupAnimationMap createAnimationMap() {
+<span class="nc" id="L235">		final TilesetGroupAnimationMap map = new TilesetGroupAnimationMap();</span>
+
+<span class="nc" id="L237">		final URL url = DataLoader.getResource(baseFolder + &quot;tileset/animation.seq&quot;);</span>
+
+<span class="nc bnc" id="L239" title="All 2 branches missed.">		if (url != null) {</span>
+			try {
+<span class="nc" id="L241">				final InputStream in = url.openStream();</span>
+
+				try {
+<span class="nc" id="L244">					map.load(in);</span>
+				} finally {
+<span class="nc" id="L246">					in.close();</span>
+<span class="nc" id="L247">				}</span>
+<span class="nc" id="L248">			} catch (final IOException ex) {</span>
+<span class="nc" id="L249">				logger.error(&quot;Error loading tileset animation map&quot;, ex);</span>
+<span class="nc" id="L250">			}</span>
+		}
+
+<span class="nc" id="L253">		return map;</span>
+	}
+
+	/**
+	 * Get the base directory for tileset resources.
+	 *
+	 * Hack: Read the tileset directly from tiled/tileset if started from an
+	 * IDE.
+	 * @return the / separated url to the resource
+	 */
+	private static String getResourceBase() {
+<span class="nc" id="L264">		String path = &quot;data/&quot;;</span>
+
+<span class="nc bnc" id="L266" title="All 2 branches missed.">		if (DataLoader.getResource(&quot;tiled/tileset/README&quot;) != null) {</span>
+<span class="nc" id="L267">			logger.debug(&quot;Developing mode, loading tileset from tiled/tileset instead of data/tileset&quot;);</span>
+<span class="nc" id="L268">			path = &quot;tiled/&quot;;</span>
+		}
+
+<span class="nc" id="L271">		return path;</span>
+	}
+
+	//
+	// Tileset
+	//
+
+	/**
+	 * Get the number of tiles.
+	 *
+	 * @return The number of tiles.
+	 */
+	@Override
+	public int getSize() {
+<span class="nc" id="L285">		return tiles.size();</span>
+	}
+
+	/**
+	 * Get the sprite for an index tile of the tileset.
+	 *
+	 * @param index
+	 *            The index with-in the tileset.
+	 *
+	 * @return A sprite, or &lt;code&gt;null&lt;/code&gt; if no mapped sprite.
+	 */
+	@Override
+	public Sprite getSprite(final int index) {
+<span class="nc bnc" id="L298" title="All 2 branches missed.">		if (index &gt;= tiles.size()) {</span>
+<span class="nc" id="L299">			logger.error(&quot;Accessing unassigned sprite at: &quot; + index);</span>
+<span class="nc" id="L300">			return store.getEmptySprite();</span>
+		}
+
+<span class="nc" id="L303">		final Sprite sprite = tiles.get(index);</span>
+
+<span class="nc bnc" id="L305" title="All 2 branches missed.">		if (sprite == null) {</span>
+<span class="nc" id="L306">			logger.error(&quot;Accessing unassigned sprite at: &quot; + index);</span>
+<span class="nc" id="L307">			return store.getEmptySprite();</span>
+		}
+
+<span class="nc" id="L310">		return sprite;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

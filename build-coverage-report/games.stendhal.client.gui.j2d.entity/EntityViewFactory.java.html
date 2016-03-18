@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>EntityViewFactory.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui.j2d.entity</a> &gt; <span class="el_source">EntityViewFactory.java</span></div><h1>EntityViewFactory.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui.j2d.entity;
+
+import games.stendhal.client.Triple;
+import games.stendhal.client.entity.IEntity;
+import games.stendhal.client.gui.wt.core.WtWindowManager;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import org.apache.log4j.Logger;
+
+/*
+ * The entity views are generic, but we don't simply have sufficient data to
+ * either use excessive casting at places, or using raw types. The latter keeps
+ * the code more readable.
+ */
+@SuppressWarnings(&quot;rawtypes&quot;)
+<span class="nc" id="L30">public class EntityViewFactory {</span>
+	/**
+	 * Log4J.
+	 */
+<span class="fc" id="L34">	private static final Logger LOGGER = Logger.getLogger(EntityViewFactory.class);</span>
+
+<span class="fc" id="L36">	private static Map&lt;Triple&lt;String, String, String&gt;, Class&lt;? extends EntityView&gt;&gt; viewMap = new HashMap&lt;Triple&lt;String, String, String&gt;, Class&lt;? extends EntityView&gt;&gt;();</span>
+
+	/**
+	 * Create an entity view factory.
+	 */
+	static {
+<span class="fc" id="L42">		configure();</span>
+<span class="fc" id="L43">	}</span>
+
+	//
+	// Entity2DViewFactory
+	//
+
+	/**
+	 * Create an entity view from an entity.
+	 *
+	 * @param entity
+	 *            An entity.
+	 *
+	 * @return The corresponding view, or &lt;code&gt;null&lt;/code&gt;.
+	 */
+	@SuppressWarnings(&quot;unchecked&quot;)
+	public static EntityView&lt;IEntity&gt; create(final IEntity entity) {
+		try {
+			// use User2DView for the active player
+<span class="pc bpc" id="L61" title="1 of 2 branches missed.">			if (entity.isUser()) {</span>
+<span class="nc" id="L62">				Entity2DView&lt;IEntity&gt; user2DView = new User2DView();</span>
+<span class="nc" id="L63">				user2DView.initialize(entity);</span>
+<span class="nc" id="L64">				return user2DView;</span>
+			}
+
+<span class="fc" id="L67">			final String type = entity.getType();</span>
+			
+			// lookup class
+<span class="fc" id="L70">			String eclass = entity.getEntityClass();</span>
+<span class="fc" id="L71">			String subClass = entity.getEntitySubclass();</span>
+<span class="fc" id="L72">			final Class&lt;? extends EntityView&gt; entityClass = getViewClass(type, eclass, subClass);</span>
+<span class="pc bpc" id="L73" title="1 of 2 branches missed.">			if (entityClass == null) {</span>
+<span class="nc" id="L74">				LOGGER.debug(&quot;No view for this entity. type: &quot; + type + &quot; class: &quot; + eclass</span>
+						+ &quot; subclass: &quot; + subClass);
+<span class="nc" id="L76">				return null;</span>
+			}
+
+			// hack to hide blood
+<span class="pc bpc" id="L80" title="1 of 2 branches missed.">			if (entityClass == Blood2DView.class) {</span>
+<span class="nc" id="L81">				boolean showBlood = Boolean.parseBoolean(WtWindowManager.getInstance().getProperty(&quot;gamescreen.blood&quot;, &quot;true&quot;));</span>
+<span class="nc bnc" id="L82" title="All 2 branches missed.">				if (!showBlood) {</span>
+<span class="nc" id="L83">					return null;</span>
+				}
+			}
+
+<span class="fc" id="L87">			final EntityView&lt;IEntity&gt; en = entityClass.newInstance();</span>
+<span class="fc" id="L88">			en.initialize(entity);</span>
+
+<span class="fc" id="L90">			return en;</span>
+<span class="nc" id="L91">		} catch (final Exception e) {</span>
+<span class="nc" id="L92">			LOGGER.error(&quot;Error creating entity for object: &quot; + entity, e);</span>
+<span class="nc" id="L93">			return null;</span>
+		}
+
+	}
+
+	/**
+	 * @param type
+	 *            the type of the entity to be created, such as Item, creature
+	 * @param eclass
+	 *            the subtype of type such as book, drink, food , ,
+	 *            small_animal, huge_animal
+	 * @param subClass
+	 *
+	 * @return the java class of the Entity belonging to type and eclass
+	 */
+	static Class&lt;? extends EntityView&gt; getViewClass(final String type, final String eclass,
+			final String subClass) {
+<span class="fc" id="L110">		Class&lt;? extends EntityView&gt; result = viewMap.get(new Triple&lt;String, String, String&gt;(type,</span>
+				eclass, subClass));
+<span class="fc bfc" id="L112" title="All 2 branches covered.">		if (result == null) {</span>
+<span class="fc" id="L113">			result = viewMap.get(new Triple&lt;String, String, String&gt;(type, eclass, null));</span>
+		}
+<span class="fc bfc" id="L115" title="All 2 branches covered.">		if (result == null) {</span>
+<span class="fc" id="L116">			result = viewMap.get(new Triple&lt;String, String, String&gt;(type, null, null));</span>
+		}
+<span class="fc" id="L118">		return result;</span>
+	}
+
+	/**
+	 * Configure the view map.
+	 */
+	private static void configure() {
+
+<span class="fc" id="L126">		register(&quot;area&quot;, null, null, InvisibleEntity2DView.class);</span>
+
+<span class="fc" id="L128">		register(&quot;block&quot;, null, null, LookableEntity2DView.class);</span>
+<span class="fc" id="L129">		register(&quot;blood&quot;, null, null, Blood2DView.class);</span>
+
+<span class="fc" id="L131">		register(&quot;creature&quot;, &quot;ent&quot;, null, BossCreature2DView.class);</span>
+
+<span class="fc" id="L133">		register(&quot;growing_entity_spawner&quot;, &quot;items/grower/wood_grower&quot;, null, CarrotGrower2DView.class);</span>
+<span class="fc" id="L134">		register(&quot;growing_entity_spawner&quot;, &quot;items/grower/carrot_grower&quot;, null, CarrotGrower2DView.class);</span>
+<span class="fc" id="L135">		register(&quot;chest&quot;, null, null, Chest2DView.class);</span>
+<span class="fc" id="L136">		register(&quot;corpse&quot;, null, null, Corpse2DView.class);</span>
+
+<span class="fc" id="L138">		register(&quot;creature&quot;, null, null, Creature2DView.class);</span>
+
+<span class="fc" id="L140">		register(&quot;door&quot;, null, null, Door2DView.class);</span>
+
+<span class="fc" id="L142">		register(&quot;fire&quot;, null, null, UseableEntity2DView.class);</span>
+<span class="fc" id="L143">		register(&quot;fish_source&quot;, null, null, UseableEntity2DView.class);</span>
+
+<span class="fc" id="L145">		register(&quot;game_board&quot;, null, null, GameBoard2DView.class);</span>
+<span class="fc" id="L146">		register(&quot;gate&quot;, null, null, Gate2DView.class);</span>
+
+<span class="fc" id="L148">		register(&quot;gold_source&quot;, null, null, UseableEntity2DView.class);</span>
+
+<span class="fc" id="L150">		register(&quot;growing_entity_spawner&quot;, null, null, GrainField2DView.class);</span>
+
+<span class="fc" id="L152">		register(&quot;house_portal&quot;, null, null, HousePortal2DView.class);</span>
+
+<span class="fc" id="L154">		register(&quot;item&quot;, &quot;box&quot;, null, Box2DView.class);</span>
+<span class="fc" id="L155">		register(&quot;item&quot;, &quot;special&quot;, &quot;mithril clasp&quot;, Item2DView.class);</span>
+<span class="fc" id="L156">		register(&quot;item&quot;, null, null, Item2DView.class);</span>
+<span class="fc" id="L157">		register(&quot;npc&quot;, null, null, NPC2DView.class);</span>
+
+<span class="fc" id="L159">		register(&quot;cat&quot;, null, null, Pet2DView.class);</span>
+<span class="fc" id="L160">		register(&quot;pet&quot;, null, null, Pet2DView.class);</span>
+<span class="fc" id="L161">		register(&quot;baby_dragon&quot;, null, null, Pet2DView.class);</span>
+<span class="fc" id="L162">		register(&quot;purple_dragon&quot;, null, null, Pet2DView.class);</span>
+
+<span class="fc" id="L164">		register(&quot;plant_grower&quot;, null, null, PlantGrower2DView.class);</span>
+
+<span class="fc" id="L166">		register(&quot;player&quot;, null, null, Player2DView.class);</span>
+
+<span class="fc" id="L168">		register(&quot;portal&quot;, null, null, Portal2DView.class);</span>
+
+<span class="fc" id="L170">		register(&quot;sheep&quot;, null, null, Sheep2DView.class);</span>
+<span class="fc" id="L171">		register(&quot;food&quot;, null, null, SheepFood2DView.class);</span>
+<span class="fc" id="L172">		register(&quot;spell&quot;, null, null, Spell2DView.class);</span>
+
+<span class="fc" id="L174">		register(&quot;sign&quot;, null, null, Sign2DView.class);</span>
+<span class="fc" id="L175">		register(&quot;blackboard&quot;, null, null, Sign2DView.class);</span>
+<span class="fc" id="L176">		register(&quot;rented_sign&quot;, null, null, Sign2DView.class);</span>
+<span class="fc" id="L177">		register(&quot;shop_sign&quot;, null, null, ShopSign2DView.class);</span>
+<span class="fc" id="L178">		register(&quot;tradecentersign&quot;, null, null, TradeCenterSign2DView.class);</span>
+
+<span class="fc" id="L180">		register(&quot;item&quot;, &quot;jewellery&quot;, null, StackableItem2DView.class);</span>
+<span class="fc" id="L181">		register(&quot;item&quot;, &quot;flower&quot;, null, StackableItem2DView.class);</span>
+<span class="fc" id="L182">		register(&quot;item&quot;, &quot;resource&quot;, null, StackableItem2DView.class);</span>
+<span class="fc" id="L183">		register(&quot;item&quot;, &quot;herb&quot;, null, StackableItem2DView.class);</span>
+<span class="fc" id="L184">		register(&quot;item&quot;, &quot;misc&quot;, null, StackableItem2DView.class);</span>
+<span class="fc" id="L185">		register(&quot;item&quot;, &quot;money&quot;, null, StackableItem2DView.class);</span>
+<span class="fc" id="L186">		register(&quot;item&quot;, &quot;missile&quot;, null, StackableItem2DView.class);</span>
+<span class="fc" id="L187">		register(&quot;item&quot;, &quot;ammunition&quot;, null, StackableItem2DView.class);</span>
+<span class="fc" id="L188">		register(&quot;item&quot;, &quot;container&quot;, null, StackableItem2DView.class);</span>
+<span class="fc" id="L189">		register(&quot;item&quot;, &quot;special&quot;, null, StackableItem2DView.class);</span>
+
+<span class="fc" id="L191">		register(&quot;item&quot;, &quot;club&quot;, &quot;wizard_staff&quot;, UseableItem2DView.class);</span>
+<span class="fc" id="L192">		register(&quot;item&quot;, &quot;misc&quot;, &quot;seed&quot;, UseableItem2DView.class);</span>
+<span class="fc" id="L193">		register(&quot;item&quot;, &quot;misc&quot;, &quot;bulb&quot;, UseableItem2DView.class);</span>
+
+<span class="fc" id="L195">		register(&quot;item&quot;, &quot;scroll&quot;, null, UseableItem2DView.class);</span>
+
+<span class="fc" id="L197">		register(&quot;item&quot;, &quot;food&quot;, null, UseableItem2DView.class);</span>
+<span class="fc" id="L198">		register(&quot;item&quot;, &quot;drink&quot;, null, UseableItem2DView.class);</span>
+<span class="fc" id="L199">		register(&quot;item&quot;, &quot;tool&quot;, &quot;foodmill&quot;, UseableItem2DView.class);</span>
+<span class="fc" id="L200">		register(&quot;item&quot;, &quot;tool&quot;, &quot;sugarmill&quot;, UseableItem2DView.class);</span>
+<span class="fc" id="L201">		register(&quot;item&quot;, &quot;tool&quot;, &quot;scrolleraser&quot;, UseableItem2DView.class);</span>
+
+<span class="fc" id="L203">		register(&quot;item&quot;, &quot;ring&quot;, null, Ring2DView.class);</span>
+<span class="fc" id="L204">		register(&quot;item&quot;, &quot;ring&quot;, &quot;wedding&quot;, UseableRing2DView.class);</span>
+
+<span class="fc" id="L206">		register(&quot;useable_entity&quot;, null, null, UseableEntity2DView.class);</span>
+
+<span class="fc" id="L208">		register(&quot;wall&quot;, null, null, Wall2DView.class);</span>
+<span class="fc" id="L209">		register(&quot;walkblocker&quot;, null, null, WalkBlocker2DView.class);</span>
+<span class="fc" id="L210">		register(&quot;well_source&quot;, null, null, UseableEntity2DView.class);</span>
+<span class="fc" id="L211">	}</span>
+
+	/**
+	 * @param type
+	 *            the type of the entity to be created, such as Item, creature
+	 * @param eclass
+	 *            the subtype of type such as book, drink, food , ,
+	 *            small_animal, huge_animal
+	 * @param subClass
+	 * @param entityClazz
+	 *            the java class of the Entity
+	 */
+	private static void register(final String type, final String eclass, final String subClass,
+			final Class&lt;? extends EntityView&gt; entityClazz) {
+<span class="fc" id="L225">		viewMap.put(new Triple&lt;String, String, String&gt;(type, eclass, subClass), entityClazz);</span>
+<span class="fc" id="L226">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

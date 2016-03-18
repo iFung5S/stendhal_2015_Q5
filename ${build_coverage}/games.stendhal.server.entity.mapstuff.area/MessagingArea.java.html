@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>MessagingArea.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.mapstuff.area</a> &gt; <span class="el_source">MessagingArea.java</span></div><h1>MessagingArea.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.mapstuff.area;
+
+import games.stendhal.common.NotificationType;
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.core.events.DelayedPlayerTextSender;
+import games.stendhal.server.core.events.MovementListener;
+import games.stendhal.server.entity.ActiveEntity;
+import games.stendhal.server.entity.player.Player;
+
+/**
+ * Area that sends a private message to any player entering and/or leaving it.
+ */
+public class MessagingArea extends AreaEntity implements MovementListener {
+	/** true if the area should cover the whole zone. */
+	private final boolean coversZone;
+	/** message sent to the players entering the area. */
+	private final String enterMessage;
+	/** message sent to the players leaving the area. */
+	private final String leaveMessage;
+	private final boolean isWarning;
+	
+	/**
+	 * Create a MessagingArea.
+	 * 
+	 * @param coversZone true if the area should cover the whole zone
+	 * @param width width of the area
+	 * @param height height of the area
+	 * @param enterMessage message to be sent to players entering the area 
+	 * @param leaveMessage message to be sent to players leaving the area
+	 * @param isWarning set to &lt;code&gt;true&lt;/code&gt; if the message is a warning
+	 * 	that is especially important for the player to see
+	 */
+	public MessagingArea(final boolean coversZone, final int width, final int height, final String enterMessage, 
+			final String leaveMessage, final boolean isWarning) {
+<span class="nc" id="L47">		super(width, height);</span>
+<span class="nc" id="L48">		hide();</span>
+		
+<span class="nc" id="L50">		this.coversZone = coversZone;</span>
+<span class="nc" id="L51">		this.enterMessage = enterMessage;</span>
+<span class="nc" id="L52">		this.leaveMessage = leaveMessage;</span>
+<span class="nc" id="L53">		this.isWarning = isWarning;</span>
+<span class="nc" id="L54">	}</span>
+	
+	@Override
+	public void onEntered(final ActiveEntity entity, final StendhalRPZone zone, final int newX, final int newY) {
+<span class="nc bnc" id="L58" title="All 4 branches missed.">		if ((enterMessage != null) &amp;&amp; (entity instanceof Player)) {</span>
+			/*
+			 * Needs to be delayed to avoid the message appearing before server
+			 * welcome on login. Being delayed also means it would be delivered
+			 * even if the player is no longer in the zone after the delay (such
+			 * as logging in at dreamscape), so a special sender is needed. This
+			 * could mean some inadvertently lost messages under certain unusual
+			 * conditions.
+			 */
+<span class="nc bnc" id="L67" title="All 2 branches missed.">			if (warnPlayer()) {</span>
+<span class="nc" id="L68">				new ConditionalDelayedPlayerTextSender((Player) entity, enterMessage, NotificationType.WARNING, 1);				</span>
+			} else {
+<span class="nc" id="L70">				new ConditionalDelayedPlayerTextSender((Player) entity, enterMessage, NotificationType.SCENE_SETTING, 1);</span>
+			}
+		}
+<span class="nc" id="L73">	}</span>
+	
+	@Override
+	public void onExited(final ActiveEntity entity, final StendhalRPZone zone, final int newX, final int newY) {
+<span class="nc bnc" id="L77" title="All 4 branches missed.">		if ((leaveMessage != null) &amp;&amp; (entity instanceof Player)) {</span>
+			// needs to be delayed since normal messages get lost in case the player leaves zone
+<span class="nc bnc" id="L79" title="All 2 branches missed.">			if (warnPlayer()) {</span>
+<span class="nc" id="L80">				new DelayedPlayerTextSender((Player) entity, leaveMessage, NotificationType.WARNING, 1);</span>
+			} else {
+<span class="nc" id="L82">				new DelayedPlayerTextSender((Player) entity, leaveMessage, NotificationType.SCENE_SETTING, 1);</span>
+			}
+		}
+<span class="nc" id="L85">	}</span>
+	
+	@Override
+	public void onMoved(final ActiveEntity entity, final StendhalRPZone zone, final int oldX, final int oldY, final int newX, final int newY) {
+		// required by interface
+<span class="nc" id="L90">	}</span>
+	
+	/**
+	 * Called when this object is added to a zone.
+	 * 
+	 * @param zone
+	 *            The zone this was added to.
+	 */
+	@Override
+	public void onAdded(final StendhalRPZone zone) {
+<span class="nc" id="L100">		super.onAdded(zone);</span>
+		
+<span class="nc bnc" id="L102" title="All 2 branches missed.">		if (coversZone) {</span>
+<span class="nc" id="L103">			setSize(zone.getWidth(), zone.getHeight());</span>
+		}
+<span class="nc" id="L105">		zone.addMovementListener(this);</span>
+<span class="nc" id="L106">	}</span>
+
+	/**
+	 * Called when this object is being removed from a zone.
+	 * 
+	 * @param zone
+	 *            The zone this will be removed from.
+	 */
+	@Override
+	public void onRemoved(final StendhalRPZone zone) {
+<span class="nc" id="L116">		zone.removeMovementListener(this);</span>
+<span class="nc" id="L117">		super.onRemoved(zone);</span>
+<span class="nc" id="L118">	}</span>
+	
+	/**
+	 * A sender for the delayed message that delivers the message only if the
+	 * player is still on the same zone as the MessagingArea. 
+	 */
+	private class ConditionalDelayedPlayerTextSender extends DelayedPlayerTextSender {
+		public ConditionalDelayedPlayerTextSender(Player player,
+<span class="nc" id="L126">				String message, NotificationType type, int seconds) {</span>
+<span class="nc" id="L127">			super(player, message, type, seconds);</span>
+<span class="nc" id="L128">		}</span>
+		
+		@Override
+		public void onTurnReached(final int currentTurn) {
+<span class="nc bnc" id="L132" title="All 2 branches missed.">			if (MessagingArea.this.getZone() == player.getZone()) {</span>
+<span class="nc" id="L133">				super.onTurnReached(currentTurn);</span>
+			}
+<span class="nc" id="L135">		}</span>
+	}
+
+	@Override
+	public void beforeMove(ActiveEntity entity, StendhalRPZone zone, int oldX,
+			int oldY, int newX, int newY) {
+		// nothing to do before a movement
+<span class="nc" id="L142">	}</span>
+	
+	public boolean warnPlayer() {
+<span class="nc" id="L145">		return isWarning;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

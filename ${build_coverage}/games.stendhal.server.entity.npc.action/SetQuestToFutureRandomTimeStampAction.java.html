@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SetQuestToFutureRandomTimeStampAction.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.npc.action</a> &gt; <span class="el_source">SetQuestToFutureRandomTimeStampAction.java</span></div><h1>SetQuestToFutureRandomTimeStampAction.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.npc.action;
+
+import static com.google.common.base.Preconditions.checkNotNull;
+import games.stendhal.common.MathHelper;
+import games.stendhal.common.Rand;
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.core.config.annotations.Dev;
+import games.stendhal.server.core.config.annotations.Dev.Category;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.player.Player;
+
+/**
+ * Sets the state of a quest to a timestamp,
+ * randomly picked between minimum and maximum delay from current system time in minutes
+ *
+ * @see games.stendhal.server.entity.npc.condition.TimeReachedCondition
+ * @see games.stendhal.server.entity.npc.action.SayTimeRemainingUntilTimeReachedAction
+ *
+ * @author omero
+ */
+@Dev(category=Category.TIME, label=&quot;State&quot;)
+public class SetQuestToFutureRandomTimeStampAction implements ChatAction {
+
+	private final String questname;
+	private final int index;
+	private final int min_delay;
+	private final int max_delay;
+
+	/**
+	 * Creates a new SetQuestToFutureRandomTimeStampAction.
+	 *
+	 * @param questname name of quest-slot to change
+	 * @param min_delay in minutes
+	 * @param max_delay in minutes
+	 */
+<span class="nc" id="L48">	public SetQuestToFutureRandomTimeStampAction(final String questname, final int min_delay, final int max_delay) {</span>
+<span class="nc" id="L49">		this.questname = checkNotNull(questname);</span>
+<span class="nc" id="L50">		this.index = -1;</span>
+<span class="nc" id="L51">		this.min_delay = min_delay;</span>
+<span class="nc" id="L52">		this.max_delay = max_delay;</span>
+<span class="nc" id="L53">	}</span>
+
+	/**
+	 * Creates a new SetQuestToFutureRandomTimeStampAction.
+	 *
+	 * @param questname name of quest-slot to change
+	 * @param index index of sub state
+	 * @param minDelay minimum delay in minutes
+	 * @param maxDelay maximum delay in minutes
+	 */
+	@Dev
+<span class="nc" id="L64">	public SetQuestToFutureRandomTimeStampAction(final String questname, @Dev(defaultValue=&quot;1&quot;) final int index, final int minDelay, final int maxDelay) {</span>
+<span class="nc" id="L65">		this.questname = checkNotNull(questname);</span>
+<span class="nc" id="L66">		this.index = index;</span>
+<span class="nc" id="L67">		this.min_delay = minDelay;</span>
+<span class="nc" id="L68">		this.max_delay = maxDelay;</span>
+<span class="nc" id="L69">	}</span>
+
+	@Override
+	public void fire(final Player player, final Sentence sentence, final EventRaiser raiser) {
+<span class="nc" id="L73">		String timestamp = Long.toString(</span>
+				System.currentTimeMillis() + ( Rand.randUniform(min_delay, max_delay) * MathHelper.MILLISECONDS_IN_ONE_MINUTE));
+<span class="nc bnc" id="L75" title="All 2 branches missed.">		if (index &gt; -1) {</span>
+<span class="nc" id="L76">			player.setQuest(questname, index, timestamp);</span>
+		} else {
+<span class="nc" id="L78">			player.setQuest(questname, timestamp);</span>
+		}
+<span class="nc" id="L80">	}</span>
+
+	@Override
+	public String toString() {
+<span class="nc" id="L84">		return &quot;SetQuestToFutureRandomTimeStampAction&lt;&quot; + questname + &quot;[&quot; + index + &quot;]&gt;&quot;;</span>
+	}
+
+	@Override
+	public int hashCode() {
+<span class="nc" id="L89">		return 5507 * (questname.hashCode() + 5519 * index) + min_delay * max_delay;</span>
+	}
+
+	@Override
+	public boolean equals(final Object obj) {
+<span class="nc bnc" id="L94" title="All 2 branches missed.">		if (!(obj instanceof SetQuestToFutureRandomTimeStampAction)) {</span>
+<span class="nc" id="L95">			return false;</span>
+		}
+<span class="nc" id="L97">		SetQuestToFutureRandomTimeStampAction other = (SetQuestToFutureRandomTimeStampAction) obj;</span>
+<span class="nc bnc" id="L98" title="All 8 branches missed.">		return (index == other.index)</span>
+			&amp;&amp; (min_delay == other.min_delay)
+			&amp;&amp; (max_delay == other.max_delay)
+			&amp;&amp; questname.equals(other.questname);
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

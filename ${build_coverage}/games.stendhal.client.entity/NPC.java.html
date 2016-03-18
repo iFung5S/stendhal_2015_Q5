@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>NPC.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.entity</a> &gt; <span class="el_source">NPC.java</span></div><h1>NPC.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *						(C) Copyright 2003 - Marauroa					   *
+ ***************************************************************************
+ ***************************************************************************
+ *																		   *
+ *	 This program is free software; you can redistribute it and/or modify  *
+ *	 it under the terms of the GNU General Public License as published by  *
+ *	 the Free Software Foundation; either version 2 of the License, or	   *
+ *	 (at your option) any later version.								   *
+ *																		   *
+ ***************************************************************************/
+package games.stendhal.client.entity;
+
+import marauroa.common.game.RPObject;
+
+/**
+ * An NPC entity.
+ */
+<span class="fc" id="L20">public class NPC extends RPEntity {</span>
+	/**
+	 * Idea property for NPCs and domestic animals.
+	 */
+<span class="fc" id="L24">	public static final Property PROP_IDEA = new Property();</span>
+	
+	/**
+	 * The NPC's idea.
+	 */
+	private String idea;
+	
+	/**
+	 * Get the idea setting.
+	 * 
+	 * @return The NPC's idea.
+	 */
+	public String getIdea() {
+<span class="nc" id="L37">		return idea;</span>
+	}
+	
+	/**
+	 * Ask NPC if they are attending.
+	 * 
+	 * @return true if attending.
+	 */
+	public boolean isAttending() {
+<span class="nc bnc" id="L46" title="All 2 branches missed.">		return (idea != null);</span>
+	}
+	
+	//
+	// Entity
+	//
+
+	/**
+	 * Initialize this entity for an object.
+	 * 
+	 * @param object
+	 *			  The object.
+	 * 
+	 * @see #release()
+	 */
+	@Override
+	public void initialize(final RPObject object) {
+<span class="fc" id="L63">		super.initialize(object);</span>
+
+		/*
+		 * Idea
+		 */
+<span class="fc" id="L68">		onIdea(object.get(&quot;idea&quot;));</span>
+<span class="fc" id="L69">	}</span>
+	
+	/**
+	 * Called when the idea changes.
+	 * 
+	 * @param idea new idea
+	 */
+	private void onIdea(String idea) {
+<span class="fc" id="L77">		this.idea = idea;</span>
+<span class="fc" id="L78">	}</span>
+	
+	//
+	// RPObjectChangeListener
+	//
+
+	/**
+	 * The object added/changed attribute(s).
+	 * 
+	 * @param object
+	 *            The base object.
+	 * @param changes
+	 *            The changes.
+	 */
+	@Override
+	public void onChangedAdded(final RPObject object, final RPObject changes) {
+<span class="fc" id="L94">		super.onChangedAdded(object, changes);</span>
+
+		/*
+		 * Idea
+		 */
+<span class="pc bpc" id="L99" title="1 of 2 branches missed.">		if (changes.has(&quot;idea&quot;)) {</span>
+<span class="nc" id="L100">			onIdea(changes.get(&quot;idea&quot;));</span>
+<span class="nc" id="L101">			fireChange(PROP_IDEA);</span>
+		}
+<span class="fc" id="L103">	}</span>
+	
+	/**
+	 * The object removed attribute(s).
+	 * 
+	 * @param object
+	 *            The base object.
+	 * @param changes
+	 *            The changes.
+	 */
+	@Override
+	public void onChangedRemoved(final RPObject object, final RPObject changes) {
+<span class="nc" id="L115">		super.onChangedRemoved(object, changes);</span>
+
+		/*
+		 * Idea
+		 */
+<span class="nc bnc" id="L120" title="All 2 branches missed.">		if (changes.has(&quot;idea&quot;)) {</span>
+<span class="nc" id="L121">			onIdea(null);</span>
+<span class="nc" id="L122">			fireChange(PROP_IDEA);</span>
+		}
+<span class="nc" id="L124">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

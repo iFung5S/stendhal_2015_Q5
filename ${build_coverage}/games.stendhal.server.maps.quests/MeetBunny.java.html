@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>MeetBunny.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests</a> &gt; <span class="el_source">MeetBunny.java</span></div><h1>MeetBunny.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2011 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests;
+
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.NPCList;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.action.EquipItemAction;
+import games.stendhal.server.entity.npc.action.MultipleActions;
+import games.stendhal.server.entity.npc.action.SetQuestAction;
+import games.stendhal.server.entity.npc.behaviour.impl.ItemDroppingTeleporterBehaviour;
+import games.stendhal.server.entity.npc.condition.AndCondition;
+import games.stendhal.server.entity.npc.condition.GreetingMatchesNameCondition;
+import games.stendhal.server.entity.npc.condition.QuestCompletedCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotCompletedCondition;
+import games.stendhal.server.entity.player.Player;
+
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+
+/**
+ * QUEST: Meet the Easter Bunny anywhere around the World.
+ * &lt;p&gt;
+ *
+ * PARTICIPANTS:&lt;ul&gt;&lt;li&gt; Easter Bunny&lt;/ul&gt;
+ *
+ * STEPS: &lt;ul&gt;&lt;li&gt; Find Bunny &lt;li&gt; Say hi &lt;li&gt; Get reward &lt;/ul&gt;
+ *
+ * REWARD: &lt;ul&gt;&lt;li&gt; a basket which can be opened to obtain a random good reward: food,
+ * money, potions, items, etc...&lt;/ul&gt;
+ *
+ * REPETITIONS: None
+ */
+<span class="nc" id="L49">public class MeetBunny extends AbstractQuest {</span>
+	// quest slot changed ready for 2015
+	private static final String QUEST_SLOT = &quot;meet_bunny_[year]&quot;;
+
+	/** the Bunny NPC. */
+	protected SpeakerNPC bunny;
+
+	private StendhalRPZone zone;
+
+	private ItemDroppingTeleporterBehaviour teleporterBehaviour;
+
+	/** the name of the quest */
+	public static final String QUEST_NAME = &quot;MeetBunny&quot;;
+
+	// The default is 30 seconds so make ours half this
+	private static final int TIME_OUT = 15;
+
+	@Override
+	public String getSlotName() {
+<span class="nc" id="L68">		return QUEST_SLOT;</span>
+	}
+
+	private SpeakerNPC createbunny() {
+<span class="nc" id="L72">		bunny = new SpeakerNPC(&quot;Easter Bunny&quot;) {</span>
+			@Override
+			protected void createPath() {
+				// npc does not move
+<span class="nc" id="L76">				setPath(null);</span>
+<span class="nc" id="L77">			}</span>
+
+			@Override
+			protected void createDialog() {
+				// Greet players who have a basket but go straight back to idle to give others a chance
+<span class="nc" id="L82">				add(ConversationStates.IDLE,</span>
+						ConversationPhrases.GREETING_MESSAGES,
+						new AndCondition(new GreetingMatchesNameCondition(super.getName()),
+								new QuestCompletedCondition(QUEST_SLOT)),
+						ConversationStates.IDLE,
+						&quot;Hi again! Don't eat too much this Easter!&quot;, null);
+
+<span class="nc" id="L89">				final List&lt;ChatAction&gt; reward = new LinkedList&lt;ChatAction&gt;();</span>
+<span class="nc" id="L90">				reward.add(new EquipItemAction(&quot;basket&quot;));</span>
+<span class="nc" id="L91">				reward.add(new SetQuestAction(QUEST_SLOT, &quot;done&quot;));</span>
+
+				// Give unmet players a basket
+<span class="nc" id="L94">				add(ConversationStates.IDLE,</span>
+					ConversationPhrases.GREETING_MESSAGES,
+					new AndCondition(new GreetingMatchesNameCondition(super.getName()),
+							new QuestNotCompletedCondition(QUEST_SLOT)),
+					ConversationStates.IDLE,
+					&quot;Happy Easter! I have an easter basket for you. Bye!&quot;,
+					new MultipleActions(reward));
+<span class="nc" id="L101">			}</span>
+		};
+
+<span class="nc" id="L104">		bunny.setEntityClass(&quot;easterbunnynpc&quot;);</span>
+<span class="nc" id="L105">		bunny.initHP(100);</span>
+		// times out twice as fast as normal NPCs
+<span class="nc" id="L107">		bunny.setPlayerChatTimeout(TIME_OUT);</span>
+<span class="nc" id="L108">		bunny.setDescription(&quot;You see a friendly bunny carrying brightly coloured Easter baskets.&quot;);</span>
+		// start in int_admin_playground
+<span class="nc" id="L110">		zone = SingletonRepository.getRPWorld().getZone(&quot;int_admin_playground&quot;);</span>
+<span class="nc" id="L111">		bunny.setPosition(17, 13);</span>
+<span class="nc" id="L112">		zone.add(bunny);</span>
+
+<span class="nc" id="L114">		return bunny;</span>
+	}
+
+	@Override
+	public void addToWorld() {
+<span class="nc" id="L119">		fillQuestInfo(</span>
+				&quot;Meet Easter Bunny&quot;,
+				&quot;At Easter one may see the Easter Bunny hopping around the world of Faiumoni. Bunny is really fast even though he carries some heavy surprises with him...&quot;,
+				false);
+
+<span class="nc bnc" id="L124" title="All 2 branches missed.">		if (System.getProperty(&quot;stendhal.easterbunny&quot;) != null) {</span>
+<span class="nc" id="L125">		    createbunny();</span>
+<span class="nc" id="L126">		    teleporterBehaviour = new ItemDroppingTeleporterBehaviour(bunny, &quot;*hop* *hop* *hop* Happy Easter!&quot;, true, &quot;small easter egg&quot;);</span>
+		}
+<span class="nc" id="L128">	}</span>
+
+	/**
+	 * removes a quest from the world.
+	 *
+	 * @return true, if the quest could be removed; false otherwise.
+	 */
+	@Override
+	public boolean removeFromWorld() {
+<span class="nc" id="L137">		removeNPC(&quot;Easter Bunny&quot;);</span>
+		// remove the turn notifiers left from the TeleporterBehaviour
+<span class="nc" id="L139">		SingletonRepository.getTurnNotifier().dontNotify(teleporterBehaviour);</span>
+<span class="nc" id="L140">		return true;</span>
+	}
+
+	/**
+	 * removes an NPC from the world and NPC list
+	 *
+	 * @param name name of NPC
+	 */
+	private void removeNPC(String name) {
+<span class="nc" id="L149">		SpeakerNPC npc = NPCList.get().get(name);</span>
+<span class="nc bnc" id="L150" title="All 2 branches missed.">		if (npc == null) {</span>
+<span class="nc" id="L151">			return;</span>
+		}
+<span class="nc" id="L153">		npc.getZone().remove(npc);</span>
+<span class="nc" id="L154">	}</span>
+
+	@Override
+	public String getName() {
+<span class="nc" id="L158">		return QUEST_NAME;</span>
+	}
+
+	@Override
+	public boolean isVisibleOnQuestStatus() {
+<span class="nc" id="L163">		return false;</span>
+	}
+
+	@Override
+	public List&lt;String&gt; getHistory(final Player player) {
+<span class="nc" id="L168">		return new ArrayList&lt;String&gt;();</span>
+	}
+
+	@Override
+	public String getNPCName() {
+<span class="nc" id="L173">		return &quot;Easter Bunny&quot;;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

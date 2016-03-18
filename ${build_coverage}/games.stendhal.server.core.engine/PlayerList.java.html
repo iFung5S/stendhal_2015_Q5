@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>PlayerList.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.core.engine</a> &gt; <span class="el_source">PlayerList.java</span></div><h1>PlayerList.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2013 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.core.engine;
+
+import games.stendhal.common.NotificationType;
+import games.stendhal.common.filter.FilterCriteria;
+import games.stendhal.server.entity.player.Player;
+
+import java.util.Collection;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+/**
+ * Manages the list of online players.
+ *
+ * @author durkham
+ */
+public class PlayerList {
+
+	/**
+	 * Creates a new PlayerList.
+	 */
+<span class="fc" id="L32">	public PlayerList() {</span>
+<span class="fc" id="L33">		players = new ConcurrentHashMap&lt;String, Player&gt;();</span>
+<span class="fc" id="L34">	}</span>
+
+	private final Map&lt;String, Player&gt; players;
+
+	/**
+	 * Retrieve from this list a player specified by its name.
+	 *
+	 * @param name
+	 *            the unique name of a player
+	 * @return the Player specified by the name or &lt;code&gt; null &lt;/code&gt; if not
+	 *         found
+	 */
+	Player getOnlinePlayer(final String name) {
+<span class="fc bfc" id="L47" title="All 2 branches covered.">		if (name == null) {</span>
+<span class="fc" id="L48">			return null;</span>
+		}
+<span class="fc" id="L50">		return players.get(name.toLowerCase());</span>
+	}
+
+	/**
+	 * Sends a privateText to all players in the list.
+	 *
+	 * @param notificationType type of the notification
+	 * @param message message to tell all online players
+	 */
+	void tellAllOnlinePlayers(final NotificationType notificationType, final String message) {
+<span class="fc" id="L60">		forAllPlayersExecute(new Task&lt;Player&gt;() {</span>
+
+			@Override
+			public void execute(final Player player) {
+<span class="fc" id="L64">				player.sendPrivateText(notificationType, message);</span>
+<span class="fc" id="L65">				player.notifyWorldAboutChanges();</span>
+<span class="fc" id="L66">			}</span>
+		});
+<span class="fc" id="L68">	}</span>
+
+	/**
+	 * Calls the execute method of task for each player in this List.
+	 *
+	 * @param task
+	 *            the task to execute
+	 */
+	public void forAllPlayersExecute(final Task&lt;Player&gt; task) {
+<span class="fc bfc" id="L77" title="All 2 branches covered.">		for(Player player : players.values()) {</span>
+<span class="fc" id="L78">			task.execute(player);</span>
+<span class="fc" id="L79">		}</span>
+<span class="fc" id="L80">	}</span>
+
+	/**
+	 * Calls the execute method of task for all player in this list that return
+	 * true in filter.
+	 *
+	 * @param task
+	 *            the task to execute.
+	 * @param filter
+	 *            the FilterCriteria to pass
+	 */
+	public void forFilteredPlayersExecute(final Task&lt;Player&gt; task, final FilterCriteria&lt;Player&gt; filter) {
+<span class="fc bfc" id="L92" title="All 2 branches covered.">		for(Player player : players.values()) {</span>
+<span class="fc bfc" id="L93" title="All 2 branches covered.">			if (filter.passes(player)) {</span>
+<span class="fc" id="L94">				task.execute(player);</span>
+			}
+<span class="fc" id="L96">		}</span>
+<span class="fc" id="L97">	}</span>
+
+	/**
+	 * The amount of currently logged in players.
+	 *
+	 * @return the amount Player items in this list.
+	 */
+	public int size() {
+<span class="fc" id="L105">		return players.size();</span>
+	}
+
+	/**
+	 * adds a player
+	 *
+	 * @param player player
+	 */
+	public void add(final Player player) {
+<span class="fc" id="L114">		final String playerName = player.getName();</span>
+
+<span class="pc bpc" id="L116" title="1 of 2 branches missed.">		if (playerName != null) {</span>
+<span class="fc" id="L117">			players.put(playerName.toLowerCase(), player);</span>
+		} else {
+<span class="nc" id="L119">			throw new IllegalArgumentException(&quot;can't add player without name&quot;);</span>
+		}
+<span class="fc" id="L121">	}</span>
+
+	/**
+	 * removes a player
+	 *
+	 * @param player player
+	 * @return true, if the player was in the list
+	 */
+	public boolean remove(final Player player) {
+<span class="fc" id="L130">		final String playerName = player.getName();</span>
+
+<span class="pc bpc" id="L132" title="1 of 2 branches missed.">		if (playerName != null) {</span>
+<span class="fc bfc" id="L133" title="All 2 branches covered.">			return players.remove(playerName.toLowerCase()) != null;</span>
+		} else {
+<span class="nc" id="L135">			throw new IllegalArgumentException(&quot;can't remove player without name&quot;);</span>
+		}
+	}
+
+	/**
+	 * gets a mutable list of all players
+	 *
+	 * @return list of all players
+	 */
+	public Collection&lt;Player&gt; getAllPlayers() {
+<span class="nc" id="L145">		return players.values();</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

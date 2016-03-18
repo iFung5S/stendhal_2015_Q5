@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SummonScroll.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.item.scroll</a> &gt; <span class="el_source">SummonScroll.java</span></div><h1>SummonScroll.java</h1><pre class="source lang-java linenums">/* $Id$
+ /***************************************************************************
+ *                      (C) Copyright 2003 - Marauroa                      *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.item.scroll;
+
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.core.rp.StendhalRPAction;
+import games.stendhal.server.core.rule.EntityManager;
+import games.stendhal.server.entity.creature.AttackableCreature;
+import games.stendhal.server.entity.creature.Creature;
+import games.stendhal.server.entity.player.Player;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.log4j.Logger;
+
+/**
+ * Represents a creature summon scroll.
+ */
+public class SummonScroll extends Scroll {
+
+	private static final int MAX_ZONE_NPCS = 50;
+
+<span class="fc" id="L38">	private static final Logger logger = Logger.getLogger(SummonScroll.class);</span>
+
+	/**
+	 * Creates a new summon scroll.
+	 * 
+	 * @param name
+	 * @param clazz
+	 * @param subclass
+	 * @param attributes
+	 */
+	public SummonScroll(final String name, final String clazz, final String subclass,
+			final Map&lt;String, String&gt; attributes) {
+<span class="fc" id="L50">		super(name, clazz, subclass, attributes);</span>
+<span class="fc" id="L51">	}</span>
+
+	/**
+	 * Copy constructor.
+	 * 
+	 * @param item
+	 *            item to copy
+	 */
+	public SummonScroll(final SummonScroll item) {
+<span class="fc" id="L60">		super(item);</span>
+<span class="fc" id="L61">	}</span>
+
+	/**
+	 * Is invoked when a summon scroll is used.
+	 * 
+	 * @param player
+	 *            The player who used the scroll
+	 * @return true iff summoning was successful
+	 */
+	@Override
+	protected boolean useScroll(final Player player) {
+<span class="nc" id="L72">		final StendhalRPZone zone = player.getZone();</span>
+
+<span class="nc bnc" id="L74" title="All 2 branches missed.">		if (zone.isInProtectionArea(player)) {</span>
+<span class="nc" id="L75">			player.sendPrivateText(&quot;The aura of protection in this area prevents the scroll from working!&quot;);</span>
+<span class="nc" id="L76">			return false;</span>
+		}
+
+<span class="nc bnc" id="L79" title="All 2 branches missed.">		if (zone.getNPCList().size() &gt;= MAX_ZONE_NPCS) {</span>
+<span class="nc" id="L80">			player.sendPrivateText(&quot;Mysteriously, the scroll does not function! Perhaps this area is too crowded...&quot;);</span>
+<span class="nc" id="L81">			logger.info(&quot;Too many npcs to summon another creature&quot;);</span>
+<span class="nc" id="L82">			return false;</span>
+		}
+
+<span class="nc" id="L85">		final int x = player.getInt(&quot;x&quot;);</span>
+<span class="nc" id="L86">		final int y = player.getInt(&quot;y&quot;);</span>
+
+<span class="nc" id="L88">		final EntityManager manager = SingletonRepository.getEntityManager();</span>
+
+<span class="nc" id="L90">		Creature pickedCreature = null;</span>
+
+<span class="nc" id="L92">		final String type = getInfoString();</span>
+
+<span class="nc bnc" id="L94" title="All 2 branches missed.">		if (type != null) {</span>
+			// scroll for special monster
+<span class="nc" id="L96">			pickedCreature = manager.getCreature(type);</span>
+		} else {
+			// pick it randomly
+<span class="nc" id="L99">			final Collection&lt;Creature&gt; creatures = manager.getCreatures();</span>
+			final int magiclevel = 4;
+<span class="nc" id="L101">			final List&lt;Creature&gt; possibleCreatures = new ArrayList&lt;Creature&gt;();</span>
+<span class="nc bnc" id="L102" title="All 2 branches missed.">			for (final Creature creature : creatures) {</span>
+<span class="nc bnc" id="L103" title="All 4 branches missed.">				if (creature.getLevel() &lt;= magiclevel &amp;&amp; !creature.isRare()) {</span>
+<span class="nc" id="L104">					possibleCreatures.add(creature);</span>
+				}
+<span class="nc" id="L106">			}</span>
+<span class="nc" id="L107">			final int pickedIdx = (int) (Math.random() * possibleCreatures.size());</span>
+<span class="nc" id="L108">			pickedCreature = possibleCreatures.get(pickedIdx);</span>
+		}
+
+<span class="nc bnc" id="L111" title="All 2 branches missed.">		if (pickedCreature == null) {</span>
+<span class="nc" id="L112">			player.sendPrivateText(&quot;This scroll does not seem to work. You should talk to the magician who created it.&quot;);</span>
+<span class="nc" id="L113">			return false;</span>
+		}
+
+		// create it
+<span class="nc" id="L117">		final AttackableCreature creature = new AttackableCreature(pickedCreature);</span>
+
+		// remove cowardly profiles as the creature is supposed to fight on behalf of the player
+<span class="nc" id="L120">		Map&lt;String, String&gt; profiles = new HashMap&lt;String, String&gt;(creature.getAIProfiles());</span>
+<span class="nc bnc" id="L121" title="All 2 branches missed.">		if (profiles.containsKey(&quot;coward&quot;)) {</span>
+<span class="nc" id="L122">			profiles.remove(&quot;coward&quot;);</span>
+<span class="nc" id="L123">			creature.setAIProfiles(profiles);</span>
+		}
+<span class="nc bnc" id="L125" title="All 2 branches missed.">		if (profiles.containsKey(&quot;stupid coward&quot;)) {</span>
+<span class="nc" id="L126">			profiles.remove(&quot;stupid coward&quot;);</span>
+<span class="nc" id="L127">			creature.setAIProfiles(profiles);</span>
+		}
+	
+<span class="nc" id="L130">		StendhalRPAction.placeat(zone, creature, x, y);</span>
+
+<span class="nc" id="L132">		creature.init();</span>
+<span class="nc" id="L133">		creature.setMaster(player.getTitle());</span>
+<span class="nc" id="L134">		creature.clearDropItemList();</span>
+<span class="nc" id="L135">		creature.put(&quot;title_type&quot;, &quot;friend&quot;);</span>
+
+<span class="nc" id="L137">		return true;</span>
+	}
+	
+	@Override
+	public String describe() {
+<span class="nc" id="L142">		String text = super.describe();</span>
+
+<span class="nc" id="L144">		final String infostring = getInfoString();</span>
+
+<span class="nc bnc" id="L146" title="All 2 branches missed.">		if (infostring != null) {</span>
+<span class="nc" id="L147">			text += &quot; It will summon a &quot; + infostring  + &quot;.&quot;;</span>
+		}
+<span class="nc" id="L149">		return (text);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

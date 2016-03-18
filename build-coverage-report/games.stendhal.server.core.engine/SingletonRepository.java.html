@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SingletonRepository.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.core.engine</a> &gt; <span class="el_source">SingletonRepository.java</span></div><h1>SingletonRepository.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.core.engine;
+
+import games.stendhal.server.core.events.LoginNotifier;
+import games.stendhal.server.core.events.TurnNotifier;
+import games.stendhal.server.core.rp.StendhalQuestSystem;
+import games.stendhal.server.core.rp.achievement.AchievementNotifier;
+import games.stendhal.server.core.rp.group.GroupManager;
+import games.stendhal.server.core.rule.EntityManager;
+import games.stendhal.server.core.rule.defaultruleset.DefaultEntityManager;
+import games.stendhal.server.entity.npc.NPCList;
+import games.stendhal.server.entity.npc.ShopList;
+import games.stendhal.server.entity.npc.behaviour.journal.MerchantsRegister;
+import games.stendhal.server.entity.npc.behaviour.journal.ProducerRegister;
+import games.stendhal.server.entity.npc.behaviour.journal.ServicersRegister;
+import games.stendhal.server.entity.player.GagManager;
+import games.stendhal.server.entity.player.Jail;
+import games.stendhal.server.entity.slot.BankAccessorManager;
+import games.stendhal.server.maps.athor.ship.AthorFerry;
+import marauroa.server.db.TransactionPool;
+
+
+/**
+ * Takes an instance of every 'singleton' created and provides setters and getters.
+ * &lt;p&gt;
+ * 
+ * 
+ * It is not meant to be a high sophisticated class.
+ * 
+ * Just one step into getting rid of the singleton hell;
+ * 
+ * @author astridEmma
+ *
+ */
+<span class="nc" id="L46">public class SingletonRepository {</span>
+	
+	private static EntityManager entityManager;
+	private static Jail jailInstance;
+	private static GroupManager groupManager;
+
+	/**
+	 * @return the actual StendhalRPRuleProcessor instance
+	 */
+	public static StendhalRPRuleProcessor getRuleProcessor() {
+<span class="fc" id="L56">		return StendhalRPRuleProcessor.get();</span>
+	}
+
+	/**
+	 * @return the actual StendhalRPWorld instance
+	 */
+	public static StendhalRPWorld getRPWorld() {
+<span class="fc" id="L63">		return StendhalRPWorld.get();</span>
+	}
+
+	/**
+	 * @return the actual TurnNotifier instance
+	 */
+	public static TurnNotifier getTurnNotifier() {
+<span class="fc" id="L70">		return TurnNotifier.get();</span>
+	}
+
+	/**
+	 * @return the actual GagManager instance
+	 */
+	public static GagManager getGagManager() {
+<span class="fc" id="L77">		return GagManager.get();</span>
+	}
+
+	/**
+	 * @return the actual LoginNotifier instance
+	 */
+	public static LoginNotifier getLoginNotifier() {
+<span class="fc" id="L84">		return LoginNotifier.get();</span>
+	}
+
+	/**
+	 * @return the actual Jail instance
+	 */
+	public static Jail getJail() {
+<span class="fc" id="L91">		return jailInstance;</span>
+	}
+	
+	/**
+	 * Sets the Jail instance
+	 * @param jail
+	 */
+	public static void setJail(final Jail jail) {
+<span class="fc" id="L99">		jailInstance = jail;</span>
+		
+<span class="fc" id="L101">	}</span>
+
+	/**
+	 * @return the actual NPCList instance
+	 */
+	public static NPCList getNPCList() {
+<span class="fc" id="L107">		return NPCList.get();</span>
+	}
+
+	/**
+	 * @return the actual StendhalQuestSystem instance
+	 */
+	public static StendhalQuestSystem getStendhalQuestSystem() {
+<span class="fc" id="L114">		return StendhalQuestSystem.get();</span>
+	}
+	
+	/**
+	 * @return the actual ProducerRegister instance
+	 */
+	public static ProducerRegister getProducerRegister() {
+<span class="fc" id="L121">		return ProducerRegister.get();</span>
+	}
+	
+	public static MerchantsRegister getMerchantsRegister() {
+<span class="fc" id="L125">		return MerchantsRegister.get();</span>
+	}
+	
+	public static ServicersRegister getServicersRegister() {
+<span class="fc" id="L129">		return ServicersRegister.get();</span>
+	}
+
+	/**
+	 * @return the actual TransactionPool instance
+	 */
+	public static TransactionPool getTransactionPool() {
+<span class="fc" id="L136">		return TransactionPool.get();</span>
+	}
+
+	/**
+	 * @return the actual ShopList instance
+	 */
+	public static ShopList getShopList() {
+<span class="fc" id="L143">		return ShopList.get();</span>
+	}
+
+	/**
+	 * @return the BankAccessorManager instance
+	 */
+	public static BankAccessorManager getBankAccessorManager() {
+<span class="fc" id="L150">		return BankAccessorManager.get();</span>
+	}
+
+	/**
+	 * @return the AthorFerry instance
+	 */
+	public static AthorFerry getAthorFerry() {
+<span class="fc" id="L157">		return AthorFerry.get();</span>
+	}
+
+	/**
+	 * @return the AchievementNotifier instance
+	 */
+	public static AchievementNotifier getAchievementNotifier() {
+<span class="fc" id="L164">		return AchievementNotifier.get();</span>
+	}
+
+	/**
+	 * @return the actual EntityManager instance
+	 */
+	public static EntityManager getEntityManager() {
+<span class="fc bfc" id="L171" title="All 2 branches covered.">		if (entityManager == null) {</span>
+<span class="fc" id="L172">				entityManager = new DefaultEntityManager();</span>
+			}
+<span class="fc" id="L174">			return entityManager;</span>
+	}
+
+	/**
+	 * gets the GroupManager
+	 *
+	 * @return GroupManager
+	 */
+	public static GroupManager getGroupManager() {
+<span class="nc bnc" id="L183" title="All 2 branches missed.">		if (groupManager == null) {</span>
+<span class="nc" id="L184">			groupManager = new GroupManager();</span>
+		}
+<span class="nc" id="L186">		return groupManager;</span>
+	}
+	
+	/**
+	 * Sets a new EntityManager 
+	 * @param entityManager
+	 */
+	static void setEntityManager(final EntityManager entityManager) {
+<span class="nc" id="L194">		SingletonRepository.entityManager = entityManager;</span>
+<span class="nc" id="L195">	}</span>
+
+	
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

@@ -1,0 +1,374 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>RestockFlowerShop.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests</a> &gt; <span class="el_source">RestockFlowerShop.java</span></div><h1>RestockFlowerShop.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2013 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests;
+
+import games.stendhal.common.grammar.Grammar;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.action.AddItemToCollectionAction;
+import games.stendhal.server.entity.npc.action.CollectRequestedItemsAction;
+import games.stendhal.server.entity.npc.action.EquipItemAction;
+import games.stendhal.server.entity.npc.action.IncreaseKarmaAction;
+import games.stendhal.server.entity.npc.action.IncreaseXPAction;
+import games.stendhal.server.entity.npc.action.MultipleActions;
+import games.stendhal.server.entity.npc.action.SayRequiredItemsFromCollectionAction;
+import games.stendhal.server.entity.npc.action.SayTextAction;
+import games.stendhal.server.entity.npc.action.SayTimeRemainingAction;
+import games.stendhal.server.entity.npc.action.SetQuestAction;
+import games.stendhal.server.entity.npc.action.SetQuestAndModifyKarmaAction;
+import games.stendhal.server.entity.npc.action.SetQuestToTimeStampAction;
+import games.stendhal.server.entity.npc.action.StartItemsCollectionWithLimitAction;
+import games.stendhal.server.entity.npc.condition.AndCondition;
+import games.stendhal.server.entity.npc.condition.NotCondition;
+import games.stendhal.server.entity.npc.condition.QuestActiveCondition;
+import games.stendhal.server.entity.npc.condition.TimePassedCondition;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.maps.Region;
+import games.stendhal.server.util.ItemCollection;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
+
+/**
+ * QUEST: Restock the Flower Shop
+ * 
+ * PARTICIPANTS:
+ * &lt;ul&gt;
+ * &lt;li&gt;Seremela, the elf girl who watches over Nalwor's flower shop&lt;/li&gt;
+ * &lt;/ul&gt;
+ * 
+ * STEPS:
+ * &lt;ul&gt;
+ * &lt;li&gt;Seremela asks you to bring a variety of flowers to restock the flower shop and 15 bottles of water to maintain them&lt;/li&gt;
+ * &lt;li&gt;Bring the requested amounts water and each flower type to Seremela&lt;/li&gt;
+ * &lt;/ul&gt;
+ * 
+ * REWARD:
+ * &lt;ul&gt;
+ * &lt;li&gt;1000 XP&lt;/li&gt;
+ * &lt;li&gt;25 karma&lt;/li&gt;
+ * &lt;li&gt;5 nalwor city scrolls&lt;/li&gt;
+ * &lt;/ul&gt;
+ * 
+ * REPETITIONS:
+ * &lt;ul&gt;
+ * &lt;li&gt;Once every 3 days&lt;/li&gt;
+ * &lt;/ul&gt;
+ * 
+ * @author AntumDeluge
+ *
+ */
+<span class="fc" id="L74">public class RestockFlowerShop extends AbstractQuest {</span>
+	public static final String QUEST_SLOT = &quot;restock_flowershop&quot;;
+	
+	// Different types of flowers needed in quest
+<span class="fc" id="L78">	private static final List&lt;String&gt; flowerTypes = Arrays.asList(</span>
+			&quot;daisies&quot;, &quot;lilia&quot;, &quot;pansy&quot;, &quot;rose&quot;, &quot;zantedeschia&quot;);
+<span class="fc" id="L80">	public static List&lt;Integer&gt; requestedQuantities = Arrays.asList();</span>
+	
+<span class="fc" id="L82">	private final int MAX_FLOWERS = flowerTypes.size() * 10;</span>
+	
+	private static final int REQ_WATER = 15;
+	
+	// Time player must wait to repeat quest (3 days)
+	private static final int WAIT_TIME = 60 * 24 * 3;
+	
+	// Quest NPC
+<span class="fc" id="L90">	private final SpeakerNPC npc = npcs.get(&quot;Seremela&quot;);</span>
+	
+	@Override
+	public List&lt;String&gt; getHistory(final Player player) {
+<span class="nc" id="L94">		final List&lt;String&gt; res = new ArrayList&lt;String&gt;();</span>
+<span class="nc bnc" id="L95" title="All 2 branches missed.">		if (!player.hasQuest(QUEST_SLOT)) {</span>
+<span class="nc" id="L96">			return res;</span>
+		}
+<span class="nc" id="L98">		String npcName = npc.getName();</span>
+<span class="nc bnc" id="L99" title="All 2 branches missed.">		if (player.isQuestInState(QUEST_SLOT, 0, &quot;rejected&quot;)) {</span>
+<span class="nc" id="L100">			res.add(&quot;Flowers make me sneeze.&quot;);</span>
+<span class="nc bnc" id="L101" title="All 2 branches missed.">		} else if (!player.isQuestInState(QUEST_SLOT, 0, &quot;done&quot;)) {</span>
+<span class="nc" id="L102">			String questState = player.getQuest(QUEST_SLOT);</span>
+<span class="nc" id="L103">			res.add(&quot;I have offered to help &quot; + npcName + &quot; restock the flower shop.&quot;);</span>
+			
+<span class="nc" id="L105">			final ItemCollection remaining = new ItemCollection();</span>
+<span class="nc" id="L106">			remaining.addFromQuestStateString(questState);</span>
+			
+			// Check to avoid ArrayIndexOutOfBoundsException
+<span class="nc bnc" id="L109" title="All 2 branches missed.">			if (remaining.size() &gt; 0) {</span>
+<span class="nc" id="L110">				String requestedFlowers = &quot;I still need to bring the following flowers: &quot; + Grammar.enumerateCollection(remaining.toStringList()) + &quot;.&quot;;</span>
+<span class="nc" id="L111">				res.add(requestedFlowers);</span>
+			}
+<span class="nc" id="L113">		} else {</span>
+<span class="nc bnc" id="L114" title="All 2 branches missed.">            if (isRepeatable(player)) {</span>
+<span class="nc" id="L115">                res.add(&quot;It has been a while since I helped &quot; + npcName + &quot;. Perhaps she could use my help again.&quot;);</span>
+            } else {
+<span class="nc" id="L117">                res.add(npcName + &quot; now has a good supply of flowers.&quot;);</span>
+            }
+		}
+		
+<span class="nc" id="L121">		return res;</span>
+	}
+	
+	
+	private void setupBasicResponses() {
+		
+<span class="fc" id="L127">		List&lt;List&lt;String&gt;&gt; keywords = Arrays.asList(</span>
+				Arrays.asList(&quot;flower&quot;),
+				ConversationPhrases.HELP_MESSAGES);
+<span class="fc" id="L130">		List&lt;String&gt; responses = Arrays.asList(</span>
+				&quot;Aren't flowers beautiful?&quot;,
+				&quot;Hmmmm, I don't think there is anything I can help with.&quot;);
+		
+<span class="fc bfc" id="L134" title="All 2 branches covered.">		for (int i = 0; i &lt; responses.size(); i++) {</span>
+<span class="fc" id="L135">			npc.add(ConversationStates.ANY,</span>
+					keywords.get(i),
+					new NotCondition(new QuestActiveCondition(QUEST_SLOT)),
+					ConversationStates.ATTENDING,
+					responses.get(i),
+					null);
+		}
+<span class="fc" id="L142">	}</span>
+	
+	private void setupActiveQuestResponses() {
+		
+		// Player asks to be reminded of remaining flowers required
+<span class="fc" id="L147">		npc.add(ConversationStates.ATTENDING,</span>
+				Arrays.asList(&quot;flower&quot;, &quot;remind&quot;, &quot;what&quot;, &quot;item&quot;, &quot;list&quot;, &quot;something&quot;),
+				new QuestActiveCondition(QUEST_SLOT),
+				ConversationStates.QUESTION_1,
+				null,
+				new SayRequiredItemsFromCollectionAction(QUEST_SLOT, &quot;I still need [items]. Did you bring any of those?&quot;));
+		
+<span class="fc" id="L154">        npc.add(ConversationStates.QUESTION_1,</span>
+                Arrays.asList(&quot;flower&quot;, &quot;remind&quot;, &quot;what&quot;, &quot;item&quot;, &quot;list&quot;, &quot;something&quot;),
+                new QuestActiveCondition(QUEST_SLOT),
+                ConversationStates.QUESTION_1,
+                null,
+                new SayRequiredItemsFromCollectionAction(QUEST_SLOT, &quot;I still need [items]. Did you bring any of those?&quot;));
+        
+        // Player asks to be reminded of remaining flowers required
+<span class="fc" id="L162">        npc.add(ConversationStates.QUESTION_1,</span>
+                Arrays.asList(&quot;flower&quot;, &quot;remind&quot;, &quot;what&quot;, &quot;item&quot;, &quot;list&quot;),
+                new QuestActiveCondition(QUEST_SLOT),
+                ConversationStates.QUESTION_1,
+                null,
+                new SayRequiredItemsFromCollectionAction(QUEST_SLOT, &quot;I still need [items]. Did you bring any of those?&quot;));
+        
+<span class="fc" id="L169">		List&lt;List&lt;String&gt;&gt; keywords = Arrays.asList(</span>
+				Arrays.asList(&quot;daisy&quot;, &quot;bunch of daisies&quot;, &quot;bunches of daisies&quot;, &quot;lilia&quot;, &quot;pansy&quot;),
+				Arrays.asList(&quot;rose&quot;),
+				Arrays.asList(&quot;zantedeschia&quot;),
+				Arrays.asList(&quot;water&quot;, &quot;bottle of water&quot;),
+				Arrays.asList(&quot;who&quot;, &quot;where&quot;),
+				Arrays.asList(&quot;jenny&quot;),
+				Arrays.asList(&quot;fleur&quot;),
+				Arrays.asList(&quot;flask&quot;),
+				ConversationPhrases.HELP_MESSAGES);
+<span class="fc" id="L179">		List&lt;String&gt; responses = new ArrayList&lt;String&gt;();</span>
+<span class="fc" id="L180">		responses.add(&quot;#Jenny carries seeds for this type of flower.&quot;);</span>
+<span class="fc" id="L181">		responses.add(&quot;#Fleur always has the nicest roses.&quot;);</span>
+<span class="fc" id="L182">		responses.add(&quot;Zantedeschia is my favorite flower. Some call them arum or calla lilies, though they are not true lilies. Ask #Jenny if she has any bulbs.&quot;);</span>
+<span class="fc" id="L183">		responses.add(&quot;I need water to keep the #flowers fresh. You'll need to find a water source and fill up some #flasks. Maybe there is someone who sells water.&quot;);</span>
+<span class="fc" id="L184">		responses.add(&quot;#Jenny knows a lot about flowers. You may be able to talk with #Fleur as well.&quot;);</span>
+<span class="fc" id="L185">		responses.add(&quot;You can find Jenny around the windmill near Semos where she mills flour.&quot;);</span>
+<span class="fc" id="L186">		responses.add(&quot;Fleur works at the market in Kirdneh.&quot;);</span>
+<span class="fc" id="L187">		responses.add(&quot;Ask the barmaid in Semos.&quot;);</span>
+<span class="fc" id="L188">		responses.add(&quot;I can #remind you of which #flowers I need. I might also be able help you figure out #where you can find some.&quot;);</span>
+		
+<span class="fc bfc" id="L190" title="All 2 branches covered.">		for (int f = 0; f &lt; responses.size(); f++) {</span>
+<span class="fc" id="L191">			npc.add(ConversationStates.ANY,</span>
+					keywords.get(f),
+					new QuestActiveCondition(QUEST_SLOT),
+					ConversationStates.ATTENDING,
+					responses.get(f),
+					null);
+		}
+<span class="fc" id="L198">	}</span>
+	
+	private void prepareRequestingStep() {
+		
+		// Player requests quest
+<span class="fc" id="L203">		npc.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.QUEST_MESSAGES,
+				new AndCondition(
+						new NotCondition(new QuestActiveCondition(QUEST_SLOT)),
+						new TimePassedCondition(QUEST_SLOT, 1, WAIT_TIME)),
+				ConversationStates.QUEST_OFFERED,
+				&quot;The flower shop is running low on flowers. Will you help me restock it?&quot;,
+				null);
+		
+		// Player requests quest after started
+<span class="fc" id="L213">		npc.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.QUEST_MESSAGES,
+				new QuestActiveCondition(QUEST_SLOT),
+				ConversationStates.ATTENDING,
+				&quot;You still haven't brought me the #flowers I asked for.&quot;,
+				null);
+		
+		// Player requests quest before wait period ended
+<span class="fc" id="L221">		npc.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.QUEST_MESSAGES,
+				new NotCondition(new TimePassedCondition(QUEST_SLOT, 1, WAIT_TIME)),
+				ConversationStates.ATTENDING,
+				null,
+				new SayTimeRemainingAction(QUEST_SLOT, 1, WAIT_TIME, &quot;The flowers you brought are selling quickly. I may need your help again in&quot;));
+		
+		// Player accepts quest
+<span class="fc" id="L229">		npc.add(ConversationStates.QUEST_OFFERED,</span>
+				ConversationPhrases.YES_MESSAGES,
+				null,
+				ConversationStates.ATTENDING,
+				null,
+				new MultipleActions(
+						new StartItemsCollectionWithLimitAction(QUEST_SLOT, 0, flowerTypes, MAX_FLOWERS),
+						new AddItemToCollectionAction(QUEST_SLOT, &quot;water&quot;, REQ_WATER),
+						new SayRequiredItemsFromCollectionAction(QUEST_SLOT, &quot;Great! Here is what I need: [items].&quot;))
+		);
+		
+		// Player rejects quest
+<span class="fc" id="L241">		npc.add(ConversationStates.QUEST_OFFERED,</span>
+				ConversationPhrases.NO_MESSAGES,
+				null,
+				ConversationStates.ATTENDING,
+				&quot;I am sorry to hear that.&quot;,
+				new SetQuestAndModifyKarmaAction(QUEST_SLOT, &quot;rejected&quot;, -5.0));
+<span class="fc" id="L247">	}</span>
+	
+	
+	private void prepareBringingStep() {
+<span class="fc" id="L251">		List&lt;String&gt; requestedItems = new ArrayList&lt;String&gt;();</span>
+<span class="fc bfc" id="L252" title="All 2 branches covered.">		for (String f : flowerTypes) {</span>
+<span class="fc" id="L253">			requestedItems.add(f);</span>
+<span class="fc" id="L254">		}</span>
+<span class="fc" id="L255">		requestedItems.add(&quot;water&quot;);</span>
+		
+<span class="fc" id="L257">		final List&lt;ChatAction&gt; reward = new LinkedList&lt;ChatAction&gt;();</span>
+<span class="fc" id="L258">		reward.add(new IncreaseXPAction(1000));</span>
+<span class="fc" id="L259">		reward.add(new IncreaseKarmaAction(25.0));</span>
+<span class="fc" id="L260">		reward.add(new EquipItemAction(&quot;nalwor city scroll&quot;, 5));</span>
+<span class="fc" id="L261">		reward.add(new SetQuestAction(QUEST_SLOT, &quot;done&quot;));</span>
+<span class="fc" id="L262">		reward.add(new SetQuestToTimeStampAction(QUEST_SLOT, 1));</span>
+<span class="fc" id="L263">		reward.add(new SayTextAction(&quot;Thank you so much! Now I can fill all of my orders.&quot;));</span>
+		
+<span class="fc" id="L265">		ChatAction rewardAction = new MultipleActions(reward);</span>
+		
+		/* add triggers for the item names */
+<span class="fc bfc" id="L268" title="All 2 branches covered.">		for (String item : requestedItems) {</span>
+<span class="fc" id="L269">			npc.add(ConversationStates.QUESTION_1,</span>
+					item,
+					new QuestActiveCondition(QUEST_SLOT),
+					ConversationStates.QUESTION_1,
+					null,
+					new CollectRequestedItemsAction(
+							item,
+							QUEST_SLOT,
+							&quot;Thank you! What else did you bring?&quot;,
+							&quot;I don't need any more of those.&quot;,
+							rewardAction,
+							ConversationStates.IDLE
+							));
+<span class="fc" id="L282">		}</span>
+		
+		// NPC asks if player brought items
+<span class="fc" id="L285">		npc.add(ConversationStates.IDLE,</span>
+				ConversationPhrases.GREETING_MESSAGES,
+				new QuestActiveCondition(QUEST_SLOT),
+				ConversationStates.QUESTION_1,
+				&quot;Did you bring #something for the shop?&quot;,
+				null);
+		
+		// Player confirms brought flowers
+<span class="fc" id="L293">		npc.add(ConversationStates.QUESTION_1,</span>
+				ConversationPhrases.YES_MESSAGES,
+				new QuestActiveCondition(QUEST_SLOT),
+				ConversationStates.QUESTION_1,
+				&quot;What did you bring?&quot;,
+				null);
+		
+		// Player didn't bring flowers
+<span class="fc" id="L301">		npc.add(ConversationStates.QUESTION_1,</span>
+				ConversationPhrases.NO_MESSAGES,
+				new QuestActiveCondition(QUEST_SLOT),
+				ConversationStates.ATTENDING,
+				&quot;Don't stop to smell the roses yet. Orders are backing up. I can #remind you of what to bring.&quot;,
+				null);
+		
+		// Player offers item that wasn't requested
+<span class="fc" id="L309">		npc.add(ConversationStates.QUESTION_1,</span>
+				&quot;&quot;,
+				new QuestActiveCondition(QUEST_SLOT),
+				ConversationStates.QUESTION_1,
+				&quot;I don't think that would look good in the shop.&quot;,
+				null);
+		
+		// Player says &quot;bye&quot; or &quot;no&quot; while listing flowers
+<span class="fc" id="L317">		List&lt;String&gt; endDiscussionPhrases = new ArrayList&lt;String&gt;();</span>
+<span class="fc bfc" id="L318" title="All 2 branches covered.">		for (String phrase : ConversationPhrases.NO_MESSAGES) {</span>
+<span class="fc" id="L319">			endDiscussionPhrases.add(phrase);</span>
+<span class="fc" id="L320">		}</span>
+<span class="fc bfc" id="L321" title="All 2 branches covered.">		for (String phrase : ConversationPhrases.GOODBYE_MESSAGES) {</span>
+<span class="fc" id="L322">			endDiscussionPhrases.add(phrase);</span>
+<span class="fc" id="L323">		}</span>
+<span class="fc" id="L324">		npc.add(ConversationStates.QUESTION_1,</span>
+				endDiscussionPhrases,
+				null,
+				ConversationStates.IDLE,
+				&quot;Please come back when you have found some flowers.&quot;,
+				null);
+<span class="fc" id="L330">	}</span>
+	
+	
+	@Override
+	public String getNPCName() {
+<span class="fc" id="L335">		return npc.getName();</span>
+	}
+	
+	@Override
+	public String getSlotName() {
+<span class="fc" id="L340">		return QUEST_SLOT;</span>
+	}
+	
+	@Override
+	public String getName() {
+<span class="nc" id="L345">		return &quot;RestockFlowerShop&quot;;</span>
+	}
+	
+	public String getTitle() {
+<span class="fc" id="L349">		return &quot;Restock the Flower Shop&quot;;</span>
+	}
+	
+	@Override
+	public int getMinLevel() {
+<span class="fc" id="L354">		return 0;</span>
+	}
+	
+	@Override
+	public String getRegion() {
+<span class="nc" id="L359">		return Region.NALWOR_CITY;</span>
+	}
+
+	@Override
+	public void addToWorld() {
+<span class="fc" id="L364">		fillQuestInfo(</span>
+				getTitle(),
+				getNPCName() + &quot; needs to restock the flower shop in Nalwor City.&quot;,
+				true);
+<span class="fc" id="L368">		setupBasicResponses();</span>
+<span class="fc" id="L369">		setupActiveQuestResponses();</span>
+<span class="fc" id="L370">		prepareRequestingStep();</span>
+<span class="fc" id="L371">		prepareBringingStep();</span>
+<span class="fc" id="L372">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

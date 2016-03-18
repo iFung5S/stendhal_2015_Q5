@@ -1,0 +1,909 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SBoxLayout.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui.layout</a> &gt; <span class="el_source">SBoxLayout.java</span></div><h1>SBoxLayout.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui.layout;
+
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.Dimension;
+import java.awt.Insets;
+import java.awt.LayoutManager2;
+import java.util.EnumSet;
+import java.util.IdentityHashMap;
+import java.util.Map;
+
+import javax.swing.JComponent;
+
+/**
+ * A simple layout manager that does what BoxLayout fails to do,
+ * and provides a predictable layout with few hidden interactions.
+ * &lt;p&gt;
+ * Minimum size is properly supported within reasonable limits.
+ * &lt;p&gt;
+ * Maximum size has only a soft support, i.e. maximum size works
+ * as a limiting preferred size, even if the child component itself
+ * would suggest a larger size.
+ * &lt;p&gt;
+ * Component alignment is supported in the direction perpendicular to the
+ * layout direction.
+ * &lt;p&gt;
+ * SBoxLayout supports constraints of type {@link SLayout}. A single constraint
+ * flag can passed as the second parameter to
+ * &lt;code&gt;Container.add(Component c, Object constraint)&lt;/code&gt;. Constraints can
+ * be combined using the object returned by {@link #constraint(SLayout...)} as
+ * the constraints object.
+ */
+public class SBoxLayout implements LayoutManager2 {
+	/*
+	 * Implementation considerations:
+	 * 	- MaxSize is not fully supported. It could be done the same way as MinSize is now
+	 * 
+	 * 	- Expanding and contracting the components is done by same amount for all 
+	 * 	the components that are resized (unless forbidden by minimum/maximum size 
+	 * 	constraints). Should it be relative to the component size instead?
+	 * 
+	 * Further refinement:
+	 * 	Layout management in swing is dumb (and not just buggy for the fundamental
+	 * 	layout managers). Any change in a child component will result in revalidation
+	 * 	of the whole component tree until the first validation root (which normally 
+	 *	is the top level window). This is a huge performance problem as changing a 
+	 *	single number in the StatsPanel will result in the whole window layout being 
+	 *	redone - and 3 changes in a second is normal.
+	 *		Therefore, investigate if it's feasible to make a component that acts as
+	 *	a validation root, and passes the invalidation upwards only if its size changes.
+	 */
+	
+	public static final boolean VERTICAL = false;
+	public static final boolean HORIZONTAL = true;
+	
+	/** Common padding width where padding or border is wanted. */
+	public static final int COMMON_PADDING = 5;
+	
+	/**
+	 * Create a constraints object.
+	 * 
+	 * @param flags constraint flags
+	 * @return constraints object
+	 */
+	public static Object constraint(SLayout ... flags) {
+<span class="fc" id="L78">		EnumSet&lt;SLayout&gt; obj = EnumSet.noneOf(SLayout.class);</span>
+<span class="fc bfc" id="L79" title="All 2 branches covered.">		for (SLayout flag : flags) {</span>
+<span class="fc" id="L80">			obj.add(flag);</span>
+		}
+<span class="fc" id="L82">		return obj;</span>
+	}
+	
+<span class="fc" id="L85">	private static final Direction horizontalDirection = new HDirection();</span>
+<span class="fc" id="L86">	private static final Direction verticalDirection = new VDirection();</span>
+	
+	/** 
+	 * Layout constraints of the child components.
+	 */
+	private final Map&lt;Component, EnumSet&lt;SLayout&gt;&gt; constraints;
+	
+	/**
+	 * The direction object. All the dimension calculations are
+	 * delegated to this.
+	 */
+	private final Direction d;
+	
+	/** Preciously calculated dimension data, or &lt;code&gt;null&lt;/code&gt; if it has been invalidated. */ 
+	private Dimension cachedMinimum, cachedMaximum, cachedPreferred;
+	
+	/** Amount of axially expandable components. */
+	private int expandable;
+	/** Amount of padding between components. */
+<span class="fc" id="L105">	private int padding = 0;</span>
+	
+	/**
+	 * Create a new SBoxLayout.
+	 * 
+	 * @param direction layout direction
+	 */
+<span class="fc" id="L112">	public SBoxLayout(boolean direction) {</span>
+<span class="fc" id="L113">		constraints = new IdentityHashMap&lt;Component, EnumSet&lt;SLayout&gt;&gt;();</span>
+<span class="fc bfc" id="L114" title="All 2 branches covered.">		if (direction == VERTICAL) {</span>
+<span class="fc" id="L115">			d = verticalDirection;</span>
+		} else {
+<span class="fc" id="L117">			d = horizontalDirection;</span>
+		}
+<span class="fc" id="L119">	}</span>
+	
+	/**
+	 * Create a new SBoxLayout with padding between components.
+	 * 
+	 * @param direction layout direction
+	 * @param padding component padding in pixels
+	 */
+	public SBoxLayout(boolean direction, int padding) {
+<span class="fc" id="L128">		this(direction);</span>
+<span class="fc" id="L129">		setPadding(padding);</span>
+<span class="fc" id="L130">	}</span>
+	
+	/**
+	 * Set the padding between the components. Typically you should use either
+	 * 0 (the default), or COMMON_PADDING for consistent look. For the padding
+	 * around everything use appropriate empty border instead.
+	 * 
+	 * @param padding pixel width of the padding
+	 */
+	public final void setPadding(int padding) {
+<span class="fc" id="L140">		this.padding = padding;</span>
+<span class="fc" id="L141">	}</span>
+
+	/*
+	 * (non-Javadoc)
+	 * @see java.awt.LayoutManager2#addLayoutComponent(java.awt.Component, java.lang.Object)
+	 */
+	@Override
+	public void addLayoutComponent(Component component, Object flags) {
+<span class="fc" id="L149">		EnumSet&lt;SLayout&gt; constraintFlags = EnumSet.noneOf(SLayout.class);</span>
+<span class="fc bfc" id="L150" title="All 2 branches covered.">		if (flags != null) {</span>
+<span class="fc bfc" id="L151" title="All 2 branches covered.">			if (flags instanceof SLayout) {</span>
+<span class="fc" id="L152">				constraintFlags.add(d.translate((SLayout) flags)); </span>
+<span class="pc bpc" id="L153" title="3 of 4 branches missed.">			} else if (flags instanceof EnumSet&lt;?&gt; || flags instanceof SLayout) {</span>
+				// Type checking within the rather poor limits of generics
+<span class="fc" id="L155">				EnumSet&lt;?&gt; eflags = (EnumSet&lt;?&gt;) flags;</span>
+				// Translate to axial &amp; perpendicular
+<span class="fc bfc" id="L157" title="All 2 branches covered.">				for (SLayout flag : SLayout.values()) {</span>
+<span class="fc bfc" id="L158" title="All 2 branches covered.">					if (eflags.contains(flag)) {</span>
+<span class="fc" id="L159">						flag = d.translate(flag);</span>
+<span class="fc" id="L160">						constraintFlags.add(flag);</span>
+					}
+				}
+<span class="fc" id="L163">			} else {</span>
+<span class="nc" id="L164">				throw new IllegalArgumentException(&quot;Invalid flags: &quot; + flags);</span>
+			}
+			
+			// Keep count of expandable items
+<span class="pc bpc" id="L168" title="1 of 2 branches missed.">			if (constraintFlags.contains(SLayout.EXPAND_AXIAL)) {</span>
+<span class="fc" id="L169">				expandable++;</span>
+			}
+		}
+<span class="fc" id="L172">		constraints.put(component, constraintFlags);</span>
+<span class="fc" id="L173">	}</span>
+	
+	/*
+	 * (non-Javadoc)
+	 * @see java.awt.LayoutManager#addLayoutComponent(java.lang.String, java.awt.Component)
+	 */
+	@Override
+	public void addLayoutComponent(String id, Component component) {
+<span class="nc" id="L181">	}</span>
+	
+	/**
+	 * Add to the primary dimension.
+	 * 
+	 * @param result the dimension to be expanded
+	 * @param length the expanding amount
+	 */
+	private void addToPrimary(Dimension result, int length) {
+<span class="fc" id="L190">		d.setPrimary(result, d.getPrimary(result) + length);</span>
+<span class="fc" id="L191">	}</span>
+	
+	/**
+	 * Expand a &lt;code&gt;Dimension&lt;/code&gt; so that it can include
+	 * another &lt;code&gt;Dimension&lt;/code&gt;.
+	 * 
+	 * @param result The dimension to be expanded
+	 * @param dim limiting dimension
+	 */
+	private void expand(Dimension result, Dimension dim) {
+<span class="fc" id="L201">		result.width = Math.max(result.width, dim.width);</span>
+<span class="fc" id="L202">		result.height = Math.max(result.height, dim.height);</span>
+<span class="fc" id="L203">	}</span>
+	
+	/*
+	 * (non-Javadoc)
+	 * @see java.awt.LayoutManager2#getLayoutAlignmentX(java.awt.Container)
+	 */
+	@Override
+	public float getLayoutAlignmentX(Container target) {
+		// The specs don't tell what this actually should do
+<span class="nc" id="L212">		return 0;</span>
+	}
+	
+	/*
+	 * (non-Javadoc)
+	 * @see java.awt.LayoutManager2#getLayoutAlignmentY(java.awt.Container)
+	 */
+	@Override
+	public float getLayoutAlignmentY(Container target) {
+		// The specs don't tell what this actually should do
+<span class="nc" id="L222">		return 0;</span>
+	}
+	
+	/**
+	 * Get a components preferred dimensions restricted by
+	 * the maximum and minimum constraints.
+	 * 
+	 * @param comp the component to examine
+	 * @return constraint adjusted preferred dimensions
+	 */
+	private Dimension getPreferred(Component comp) {
+<span class="fc" id="L233">		Dimension dim = comp.getPreferredSize();</span>
+		
+<span class="fc" id="L235">		expand(dim, comp.getMinimumSize());</span>
+<span class="fc" id="L236">		shrink(dim, comp.getMaximumSize());</span>
+
+<span class="fc" id="L238">		return dim;</span>
+	}
+	
+	/*
+	 * (non-Javadoc)
+	 * @see java.awt.LayoutManager2#invalidateLayout(java.awt.Container)
+	 */
+	@Override
+	public void invalidateLayout(Container target) {
+<span class="fc" id="L247">		cachedMinimum = null;</span>
+<span class="fc" id="L248">		cachedMaximum = null;</span>
+<span class="fc" id="L249">		cachedPreferred = null;</span>
+<span class="fc" id="L250">	}</span>
+
+	/*
+	 * (non-Javadoc)
+	 * @see java.awt.LayoutManager#layoutContainer(java.awt.Container)
+	 */
+	@Override
+	public void layoutContainer(Container parent) {
+		// Maximum dimensions available for use
+<span class="fc" id="L259">		Dimension realDim = parent.getSize();</span>
+<span class="fc" id="L260">		Insets insets = parent.getInsets();</span>
+		
+<span class="fc" id="L262">		Dimension preferred = preferredLayoutSize(parent);</span>
+		
+<span class="fc" id="L264">		final int stretch = d.getPrimary(realDim) - d.getPrimary(preferred);</span>
+	
+		// remove the insets for the actual area we have in use
+<span class="fc" id="L267">		realDim.width -= insets.left + insets.right;</span>
+<span class="fc" id="L268">		realDim.height -= insets.top + insets.bottom;</span>
+
+<span class="fc" id="L270">		Dimension position = new Dimension(insets.left, insets.top);</span>
+		
+		// Check the conditions, and pass the task to the proper layout method
+<span class="fc bfc" id="L273" title="All 2 branches covered.">		if (stretch &gt;= 0) {</span>
+<span class="fc" id="L274">			layoutSufficientSpace(parent, realDim, position, stretch);</span>
+		} else {
+<span class="fc" id="L276">			Dimension minDim = minimumLayoutSize(parent);</span>
+			// remove the insets for the actual area we have in use
+<span class="fc" id="L278">			minDim.width -= insets.left + insets.right;</span>
+<span class="fc" id="L279">			minDim.height -= insets.top + insets.bottom;</span>
+<span class="fc" id="L280">			final int squeeze = d.getPrimary(realDim) - d.getPrimary(minDim);</span>
+<span class="pc bpc" id="L281" title="1 of 2 branches missed.">			if (squeeze &lt; 0) {</span>
+<span class="fc" id="L282">				layoutUnderMinimumSpace(parent, realDim, position);</span>
+			} else {
+<span class="nc" id="L284">				layoutWithSqueeze(parent, realDim, position, stretch);</span>
+			}
+		}
+<span class="fc" id="L287">	}</span>
+	
+	/**
+	 * Lay out the components, when we have sufficient space to do so.
+	 * 
+	 * @param parent the parent container of the components
+	 * @param realDim the dimensions of the space in use
+	 * @param startPosition top left corner
+	 * @param stretch the total amount to stretch the components 
+	 */
+	private void layoutSufficientSpace(Container parent, Dimension realDim, 
+			Dimension startPosition, int stretch) {
+<span class="fc" id="L299">		int remainingStretch = stretch;</span>
+<span class="fc" id="L300">		int remainingExpandable = expandable;</span>
+		
+		// Easy - we got at least the dimensions we asked for
+<span class="fc bfc" id="L303" title="All 2 branches covered.">		for (Component c : parent.getComponents()) {</span>
+			// Skip hidden components
+<span class="pc bpc" id="L305" title="1 of 2 branches missed.">			if (c.isVisible()) {</span>
+<span class="fc" id="L306">				Dimension cPref = getPreferred(c);</span>
+<span class="fc" id="L307">				shrink(cPref, realDim);</span>
+<span class="fc" id="L308">				int xAlign = 0;</span>
+<span class="fc" id="L309">				int yAlign = 0;</span>
+				
+<span class="fc" id="L311">				EnumSet&lt;SLayout&gt; flags = constraints.get(c);</span>
+<span class="pc bpc" id="L312" title="1 of 2 branches missed.">				if (flags.contains(SLayout.EXPAND_PERPENDICULAR)) {</span>
+<span class="nc" id="L313">					d.setSecondary(cPref, d.getSecondary(realDim));</span>
+				} else {
+<span class="fc" id="L315">					xAlign = getXAlignment(c, realDim);</span>
+<span class="fc" id="L316">					yAlign = getYAlignment(c, realDim);</span>
+				}
+				
+<span class="pc bpc" id="L319" title="3 of 4 branches missed.">				if ((remainingStretch &gt; 0) &amp;&amp; flags.contains(SLayout.EXPAND_AXIAL)) {</span>
+					// Stretch the components that allow it, if needed
+<span class="nc" id="L321">					int add = Math.max(1, remainingStretch / remainingExpandable);</span>
+<span class="nc" id="L322">					addToPrimary(cPref, add);</span>
+<span class="nc" id="L323">					remainingStretch -= add;</span>
+<span class="nc" id="L324">					remainingExpandable--;</span>
+				}
+<span class="fc" id="L326">				c.setBounds(startPosition.width + xAlign, startPosition.height + yAlign, cPref.width, cPref.height);</span>
+				
+				// Move the coordinates of the next component by the size of the
+				// previous + padding
+<span class="fc" id="L330">				shiftByPrimary(startPosition, cPref);</span>
+<span class="fc" id="L331">				addToPrimary(startPosition, padding);</span>
+			}
+		}
+<span class="fc" id="L334">	}</span>
+	
+	/**
+	 * Lay out the components in a smaller space than the specified minimum.
+	 * Just gives the components their required minimum, until the space runs out.
+	 * 
+	 * @param parent the parent container of the components
+	 * @param realDim the dimensions of the space in use
+	 * @param startPosition top left corner
+	 */
+	private void layoutUnderMinimumSpace(Container parent, Dimension realDim, Dimension startPosition) {
+<span class="fc bfc" id="L345" title="All 2 branches covered.">		for (Component c : parent.getComponents()) {</span>
+			// Skip hidden components
+<span class="pc bpc" id="L347" title="1 of 2 branches missed.">			if (c.isVisible()) {</span>
+<span class="fc" id="L348">				Dimension compSize = c.getMinimumSize();</span>
+<span class="fc" id="L349">				shrink(compSize, realDim);</span>
+<span class="fc" id="L350">				int xAlign = 0;</span>
+<span class="fc" id="L351">				int yAlign = 0;</span>
+				
+<span class="fc" id="L353">				EnumSet&lt;SLayout&gt; flags = constraints.get(c);</span>
+<span class="fc bfc" id="L354" title="All 2 branches covered.">				if (flags.contains(SLayout.EXPAND_PERPENDICULAR)) {</span>
+<span class="fc" id="L355">					d.setSecondary(compSize, d.getSecondary(realDim));</span>
+				} else {
+<span class="fc" id="L357">					xAlign = getXAlignment(c, realDim);</span>
+<span class="fc" id="L358">					yAlign = getYAlignment(c, realDim);</span>
+				}
+				
+<span class="fc" id="L361">				int shrink = d.getPrimary(realDim) - d.getPrimary(compSize) - d.getPrimary(startPosition);</span>
+<span class="fc bfc" id="L362" title="All 2 branches covered.">				if (shrink &lt; 0) {</span>
+					// avoid &lt; 0 sizes
+<span class="fc" id="L364">					shrink = Math.max(-d.getPrimary(compSize), shrink);</span>
+<span class="fc" id="L365">					addToPrimary(compSize, shrink);</span>
+				}
+<span class="fc" id="L367">				c.setBounds(startPosition.width + xAlign, startPosition.height + yAlign, compSize.width, compSize.height);</span>
+				
+				// Move the coordinates of the next component by the size of the
+				// previous + padding
+<span class="fc" id="L371">				shiftByPrimary(startPosition, compSize);</span>
+<span class="fc" id="L372">				addToPrimary(startPosition, padding);</span>
+			}
+		}
+<span class="fc" id="L375">	}</span>
+	
+	/**
+	 * Lay out in sufficient, but smaller space than preferred.
+	 * Respects the minimum dimensions, and squeezes only the components
+	 * that do not break that constraint.
+	 *
+	 * @param parent the parent container of the components
+	 * @param realDim the dimensions of the space in use
+	 * @param startPosition top left corner
+	 * @param stretch the total amount to stretch the components (negative)
+	 */
+	private void layoutWithSqueeze(Container parent, Dimension realDim, 
+			Dimension startPosition, int stretch) {
+		/*
+		 * We can squeeze the components without violating the constraints,
+		 * but calculations take a bit of effort.
+		 */
+<span class="nc" id="L393">		int numComponents = parent.getComponents().length;</span>
+		int[] dim;
+<span class="nc" id="L395">		boolean[] violations = new boolean[numComponents]; </span>
+<span class="nc" id="L396">		int numViolations = 0;</span>
+		
+		// Only visible components can be squeezed
+<span class="nc" id="L399">		int numVisible = 0;</span>
+<span class="nc bnc" id="L400" title="All 2 branches missed.">		for (Component c : parent.getComponents()) {</span>
+<span class="nc bnc" id="L401" title="All 2 branches missed.">			if (c.isVisible()) {</span>
+<span class="nc" id="L402">				numVisible++;</span>
+			}
+		}
+		
+		int numSqueezable;
+		/*
+		 * Start by trying to squeeze all, and then mark as
+		 * incompressible the components whose size would become
+		 * too small. Repeat until only those components that can 
+		 * take it, get squeezed.
+		 */
+		do {
+<span class="nc" id="L414">			dim = new int[numComponents];</span>
+
+<span class="nc" id="L416">			numSqueezable = numVisible;</span>
+<span class="nc bnc" id="L417" title="All 2 branches missed.">			for (boolean b : violations) {</span>
+<span class="nc bnc" id="L418" title="All 2 branches missed.">				if (b) {</span>
+<span class="nc" id="L419">					numSqueezable--;</span>
+				}
+			}
+<span class="nc" id="L422">			int remainingSqueeze = -stretch;</span>
+<span class="nc" id="L423">			numViolations = 0;</span>
+			
+<span class="nc bnc" id="L425" title="All 2 branches missed.">			for (int i = 0; i &lt; numComponents; i++) {</span>
+<span class="nc" id="L426">				Component c = parent.getComponents()[i];</span>
+				
+<span class="nc bnc" id="L428" title="All 2 branches missed.">				if (c.isVisible()) {</span>
+<span class="nc" id="L429">					Dimension cPref = getPreferred(c);</span>
+					
+<span class="nc" id="L431">					int adjust = 0;</span>
+<span class="nc bnc" id="L432" title="All 4 branches missed.">					if (remainingSqueeze &gt; 0 &amp;&amp; !violations[i]) {</span>
+<span class="nc" id="L433">						adjust = Math.max(1, remainingSqueeze / numSqueezable);</span>
+<span class="nc" id="L434">						remainingSqueeze -= adjust;</span>
+<span class="nc" id="L435">						numSqueezable--;</span>
+					}
+<span class="nc" id="L437">					dim[i] = d.getPrimary(cPref) - adjust;</span>
+<span class="nc bnc" id="L438" title="All 2 branches missed.">					if (dim[i] &lt; d.getPrimary(c.getMinimumSize())) {</span>
+<span class="nc" id="L439">						violations[i] = true;</span>
+<span class="nc" id="L440">						numViolations++;</span>
+					}
+<span class="nc" id="L442">				} else {</span>
+<span class="nc" id="L443">					dim[i] = 0;</span>
+				}
+			}
+<span class="nc bnc" id="L446" title="All 2 branches missed.">		} while (numViolations != 0);</span>
+		
+		// Done with the dimensions, now lay it out
+<span class="nc bnc" id="L449" title="All 2 branches missed.">		for (int i = 0; i &lt; numComponents; i++) {</span>
+<span class="nc" id="L450">			Component c = parent.getComponents()[i];</span>
+			// skip hidden components
+<span class="nc bnc" id="L452" title="All 2 branches missed.">			if (c.isVisible()) {</span>
+<span class="nc" id="L453">				Dimension cPref = getPreferred(c);</span>
+<span class="nc" id="L454">				shrink(cPref, realDim);</span>
+<span class="nc" id="L455">				int xAlign = 0;</span>
+<span class="nc" id="L456">				int yAlign = 0;</span>
+				
+<span class="nc" id="L458">				EnumSet&lt;?&gt; flags = constraints.get(c);</span>
+<span class="nc bnc" id="L459" title="All 2 branches missed.">				if (flags.contains(SLayout.EXPAND_PERPENDICULAR)) {</span>
+<span class="nc" id="L460">					d.setSecondary(cPref, d.getSecondary(realDim));</span>
+				} else {
+<span class="nc" id="L462">					xAlign = getXAlignment(c, realDim);</span>
+<span class="nc" id="L463">					yAlign = getYAlignment(c, realDim);</span>
+				}
+<span class="nc" id="L465">				d.setPrimary(cPref, dim[i]);</span>
+<span class="nc" id="L466">				c.setBounds(startPosition.width + xAlign, startPosition.height + yAlign, cPref.width, cPref.height);</span>
+				
+				// Move the coordinates of the next component by the size of the
+				// previous + padding
+<span class="nc" id="L470">				shiftByPrimary(startPosition, cPref);</span>
+<span class="nc" id="L471">				addToPrimary(startPosition, padding);</span>
+			}
+		}
+<span class="nc" id="L474">	}</span>
+	
+	/**
+	 * Get the x alignment of a child component.
+	 * 
+	 * @param c component
+	 * @param available available space
+	 * @return x alignment in pixels
+	 */
+	private int getXAlignment(Component c, Dimension available) {
+<span class="fc bfc" id="L484" title="All 2 branches covered.">		if (d == horizontalDirection) {</span>
+<span class="fc" id="L485">			return 0;</span>
+		} else {
+<span class="fc" id="L487">			return getPerpendicularAlignment(c, available);</span>
+		}
+	}
+	
+	/**
+	 * Get the y alignment of a child component.
+	 * 
+	 * @param c component
+	 * @param available available space
+	 * @return y alignment in pixels
+	 */
+	private int getYAlignment(Component c, Dimension available) {
+<span class="fc bfc" id="L499" title="All 2 branches covered.">		if (d == horizontalDirection) {</span>
+<span class="fc" id="L500">			return getPerpendicularAlignment(c, available);</span>
+		} else {
+<span class="fc" id="L502">			return 0;</span>
+		}
+	}
+	
+	/**
+	 * Get the pixel alignment of a component in the perpendicular direction.
+	 *  
+	 * @param c component
+	 * @param available size of the container of the component
+	 * @return pixel alignment
+	 */
+	private int getPerpendicularAlignment(Component c, Dimension available) {
+<span class="fc" id="L514">		int align = 0;</span>
+<span class="fc" id="L515">		int extra = d.getSecondary(available) - d.getSecondary(c.getPreferredSize()); </span>
+<span class="fc bfc" id="L516" title="All 2 branches covered.">		if (extra &gt; 0) {</span>
+<span class="fc" id="L517">			align = (int) (extra * d.getComponentAlignment(c));</span>
+		}
+		
+<span class="fc" id="L520">		return align;</span>
+	}
+	
+	/*
+	 * (non-Javadoc)
+	 * @see java.awt.LayoutManager2#maximumLayoutSize(java.awt.Container)
+	 */
+	@Override
+	public Dimension maximumLayoutSize(Container parent) {
+		/*
+		 * The specs are *very* vague about what this should do (and 
+		 * helpfully name the parameter &quot;target&quot;, sigh), but returning 
+		 * the max size of the whole layout seems to be what's wanted, 
+		 * and most other tries crash in a way or another.
+		 */
+<span class="fc bfc" id="L535" title="All 2 branches covered.">		if (cachedMaximum != null) {</span>
+<span class="fc" id="L536">			return new Dimension(cachedMaximum);</span>
+		}
+		
+<span class="fc" id="L539">		Dimension result = new Dimension();</span>
+
+<span class="fc" id="L541">		int numVisible = 0;</span>
+<span class="fc bfc" id="L542" title="All 2 branches covered.">		for (Component c : parent.getComponents()) {</span>
+			// Skip hidden components
+<span class="pc bpc" id="L544" title="1 of 2 branches missed.">			if (c.isVisible()) {</span>
+<span class="fc" id="L545">				numVisible++;</span>
+<span class="fc" id="L546">				d.addComponentDimensions(result, c.getMaximumSize());</span>
+			}
+		}
+		
+		// Take padding in account
+<span class="pc bpc" id="L551" title="1 of 2 branches missed.">		if (numVisible &gt; 1) {</span>
+<span class="fc" id="L552">			d.setPrimary(result, safeAdd(d.getPrimary(result), (numVisible - 1) * padding));</span>
+		}
+		
+		// Expand by the insets
+<span class="fc" id="L556">		Insets insets = parent.getInsets();</span>
+<span class="fc" id="L557">		result.width = safeAdd(result.width, insets.left + insets.right);</span>
+<span class="fc" id="L558">		result.height = safeAdd(result.height, insets.top + insets.bottom);</span>
+		
+<span class="fc" id="L560">		cachedMaximum = result;</span>
+<span class="fc" id="L561">		return result;</span>
+	}
+	
+	/*
+	 * (non-Javadoc)
+	 * @see java.awt.LayoutManager#minimumLayoutSize(java.awt.Container)
+	 */
+	@Override
+	public Dimension minimumLayoutSize(Container parent) {
+<span class="fc bfc" id="L570" title="All 2 branches covered.">		if (cachedMinimum != null) {</span>
+<span class="fc" id="L571">			return new Dimension(cachedMinimum);</span>
+		}
+<span class="fc" id="L573">		Dimension result = new Dimension();</span>
+
+<span class="fc" id="L575">		int numVisible = 0;</span>
+<span class="fc bfc" id="L576" title="All 2 branches covered.">		for (Component c : parent.getComponents()) {</span>
+			// Skip hidden components
+<span class="pc bpc" id="L578" title="1 of 2 branches missed.">			if (c.isVisible()) {</span>
+<span class="fc" id="L579">				numVisible++;</span>
+<span class="fc" id="L580">				d.addComponentDimensions(result, c.getMinimumSize());</span>
+			}
+		}
+		
+		// Take padding in account
+<span class="pc bpc" id="L585" title="1 of 2 branches missed.">		if (numVisible &gt; 1) {</span>
+<span class="fc" id="L586">			d.setPrimary(result, safeAdd(d.getPrimary(result), (numVisible - 1) * padding));</span>
+		}
+		
+		// Expand by the insets
+<span class="fc" id="L590">		Insets insets = parent.getInsets();</span>
+<span class="fc" id="L591">		result.width += insets.left + insets.right;</span>
+<span class="fc" id="L592">		result.height += insets.top + insets.bottom;</span>
+		
+<span class="fc" id="L594">		cachedMinimum = result;</span>
+<span class="fc" id="L595">		return result;</span>
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * @see java.awt.LayoutManager#preferredLayoutSize(java.awt.Container)
+	 */
+	@Override
+	public Dimension preferredLayoutSize(Container parent) {
+<span class="fc bfc" id="L604" title="All 2 branches covered.">		if (cachedPreferred != null) {</span>
+<span class="fc" id="L605">			return new Dimension(cachedPreferred);</span>
+		}
+<span class="fc" id="L607">		Dimension result = new Dimension();</span>
+
+<span class="fc" id="L609">		int numVisible = 0;</span>
+<span class="fc bfc" id="L610" title="All 2 branches covered.">		for (Component c : parent.getComponents()) {</span>
+			// Skip hidden components
+<span class="pc bpc" id="L612" title="1 of 2 branches missed.">			if (c.isVisible()) {</span>
+<span class="fc" id="L613">				numVisible++;</span>
+<span class="fc" id="L614">				d.addComponentDimensions(result, getPreferred(c));</span>
+			}
+		}
+		
+		// Take padding in account
+<span class="pc bpc" id="L619" title="1 of 2 branches missed.">		if (numVisible &gt; 1) {</span>
+<span class="fc" id="L620">			d.setPrimary(result, safeAdd(d.getPrimary(result), (numVisible - 1) * padding));</span>
+		}
+		
+		// Expand by the insets
+<span class="fc" id="L624">		Insets insets = parent.getInsets();</span>
+<span class="fc" id="L625">		result.width = safeAdd(result.width, insets.left + insets.right);</span>
+<span class="fc" id="L626">		result.height = safeAdd(result.height, insets.top + insets.bottom);</span>
+
+		/*
+		 * Check the constraints of the parent. Unlike the standard layout
+		 * managers we should never suggest sizes outside the range that
+		 * the parent should do. 
+		 */
+<span class="fc" id="L633">		Dimension maxDim = parent.getMaximumSize();</span>
+<span class="fc" id="L634">		Dimension minDim = parent.getMinimumSize();</span>
+
+		/*
+		 *  Despite what said above, the return value can still be smaller
+		 *  than the specified minimum values, if the user has set 
+		 *  inconsistent minimum and maximum constraints.  
+		 */
+<span class="fc" id="L641">		expand(result, minDim);</span>
+<span class="fc" id="L642">		shrink(result, maxDim);</span>
+		
+<span class="fc" id="L644">		cachedPreferred = result;</span>
+<span class="fc" id="L645">		return result;</span>
+	}
+	
+	/*
+	 * (non-Javadoc)
+	 * @see java.awt.LayoutManager#removeLayoutComponent(java.awt.Component)
+	 */
+	@Override
+	public void removeLayoutComponent(Component component) {
+<span class="nc" id="L654">		EnumSet&lt;?&gt; constr = constraints.get(component);</span>
+<span class="nc bnc" id="L655" title="All 2 branches missed.">		if (constr.contains(SLayout.EXPAND_AXIAL)) {</span>
+<span class="nc" id="L656">			expandable--;</span>
+		}
+
+<span class="nc" id="L659">		constraints.remove(component);</span>
+<span class="nc" id="L660">	}</span>
+
+	/**
+	 * Expand a dimension by the primary dimension of another.
+	 * 
+	 * @param result the dimension to be expanded
+	 * @param dim the expanding dimension
+	 */
+	private void shiftByPrimary(Dimension result, Dimension dim) {
+<span class="fc" id="L669">		addToPrimary(result, d.getPrimary(dim));</span>
+<span class="fc" id="L670">	}</span>
+
+	/**
+	 * Shrink a &lt;code&gt;Dimension&lt;/code&gt; so that it does not exceed
+	 * the limits of another.
+	 * 
+	 * @param result The dimension to be shrunk
+	 * @param dim limiting dimension
+	 */
+	private void shrink(Dimension result, Dimension dim) {
+<span class="fc" id="L680">		result.width = Math.min(result.width, dim.width);</span>
+<span class="fc" id="L681">		result.height = Math.min(result.height, dim.height);</span>
+<span class="fc" id="L682">	}</span>
+	
+	/**
+	 * A safe addition for dimensions. Returns Integer.MAX_VALUE if the
+	 * addition would overflow. Some components do set that to their maximum
+	 * size so they'd overflow if there are other components or insets.
+	 *  
+	 * @param a
+	 * @param b
+	 * @return sum of a and b, or Integer.MAX_VALUE
+	 */
+	private static int safeAdd(int a, int b) {
+<span class="fc" id="L694">		int tmp = a + b;</span>
+<span class="fc bfc" id="L695" title="All 2 branches covered.">		if (tmp &gt;= 0) {</span>
+<span class="fc" id="L696">			return tmp;</span>
+		} else {
+<span class="fc" id="L698">			return Integer.MAX_VALUE;</span>
+		}
+	}
+	
+	/**
+	 * An abstraction for various direction dependent operations.
+	 */
+	private interface Direction {
+		/**
+		 * Translate X and Y to axial and perpendicular.
+		 * @param dir
+		 * @return SLayout
+		 */
+		SLayout translate(SLayout dir);
+		
+		/**
+		 * Get the alignment of the component perpendicular to the layout axis.
+		 * 
+		 * @param component component to examine
+		 * @return component alignment
+		 */
+		float getComponentAlignment(Component component);
+		
+		/**
+		 * Expand a dimension by a component's dimensions.
+		 * 
+		 * @param result the dimension to be expanded
+		 * @param dim the dimensions to be added
+		 */
+		void addComponentDimensions(Dimension result, Dimension dim);
+		
+		/**
+		 * Set primary dimension.
+		 * 
+		 * @param result the dimension to be modified
+		 * @param length 
+		 */
+		void setPrimary(Dimension result, int length);
+		
+		/**
+		 * Set secondary dimension.
+		 * 
+		 * @param result the dimension to be modified
+		 * @param length 
+		 */
+		void setSecondary(Dimension result, int length);
+		
+		/**
+		 * Get the dimension along the layout axis.
+		 * 
+		 * @param dim
+		 * @return primary dimension
+		 */
+		int getPrimary(Dimension dim);
+		
+		/**
+		 * Get the dimension perpendicular to the layout axis.
+		 *  
+		 * @param dim
+		 * @return secondary dimension
+		 */
+		int getSecondary(Dimension dim);
+	}
+	
+	/**
+	 * Horizontal direction calculations.
+	 */
+<span class="fc" id="L765">	private static class HDirection implements Direction {</span>
+		@Override
+		public SLayout translate(SLayout dir) {
+<span class="pc bpc" id="L768" title="1 of 2 branches missed.">			if (dir == SLayout.EXPAND_X) {</span>
+<span class="nc" id="L769">				dir = SLayout.EXPAND_AXIAL;</span>
+<span class="pc bpc" id="L770" title="1 of 2 branches missed.">			} else if (dir == SLayout.EXPAND_Y) {</span>
+<span class="nc" id="L771">				dir = SLayout.EXPAND_PERPENDICULAR;</span>
+			}
+			
+<span class="fc" id="L774">			return dir;</span>
+		}
+		
+		@Override
+		public void addComponentDimensions(Dimension result, Dimension dim) {
+			// Avoid integer overflows
+<span class="fc" id="L780">			result.width = safeAdd(result.width, dim.width);</span>
+<span class="fc" id="L781">			result.height = Math.max(result.height, dim.height);</span>
+<span class="fc" id="L782">		}</span>
+
+		@Override
+		public int getPrimary(Dimension dim) {
+<span class="fc" id="L786">			return dim.width;</span>
+		}
+
+		@Override
+		public int getSecondary(Dimension dim) {
+<span class="fc" id="L791">			return dim.height;</span>
+		}
+
+		@Override
+		public void setPrimary(Dimension result, int length) {
+<span class="fc" id="L796">			result.width = length;		</span>
+<span class="fc" id="L797">		}</span>
+
+		@Override
+		public void setSecondary(Dimension result, int length) {
+<span class="nc" id="L801">			result.height = length;</span>
+<span class="nc" id="L802">		}</span>
+
+		@Override
+		public float getComponentAlignment(Component component) {
+<span class="nc" id="L806">			return component.getAlignmentY();</span>
+		}
+	}
+	
+	/**
+	 * Vertical dimension calculations.
+	 */
+<span class="fc" id="L813">	private static class VDirection implements Direction  {</span>
+		@Override
+		public SLayout translate(SLayout dir) {
+<span class="fc bfc" id="L816" title="All 2 branches covered.">			if (dir == SLayout.EXPAND_X) {</span>
+<span class="fc" id="L817">				dir = SLayout.EXPAND_PERPENDICULAR;</span>
+<span class="pc bpc" id="L818" title="1 of 2 branches missed.">			} else if (dir == SLayout.EXPAND_Y) {</span>
+<span class="fc" id="L819">				dir = SLayout.EXPAND_AXIAL;</span>
+			}
+			
+<span class="fc" id="L822">			return dir;</span>
+		}
+		
+		@Override
+		public void addComponentDimensions(Dimension result, Dimension dim) {
+<span class="fc" id="L827">			result.width = Math.max(result.width, dim.width);</span>
+			// Avoid integer overflows
+<span class="fc" id="L829">			result.height = safeAdd(result.height, dim.height);</span>
+<span class="fc" id="L830">		}</span>
+
+		@Override
+		public int getPrimary(Dimension dim) {
+<span class="fc" id="L834">			return dim.height;</span>
+		}
+
+		@Override
+		public int getSecondary(Dimension dim) {
+<span class="fc" id="L839">			return dim.width;</span>
+		}
+		
+		@Override
+		public void setPrimary(Dimension result, int length) {
+<span class="fc" id="L844">			result.height = length;</span>
+<span class="fc" id="L845">		}</span>
+
+		@Override
+		public void setSecondary(Dimension result, int length) {
+<span class="fc" id="L849">			result.width = length;</span>
+<span class="fc" id="L850">		}</span>
+
+		@Override
+		public float getComponentAlignment(Component component) {
+<span class="fc" id="L854">			return component.getAlignmentX();</span>
+		}
+	}
+	
+	/**
+	 * An utility component for layout.
+	 */
+<span class="fc" id="L861">	private static class Spring extends JComponent {</span>
+		private static final long serialVersionUID = -6405699460017588727L;
+	}
+	
+	/**
+	 * Add a utility component that expands by default, to a container using
+	 * SBoxLayout. Adding it rather than just creating the component is a
+	 * workaround for components not passing information about new subcomponents
+	 * if the user explicitly specifies the constraints. 
+	 * 
+	 * @param target the container where to add a string to
+	 * @return A spring with preferred dimensions 0, 0.
+	 */
+	public static JComponent addSpring(Container target) {
+<span class="fc" id="L875">		JComponent spring = new Spring();</span>
+<span class="fc" id="L876">		target.add(spring, SLayout.EXPAND_AXIAL);</span>
+		
+<span class="fc" id="L878">		return spring;</span>
+	}
+	
+	/**
+	 * A convenience method for creating a container using SBoxLayout.
+	 * 
+	 * @param direction layout direction
+	 * @return A component using SBoxLayout
+	 */
+	public static JComponent createContainer(boolean direction) {
+<span class="nc" id="L888">		JComponent container = new Spring();</span>
+<span class="nc" id="L889">		container.setLayout(new SBoxLayout(direction));</span>
+		
+<span class="nc" id="L891">		return container;</span>
+	}
+	
+	/**
+	 * A convenience method for creating a container using SBoxLayout with
+	 * padding between the components.
+	 * 
+	 * @param direction layout direction
+	 * @param padding padding in pixels between the components
+	 * @return A component using SBoxLayout
+	 */
+	public static JComponent createContainer(boolean direction, int padding) {
+<span class="fc" id="L903">		JComponent container = new Spring();</span>
+<span class="fc" id="L904">		container.setLayout(new SBoxLayout(direction, padding));</span>
+		
+<span class="fc" id="L906">		return container;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

@@ -1,0 +1,288 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>HungryJoshua.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests</a> &gt; <span class="el_source">HungryJoshua.java</span></div><h1>HungryJoshua.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2014 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests;
+
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.action.CreateSlotAction;
+import games.stendhal.server.entity.npc.action.DropItemAction;
+import games.stendhal.server.entity.npc.action.EnableFeatureAction;
+import games.stendhal.server.entity.npc.action.EquipItemAction;
+import games.stendhal.server.entity.npc.action.IncreaseKarmaAction;
+import games.stendhal.server.entity.npc.action.IncreaseXPAction;
+import games.stendhal.server.entity.npc.action.InflictStatusOnNPCAction;
+import games.stendhal.server.entity.npc.action.MultipleActions;
+import games.stendhal.server.entity.npc.action.SetQuestAction;
+import games.stendhal.server.entity.npc.action.SetQuestAndModifyKarmaAction;
+import games.stendhal.server.entity.npc.condition.AndCondition;
+import games.stendhal.server.entity.npc.condition.NotCondition;
+import games.stendhal.server.entity.npc.condition.PlayerHasItemWithHimCondition;
+import games.stendhal.server.entity.npc.condition.QuestCompletedCondition;
+import games.stendhal.server.entity.npc.condition.QuestInStateCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotStartedCondition;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.maps.Region;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
+
+import com.google.common.collect.ImmutableList;
+
+/**
+ * QUEST: Hungry Joshua
+ *
+ * PARTICIPANTS:
+ * &lt;ul&gt;
+ * &lt;li&gt; Xoderos the blacksmith in Semos&lt;/li&gt;
+ * &lt;li&gt; Joshua the blacksmith in Ados&lt;/li&gt;
+ * &lt;/ul&gt;
+ *
+ * STEPS:
+ * &lt;ul&gt;
+ * &lt;li&gt; Talk with Xoderos to activate the quest.&lt;/li&gt;
+ * &lt;li&gt; Make 5 sandwiches.&lt;/li&gt;
+ * &lt;li&gt; Talk with Joshua to give him the sandwiches.&lt;/li&gt;
+ * &lt;li&gt; Return to Xoderos with a message from Joshua.&lt;/li&gt;
+ * &lt;/ul&gt;
+ *
+ * REWARD:
+ * &lt;ul&gt;
+ * &lt;li&gt; 200 XP&lt;/li&gt;
+ * &lt;li&gt; Karma: 10&lt;/li&gt;
+ * &lt;li&gt; ability to use the keyring&lt;/li&gt;
+ * &lt;/ul&gt;
+ *
+ * REPETITIONS:
+ * &lt;ul&gt;
+ * &lt;li&gt; None.&lt;/li&gt;
+ * &lt;/ul&gt;
+ */
+<span class="fc" id="L73">public class HungryJoshua extends AbstractQuest {</span>
+	private static final int FOOD_AMOUNT = 5;
+
+	private static final String QUEST_SLOT = &quot;hungry_joshua&quot;;
+
+
+	@Override
+	public String getSlotName() {
+<span class="nc" id="L81">		return QUEST_SLOT;</span>
+	}
+
+	@Override
+	public List&lt;String&gt; getHistory(final Player player) {
+<span class="nc" id="L86">		final List&lt;String&gt; res = new ArrayList&lt;String&gt;();</span>
+<span class="nc bnc" id="L87" title="All 2 branches missed.">		if (!player.hasQuest(QUEST_SLOT)) {</span>
+<span class="nc" id="L88">			return res;</span>
+		}
+<span class="nc" id="L90">		res.add(&quot;I have asked Xoderos at Semos blacksmith if he has a quest for me.&quot;);</span>
+<span class="nc" id="L91">		final String questState = player.getQuest(QUEST_SLOT);</span>
+<span class="nc bnc" id="L92" title="All 2 branches missed.">		if (questState.equals(&quot;rejected&quot;)) {</span>
+<span class="nc" id="L93">			res.add(&quot;I do not want to help Xoderos and Joshua.&quot;);</span>
+		}
+<span class="nc bnc" id="L95" title="All 2 branches missed.">		if (player.isQuestInState(QUEST_SLOT, &quot;start&quot;, &quot;joshua&quot;, &quot;done&quot;)) {</span>
+<span class="nc" id="L96">			res.add(&quot;I agreed to take 5 sandwiches to Joshua and tell him that I have his 'food'.&quot;);</span>
+		}
+<span class="nc bnc" id="L98" title="All 6 branches missed.">		if (questState.equals(&quot;start&quot;) &amp;&amp; player.isEquipped(&quot;sandwich&quot;,</span>
+				FOOD_AMOUNT)
+				|| questState.equals(&quot;done&quot;)) {
+<span class="nc" id="L101">			res.add(&quot;I got five sandwiches to take Joshua.&quot;);</span>
+		}
+<span class="nc bnc" id="L103" title="All 4 branches missed.">		if (questState.equals(&quot;joshua&quot;) || questState.equals(&quot;done&quot;)) {</span>
+<span class="nc" id="L104">			res.add(&quot;I took the food to Joshua and he asked me to tell his brother Xoderos that he is ok, by saying 'Joshua'.&quot;);</span>
+		}
+<span class="nc bnc" id="L106" title="All 2 branches missed.">		if (questState.equals(&quot;done&quot;)) {</span>
+<span class="nc" id="L107">			res.add(&quot;I passed the message to Xoderos and he has fixed my keyring for me.&quot;);</span>
+		}
+<span class="nc" id="L109">		return res;</span>
+	}
+
+	private void step_1() {
+
+<span class="fc" id="L114">		final SpeakerNPC npc = npcs.get(&quot;Xoderos&quot;);</span>
+
+		/** If quest is not started yet, start it. */
+<span class="fc" id="L117">		npc.add(ConversationStates.ATTENDING,</span>
+			ConversationPhrases.QUEST_MESSAGES, new QuestNotStartedCondition(QUEST_SLOT),
+			ConversationStates.ATTENDING, &quot;I'm worried about my brother who lives in Ados. I need someone to take some #food to him.&quot;,
+			null);
+
+		/** In case quest is completed */
+<span class="fc" id="L123">		npc.add(ConversationStates.ATTENDING, ConversationPhrases.QUEST_MESSAGES,</span>
+			new QuestCompletedCondition(QUEST_SLOT),
+			ConversationStates.ATTENDING,
+			&quot;My brother has enough food now, many thanks.&quot;, null);
+
+		/** In case quest is completed */
+<span class="fc" id="L129">		npc.add(ConversationStates.ATTENDING, &quot;food&quot;,</span>
+			new QuestCompletedCondition(QUEST_SLOT),
+			ConversationStates.ATTENDING,
+			&quot;My brother has enough sandwiches now, thank you.&quot;, null);
+
+		/** If quest is not started yet, start it. */
+<span class="fc" id="L135">		npc.add(</span>
+			ConversationStates.ATTENDING,
+			&quot;food&quot;,
+			new QuestNotStartedCondition(QUEST_SLOT),
+			ConversationStates.QUEST_OFFERED,
+			&quot;I think five sandwiches would be enough. My brother is called #Joshua. Can you help?&quot;,
+			null);
+
+<span class="fc" id="L143">		npc.add(</span>
+			ConversationStates.QUEST_OFFERED,
+			ConversationPhrases.YES_MESSAGES,
+			null,
+			ConversationStates.ATTENDING,
+			&quot;Thank you. Please tell him #food or #sandwich so he knows you're not just a customer.&quot;,
+			new SetQuestAction(QUEST_SLOT, &quot;start&quot;));
+
+<span class="fc" id="L151">		npc.add(</span>
+			ConversationStates.QUEST_OFFERED,
+			ConversationPhrases.NO_MESSAGES,
+			null,
+			ConversationStates.ATTENDING,
+			&quot;So you'd just let him starve! I'll have to hope someone else is more charitable.&quot;,
+			new SetQuestAndModifyKarmaAction(QUEST_SLOT, &quot;rejected&quot;, -5.0));
+
+<span class="fc" id="L159">		npc.add(</span>
+			ConversationStates.QUEST_OFFERED,
+			&quot;Joshua&quot;,
+			null,
+			ConversationStates.QUEST_OFFERED,
+			&quot;He's the goldsmith in Ados. They're so short of supplies. Will you help?&quot;,
+			null);
+
+		/** Remind player about the quest */
+<span class="fc" id="L168">		npc.add(ConversationStates.ATTENDING, Arrays.asList(&quot;food&quot;, &quot;sandwich&quot;, &quot;sandwiches&quot;),</span>
+			new QuestInStateCondition(QUEST_SLOT, &quot;start&quot;),
+			ConversationStates.ATTENDING,
+			&quot;#Joshua will be getting hungry! Please hurry!&quot;, null);
+
+<span class="fc" id="L173">		npc.add(ConversationStates.ATTENDING, &quot;Joshua&quot;,</span>
+			new QuestInStateCondition(QUEST_SLOT, &quot;start&quot;),
+			ConversationStates.ATTENDING,
+			&quot;My brother, the goldsmith in Ados.&quot;, null);
+
+		/** remind to take the sandwiches */
+<span class="fc" id="L179">		npc.add(</span>
+			ConversationStates.ATTENDING, ConversationPhrases.QUEST_MESSAGES,
+			new QuestInStateCondition(QUEST_SLOT, &quot;start&quot;),
+			ConversationStates.ATTENDING,
+			&quot;Please don't forget the five #sandwiches for #Joshua!&quot;,
+			null);
+<span class="fc" id="L185">	}</span>
+
+	private void step_2() {
+<span class="fc" id="L188">		final SpeakerNPC npc = npcs.get(&quot;Joshua&quot;);</span>
+
+		/** If player has quest and has brought the food, ask for it */
+<span class="fc" id="L191">		npc.add(</span>
+			ConversationStates.ATTENDING,
+			Arrays.asList(&quot;food&quot;, &quot;sandwich&quot;, &quot;sandwiches&quot;),
+			new AndCondition(new QuestInStateCondition(QUEST_SLOT, &quot;start&quot;), new PlayerHasItemWithHimCondition(&quot;sandwich&quot;, FOOD_AMOUNT)),
+			ConversationStates.QUEST_ITEM_BROUGHT,
+			&quot;Oh great! Did my brother Xoderos send you with those sandwiches?&quot;,
+			null);
+
+<span class="fc" id="L199">		final List&lt;ChatAction&gt; reward = new LinkedList&lt;ChatAction&gt;();</span>
+<span class="fc" id="L200">		reward.add(new DropItemAction(&quot;sandwich&quot;, FOOD_AMOUNT));</span>
+<span class="fc" id="L201">		reward.add(new IncreaseXPAction(150));</span>
+<span class="fc" id="L202">		reward.add(new SetQuestAction(QUEST_SLOT, &quot;joshua&quot;));</span>
+<span class="fc" id="L203">		reward.add(new IncreaseKarmaAction(15));</span>
+<span class="fc" id="L204">		reward.add(new InflictStatusOnNPCAction(&quot;sandwich&quot;));</span>
+
+<span class="fc" id="L206">		npc.add(ConversationStates.QUEST_ITEM_BROUGHT,</span>
+			ConversationPhrases.YES_MESSAGES,
+			new PlayerHasItemWithHimCondition(&quot;sandwich&quot;, FOOD_AMOUNT),
+			ConversationStates.ATTENDING,
+			&quot;Thank you! Please let Xoderos know that I am fine. Say my name, Joshua, so he knows that you saw me. He will probably give you something in return.&quot;,
+			new MultipleActions(reward));
+
+<span class="fc" id="L213">		npc.add(ConversationStates.QUEST_ITEM_BROUGHT,</span>
+			ConversationPhrases.YES_MESSAGES,
+			new NotCondition(new PlayerHasItemWithHimCondition(&quot;sandwich&quot;, FOOD_AMOUNT)),
+			ConversationStates.ATTENDING, &quot;Hey! Where did you put the sandwiches?&quot;, null);
+
+<span class="fc" id="L218">		npc.add(ConversationStates.QUEST_ITEM_BROUGHT,</span>
+			ConversationPhrases.NO_MESSAGES, null,
+			ConversationStates.QUEST_ITEM_BROUGHT,
+			&quot;Oh dear, I'm so hungry, please say #yes they are for me.&quot;,
+			null);
+<span class="fc" id="L223">	}</span>
+
+	private void step_3() {
+<span class="fc" id="L226">		final SpeakerNPC npc = npcs.get(&quot;Xoderos&quot;);</span>
+
+		/** remind to complete the quest */
+<span class="fc" id="L229">		npc.add(</span>
+			ConversationStates.ATTENDING, ConversationPhrases.QUEST_MESSAGES,
+			new QuestInStateCondition(QUEST_SLOT, &quot;joshua&quot;),
+			ConversationStates.ATTENDING,
+			&quot;I do hope #Joshua is well ....&quot;,
+			null);
+
+		/** Remind player about the quest */
+<span class="fc" id="L237">		npc.add(ConversationStates.ATTENDING, Arrays.asList(&quot;food&quot;, &quot;sandwich&quot;, &quot;sandwiches&quot;),</span>
+			new QuestInStateCondition(QUEST_SLOT, &quot;joshua&quot;),
+			ConversationStates.ATTENDING,
+			&quot;I wish you could confirm for me that #Joshua is fine ...&quot;, null);
+
+		// ideally, make it so that this slot being done means
+		// you get a keyring object instead what we currently
+		// have - a button in the settings panel
+<span class="fc" id="L245">		final List&lt;ChatAction&gt; reward = new LinkedList&lt;ChatAction&gt;();</span>
+<span class="fc" id="L246">		reward.add(new IncreaseXPAction(50));</span>
+<span class="fc" id="L247">		reward.add(new SetQuestAction(QUEST_SLOT, &quot;done&quot;));</span>
+<span class="pc bpc" id="L248" title="1 of 2 branches missed.">		if (System.getProperty(&quot;stendhal.container&quot;) != null) {</span>
+<span class="nc" id="L249">			reward.add(new CreateSlotAction(ImmutableList.of(&quot;belt&quot;, &quot;back&quot;)));</span>
+<span class="nc" id="L250">			reward.add(new EquipItemAction(&quot;keyring&quot;, 1, true));</span>
+		} else {
+<span class="fc" id="L252">			reward.add(new EnableFeatureAction(&quot;keyring&quot;));</span>
+		}
+		/** Complete the quest */
+<span class="fc" id="L255">		npc.add(</span>
+			ConversationStates.ATTENDING, &quot;Joshua&quot;,
+			new QuestInStateCondition(QUEST_SLOT, &quot;joshua&quot;),
+			ConversationStates.ATTENDING,
+			&quot;I'm glad Joshua is well. Now, what can I do for you? I know, I'll fix that broken key ring that you're carrying ... there, it should work now!&quot;,
+			new MultipleActions(reward));
+<span class="fc" id="L261">	}</span>
+
+	@Override
+	public void addToWorld() {
+<span class="fc" id="L265">		fillQuestInfo(</span>
+				&quot;Hungry Joshua&quot;,
+				&quot;Xoderos is worried about his brother Joshua who lives in Ados because they are short of supplies.&quot;,
+				false);
+<span class="fc" id="L269">		step_1();</span>
+<span class="fc" id="L270">		step_2();</span>
+<span class="fc" id="L271">		step_3();</span>
+<span class="fc" id="L272">	}</span>
+	@Override
+	public String getName() {
+<span class="nc" id="L275">		return &quot;HungryJoshua&quot;;</span>
+	}
+
+	@Override
+	public String getRegion() {
+<span class="nc" id="L280">		return Region.SEMOS_CITY;</span>
+	}
+
+	@Override
+	public String getNPCName() {
+<span class="nc" id="L285">		return &quot;Xoderos&quot;;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

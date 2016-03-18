@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ExamineChatAction.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.npc.action</a> &gt; <span class="el_source">ExamineChatAction.java</span></div><h1>ExamineChatAction.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.npc.action;
+
+import static com.google.common.base.Preconditions.checkNotNull;
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.core.config.annotations.Dev;
+import games.stendhal.server.core.config.annotations.Dev.Category;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.events.ExamineEvent;
+
+/**
+ * Opens an examine window on the client showing an image
+ *
+ * @author hendrik
+ */
+@Dev(category=Category.CHAT, label=&quot;Image&quot;)
+public class ExamineChatAction implements ChatAction {
+	private final String image;
+	private final String title;
+	private final String caption;
+
+	/**
+	 * Creates a new ExamineChatAction
+	 *
+	 * @param image the image to display
+	 * @param title the title
+	 * @param caption text to display along the image
+	 */
+<span class="fc" id="L42">	public ExamineChatAction(final String image, final String title, final String caption) {</span>
+<span class="fc" id="L43">		this.image = checkNotNull(image);</span>
+<span class="fc" id="L44">		this.title = checkNotNull(title);</span>
+<span class="fc" id="L45">		this.caption = checkNotNull(caption);</span>
+<span class="fc" id="L46">	}</span>
+
+	@Override
+	public void fire(final Player player, final Sentence sentence, final EventRaiser npc) {
+<span class="fc" id="L50">		player.addEvent(new ExamineEvent(&quot;examine/&quot; + image, title, caption));</span>
+<span class="fc" id="L51">		player.notifyWorldAboutChanges();</span>
+<span class="fc" id="L52">	}</span>
+
+	@Override
+	public String toString() {
+<span class="nc" id="L56">		return &quot;ExamineChatAction &lt;&quot; + image + &quot;&gt;&quot;;</span>
+	}
+
+	@Override
+	public int hashCode() {
+<span class="nc" id="L61">		return 5189 * (image.hashCode() + 5197 * (title.hashCode() + 5209 * caption.hashCode()));</span>
+	}
+
+	@Override
+	public boolean equals(final Object obj) {
+<span class="pc bpc" id="L66" title="1 of 2 branches missed.">		if (!(obj instanceof ExamineChatAction)) {</span>
+<span class="nc" id="L67">			return false;</span>
+		}
+<span class="fc" id="L69">		ExamineChatAction other = (ExamineChatAction) obj;</span>
+<span class="pc bpc" id="L70" title="3 of 6 branches missed.">		return image.equals(other.image)</span>
+			&amp;&amp; title.equals(other.title)
+			&amp;&amp; caption.equals(other.caption);
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

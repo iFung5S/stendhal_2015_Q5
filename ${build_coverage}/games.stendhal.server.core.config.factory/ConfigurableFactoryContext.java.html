@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ConfigurableFactoryContext.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.core.config.factory</a> &gt; <span class="el_source">ConfigurableFactoryContext.java</span></div><h1>ConfigurableFactoryContext.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.core.config.factory;
+
+import java.util.Map;
+
+/**
+ * A configuration context for general object factories.
+ */
+public class ConfigurableFactoryContext {
+
+	private final Map&lt;String, String&gt; attributes;
+
+	/**
+	 * Create a configuration context using an attribute map. NOTE: The
+	 * attributes are not copied.
+	 * 
+	 * @param attributes
+	 *            The attributes.
+	 */
+<span class="fc" id="L31">	public ConfigurableFactoryContext(final Map&lt;String, String&gt; attributes) {</span>
+<span class="fc" id="L32">		this.attributes = attributes;</span>
+<span class="fc" id="L33">	}</span>
+
+	/**
+	 * Extracts a boolean value from a string.
+	 * 
+	 * @param name
+	 *            name of the attribute (only used for error handling)
+	 * @param value
+	 *            value to parse
+	 * @return the parsed value
+	 * @throws IllegalArgumentException
+	 *             in case the value is not a valid boolean
+	 */
+	private static boolean extractBooleanFromString(final String name, final String value) {
+<span class="fc bfc" id="L47" title="All 2 branches covered.">		if (&quot;true&quot;.equals(value)) {</span>
+<span class="fc" id="L48">			return true;</span>
+		}
+
+<span class="fc bfc" id="L51" title="All 2 branches covered.">		if (&quot;false&quot;.equals(value)) {</span>
+<span class="fc" id="L52">			return false;</span>
+		}
+<span class="fc" id="L54">		throw new IllegalArgumentException(&quot;Invalid '&quot; + name</span>
+				+ &quot;' attribute value: '&quot; + value
+				+ &quot;' should be 'true' or 'false'&quot;);
+	}
+
+	/**
+	 * gets an attribute.
+	 * 
+	 * @param name
+	 *            the attribute name.
+	 * @param defaultValue
+	 *            the default value it case it is not defined
+	 * @return the value of the attribute
+	 * @throws IllegalArgumentException
+	 *             in case the value is not a valid boolean
+	 */
+	public boolean getBoolean(final String name, final boolean defaultValue) {
+<span class="fc" id="L71">		final String value = attributes.get(name);</span>
+<span class="fc bfc" id="L72" title="All 2 branches covered.">		if (value == null) {</span>
+<span class="fc" id="L73">			return defaultValue;</span>
+		}
+
+<span class="fc" id="L76">		return extractBooleanFromString(name, value);</span>
+	}
+
+	/**
+	 * gets an attribute.
+	 * 
+	 * @param name
+	 *            the attribute name.
+	 * @return the value of the attribute
+	 * @throws IllegalArgumentException
+	 *             in case the value is not a valid boolean or is missing
+	 */
+	public boolean getRequiredBoolean(final String name) {
+<span class="fc" id="L89">		final String value = this.getRequiredString(name);</span>
+<span class="fc" id="L90">		return extractBooleanFromString(name, value);</span>
+	}
+
+	/**
+	 * gets an attribute.
+	 * 
+	 * @param name
+	 *            the attribute name.
+	 * @param defaultValue
+	 *            the default value it case it is not defined
+	 * @return the value of the attribute
+	 * @throws IllegalArgumentException
+	 *             in case the value is not a valid integer
+	 */
+	public int getInt(final String name, final int defaultValue) {
+<span class="fc" id="L105">		final String value = attributes.get(name);</span>
+<span class="fc bfc" id="L106" title="All 2 branches covered.">		if (value == null) {</span>
+<span class="fc" id="L107">			return defaultValue;</span>
+		}
+
+		try {
+<span class="fc" id="L111">			return Integer.parseInt(value);</span>
+<span class="nc" id="L112">		} catch (final NumberFormatException ex) {</span>
+<span class="nc" id="L113">			throw new IllegalArgumentException(&quot;Invalid '&quot; + name</span>
+					+ &quot;' attribute value: &quot; + value
+					+ &quot; is not a valid integer.&quot;);
+		}
+	}
+
+	/**
+	 * gets an attribute.
+	 * 
+	 * @param name
+	 *            the attribute name.
+	 * @return the value of the attribute
+	 * @throws IllegalArgumentException
+	 *             in case the value is not a valid integer or is missing
+	 */
+	public int getRequiredInt(final String name) {
+<span class="nc" id="L129">		final String value = this.getRequiredString(name);</span>
+		try {
+<span class="nc" id="L131">			return Integer.parseInt(value);</span>
+<span class="nc" id="L132">		} catch (final NumberFormatException ex) {</span>
+<span class="nc" id="L133">			throw new IllegalArgumentException(&quot;Invalid '&quot; + name</span>
+					+ &quot;' attribute value: &quot; + value
+					+ &quot; is not a valid integer.&quot;);
+		}
+	}
+
+	/**
+	 * gets an attribute.
+	 * 
+	 * @param name
+	 *            the attribute name.
+	 * @param defaultValue
+	 *            the default value it case it is not defined
+	 * @return the value of the attribute
+	 */
+	public String getString(final String name, final String defaultValue) {
+<span class="fc" id="L149">		final String value = attributes.get(name);</span>
+<span class="fc bfc" id="L150" title="All 2 branches covered.">		if (value == null) {</span>
+<span class="fc" id="L151">			return defaultValue;</span>
+		}
+<span class="fc" id="L153">		return value;</span>
+	}
+
+	/**
+	 * gets an attribute.
+	 * 
+	 * @param name
+	 *            the attribute name.
+	 * @return the value of the attribute
+	 * @throws IllegalArgumentException
+	 *             in case is missing
+	 */
+	public String getRequiredString(final String name) {
+<span class="fc" id="L166">		final String value = attributes.get(name);</span>
+<span class="fc bfc" id="L167" title="All 2 branches covered.">		if (value == null) {</span>
+<span class="fc" id="L168">			throw new IllegalArgumentException(&quot;Missing required attribute &quot;</span>
+					+ name);
+		}
+<span class="fc" id="L171">		return value;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

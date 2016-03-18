@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>PixmapStyle.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui.styled.styles</a> &gt; <span class="el_source">PixmapStyle.java</span></div><h1>PixmapStyle.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2013 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui.styled.styles;
+
+import games.stendhal.client.gui.styled.PixmapBorder;
+import games.stendhal.client.gui.styled.Style;
+import games.stendhal.client.gui.wt.core.SettingChangeAdapter;
+import games.stendhal.client.gui.wt.core.WtWindowManager;
+import games.stendhal.client.sprite.Sprite;
+import games.stendhal.client.sprite.SpriteStore;
+import games.stendhal.common.MathHelper;
+
+import java.awt.Color;
+import java.awt.Font;
+
+import javax.swing.border.Border;
+
+/**
+ * Base class for the pixmap styles.
+ */
+class PixmapStyle implements Style {
+	private static final int DEFAULT_FONT_SIZE = 12;
+	
+	private final Color highLightColor;
+	private final Color shadowColor;
+	private final Color plainColor;
+	private final Color foreground;
+	
+	/**
+	 * The background texture.
+	 */
+	private Sprite background;
+
+	/**
+	 * The border.
+	 */
+	private Border border;
+	/**
+	 * Downwards border (for buttons etc).
+	 */
+	private Border borderDown;
+
+	/**
+	 * The default font.
+	 */
+	private Font font;
+
+	/**
+	 * Create a new AbstractPixmapStyle.
+	 * 
+	 * @param baseSprite background image location
+	 * @param createDefaultBorder if &lt;code&gt;true&lt;/code&gt; create PixmapBorders
+	 * 	from the background sprite, otherwise the caller &lt;em&gt;must&lt;/em&gt; set the
+	 * 	borders using {@link #setBorder(Border)} and
+	 * 	{@link #setBorderDown(Border)} before using the style
+	 * @param highLightColor color for drawing highlights
+	 * @param shadowColor color for drawing shadows
+	 * @param plainColor color that roughly represents the background.
+	 * @param foreground color used for text and anything else to be drawn in
+	 * 	the component foreground color
+	 */
+	PixmapStyle(String baseSprite, boolean createDefaultBorder,
+			Color highLightColor, Color shadowColor, Color plainColor,
+<span class="nc" id="L73">			Color foreground) {</span>
+		/*
+		 * Load the texture
+		 */
+<span class="nc" id="L77">		final SpriteStore st = SpriteStore.get();</span>
+<span class="nc" id="L78">		background = st.getSprite(baseSprite);</span>
+
+<span class="nc bnc" id="L80" title="All 2 branches missed.">		if (createDefaultBorder) {</span>
+<span class="nc" id="L81">			border = new PixmapBorder(background, true);</span>
+<span class="nc" id="L82">			borderDown = new PixmapBorder(background, false);</span>
+		}
+		
+<span class="nc" id="L85">		this.highLightColor = highLightColor;</span>
+<span class="nc" id="L86">		this.shadowColor = shadowColor;</span>
+<span class="nc" id="L87">		this.plainColor = plainColor;</span>
+<span class="nc" id="L88">		this.foreground = foreground;</span>
+
+<span class="nc" id="L90">		WtWindowManager.getInstance().registerSettingChangeListener(&quot;ui.font_size&quot;, </span>
+<span class="nc" id="L91">				new SettingChangeAdapter(&quot;ui.font_size&quot;, Integer.toString(DEFAULT_FONT_SIZE)) {</span>
+			@Override
+			public void changed(String newValue) {
+<span class="nc" id="L94">				int size = MathHelper.parseIntDefault(newValue, DEFAULT_FONT_SIZE);</span>
+<span class="nc" id="L95">				font = new Font(&quot;Dialog&quot;, Font.PLAIN, size);</span>
+<span class="nc" id="L96">			}</span>
+		});
+<span class="nc" id="L98">	}</span>
+
+	/**
+	 * Get the normal font.
+	 * 
+	 * @return A font.
+	 */
+	@Override
+	public Font getFont() {
+<span class="nc" id="L107">		return font;</span>
+	}
+	
+	/**
+	 * Get the background texture.
+	 * 
+	 * @return A texture sprite.
+	 */
+	@Override
+	public Sprite getBackground() {
+<span class="nc" id="L117">		return background;</span>
+	}
+	
+	/**
+	 * Get component border.
+	 * 
+	 * @return A border, or &lt;code&gt;null&lt;/code&gt; to use default.
+	 */
+	@Override
+	public Border getBorder() {
+<span class="nc" id="L127">		return border;</span>
+	}
+	
+	/**
+	 * Get lowered component border.
+	 * 
+	 * @return A border, or &lt;code&gt;null&lt;/code&gt; to use default.
+	 */
+	@Override
+	public Border getBorderDown() {
+<span class="nc" id="L137">		return borderDown;</span>
+	}
+	
+	@Override
+	public Color getHighLightColor() {
+<span class="nc" id="L142">		return highLightColor;</span>
+	}
+
+	@Override
+	public Color getShadowColor() {
+<span class="nc" id="L147">		return shadowColor;</span>
+	}
+	
+	@Override
+	public Color getPlainColor() {
+<span class="nc" id="L152">		return plainColor;</span>
+	}
+
+	@Override
+	public Color getForeground() {
+<span class="nc" id="L157">		return foreground;</span>
+	}
+	
+	/**
+	 * Set the border to be used, instead the default PixmapBorder.
+	 * 
+	 * @param border new border
+	 */
+	void setBorder(Border border) {
+<span class="nc" id="L166">		this.border = border;</span>
+<span class="nc" id="L167">	}</span>
+
+	/**
+	 * Set the downward border to be used, instead the default PixmapBorder.
+	 * 
+	 * @param border new border
+	 */
+	void setBorderDown(Border border) {
+<span class="nc" id="L175">		this.borderDown = border;</span>
+<span class="nc" id="L176">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>HouseSellerGreetingAction.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests.houses</a> &gt; <span class="el_source">HouseSellerGreetingAction.java</span></div><h1>HouseSellerGreetingAction.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests.houses;
+
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.player.Player;
+
+/** House owners are offered the chance to buy a spare key when the seller greets them. Others are just greeted with their name. */
+final class HouseSellerGreetingAction extends HouseChatAction implements ChatAction {
+	protected HouseSellerGreetingAction(final String questslot) {
+<span class="fc" id="L24">		super(questslot);</span>
+<span class="fc" id="L25">	}</span>
+
+	@Override
+	public void fire(final Player player, final Sentence sentence, final EventRaiser raiser) {
+<span class="fc" id="L29">		String reply = &quot;&quot;;</span>
+		
+<span class="fc bfc" id="L31" title="All 2 branches covered.">		if (HouseUtilities.playerOwnsHouse(player)) {</span>
+<span class="fc" id="L32">			reply = &quot; At the cost of &quot;</span>
+				+ HouseChatAction.COST_OF_SPARE_KEY
+				+ &quot; money you can purchase a spare key for your house. Do you want to buy one now?&quot;;
+<span class="fc" id="L35">			raiser.setCurrentState(ConversationStates.QUESTION_1);</span>
+<span class="pc bpc" id="L36" title="1 of 2 branches missed.">		} else if (player.hasQuest(questslot)) {</span>
+			// the player has lost the house. clear the slot so that he can buy a new one if he wants
+<span class="nc" id="L38">			player.removeQuest(questslot);</span>
+		}
+		
+<span class="fc" id="L41">		raiser.say(&quot;Hello, &quot; + player.getTitle() + &quot;.&quot; + reply);</span>
+<span class="fc" id="L42">	}</span>
+	
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

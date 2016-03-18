@@ -1,0 +1,306 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ZooFood.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests</a> &gt; <span class="el_source">ZooFood.java</span></div><h1>ZooFood.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests;
+
+import games.stendhal.common.MathHelper;
+import games.stendhal.common.grammar.Grammar;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.action.DropRecordedItemAction;
+import games.stendhal.server.entity.npc.action.IncreaseXPAction;
+import games.stendhal.server.entity.npc.action.MultipleActions;
+import games.stendhal.server.entity.npc.action.SayRequiredItemAction;
+import games.stendhal.server.entity.npc.action.SayTimeRemainingAction;
+import games.stendhal.server.entity.npc.action.SetQuestAction;
+import games.stendhal.server.entity.npc.action.SetQuestAndModifyKarmaAction;
+import games.stendhal.server.entity.npc.action.SetQuestToTimeStampAction;
+import games.stendhal.server.entity.npc.action.StartRecordingRandomItemCollectionAction;
+import games.stendhal.server.entity.npc.condition.AndCondition;
+import games.stendhal.server.entity.npc.condition.GreetingMatchesNameCondition;
+import games.stendhal.server.entity.npc.condition.NotCondition;
+import games.stendhal.server.entity.npc.condition.OrCondition;
+import games.stendhal.server.entity.npc.condition.PlayerHasRecordedItemWithHimCondition;
+import games.stendhal.server.entity.npc.condition.QuestCompletedCondition;
+import games.stendhal.server.entity.npc.condition.QuestInStateCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotCompletedCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotStartedCondition;
+import games.stendhal.server.entity.npc.condition.QuestStateStartsWithCondition;
+import games.stendhal.server.entity.npc.condition.TimePassedCondition;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.maps.Region;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * QUEST: Zoo Food
+ * &lt;p&gt;
+ * PARTICIPANTS:
+ * &lt;ul&gt;
+ * &lt;li&gt; Katinka, the keeper at the Ados Wildlife Refuge
+ * &lt;li&gt; Dr.Feelgood, the veterinary
+ * &lt;/ul&gt;
+ * 
+ * STEPS:
+ * &lt;ul&gt;
+ * &lt;li&gt; Katinka asks you for food for the animals.
+ * &lt;li&gt; You get the food, e.g. by killing other animals ;) or harvesting it
+ * &lt;li&gt; You give the food to Katinka.
+ * &lt;li&gt; Katinka thanks you.
+ * &lt;li&gt; You can then buy cheap medicine from Dr. Feelgood.
+ * &lt;/ul&gt;
+ * 
+ * REWARD: &lt;ul&gt;
+ * &lt;li&gt; 200 XP 
+ * &lt;li&gt; 7 Karma 
+ * &lt;li&gt; Supply for cheap medicine and free pet healing for one week
+ * &lt;/ul&gt;
+ * REPETITIONS: - Once per week.
+ */
+<span class="fc" id="L75">public class ZooFood extends AbstractQuest {</span>
+
+	private static final int REQUIRED_HAM = 10;
+	private static final int DELAY = MathHelper.MINUTES_IN_ONE_WEEK;
+
+	private static final String QUEST_SLOT = &quot;zoo_food&quot;;
+
+	@Override
+	public String getSlotName() {
+<span class="nc" id="L84">		return QUEST_SLOT;</span>
+	}
+	
+	@Override
+	public List&lt;String&gt; getHistory(final Player player) {
+<span class="nc" id="L89">		final List&lt;String&gt; res = new ArrayList&lt;String&gt;();</span>
+<span class="nc bnc" id="L90" title="All 2 branches missed.">		if (!player.hasQuest(QUEST_SLOT)) {</span>
+<span class="nc" id="L91">			return res;</span>
+		}
+<span class="nc" id="L93">		res.add(&quot;I have met Katinka at the zoo.&quot;);</span>
+<span class="nc" id="L94">		final String questState = player.getQuest(QUEST_SLOT);</span>
+<span class="nc bnc" id="L95" title="All 2 branches missed.">		if (questState.equals(&quot;rejected&quot;)) {</span>
+<span class="nc" id="L96">			res.add(&quot;I do not have the time for smelly animals and their food issues.&quot;);</span>
+<span class="nc" id="L97">			return res;</span>
+		}
+<span class="nc" id="L99">		res.add(&quot;I don't want to see those poor animals die! I'll help get the food!&quot;);</span>
+<span class="nc bnc" id="L100" title="All 2 branches missed.">		if (questState.startsWith(&quot;start;&quot;)) {</span>
+<span class="nc" id="L101">			String questItem = player.getRequiredItemName(QUEST_SLOT,1);</span>
+<span class="nc" id="L102">			int amount = player.getRequiredItemQuantity(QUEST_SLOT,1);</span>
+<span class="nc bnc" id="L103" title="All 2 branches missed.">			if (!player.isEquipped(questItem, amount)) {</span>
+<span class="nc" id="L104">				res.add(String.format(&quot;I have been asked to fetch &quot; +Grammar.quantityplnoun(amount, questItem, &quot;a&quot;) + &quot; for the animals.&quot;));</span>
+			} else {
+<span class="nc" id="L106">				res.add(String.format(&quot;I have &quot; +Grammar.quantityplnoun(amount, questItem, &quot;a&quot;) + &quot; to feed the animals, and need to take it.&quot;));</span>
+			}
+		}
+<span class="nc bnc" id="L109" title="All 2 branches missed.">		if (isCompleted(player)) {</span>
+<span class="nc bnc" id="L110" title="All 2 branches missed.">			if(new TimePassedCondition(QUEST_SLOT, 1, DELAY).fire(player, null, null)) {</span>
+<span class="nc" id="L111">				res.add(&quot;The animals are hungry again! I need to ask Katinka what they need.&quot;);</span>
+			} else {
+<span class="nc" id="L113">				res.add(&quot;The animals are not hungry! Yay, me!&quot;);</span>
+			}
+		}
+<span class="nc" id="L116">		return res;</span>
+	}
+
+	private void step_1() {
+<span class="fc" id="L120">		final SpeakerNPC npc = npcs.get(&quot;Katinka&quot;);</span>
+
+        // Player has never done the zoo quest
+<span class="fc" id="L123">		npc.add(ConversationStates.IDLE, ConversationPhrases.GREETING_MESSAGES,</span>
+				new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+						new QuestNotStartedCondition(QUEST_SLOT)),
+				ConversationStates.ATTENDING,
+				&quot;Welcome to the Ados Wildlife Refuge! We rescue animals from being slaughtered by evil adventurers. But we need help... maybe you could do a #task for us?&quot;,
+				null
+		);
+
+        // Player returns within one week of completing quest
+<span class="fc" id="L132">		npc.add(ConversationStates.IDLE, ConversationPhrases.GREETING_MESSAGES,</span>
+				new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+						new QuestCompletedCondition(QUEST_SLOT), 
+						new NotCondition(new TimePassedCondition(QUEST_SLOT, 1, DELAY))),
+				ConversationStates.ATTENDING, &quot;Welcome back to the Ados Wildlife Refuge! Thanks again for rescuing our animals!&quot;,
+				null
+		);
+
+        // Player returns and longer than a week has passed, ask to help again
+<span class="fc" id="L141">		npc.add(ConversationStates.IDLE, ConversationPhrases.GREETING_MESSAGES,</span>
+				new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+						new QuestCompletedCondition(QUEST_SLOT), 
+						new TimePassedCondition(QUEST_SLOT, 1, DELAY)),
+				ConversationStates.QUEST_OFFERED, &quot;Welcome back to the Ados Wildlife &quot;
+                + &quot;Refuge! Our animals are hungry again, can you bring some more food please?&quot;,
+                null);
+
+
+        // Player has never done the zoo quest, player asks what the task was
+<span class="fc" id="L151">		npc.add(ConversationStates.ATTENDING, ConversationPhrases.QUEST_MESSAGES,</span>
+				new QuestNotCompletedCondition(QUEST_SLOT), 
+				ConversationStates.QUEST_OFFERED, &quot;Our animals are hungry. We need &quot; +
+						&quot;more food to feed them. Can you help us?&quot;,
+				null);
+
+<span class="fc" id="L157">	    final Map&lt;String,Integer&gt; items = new HashMap&lt;String, Integer&gt;();		</span>
+<span class="fc" id="L158">	    items.put(&quot;apple&quot;,5);</span>
+<span class="fc" id="L159">	    items.put(&quot;bread&quot;,3);</span>
+<span class="fc" id="L160">	    items.put(&quot;button mushroom&quot;,5);</span>
+<span class="fc" id="L161">	    items.put(&quot;carrot&quot;,5);</span>
+<span class="fc" id="L162">	    items.put(&quot;cheese&quot;,10);</span>
+<span class="fc" id="L163">	    items.put(&quot;cherry&quot;,5);</span>
+<span class="fc" id="L164">	    items.put(&quot;egg&quot;,5);</span>
+<span class="fc" id="L165">		items.put(&quot;grain&quot;,20);</span>
+<span class="fc" id="L166">	    items.put(&quot;ham&quot;,10); </span>
+<span class="fc" id="L167">	    items.put(&quot;honey&quot;,5);</span>
+<span class="fc" id="L168">		items.put(&quot;meat&quot;,15);</span>
+<span class="fc" id="L169">		items.put(&quot;porcini&quot;,5);</span>
+<span class="fc" id="L170">		items.put(&quot;roach&quot;,3);</span>
+<span class="fc" id="L171">		items.put(&quot;salad&quot;,10);</span>
+<span class="fc" id="L172">		items.put(&quot;spinach&quot;,5);</span>
+		
+		
+		
+        // Player has done quest before and agrees to help again
+<span class="fc" id="L177">		npc.add(ConversationStates.QUEST_OFFERED, ConversationPhrases.YES_MESSAGES,</span>
+				null,
+				ConversationStates.ATTENDING, null,
+                new MultipleActions(new SetQuestAction(QUEST_SLOT, &quot;start;&quot;),
+				new StartRecordingRandomItemCollectionAction(QUEST_SLOT, 1, items, &quot;Oh, thank you! Please help us by&quot; 
+                + &quot; bringing [item] as soon as you can.&quot;))
+		);
+
+
+		// player is not willing to help
+<span class="fc" id="L187">		npc.add(ConversationStates.QUEST_OFFERED, ConversationPhrases.NO_MESSAGES, </span>
+				null,
+				ConversationStates.ATTENDING, &quot;Oh dear... I guess we're going to have to feed them with the deer...&quot;,
+				new SetQuestAndModifyKarmaAction(QUEST_SLOT, &quot;rejected&quot;, -5.0)
+		);
+		
+        // Player returns within one week of completing quest
+<span class="fc" id="L194">		npc.add(ConversationStates.ATTENDING, ConversationPhrases.QUEST_MESSAGES,</span>
+				new AndCondition(new QuestCompletedCondition(QUEST_SLOT), 
+                                 new NotCondition(new TimePassedCondition(QUEST_SLOT, 1, DELAY))),
+				ConversationStates.ATTENDING, null, 
+				new SayTimeRemainingAction(QUEST_SLOT, 1, DELAY, &quot;Thanks, we have enough food to feed the animals here for another&quot;));
+
+<span class="fc" id="L200">	}</span>
+
+	private void step_2() {
+		// Just find the food somewhere. It isn't a quest
+<span class="fc" id="L204">	}</span>
+
+	private void step_3() {
+<span class="fc" id="L207">		final SpeakerNPC npc = npcs.get(&quot;Katinka&quot;);</span>
+
+		// compatibility with old quests:
+		// player returns while initial quest is still active, set it to match the new way
+<span class="fc" id="L211">		npc.add(ConversationStates.IDLE, ConversationPhrases.GREETING_MESSAGES,</span>
+				new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+						new QuestInStateCondition(QUEST_SLOT, &quot;start&quot;)),
+				ConversationStates.QUEST_ITEM_BROUGHT,
+				&quot;Welcome back! Have you brought the &quot;
+						+ Grammar.quantityplnoun(REQUIRED_HAM, &quot;ham&quot;, &quot;&quot;) + &quot;?&quot;,
+			new SetQuestAction(QUEST_SLOT,&quot;start;ham=10&quot;));
+
+		// player returns while quest is active
+<span class="fc" id="L220">		npc.add(ConversationStates.IDLE, ConversationPhrases.GREETING_MESSAGES,</span>
+				new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+						new QuestStateStartsWithCondition(QUEST_SLOT, &quot;start;&quot;)),
+				ConversationStates.QUEST_ITEM_BROUGHT,
+				null,
+				new SayRequiredItemAction(QUEST_SLOT, 1, &quot;Welcome back! Have you brought the [item]?&quot;));
+
+<span class="fc" id="L227">		final List&lt;ChatAction&gt; actions = new LinkedList&lt;ChatAction&gt;();</span>
+<span class="fc" id="L228">		actions.add(new DropRecordedItemAction(QUEST_SLOT,1));</span>
+<span class="fc" id="L229">		actions.add(new SetQuestAndModifyKarmaAction(QUEST_SLOT, &quot;done;1&quot;, 5.0));</span>
+<span class="fc" id="L230">		actions.add(new SetQuestToTimeStampAction(QUEST_SLOT, 1));</span>
+<span class="fc" id="L231">		actions.add(new IncreaseXPAction(200));</span>
+	
+<span class="fc" id="L233">		npc.add(ConversationStates.QUEST_ITEM_BROUGHT,</span>
+			ConversationPhrases.YES_MESSAGES, 
+			new PlayerHasRecordedItemWithHimCondition(QUEST_SLOT,1),
+			ConversationStates.ATTENDING, &quot;Thank you! You have rescued our rare animals.&quot;,
+			new MultipleActions(actions));
+
+<span class="fc" id="L239">        npc.add(ConversationStates.QUEST_ITEM_BROUGHT,</span>
+        		ConversationPhrases.YES_MESSAGES,
+        		new NotCondition(new PlayerHasRecordedItemWithHimCondition(QUEST_SLOT,1)),
+        		ConversationStates.ATTENDING, null,
+        		new SayRequiredItemAction(QUEST_SLOT, 1, &quot;*sigh* I SPECIFICALLY said that we need [item]!&quot;)
+        		);
+
+<span class="fc" id="L246">		npc.add(ConversationStates.QUEST_ITEM_BROUGHT, ConversationPhrases.NO_MESSAGES, null,</span>
+				ConversationStates.ATTENDING, &quot;Well, hurry up! These rare animals are starving!&quot;,
+				null);
+<span class="fc" id="L249">	}</span>
+
+	private void step_4() {
+<span class="fc" id="L252">		final SpeakerNPC npc = npcs.get(&quot;Dr. Feelgood&quot;);</span>
+
+		// player returns while quest is still active
+<span class="fc" id="L255">		npc.add(ConversationStates.IDLE, ConversationPhrases.GREETING_MESSAGES,</span>
+				new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+						new QuestCompletedCondition(QUEST_SLOT), 
+						new NotCondition(new TimePassedCondition(QUEST_SLOT, 1, DELAY))),
+			ConversationStates.ATTENDING, &quot;Hello! Now that the animals have enough food, they don't get sick that easily, and I have time for other things. How can I help you?&quot;,
+				null
+		);
+
+<span class="fc" id="L263">		npc.add(ConversationStates.IDLE, ConversationPhrases.GREETING_MESSAGES,</span>
+				new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+						new OrCondition(new QuestNotCompletedCondition(QUEST_SLOT),
+								new AndCondition(new QuestCompletedCondition(QUEST_SLOT), new TimePassedCondition(QUEST_SLOT, 1, DELAY))
+						)),
+				ConversationStates.IDLE, &quot;Sorry, can't stop to chat. The animals are all sick because they don't have enough food. See yourself out, won't you?&quot;,
+				null
+		);
+<span class="fc" id="L271">	}</span>
+
+	@Override
+	public void addToWorld() {
+<span class="fc" id="L275">		fillQuestInfo(</span>
+				&quot;Zoo Food&quot;,
+				&quot;The animals at the zoo are hungry and need some food!&quot;,
+				true);
+<span class="fc" id="L279">		step_1();</span>
+<span class="fc" id="L280">		step_2();</span>
+<span class="fc" id="L281">		step_3();</span>
+<span class="fc" id="L282">		step_4();</span>
+<span class="fc" id="L283">	}</span>
+
+	@Override
+	public String getName() {
+<span class="nc" id="L287">		return &quot;ZooFood&quot;;</span>
+	}
+	
+	@Override
+    public boolean isRepeatable(final Player player) {
+<span class="nc" id="L292">		return	new AndCondition(new QuestCompletedCondition(QUEST_SLOT),</span>
+						 new TimePassedCondition(QUEST_SLOT,1,DELAY)).fire(player, null, null);
+	}
+
+	@Override
+	public String getNPCName() {
+<span class="nc" id="L298">		return &quot;Katinka&quot;;</span>
+	}
+	
+	@Override
+	public String getRegion() {
+<span class="nc" id="L303">		return Region.ADOS_SURROUNDS;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

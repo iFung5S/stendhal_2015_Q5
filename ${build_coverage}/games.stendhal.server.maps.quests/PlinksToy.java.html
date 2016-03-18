@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>PlinksToy.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.maps.quests</a> &gt; <span class="el_source">PlinksToy.java</span></div><h1>PlinksToy.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.maps.quests;
+
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.entity.mapstuff.spawner.PassiveEntityRespawnPoint;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.ConversationPhrases;
+import games.stendhal.server.entity.npc.ConversationStates;
+import games.stendhal.server.entity.npc.SpeakerNPC;
+import games.stendhal.server.entity.npc.action.DropItemAction;
+import games.stendhal.server.entity.npc.action.IncreaseKarmaAction;
+import games.stendhal.server.entity.npc.action.IncreaseXPAction;
+import games.stendhal.server.entity.npc.action.MultipleActions;
+import games.stendhal.server.entity.npc.action.SetQuestAction;
+import games.stendhal.server.entity.npc.condition.AndCondition;
+import games.stendhal.server.entity.npc.condition.GreetingMatchesNameCondition;
+import games.stendhal.server.entity.npc.condition.NotCondition;
+import games.stendhal.server.entity.npc.condition.OrCondition;
+import games.stendhal.server.entity.npc.condition.PlayerHasItemWithHimCondition;
+import games.stendhal.server.entity.npc.condition.QuestCompletedCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotCompletedCondition;
+import games.stendhal.server.entity.npc.condition.QuestNotStartedCondition;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.maps.Region;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
+
+/**
+ * QUEST: Plink's Toy
+ * &lt;p&gt;
+ * PARTICIPANTS: &lt;ul&gt;&lt;li&gt; Plink &lt;li&gt; some wolves &lt;/ul&gt;
+ * 
+ * STEPS: &lt;ul&gt;&lt;li&gt; Plink tells you that he got scared by some wolves and ran away
+ * dropping his teddy. &lt;li&gt; Find the teddy in the Park Of Wolves &lt;li&gt; Bring it back to
+ * Plink &lt;/ul&gt;
+ * 
+ * REWARD: &lt;ul&gt;&lt;li&gt; a smile &lt;li&gt; 20 XP &lt;li&gt; 10 Karma &lt;/ul&gt;
+ * 
+ * REPETITIONS: &lt;ul&gt;&lt;li&gt; None. &lt;/ul&gt;
+ */
+<span class="fc" id="L56">public class PlinksToy extends AbstractQuest {</span>
+
+	private static final String QUEST_SLOT = &quot;plinks_toy&quot;;
+
+	@Override
+	public String getSlotName() {
+<span class="nc" id="L62">		return QUEST_SLOT;</span>
+	}
+	
+	@Override
+	public List&lt;String&gt; getHistory(final Player player) {
+<span class="nc" id="L67">		final List&lt;String&gt; res = new ArrayList&lt;String&gt;();</span>
+<span class="nc bnc" id="L68" title="All 2 branches missed.">		if (!player.hasQuest(QUEST_SLOT)) {</span>
+<span class="nc bnc" id="L69" title="All 2 branches missed.">			if (player.isEquipped(&quot;teddy&quot;)) {</span>
+<span class="nc" id="L70">				res.add(&quot;I found a bear which might belong to someone else.&quot;);</span>
+			}
+<span class="nc" id="L72">			return res;</span>
+		}
+<span class="nc" id="L74">		res.add(&quot;I have met Plink&quot;);</span>
+<span class="nc" id="L75">		final String questState = player.getQuest(QUEST_SLOT);</span>
+<span class="nc bnc" id="L76" title="All 2 branches missed.">		if (questState.equals(&quot;rejected&quot;)) {</span>
+<span class="nc" id="L77">			res.add(&quot;I do not want to find Plink's toy bear.&quot;);</span>
+<span class="nc" id="L78">			return res;</span>
+		}
+<span class="nc" id="L80">		res.add(&quot;Plink begged me to look for his teddy in a garden with lots of wolves.&quot;);</span>
+<span class="nc bnc" id="L81" title="All 4 branches missed.">		if (player.isEquipped(&quot;teddy&quot;) || isCompleted(player)) {</span>
+<span class="nc" id="L82">			res.add(&quot;I have found Plink's toy bear&quot;);</span>
+		}
+<span class="nc bnc" id="L84" title="All 2 branches missed.">		if (isCompleted(player)) {</span>
+<span class="nc" id="L85">			res.add(&quot;I gave Plink his bear.&quot;);</span>
+		}
+<span class="nc" id="L87">		return res;</span>
+	}
+
+	private void step_1() {
+<span class="fc" id="L91">		final SpeakerNPC npc = npcs.get(&quot;Plink&quot;);</span>
+
+<span class="fc" id="L93">		npc.add(</span>
+			ConversationStates.IDLE,
+			ConversationPhrases.GREETING_MESSAGES,
+			new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+					new QuestNotCompletedCondition(QUEST_SLOT),
+					new NotCondition(new PlayerHasItemWithHimCondition(&quot;teddy&quot;))),
+			ConversationStates.QUEST_OFFERED,
+			&quot;*cries* There were wolves in the #park! *sniff* I ran away, but I dropped my #teddy! Please will you get it for me? *sniff* Please?&quot;,
+			null);
+
+<span class="fc" id="L103">		npc.add(ConversationStates.QUEST_OFFERED,</span>
+			ConversationPhrases.YES_MESSAGES, null,
+			ConversationStates.IDLE, &quot;*sniff* Thanks a lot! *smile*&quot;,
+			new SetQuestAction(QUEST_SLOT, &quot;start&quot;));
+
+<span class="fc" id="L108">		npc.add(ConversationStates.QUEST_OFFERED, ConversationPhrases.NO_MESSAGES, null,</span>
+			ConversationStates.QUEST_OFFERED,
+			&quot;*sniff* But... but... PLEASE! *cries*&quot;, null);
+
+<span class="fc" id="L112">		npc.add(</span>
+			ConversationStates.QUEST_OFFERED,
+			Arrays.asList(&quot;wolf&quot;, &quot;wolves&quot;),
+			null,
+			ConversationStates.QUEST_OFFERED,
+			&quot;They came in from the plains, and now they're hanging around the #park over to the east a little ways. I'm not allowed to go near them, they're dangerous.&quot;,
+			null);
+
+<span class="fc" id="L120">		npc.add(</span>
+			ConversationStates.QUEST_OFFERED,
+			&quot;park&quot;,
+			null,
+			ConversationStates.QUEST_OFFERED,
+			&quot;My parents told me not to go to the park by myself, but I got lost when I was playing... Please don't tell them! Can you bring my #teddy back?&quot;,
+			null);
+
+<span class="fc" id="L128">		npc.add(ConversationStates.QUEST_OFFERED, &quot;teddy&quot;, null,</span>
+			ConversationStates.QUEST_OFFERED,
+			&quot;Teddy is my favourite toy! Please will you bring him back?&quot;,
+			null);
+<span class="fc" id="L132">	}</span>
+
+	private void step_2() {
+<span class="fc" id="L135">		final StendhalRPZone zone = SingletonRepository.getRPWorld().getZone(&quot;0_semos_plains_n&quot;);</span>
+<span class="fc" id="L136">		final PassiveEntityRespawnPoint teddyRespawner = new PassiveEntityRespawnPoint(&quot;teddy&quot;, 1500);</span>
+<span class="fc" id="L137">		teddyRespawner.setPosition(107, 84);</span>
+<span class="fc" id="L138">		teddyRespawner.setDescription(&quot;There's a teddy-bear-shaped depression in the sand here.&quot;);</span>
+<span class="fc" id="L139">		zone.add(teddyRespawner);</span>
+
+<span class="fc" id="L141">		teddyRespawner.setToFullGrowth();</span>
+<span class="fc" id="L142">	}</span>
+
+	private void step_3() {
+<span class="fc" id="L145">		final SpeakerNPC npc = npcs.get(&quot;Plink&quot;);</span>
+		
+<span class="fc" id="L147">		final List&lt;ChatAction&gt; reward = new LinkedList&lt;ChatAction&gt;();</span>
+<span class="fc" id="L148">		reward.add(new DropItemAction(&quot;teddy&quot;));</span>
+<span class="fc" id="L149">		reward.add(new IncreaseXPAction(20));</span>
+<span class="fc" id="L150">		reward.add(new SetQuestAction(QUEST_SLOT, &quot;done&quot;));</span>
+<span class="fc" id="L151">		reward.add(new IncreaseKarmaAction(10));</span>
+		
+<span class="fc" id="L153">		npc.add(ConversationStates.IDLE, ConversationPhrases.GREETING_MESSAGES,</span>
+			new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+							new OrCondition(
+									new QuestNotStartedCondition(QUEST_SLOT),
+									new QuestNotCompletedCondition(QUEST_SLOT)),
+							new PlayerHasItemWithHimCondition(&quot;teddy&quot;)),
+			ConversationStates.ATTENDING, 
+			&quot;You found him! *hugs teddy* Thank you, thank you! *smile*&quot;,
+			new MultipleActions(reward));
+
+<span class="fc" id="L163">		npc.add(</span>
+			ConversationStates.ATTENDING,
+			&quot;teddy&quot;,
+			new AndCondition(new QuestNotCompletedCondition(QUEST_SLOT), new NotCondition(new PlayerHasItemWithHimCondition(&quot;teddy&quot;))),
+			ConversationStates.ATTENDING,
+			&quot;I lost my teddy in the #park over east, where all those #wolves are hanging about.&quot;,
+			null);
+		
+<span class="fc" id="L171">		npc.add(ConversationStates.ATTENDING,</span>
+				ConversationPhrases.QUEST_MESSAGES,
+			new AndCondition(new GreetingMatchesNameCondition(npc.getName()),
+					new QuestCompletedCondition(QUEST_SLOT)),
+			ConversationStates.ATTENDING, 
+			&quot;You found my teddy already near by the wolves! I still squeeze and hug it :)&quot;, null);
+<span class="fc" id="L177">	}</span>
+
+	@Override
+	public void addToWorld() {
+<span class="fc" id="L181">		fillQuestInfo(</span>
+				&quot;Plinks toy&quot;,
+				&quot;Plink is a sweet little boy, and like many little boys is frightened of wolves.&quot;,
+				false);
+<span class="fc" id="L185">		step_1();</span>
+<span class="fc" id="L186">		step_2();</span>
+<span class="fc" id="L187">		step_3();</span>
+<span class="fc" id="L188">	}</span>
+
+	@Override
+	public String getName() {
+<span class="nc" id="L192">		return &quot;PlinksToy&quot;;</span>
+	}
+
+	@Override
+	public String getNPCName() {
+<span class="nc" id="L197">		return &quot;Plink&quot;;</span>
+	}
+
+	@Override
+	public String getRegion() {
+<span class="nc" id="L202">		return Region.SEMOS_SURROUNDS;</span>
+	}
+	
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

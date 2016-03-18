@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>StyleSet.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui.textformat</a> &gt; <span class="el_source">StyleSet.java</span></div><h1>StyleSet.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2013 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui.textformat;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
+
+import javax.swing.text.Style;
+import javax.swing.text.StyleContext;
+
+/**
+ * FormatSet wrapper for Styles.
+ */
+public class StyleSet implements FormatSet&lt;Style, StyleSet&gt; {
+	/** Style context. Required for using NamedStyles. */
+	private final StyleContext sc;
+	/** Style represented by this StyleSet. */
+	private final Style style;
+	/**
+	 * A Workaround. Styles have extra junk that we haven't added. Avoid
+	 * overwriting the things from the base StyleSet in union() by storing
+	 * the values we have actually changed.
+	 */
+<span class="fc" id="L34">	private final Map&lt;Object, Object&gt; modified = new HashMap&lt;Object, Object&gt;();</span>
+	
+	/**
+	 * Create a new StyleSet.
+	 * 
+	 * @param sc style context
+	 * @param style wrapped style
+	 */
+<span class="fc" id="L42">	public StyleSet(StyleContext sc, Style style) {</span>
+<span class="fc" id="L43">		this.sc = sc;</span>
+<span class="fc" id="L44">		this.style = sc.new NamedStyle();</span>
+<span class="fc" id="L45">		this.style.addAttributes(style);</span>
+<span class="fc" id="L46">	}</span>
+
+	@Override
+	public StyleSet union(StyleSet additional) {
+<span class="nc" id="L50">		StyleSet rval = copy();</span>
+<span class="nc bnc" id="L51" title="All 2 branches missed.">		for (Entry&lt;Object, Object&gt; entry : additional.modified.entrySet()) {</span>
+<span class="nc" id="L52">			rval.setAttribute(entry.getKey(), entry.getValue());</span>
+<span class="nc" id="L53">		}</span>
+		
+<span class="nc" id="L55">		return rval;</span>
+	}
+
+	@Override
+	public StyleSet copy() {
+<span class="fc" id="L60">		return new StyleSet(sc, style);</span>
+	}
+
+	@Override
+	public Style contents() {
+<span class="nc" id="L65">		return style;</span>
+	}
+	
+	/**
+	 * Set a text attribute. See {@link javax.swing.text.StyleConstants} for
+	 * valid keys and values.
+	 * 
+	 * @param key attribute key
+	 * @param value attribute value
+	 */
+	public void setAttribute(Object key, Object value) {
+<span class="fc" id="L76">		modified.put(key, value);</span>
+<span class="fc" id="L77">		style.addAttribute(key, value);</span>
+<span class="fc" id="L78">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

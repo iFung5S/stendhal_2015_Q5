@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>QuestActiveCondition.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.npc.condition</a> &gt; <span class="el_source">QuestActiveCondition.java</span></div><h1>QuestActiveCondition.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.npc.condition;
+
+import static com.google.common.base.Preconditions.checkNotNull;
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.core.config.annotations.Dev;
+import games.stendhal.server.core.config.annotations.Dev.Category;
+import games.stendhal.server.entity.Entity;
+import games.stendhal.server.entity.npc.ChatCondition;
+import games.stendhal.server.entity.player.Player;
+
+/**
+ * Was this quest started but not completed?
+ */
+@Dev(category=Category.QUEST_SLOT, label=&quot;Active?&quot;)
+public class QuestActiveCondition implements ChatCondition {
+
+	private final String questname;
+
+	/**
+	 * Creates a new QuestActiveCondition.
+	 *
+	 * @param questname
+	 *            name of quest slot
+	 */
+<span class="fc" id="L37">	public QuestActiveCondition(final String questname) {</span>
+<span class="fc" id="L38">		this.questname = checkNotNull(questname);</span>
+<span class="fc" id="L39">	}</span>
+
+	@Override
+	public boolean fire(final Player player, final Sentence sentence, final Entity entity) {
+<span class="fc bfc" id="L43" title="All 6 branches covered.">		return (player.hasQuest(questname) &amp;&amp; !player.isQuestInState(questname, 0, &quot;rejected&quot;) &amp;&amp; !player.isQuestCompleted(questname));</span>
+	}
+
+	@Override
+	public String toString() {
+<span class="fc" id="L48">		return &quot;QuestActive &lt;&quot; + questname + &quot;&gt;&quot;;</span>
+	}
+
+	@Override
+	public int hashCode() {
+<span class="fc" id="L53">		return 45767 * questname.hashCode();</span>
+	}
+
+	@Override
+	public boolean equals(final Object obj) {
+<span class="fc bfc" id="L58" title="All 2 branches covered.">		if (!(obj instanceof QuestActiveCondition)) {</span>
+<span class="fc" id="L59">			return false;</span>
+		}
+<span class="fc" id="L61">		QuestActiveCondition other = (QuestActiveCondition) obj;</span>
+<span class="fc" id="L62">		return questname.equals(other.questname);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

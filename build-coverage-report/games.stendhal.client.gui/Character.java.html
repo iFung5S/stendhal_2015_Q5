@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Character.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui</a> &gt; <span class="el_source">Character.java</span></div><h1>Character.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui;
+
+import games.stendhal.client.GameObjects;
+import games.stendhal.client.entity.ContentChangeListener;
+import games.stendhal.client.entity.IEntity;
+import games.stendhal.client.entity.Inspector;
+import games.stendhal.client.entity.User;
+import games.stendhal.client.entity.factory.EntityMap;
+import games.stendhal.client.gui.layout.SBoxLayout;
+import games.stendhal.client.sprite.SpriteStore;
+
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
+
+import javax.swing.Box;
+import javax.swing.JComponent;
+import javax.swing.SwingUtilities;
+
+import marauroa.common.game.RPObject;
+import marauroa.common.game.RPObject.ID;
+import marauroa.common.game.RPSlot;
+
+import org.apache.log4j.Logger;
+
+/**
+ * Window for showing the equipment the player is wearing.
+ */
+class Character extends InternalManagedWindow implements ContentChangeListener,
+Inspectable {
+	/**
+	 * serial version uid.
+	 */
+	private static final long serialVersionUID = -5585214190674481472L;
+
+	/** Padding between the ItemPanels. */
+	private static final int PADDING = 1;
+	/** The pixel amount the hand slots should be below the armor slot. */
+	private static final int HAND_YSHIFT = 10;
+<span class="nc" id="L53">	private static final Logger logger = Logger.getLogger(Character.class);</span>
+	
+	/** ItemPanels searchable by the respective slot name. */
+<span class="nc" id="L56">	private final Map&lt;String, ItemPanel&gt; slotPanels = new HashMap&lt;String, ItemPanel&gt;();</span>
+	private User player;
+
+	private JComponent specialSlots;
+	
+	/**
+	 * Create a new character window.
+	 */
+	public Character() {
+<span class="nc" id="L65">		super(&quot;character&quot;, &quot;Character&quot;);</span>
+<span class="nc" id="L66">		createLayout();</span>
+		// Don't allow the user close this. There's no way to get it back. 
+<span class="nc" id="L68">		setCloseable(false);</span>
+<span class="nc" id="L69">	}</span>
+	
+	/**
+	 * Sets the player entity. It is safe to call this method outside the event
+	 * dispatch thread.
+	 * 
+	 * @param userEntity new user
+	 */
+	public void setPlayer(final User userEntity) {
+<span class="nc" id="L78">		player = userEntity;</span>
+<span class="nc" id="L79">		userEntity.addContentChangeListener(this);</span>
+		// Compatibility. Show additional slots only if the user has those.
+		// This can be removed after a couple of releases (and specialSlots
+		// field moved to createLayout()).
+<span class="nc bnc" id="L83" title="All 2 branches missed.">		if (userEntity.getRPObject().hasSlot(&quot;belt&quot;)) {</span>
+<span class="nc" id="L84">			SwingUtilities.invokeLater(new Runnable() {</span>
+				@Override
+				public void run() {
+<span class="nc" id="L87">					specialSlots.setVisible(true);</span>
+<span class="nc" id="L88">				}</span>
+			});
+		}
+<span class="nc" id="L91">		refreshContents();</span>
+<span class="nc" id="L92">	}</span>
+	
+	/**
+	 * Create the content layout and add the ItemPanels.
+	 */
+	private void createLayout() {
+		// Layout containers
+<span class="nc" id="L99">		JComponent content = SBoxLayout.createContainer(SBoxLayout.VERTICAL, PADDING);</span>
+<span class="nc" id="L100">		JComponent row = SBoxLayout.createContainer(SBoxLayout.HORIZONTAL, PADDING);</span>
+<span class="nc" id="L101">		JComponent left = SBoxLayout.createContainer(SBoxLayout.VERTICAL, PADDING);</span>
+<span class="nc" id="L102">		JComponent middle = SBoxLayout.createContainer(SBoxLayout.VERTICAL, PADDING);</span>
+<span class="nc" id="L103">		JComponent right = SBoxLayout.createContainer(SBoxLayout.VERTICAL, PADDING);</span>
+<span class="nc" id="L104">		left.setAlignmentY(CENTER_ALIGNMENT);</span>
+<span class="nc" id="L105">		right.setAlignmentY(CENTER_ALIGNMENT);</span>
+<span class="nc" id="L106">		row.add(left);</span>
+<span class="nc" id="L107">		row.add(middle);</span>
+<span class="nc" id="L108">		row.add(right);</span>
+<span class="nc" id="L109">		content.add(row);</span>
+		
+<span class="nc" id="L111">		Class&lt;? extends IEntity&gt; itemClass = EntityMap.getClass(&quot;item&quot;, null, null);</span>
+<span class="nc" id="L112">		SpriteStore store = SpriteStore.get();</span>
+
+		/*
+		 * Fill the left column
+		 *
+		 * Add filler to shift the hand slots down. Shift * 2 because centering
+		 * the column uses the other half at the bottom.
+		 */
+<span class="nc" id="L120">		left.add(Box.createVerticalStrut(HAND_YSHIFT * 2)); </span>
+
+<span class="nc" id="L122">		ItemPanel panel = createItemPanel(itemClass, store, &quot;rhand&quot;, &quot;data/gui/weapon-slot.png&quot;);</span>
+<span class="nc" id="L123">		left.add(panel);</span>
+<span class="nc" id="L124">		panel = createItemPanel(itemClass, store, &quot;finger&quot;, &quot;data/gui/ring-slot.png&quot;);</span>
+<span class="nc" id="L125">		left.add(panel);</span>
+		
+		// Fill the middle column
+<span class="nc" id="L128">		panel = createItemPanel(itemClass, store, &quot;head&quot;, &quot;data/gui/helmet-slot.png&quot;);</span>
+<span class="nc" id="L129">		middle.add(panel);</span>
+<span class="nc" id="L130">		panel = createItemPanel(itemClass, store, &quot;armor&quot;, &quot;data/gui/armor-slot.png&quot;);</span>
+<span class="nc" id="L131">		middle.add(panel);</span>
+<span class="nc" id="L132">		panel = createItemPanel(itemClass, store, &quot;legs&quot;, &quot;data/gui/legs-slot.png&quot;);</span>
+<span class="nc" id="L133">		middle.add(panel);</span>
+<span class="nc" id="L134">		panel = createItemPanel(itemClass, store, &quot;feet&quot;, &quot;data/gui/boots-slot.png&quot;);</span>
+<span class="nc" id="L135">		middle.add(panel);</span>
+	
+		/*
+		 *  Fill the right column
+		 *
+		 * Add filler to shift the hand slots down. Shift * 2 because centering
+		 * the column uses the other half at the bottom.
+		 */
+<span class="nc" id="L143">		right.add(Box.createVerticalStrut(HAND_YSHIFT * 2));</span>
+<span class="nc" id="L144">		panel = createItemPanel(itemClass, store, &quot;lhand&quot;, &quot;data/gui/shield-slot.png&quot;);</span>
+<span class="nc" id="L145">		right.add(panel);</span>
+<span class="nc" id="L146">		panel = createItemPanel(itemClass, store, &quot;cloak&quot;, &quot;data/gui/cloak-slot.png&quot;);</span>
+
+<span class="nc" id="L148">		right.add(panel);</span>
+		
+		// Bag, keyring, etc
+<span class="nc" id="L151">		specialSlots = SBoxLayout.createContainer(SBoxLayout.HORIZONTAL, PADDING);</span>
+<span class="nc" id="L152">		specialSlots.setAlignmentX(CENTER_ALIGNMENT);</span>
+		// Compatibility. See the note at setPlayer().
+<span class="nc" id="L154">		specialSlots.setVisible(false);</span>
+<span class="nc" id="L155">		content.add(specialSlots);</span>
+		
+<span class="nc" id="L157">		panel = createItemPanel(itemClass, store, &quot;back&quot;, &quot;data/gui/bag-slot.png&quot;);</span>
+<span class="nc" id="L158">		specialSlots.add(panel);</span>
+<span class="nc" id="L159">		panel = createItemPanel(itemClass, store, &quot;belt&quot;, &quot;data/gui/key-slot.png&quot;);</span>
+<span class="nc" id="L160">		specialSlots.add(panel);</span>
+		
+<span class="nc" id="L162">		setContent(content);</span>
+<span class="nc" id="L163">	}</span>
+	
+	/**
+	 * Create an item panel to be placed to the character window.
+	 * 
+	 * @param itemClass acceptable drops to the slot
+	 * @param store sprite store
+	 * @param id slot identifier
+	 * @param image empty slot image
+	 * 
+	 * @return item panel
+	 */
+	private ItemPanel createItemPanel(Class&lt;? extends IEntity&gt; itemClass, SpriteStore store, String id, String image) {
+<span class="nc" id="L176">		ItemPanel panel = new ItemPanel(id, store.getSprite(image));</span>
+<span class="nc" id="L177">		slotPanels.put(id, panel);</span>
+<span class="nc" id="L178">		panel.setAcceptedTypes(itemClass);</span>
+		
+<span class="nc" id="L180">		return panel;</span>
+	}
+	
+	/**
+	 * Updates the player slot panels.
+	 */
+	private void refreshContents() {
+<span class="nc bnc" id="L187" title="All 2 branches missed.">		for (final Entry&lt;String, ItemPanel&gt; entry : slotPanels.entrySet()) {</span>
+<span class="nc" id="L188">			final ItemPanel entitySlot = entry.getValue();</span>
+
+<span class="nc bnc" id="L190" title="All 2 branches missed.">			if (entitySlot != null) {</span>
+				// Set the parent entity for all slots, even if they are not
+				// visible. They may become visible without zone changes
+<span class="nc" id="L193">				entitySlot.setParent(player);</span>
+				
+<span class="nc" id="L195">				final RPSlot slot = player.getSlot(entry.getKey());</span>
+<span class="nc bnc" id="L196" title="All 2 branches missed.">				if (slot == null) {</span>
+<span class="nc" id="L197">					continue;</span>
+				}
+
+<span class="nc" id="L200">				final Iterator&lt;RPObject&gt; iter = slot.iterator();</span>
+
+<span class="nc bnc" id="L202" title="All 2 branches missed.">				if (iter.hasNext()) {</span>
+<span class="nc" id="L203">					final RPObject object = iter.next();</span>
+
+<span class="nc" id="L205">					IEntity entity = GameObjects.getInstance().get(object);</span>
+
+<span class="nc" id="L207">					entitySlot.setEntity(entity);</span>
+<span class="nc" id="L208">				} else {</span>
+<span class="nc" id="L209">					entitySlot.setEntity(null);</span>
+				}
+			}
+<span class="nc" id="L212">		}</span>
+
+		/*
+		 * Refresh gets called from outside the EDT.
+		 */
+<span class="nc" id="L217">		SwingUtilities.invokeLater(new Runnable() {</span>
+			@Override
+			public void run() {
+<span class="nc" id="L220">				setTitle(player.getName());</span>
+<span class="nc" id="L221">			}</span>
+		});
+<span class="nc" id="L223">	}</span>
+
+	@Override
+	public void contentAdded(RPSlot added) {
+<span class="nc" id="L227">		ItemPanel panel = slotPanels.get(added.getName());</span>
+<span class="nc bnc" id="L228" title="All 2 branches missed.">		if (panel == null) {</span>
+			// Not a slot we are interested in
+<span class="nc" id="L230">			return;</span>
+		}
+		
+<span class="nc" id="L233">		String slotName = added.getName();</span>
+<span class="nc bnc" id="L234" title="All 6 branches missed.">		if ((&quot;belt&quot;.equals(slotName) || &quot;back&quot;.equals(slotName)) &amp;&amp; !player.getRPObject().hasSlot(slotName)) {</span>
+			// One of the new slots was added to the player. Set them visible.
+<span class="nc" id="L236">			SwingUtilities.invokeLater(new Runnable() {</span>
+				@Override
+				public void run() {
+<span class="nc" id="L239">					specialSlots.setVisible(true);</span>
+<span class="nc" id="L240">				}</span>
+			});
+		}
+		
+<span class="nc bnc" id="L244" title="All 2 branches missed.">		for (RPObject obj : added) {</span>
+<span class="nc" id="L245">			ID id = obj.getID();</span>
+<span class="nc" id="L246">			IEntity entity = panel.getEntity();</span>
+<span class="nc bnc" id="L247" title="All 4 branches missed.">			if (entity != null &amp;&amp; id.equals(entity.getRPObject().getID())) {</span>
+				// Changed rather than added.
+<span class="nc" id="L249">				return;</span>
+			}
+			// Actually added, fetch the corresponding entity
+<span class="nc" id="L252">			entity = GameObjects.getInstance().get(obj);</span>
+<span class="nc bnc" id="L253" title="All 2 branches missed.">			if (entity == null) {</span>
+<span class="nc" id="L254">				logger.error(&quot;Unable to find entity for: &quot; + obj,</span>
+						new Throwable(&quot;here&quot;));
+<span class="nc" id="L256">				return;</span>
+			}
+
+<span class="nc" id="L259">			panel.setEntity(entity);</span>
+<span class="nc" id="L260">		}</span>
+<span class="nc" id="L261">	}</span>
+
+	@Override
+	public void contentRemoved(RPSlot removed) {
+<span class="nc" id="L265">		ItemPanel panel = slotPanels.get(removed.getName());</span>
+<span class="nc bnc" id="L266" title="All 2 branches missed.">		if (panel == null) {</span>
+			// Not a slot we are interested in
+<span class="nc" id="L268">			return;</span>
+		}
+<span class="nc bnc" id="L270" title="All 2 branches missed.">		for (RPObject obj : removed) {</span>
+<span class="nc" id="L271">			ID id = obj.getID();</span>
+<span class="nc" id="L272">			IEntity entity = panel.getEntity();</span>
+<span class="nc bnc" id="L273" title="All 4 branches missed.">			if (entity != null &amp;&amp; id.equals(entity.getRPObject().getID())) {</span>
+<span class="nc bnc" id="L274" title="All 2 branches missed.">				if (obj.size() == 1) {</span>
+					// The object was removed
+<span class="nc" id="L276">					panel.setEntity(null);</span>
+<span class="nc" id="L277">					continue;</span>
+				}
+			} else {
+<span class="nc" id="L280">				logger.error(&quot;Tried removing wrong object from a panel. &quot;</span>
+						+ &quot;removing: &quot; + obj + &quot; , but panel contains: &quot;
+						+ panel.getEntity(), new Throwable());
+			}
+<span class="nc" id="L284">		}</span>
+<span class="nc" id="L285">	}</span>
+
+	@Override
+	public void setInspector(Inspector inspector) {
+<span class="nc bnc" id="L289" title="All 2 branches missed.">		for (ItemPanel panel : slotPanels.values()) {</span>
+<span class="nc" id="L290">			panel.setInspector(inspector);</span>
+<span class="nc" id="L291">		}</span>
+<span class="nc" id="L292">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

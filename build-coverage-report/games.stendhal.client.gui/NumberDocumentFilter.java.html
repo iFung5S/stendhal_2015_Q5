@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>NumberDocumentFilter.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui</a> &gt; <span class="el_source">NumberDocumentFilter.java</span></div><h1>NumberDocumentFilter.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                  (C) Copyright 2003 - 2015 Faiumoni e.V.                *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui;
+
+import javax.swing.text.AttributeSet;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.DocumentFilter;
+import javax.swing.text.JTextComponent;
+
+/**
+ * Special document filter for editing number only content.
+ */
+public class NumberDocumentFilter extends DocumentFilter {
+	/** Text component where the editing is done. */
+	private final JTextComponent comp;
+	/** Flag for inserting 0 on empty documents. */
+	private final boolean defaultZero;
+
+	/**
+	 * Create a filter for a text component.
+	 * 
+	 * @param comp text component. This is only used to highlight the &quot;0&quot;
+	 * 	when the user deletes all other text
+	 * @param defaultZero if &lt;code&gt;true&lt;/code&gt;, then on clearing the document,
+	 *	a preselected 0 is inserted.
+	 */
+<span class="fc" id="L36">	public NumberDocumentFilter(JTextComponent comp, boolean defaultZero) {</span>
+<span class="fc" id="L37">		this.comp = comp;</span>
+<span class="fc" id="L38">		this.defaultZero = defaultZero;</span>
+<span class="fc" id="L39">	}</span>
+
+	@Override
+	public void replace(FilterBypass fb, int offset,
+			int len, String str, AttributeSet a) throws BadLocationException {
+		// Allow inserting only numbers
+<span class="nc" id="L45">		str = str.replaceAll(&quot;\\D&quot;, &quot;&quot;);</span>
+<span class="nc bnc" id="L46" title="All 2 branches missed.">		if (!str.isEmpty()) {</span>
+<span class="nc" id="L47">			super.replace(fb, offset, len, str, a);</span>
+		}
+<span class="nc" id="L49">	}</span>
+
+	@Override
+	public void remove(FilterBypass fb, int offset, int length) throws BadLocationException {
+<span class="nc" id="L53">		super.remove(fb, offset, length);</span>
+<span class="nc bnc" id="L54" title="All 4 branches missed.">		if (defaultZero &amp;&amp; fb.getDocument().getLength() == 0) {</span>
+			// Just deleted the entire contents. Place a 0
+			// there that will get automatically overwritten
+			// at new edits
+<span class="nc" id="L58">			fb.insertString(0, &quot;0&quot;, null);</span>
+<span class="nc" id="L59">			comp.selectAll();</span>
+		}
+<span class="nc" id="L61">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

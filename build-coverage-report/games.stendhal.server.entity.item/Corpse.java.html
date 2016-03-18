@@ -1,0 +1,526 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Corpse.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.item</a> &gt; <span class="el_source">Corpse.java</span></div><h1>Corpse.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                      (C) Copyright 2003 - Marauroa                      *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.item;
+
+import games.stendhal.common.ItemTools;
+import games.stendhal.common.MathHelper;
+import games.stendhal.common.grammar.Grammar;
+import games.stendhal.server.core.engine.ItemLogger;
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.core.events.EquipListener;
+import games.stendhal.server.core.events.TurnListener;
+import games.stendhal.server.core.rp.group.Group;
+import games.stendhal.server.entity.PassiveEntity;
+import games.stendhal.server.entity.RPEntity;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.entity.slot.LootableSlot;
+
+import java.awt.geom.Rectangle2D;
+
+import marauroa.common.game.Definition.Type;
+import marauroa.common.game.RPClass;
+import marauroa.common.game.RPObject;
+import marauroa.common.game.RPSlot;
+
+import org.apache.log4j.Logger;
+
+/**
+ * A corpse created when a creature or player is killed. It may contain items.
+ */
+public class Corpse extends PassiveEntity implements EquipListener {
+
+	/**
+	 * TurnListener to degradate a corpse
+	 *   
+	 * @author madmetzger
+	 */
+<span class="fc" id="L48">	private final class CorpseRottingTurnListener implements TurnListener {</span>
+		@Override
+		public void onTurnReached(final int currentTurn) {
+<span class="fc" id="L51">			Corpse.this.onTurnReached();</span>
+<span class="fc" id="L52">		}</span>
+	}
+	
+	/**
+	 * TurnListener to release this corpse to get everyone able to be rewarded for looting this corpse
+	 * (i.e. for achievements)
+	 *  
+	 * @author madmetzger
+	 */
+<span class="fc" id="L61">	private final class CorpseReleaseRewardingForEveryoneTurnListener implements TurnListener {</span>
+		@Override
+		public void onTurnReached(final int currentTurn) {
+<span class="nc" id="L64">			setCorpseOwner(null);</span>
+<span class="nc" id="L65">		}</span>
+	}
+
+	private static final String CONTENT_SLOT = &quot;content&quot;;
+	/**
+	 * The killer's name attribute name.
+	 */
+	private static final String ATTR_KILLER = &quot;killer&quot;;
+
+	/**
+	 * The name attribute name.
+	 */
+	private static final String ATTR_NAME = &quot;name&quot;;
+	
+	/**
+	 * The image name
+	 */
+	private static final String ATTR_IMAGE = &quot;image&quot;;
+	
+	/**
+	 * The harmless image name
+	 */
+	private static final String ATTR_HARMLESS_IMAGE = &quot;harmless_image&quot;;
+
+	
+	/**
+	 * The owner of the corpse
+	 */
+	private static final String ATTR_CORPSE_OWNER = &quot;corpse_owner&quot;;
+
+<span class="fc" id="L95">	private static final Logger logger = Logger.getLogger(Corpse.class);</span>
+
+	/** Time (in seconds) until a corpse disappears. */
+	private static final int DEGRADATION_TIMEOUT = 15 * MathHelper.SECONDS_IN_ONE_MINUTE;
+	
+	/** number of degradation steps. */
+	private static final int MAX_STAGE = 5; 
+
+	/** time between two degradation steps */
+	private static final int DEGRADATION_STEP_TIMEOUT = DEGRADATION_TIMEOUT / MAX_STAGE;
+	
+	/** Minimum resistance of a single corpse */
+	private static final int MIN_RESISTANCE = 5;
+	/** Theoretical resistance of a single corpse */
+	private static final int MAX_RESISTANCE = 70;
+	
+	/** Time (in seconds) until everyone may loot this corpse */
+	private static final int PROTECTION_TIME = 5;
+	
+	/** Who can loot this corpse?*/
+<span class="fc" id="L115">	private String corpseOwner = null;</span>
+	
+	private int stage;
+	/**
+	 * A holder for more accurate creature name &quot;rat&quot; instead of &quot;small
+	 * animal&quot; for corpses of Creatures.
+	 */
+	private String creatureName;
+
+<span class="fc" id="L124">	private TurnListener corpseDegradator = new CorpseRottingTurnListener();</span>
+<span class="fc" id="L125">	private TurnListener itemForRewardsReleaser = new CorpseReleaseRewardingForEveryoneTurnListener();</span>
+	
+	@Override
+	public void onRemoved(final StendhalRPZone zone) {
+<span class="fc" id="L129">		SingletonRepository.getTurnNotifier().dontNotify(corpseDegradator);</span>
+<span class="fc" id="L130">		SingletonRepository.getTurnNotifier().dontNotify(itemForRewardsReleaser);</span>
+<span class="fc" id="L131">		super.onRemoved(zone);</span>
+<span class="fc" id="L132">	}</span>
+
+	public static void generateRPClass() {
+<span class="fc" id="L135">		final RPClass entity = new RPClass(&quot;corpse&quot;);</span>
+<span class="fc" id="L136">		entity.isA(&quot;entity&quot;);</span>
+<span class="fc" id="L137">		entity.addAttribute(&quot;class&quot;, Type.STRING);</span>
+<span class="fc" id="L138">		entity.addAttribute(&quot;stage&quot;, Type.BYTE);</span>
+
+<span class="fc" id="L140">		entity.addAttribute(ATTR_NAME, Type.STRING);</span>
+<span class="fc" id="L141">		entity.addAttribute(ATTR_KILLER, Type.STRING);</span>
+<span class="fc" id="L142">		entity.addAttribute(ATTR_IMAGE, Type.STRING);</span>
+<span class="fc" id="L143">		entity.addAttribute(ATTR_HARMLESS_IMAGE, Type.STRING);</span>
+<span class="fc" id="L144">		entity.addAttribute(ATTR_CORPSE_OWNER, Type.STRING);</span>
+
+<span class="fc" id="L146">		entity.addRPSlot(CONTENT_SLOT, 4);</span>
+<span class="fc" id="L147">	}</span>
+	
+	/**
+	 * non rotting corpse.
+	 * 
+	 * @param clazz
+	 * @param x
+	 * @param y
+	 */
+<span class="fc" id="L156">	public Corpse(final String clazz, final int x, final int y) {</span>
+<span class="fc" id="L157">		setRPClass(&quot;corpse&quot;);</span>
+<span class="fc" id="L158">		put(&quot;type&quot;, &quot;corpse&quot;);</span>
+
+<span class="fc" id="L160">		setEntityClass(clazz);</span>
+
+<span class="fc" id="L162">		setPosition(x, y);</span>
+<span class="fc" id="L163">		stage = 0;</span>
+<span class="fc" id="L164">		put(&quot;stage&quot;, stage);</span>
+		// default to player corpse image
+<span class="fc" id="L166">		put(ATTR_IMAGE, &quot;player&quot;);</span>
+<span class="fc" id="L167">		put(ATTR_HARMLESS_IMAGE, &quot;harmless_player&quot;);</span>
+<span class="fc" id="L168">		setResistance(calculateResistance());</span>
+		
+<span class="fc" id="L170">		final RPSlot slot = new LootableSlot(this);</span>
+<span class="fc" id="L171">		addSlot(slot);</span>
+<span class="fc" id="L172">	}</span>
+
+	/**
+	 * Create a corpse.
+	 * 
+	 * @param victim
+	 *            The killed entity.
+	 * @param killerName
+	 *            The killer name.
+	 * 
+	 * 
+	 */
+<span class="fc" id="L184">	public Corpse(final RPEntity victim, final String killerName) {</span>
+<span class="fc" id="L185">		setRPClass(&quot;corpse&quot;);</span>
+<span class="fc" id="L186">		put(&quot;type&quot;, &quot;corpse&quot;);</span>
+
+<span class="fc bfc" id="L188" title="All 2 branches covered.">		if (victim.has(&quot;class&quot;)) {</span>
+<span class="fc" id="L189">			setEntityClass(victim.get(&quot;class&quot;));</span>
+		} else {
+<span class="fc" id="L191">			setEntityClass(victim.get(&quot;type&quot;));</span>
+		}
+		
+<span class="fc" id="L194">		put(ATTR_IMAGE, victim.getCorpseName());</span>
+<span class="fc" id="L195">		put(ATTR_HARMLESS_IMAGE, victim.getHarmlessCorpseName());</span>
+<span class="fc" id="L196">		setSize(victim.getCorpseWidth(), victim.getCorpseHeight());</span>
+		
+<span class="fc bfc" id="L198" title="All 2 branches covered.">		if (&quot;creature&quot;.equals(victim.getRPClass().getName())) {</span>
+<span class="fc" id="L199">			creatureName = victim.getName();</span>
+		}
+
+<span class="pc bpc" id="L202" title="1 of 2 branches missed.">		if ((killerName != null)) {</span>
+<span class="fc" id="L203">			put(ATTR_NAME, victim.getTitle());</span>
+<span class="fc" id="L204">			put(ATTR_KILLER, killerName);</span>
+<span class="nc bnc" id="L205" title="All 2 branches missed.">		} else if (has(ATTR_KILLER)) {</span>
+<span class="nc" id="L206">			logger.error(&quot;Corpse: (&quot; + victim + &quot;) with null killer&quot;);</span>
+<span class="nc" id="L207">			remove(ATTR_KILLER);</span>
+		}
+
+<span class="fc" id="L210">		final Rectangle2D rect = victim.getArea();</span>
+
+<span class="fc" id="L212">		setPosition(</span>
+				(int) (rect.getX() + ((rect.getWidth() - getWidth()) / 2.0)),
+				(int) (rect.getY() + ((rect.getHeight() - getHeight()) / 2.0)));
+
+<span class="fc" id="L216">		SingletonRepository.getTurnNotifier().notifyInSeconds(getDegradationStepTimeout(), this.corpseDegradator);</span>
+
+<span class="fc bfc" id="L218" title="All 2 branches covered.">		if (victim.getCorpseDeserver() != null) {</span>
+<span class="fc" id="L219">			setCorpseOwner(victim.getCorpseDeserver());</span>
+<span class="fc" id="L220">			SingletonRepository.getTurnNotifier().notifyInSeconds(PROTECTION_TIME, this.itemForRewardsReleaser);</span>
+		}
+		
+<span class="fc" id="L223">		stage = 0;</span>
+<span class="fc" id="L224">		put(&quot;stage&quot;, stage);</span>
+<span class="fc" id="L225">		setResistance(calculateResistance());</span>
+
+<span class="fc" id="L227">		final RPSlot slot = new LootableSlot(this);</span>
+<span class="fc" id="L228">		addSlot(slot);</span>
+<span class="fc" id="L229">	}</span>
+
+	/**
+	 * sets the owner of the corpse, while set only this person may loot.
+	 *
+	 * @param owner name of owner
+	 */
+	private void setCorpseOwner(String owner) {
+<span class="fc" id="L237">		this.corpseOwner = owner;</span>
+<span class="pc bpc" id="L238" title="1 of 2 branches missed.">		if (owner != null) {</span>
+<span class="fc" id="L239">			put(ATTR_CORPSE_OWNER, owner);</span>
+		} else {
+<span class="nc" id="L241">			remove(ATTR_CORPSE_OWNER);</span>
+		}
+<span class="fc" id="L243">		modify();</span>
+<span class="fc" id="L244">	}</span>
+
+	/**
+	 * Get the name of the owner of this corpse (the player who's 
+	 * deemend worthy to access the items within).
+	 *  
+	 * @return the name of the owner or &lt;code&gt;null&lt;/code&gt; if anyone
+	 * may use the items
+	 */
+	public String getCorpseOwner() {
+<span class="nc" id="L254">		return corpseOwner;</span>
+	}
+
+	/**
+	 * Calculate walking resistance for the corpse.
+	 *  
+	 * @return resistance value between &lt;code&gt;100 * MIN_RESISTANCE&lt;/code&gt; and
+	 * &lt;code&gt;100 * MAX_RESISTANCE&lt;/code&gt;
+	 */
+	private int calculateResistance() {
+		// Using area would make the resistance grow very fast for large corpses
+<span class="fc" id="L265">		double mean = Math.sqrt(getWidth() * getHeight());</span>
+		// Get a [0, 1[ value for a corpse size index 
+<span class="fc" id="L267">		double normalized = 1 - 1 / Math.max(1.0, mean);</span>
+		// Scale between max and min
+<span class="fc" id="L269">		return Math.max(MIN_RESISTANCE, (int) (MAX_RESISTANCE * normalized));</span>
+	}
+
+	//
+	// Corpse
+	//
+
+	/**
+	 * Get the entity name.
+	 * 
+	 * @return The entity's name, or &lt;code&gt;null&lt;/code&gt; if undefined.
+	 */
+	@Override
+	public String getName() {
+<span class="pc bpc" id="L283" title="1 of 2 branches missed.">		if (has(ATTR_NAME)) {</span>
+<span class="nc" id="L284">			return get(ATTR_NAME);</span>
+		} else {
+<span class="fc" id="L286">			return null;</span>
+		}
+	}
+
+	/**
+	 * Set the killer name of the corpse.
+	 * 
+	 * @param killer
+	 *            The corpse's killer name.
+	 */
+	public void setKiller(final String killer) {
+<span class="fc" id="L297">		put(ATTR_KILLER, killer);</span>
+<span class="fc" id="L298">	}</span>
+
+	/**
+	 * Set the name of the corpse.
+	 * 
+	 * @param name
+	 *            The corpse name.
+	 */
+	public void setName(final String name) {
+<span class="fc" id="L307">		put(ATTR_NAME, name);</span>
+<span class="fc" id="L308">	}</span>
+
+	private void modify() {
+<span class="fc bfc" id="L311" title="All 2 branches covered.">		if (getZone() != null) {</span>
+<span class="pc bpc" id="L312" title="1 of 2 branches missed.">			if (isContained()) {</span>
+<span class="nc" id="L313">				SingletonRepository.getRPWorld().modify(getBaseContainer());</span>
+			} else {
+<span class="fc" id="L315">				notifyWorldAboutChanges();</span>
+			}
+		}
+<span class="fc" id="L318">	}</span>
+
+	/**
+	 * @return true iff this corpse is completely rotten
+	 */
+	private boolean isCompletelyRotten() {
+<span class="fc bfc" id="L324" title="All 2 branches covered.">		return stage &gt;= MAX_STAGE;</span>
+	}
+
+	/**
+	 * degradate this corpse
+	 */
+	private void degradateCorpse() {
+<span class="fc" id="L331">		stage++;</span>
+<span class="fc" id="L332">		put(&quot;stage&quot;, stage);</span>
+<span class="fc" id="L333">		modify();</span>
+<span class="fc" id="L334">	}</span>
+	
+	@Override
+	protected void onMoved(int oldX, int oldY, int newX, int newY) {
+<span class="nc" id="L338">		super.onMoved(oldX, oldY, newX, newY);</span>
+<span class="nc bnc" id="L339" title="All 2 branches missed.">		if (corpseOwner != null) {</span>
+			// Restart owner timer to make the life of thieves harder
+<span class="nc" id="L341">			SingletonRepository.getTurnNotifier().dontNotify(itemForRewardsReleaser);</span>
+<span class="nc" id="L342">			SingletonRepository.getTurnNotifier().notifyInSeconds(PROTECTION_TIME, itemForRewardsReleaser);</span>
+		}
+<span class="nc" id="L344">	}</span>
+
+	/**
+	 * Degrades this corpse and remove it if it is completely rotten
+	 */
+	private void onTurnReached() {
+<span class="fc" id="L350">		degradateCorpse();</span>
+<span class="fc bfc" id="L351" title="All 2 branches covered.">		if (isCompletelyRotten()) {</span>
+<span class="pc bpc" id="L352" title="1 of 2 branches missed.">			for (RPObject obj : getSlot(CONTENT_SLOT)) {</span>
+<span class="nc" id="L353">				new ItemLogger().timeout((Item) obj);</span>
+<span class="nc" id="L354">			}</span>
+<span class="fc" id="L355">			getZone().remove(this);</span>
+		} else {
+<span class="fc" id="L357">			SingletonRepository.getTurnNotifier().notifyInSeconds(getDegradationStepTimeout(), this.corpseDegradator);</span>
+		}
+<span class="fc" id="L359">	}</span>
+
+	/**
+	 * Sets the current degrading state. Set it to MAX_STAGE will remove the
+	 * corpse.
+	 * 
+	 * @param newStage
+	 */
+	public void setStage(final int newStage) {
+<span class="pc bpc" id="L368" title="2 of 4 branches missed.">		if ((newStage &gt;= 0) &amp;&amp; (newStage &lt;= MAX_STAGE)) {</span>
+<span class="fc" id="L369">			stage = newStage;</span>
+<span class="fc" id="L370">			put(&quot;stage&quot;, stage);</span>
+<span class="fc" id="L371">			modify();</span>
+		}
+<span class="fc" id="L373">	}</span>
+
+	/**
+	 * adds content to this corpse
+	 *
+	 * @param entity PassiveEntity to add
+	 */
+	public void add(final PassiveEntity entity) {
+<span class="fc" id="L381">		final RPSlot content = getSlot(CONTENT_SLOT);</span>
+<span class="fc" id="L382">		content.add(entity);</span>
+<span class="fc" id="L383">	}</span>
+
+	/**
+	 * is the corpse full so that there is no more room for additinal items?
+	 *
+	 * @return true if the corpse is full, false otherwise
+	 */
+	public boolean isFull() {
+<span class="fc" id="L391">		return getSlot(CONTENT_SLOT).isFull();</span>
+	}
+
+	@Override
+	public int size() {
+<span class="nc" id="L396">		return getSlot(CONTENT_SLOT).size();</span>
+	}
+
+	@Override
+	public String describe() {
+<span class="nc" id="L401">		final String[] stageText = { &quot;new&quot;, &quot;fresh&quot;, &quot;cold&quot;, &quot;slightly rotten&quot;,</span>
+				&quot;rotten&quot;, &quot;very rotten&quot; };
+
+<span class="nc" id="L404">		String text = &quot;You see the &quot; + stageText[stage] + &quot; corpse of &quot;;</span>
+
+<span class="nc bnc" id="L406" title="All 2 branches missed.">		if (hasDescription()) {</span>
+<span class="nc" id="L407">			text = getDescription();</span>
+<span class="nc bnc" id="L408" title="All 2 branches missed.">		} else if (creatureName != null) {</span>
+<span class="nc" id="L409">			text += Grammar.a_noun(creatureName);</span>
+<span class="nc bnc" id="L410" title="All 2 branches missed.">		} else if (has(ATTR_NAME)) {</span>
+<span class="nc" id="L411">			text += get(ATTR_NAME);</span>
+
+<span class="nc bnc" id="L413" title="All 2 branches missed.">			if (has(ATTR_KILLER)) {</span>
+				// only display the killer if it is the corpse of a player
+<span class="nc bnc" id="L415" title="All 2 branches missed.">				if (get(&quot;class&quot;).equals(&quot;player&quot;)) {</span>
+<span class="nc" id="L416">					text += &quot;, killed by &quot; + get(ATTR_KILLER);</span>
+				}
+			}
+		} else {
+<span class="nc" id="L420">			text += Grammar.a_noun(ItemTools.itemNameToDisplayName(get(&quot;class&quot;)));</span>
+		}
+
+<span class="nc" id="L423">		text += &quot;. You can #inspect it to see its contents.&quot;;</span>
+
+<span class="nc" id="L425">		return (text);</span>
+	}
+
+	@Override
+	public boolean canBeEquippedIn(final String slot) {
+<span class="nc" id="L430">		return false;</span>
+	}
+
+	//
+	// Entity
+	//
+
+	/**
+	 * Returns the name or something that can be used to identify the entity for
+	 * the player.
+	 * 
+	 * @param definite
+	 *            &lt;code&gt;true&lt;/code&gt; for &quot;the&quot;, and &lt;code&gt;false&lt;/code&gt; for
+	 *            &quot;a/an&quot; in case the entity has no name.
+	 * 
+	 * @return The description name.
+	 */
+	@Override
+	public String getDescriptionName(final boolean definite) {
+<span class="fc" id="L449">		final String name = getName();</span>
+
+<span class="pc bpc" id="L451" title="1 of 2 branches missed.">		if (name != null) {</span>
+<span class="nc" id="L452">			return Grammar.article_noun(name, definite);</span>
+		} else {
+<span class="fc" id="L454">			return super.getDescriptionName(definite);</span>
+		}
+	}
+
+	/**
+	 * Get the nicely formatted entity title/name.
+	 * 
+	 * @return The title, or &lt;code&gt;null&lt;/code&gt; if unknown.
+	 */
+	@Override
+	public String getTitle() {
+<span class="nc" id="L465">		final String name = getName();</span>
+
+<span class="nc bnc" id="L467" title="All 2 branches missed.">		if (name != null) {</span>
+<span class="nc" id="L468">			return name;</span>
+		} else {
+<span class="nc" id="L470">			return super.getTitle();</span>
+		}
+	}
+
+	/**
+	 * The length of a degradation step
+	 *
+	 * @return in seconds
+	 */
+	protected int getDegradationStepTimeout() {
+<span class="fc" id="L480">		return DEGRADATION_STEP_TIMEOUT;</span>
+	}
+
+	
+	/**
+	 * Check if a player may access the slots of this corpse
+	 * 
+	 * @param player the player trying to use the items in the corpse
+	 * @return true iff the player may access the items in the slots 
+	 */
+	public boolean mayUse(Player player) {
+
+		// check the simple cases first
+<span class="pc bpc" id="L493" title="5 of 6 branches missed.">		if (corpseOwner == null || corpseOwner.equals(player.getName()) || get(&quot;class&quot;).equals(&quot;player&quot;)) {</span>
+<span class="fc" id="L494">			return true;</span>
+		}
+
+		// okay, now check the group rules
+<span class="nc" id="L498">		Group group = SingletonRepository.getGroupManager().getGroup(player.getName());</span>
+<span class="nc bnc" id="L499" title="All 2 branches missed.">		if (group != null) {</span>
+<span class="nc bnc" id="L500" title="All 4 branches missed.">			if (group.getLootmode().equals(&quot;shared&quot;) &amp;&amp; group.hasMember(corpseOwner)) {</span>
+<span class="nc" id="L501">				return true;</span>
+			}
+		}
+
+<span class="nc" id="L505">		return false;</span>
+	}
+
+	/**
+	 * Checks if looting this corpse will be rewarded (i.e. for achievements).
+	 * 
+	 * @return true if looting should be rewarded
+	 */
+	public boolean isItemLootingRewardable() {
+<span class="nc bnc" id="L514" title="All 2 branches missed.">		return !get(&quot;class&quot;).equals(&quot;player&quot;);</span>
+	}
+
+	/**
+	 * gets the killer of this corpse
+	 * 
+	 * @return the name of the killer
+	 */
+	public String getKiller() {
+<span class="nc" id="L523">		return get(ATTR_KILLER);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

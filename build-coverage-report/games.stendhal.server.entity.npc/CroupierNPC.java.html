@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>CroupierNPC.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.npc</a> &gt; <span class="el_source">CroupierNPC.java</span></div><h1>CroupierNPC.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.npc;
+
+import games.stendhal.server.core.engine.SingletonRepository;
+import games.stendhal.server.entity.item.Dice;
+import games.stendhal.server.entity.item.Item;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.util.Area;
+
+import java.awt.Rectangle;
+import java.util.Map;
+
+import marauroa.common.Pair;
+
+// TODO: replace this subclass with normal ChatConditions/ChatActions
+public abstract class CroupierNPC extends SpeakerNPC {
+
+	/**
+	 * The time (in seconds) it takes before the NPC removes thrown dice from
+	 * the table.
+	 */
+	private static final int CLEAR_PLAYING_AREA_TIME = 10;
+
+	/**
+	 * The area on which the dice have to be thrown.
+	 */
+<span class="fc" id="L38">	private Area playingArea = null;</span>
+
+	/**
+	 * A list where each possible dice sum is the index of the element which is
+	 * either the name of the prize for this dice sum and the congratulation
+	 * text that should be said by the NPC, or null if the player doesn't win
+	 * anything for this sum.
+	 */
+<span class="fc" id="L46">	private Map&lt;Integer, Pair&lt;String, String&gt;&gt; prizes = null;</span>
+
+	public CroupierNPC(final String name) {
+<span class="fc" id="L49">		super(name);</span>
+<span class="fc" id="L50">	}</span>
+
+	public void setPrizes(final Map&lt;Integer, Pair&lt;String, String&gt;&gt; prizes) {
+<span class="fc" id="L53">		this.prizes = prizes;</span>
+<span class="fc" id="L54">	}</span>
+
+	/**
+	 * Sets the playing area (a table or something like that).
+	 * 
+	 * @param playingArea
+	 *            shape of the playing area (in the same zone as the NPC)
+	 */
+	public void setTableArea(final Rectangle playingArea) {
+<span class="fc" id="L63">		this.playingArea = new Area(getZone(), playingArea);</span>
+<span class="fc" id="L64">	}</span>
+
+	public void onThrown(final Dice dice, final Player player) {
+<span class="pc bpc" id="L67" title="1 of 2 branches missed.">		if (playingArea.contains(dice)) {</span>
+<span class="fc" id="L68">			final int sum = dice.getSum();</span>
+<span class="fc" id="L69">			processWin(player, sum);</span>
+			// The croupier takes the dice away from the table after some time.
+			// This is simulated by shortening the degradation time of the dice.
+<span class="fc" id="L72">			SingletonRepository.getTurnNotifier().dontNotify(dice);</span>
+<span class="fc" id="L73">			SingletonRepository.getTurnNotifier().notifyInSeconds(CLEAR_PLAYING_AREA_TIME, dice);</span>
+		}
+<span class="fc" id="L75">	}</span>
+
+	void processWin(final Player player, final int sum) {
+<span class="fc" id="L78">		final Pair&lt;String, String&gt; prizeAndText = prizes.get(sum);</span>
+<span class="fc bfc" id="L79" title="All 2 branches covered.">		if (prizeAndText != null) {</span>
+<span class="fc" id="L80">			final String prizeName = prizeAndText.first();</span>
+<span class="fc" id="L81">			final String text = prizeAndText.second();</span>
+<span class="fc" id="L82">			final Item prize = SingletonRepository.getEntityManager().getItem(</span>
+					prizeName);
+<span class="pc bpc" id="L84" title="1 of 2 branches missed.">			if (prizeName.equals(&quot;golden legs&quot;)) {</span>
+<span class="nc" id="L85">				prize.setBoundTo(player.getName());</span>
+			}
+
+<span class="fc" id="L88">			say(&quot;Congratulations, &quot; + player.getTitle() + &quot;, you have &quot;</span>
+					+ sum + &quot; points. &quot; + text);
+<span class="fc" id="L90">			player.equipOrPutOnGround(prize);</span>
+<span class="fc" id="L91">		} else {</span>
+<span class="fc" id="L92">			say(&quot;Sorry, &quot;</span>
+					+ player.getTitle()
+					+ &quot;, you only have &quot;
+					+ sum
+					+ &quot; points. You haven't won anything. Better luck next time!&quot;);
+		}
+<span class="fc" id="L98">	}</span>
+
+	/**
+	 * Access the playing area for JUnit tests.
+	 * @return playing area
+	 */
+	public Area getPlayingArea() {
+<span class="fc" id="L105">		return playingArea;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

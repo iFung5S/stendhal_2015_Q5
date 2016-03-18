@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>PlayerLootedItemsHandler.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.player</a> &gt; <span class="el_source">PlayerLootedItemsHandler.java</span></div><h1>PlayerLootedItemsHandler.java</h1><pre class="source lang-java linenums">package games.stendhal.server.entity.player;
+
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * Handling for counting looted items of a player
+ * 
+ * @author madmetzger
+ */
+public class PlayerLootedItemsHandler {
+	
+	/** name of the map where the items and the corresponding numbers are stored */
+	private static final String LOOTED_ITEMS = &quot;looted_items&quot;;
+	
+	private final Player player;
+	
+	private final Map&lt;String, Integer&gt; looted;
+	
+	private final Map&lt;String, Integer&gt; produced;
+	
+	private final Map&lt;String, Integer&gt; obtained;
+	
+	private final Map&lt;String, Integer&gt; mined;
+	
+	private final Map&lt;String, Integer&gt; harvested;
+	
+	private final Map&lt;String, Integer&gt; bought;
+	
+	private final Map&lt;String, Integer&gt; sold;
+	
+	/**
+	 * Create a new PlayerLootedItemsHandler for a player
+	 * 
+	 * @param player
+	 */
+<span class="fc" id="L37">	public PlayerLootedItemsHandler(Player player) {</span>
+<span class="fc" id="L38">		this.player = player;</span>
+<span class="fc" id="L39">		looted = new HashMap&lt;String, Integer&gt;();</span>
+<span class="fc" id="L40">		produced = new HashMap&lt;String, Integer&gt;();</span>
+<span class="fc" id="L41">		obtained = new HashMap&lt;String, Integer&gt;();</span>
+<span class="fc" id="L42">		mined = new HashMap&lt;String, Integer&gt;();</span>
+<span class="fc" id="L43">		harvested = new HashMap&lt;String, Integer&gt;();</span>
+<span class="fc" id="L44">		bought = new HashMap&lt;String, Integer&gt;();</span>
+<span class="fc" id="L45">		sold = new HashMap&lt;String, Integer&gt;();</span>
+<span class="pc bpc" id="L46" title="1 of 2 branches missed.">		if(player.hasMap(LOOTED_ITEMS)) {</span>
+<span class="nc bnc" id="L47" title="All 2 branches missed.">			for(String item : player.getMap(LOOTED_ITEMS).keySet()) {</span>
+<span class="nc bnc" id="L48" title="All 2 branches missed.">				if(item.contains(&quot;produced.&quot;)) {</span>
+<span class="nc" id="L49">					produced.put(item.replace(&quot;produced.&quot;, &quot;&quot;), player.getInt(LOOTED_ITEMS, item));</span>
+				}
+<span class="nc bnc" id="L51" title="All 2 branches missed.">				if(item.contains(&quot;obtained.&quot;)) {</span>
+<span class="nc" id="L52">					obtained.put(item.replace(&quot;obtained.&quot;, &quot;&quot;), player.getInt(LOOTED_ITEMS, item));</span>
+				}
+<span class="nc bnc" id="L54" title="All 2 branches missed.">				if(item.contains(&quot;mined.&quot;)) {</span>
+<span class="nc" id="L55">					mined.put(item.replace(&quot;mined.&quot;, &quot;&quot;), player.getInt(LOOTED_ITEMS, item));</span>
+				}
+<span class="nc bnc" id="L57" title="All 2 branches missed.">				if(item.contains(&quot;harvested.&quot;)) {</span>
+<span class="nc" id="L58">					harvested.put(item.replace(&quot;harvested.&quot;, &quot;&quot;), player.getInt(LOOTED_ITEMS, item));</span>
+				}
+<span class="nc bnc" id="L60" title="All 2 branches missed.">				if(item.contains(&quot;bought.&quot;)) {</span>
+<span class="nc" id="L61">					bought.put(item.replace(&quot;bought.&quot;, &quot;&quot;), player.getInt(LOOTED_ITEMS, item));</span>
+				}
+<span class="nc bnc" id="L63" title="All 2 branches missed.">				if(item.contains(&quot;sold.&quot;)) {</span>
+<span class="nc" id="L64">					bought.put(item.replace(&quot;sold.&quot;, &quot;&quot;), player.getInt(LOOTED_ITEMS, item));</span>
+				}
+<span class="nc bnc" id="L66" title="All 12 branches missed.">				if(!item.contains(&quot;produced.&quot;) &amp;&amp; !item.contains(&quot;obtained.&quot;) &amp;&amp; !item.contains(&quot;mined.&quot;) </span>
+						&amp;&amp; !item.contains(&quot;harvested.&quot;) &amp;&amp; !item.contains(&quot;bought.&quot;) &amp;&amp; !item.contains(&quot;sold.&quot;)) {
+<span class="nc" id="L68">					looted.put(item, player.getInt(LOOTED_ITEMS, item));</span>
+				}
+<span class="nc" id="L70">			}</span>
+		}
+<span class="fc" id="L72">	}</span>
+	
+	/**
+	 * Gets the how often this PlayerLootedItemsHandler's player has looted the given item
+	 * @param item the item name
+	 * @return the number of loots from corpses
+	 */
+	public int getNumberOfLootsForItem(String item) {
+<span class="fc" id="L80">		Integer lootedNumber = looted.get(item);</span>
+<span class="fc bfc" id="L81" title="All 2 branches covered.">		if(lootedNumber != null) {</span>
+<span class="fc" id="L82">			return lootedNumber.intValue();</span>
+		}
+<span class="fc" id="L84">		return 0;</span>
+	}
+	
+	/**
+	 * Retrieve the amount of much an item was produced by a player
+	 * 
+	 * @param item
+	 * @return the produced quantity
+	 */
+	public int getQuantityOfProducedItems(String item) {
+<span class="fc bfc" id="L94" title="All 2 branches covered.">		if(produced.containsKey(item)) {</span>
+<span class="fc" id="L95">			return produced.get(item);</span>
+		}
+<span class="fc" id="L97">		return 0;</span>
+	}
+	
+	/**
+	 * Retrieve the amount of much an item was harvested by a player
+	 * 
+	 * @param item
+	 * @return the harvested quantity
+	 */
+	public int getQuantityOfHarvestedItems(String item) {
+<span class="fc bfc" id="L107" title="All 2 branches covered.">		if(harvested.containsKey(item)) {</span>
+<span class="fc" id="L108">			return harvested.get(item);</span>
+		}
+<span class="fc" id="L110">		return 0;</span>
+	}
+	
+	/**
+	 * Retrieve the amount of much an item was bought by a player
+	 * 
+	 * @param item
+	 * @return the harvested quantity
+	 */
+	public int getQuantityOfBoughtItems(String item) {
+<span class="nc bnc" id="L120" title="All 2 branches missed.">		if(bought.containsKey(item)) {</span>
+<span class="nc" id="L121">			return bought.get(item);</span>
+		}
+<span class="nc" id="L123">		return 0;</span>
+	}
+	
+	/**
+	 * Retrieve the amount of much an item was mined by a player
+	 * 
+	 * @param item
+	 * @return the mined quantity
+	 */
+	public int getQuantityOfMinedItems(String item) {
+<span class="fc bfc" id="L133" title="All 2 branches covered.">		if(mined.containsKey(item)) {</span>
+<span class="fc" id="L134">			return mined.get(item);</span>
+		}
+<span class="fc" id="L136">		return 0;</span>
+	}
+	
+	/**
+	 * Increases the count of loots for the given item for this PlayerLootedItemsHandler's player
+	 * @param item the item name
+	 * @param count the amount to increase
+	 */
+	public void incLootForItem(String item, int count) {
+<span class="fc" id="L145">		handlePrefixedCounting(item, count, &quot;&quot;, looted);</span>
+<span class="fc" id="L146">	}</span>
+
+	/**
+	 * Increases the count of producing for the given item for this PlayerLootedItemsHandler's player
+	 * 
+	 * @param item the item name
+	 * @param count the amount to increase
+	 */
+	public void incProducedForItem(String item, int count) {
+<span class="fc" id="L155">		handlePrefixedCounting(item, count, &quot;produced.&quot;, produced);</span>
+<span class="fc" id="L156">	}</span>
+
+	/**
+	 * Increases the count of obtains for the given item for this PlayerLootedItemsHandler's player
+	 * 
+	 * @param item the item name
+	 * @param count the amount to increase
+	 */
+	public void incObtainedForItem(String item, int count) {
+<span class="nc" id="L165">		handlePrefixedCounting(item, count, &quot;obtained.&quot;, obtained);</span>
+<span class="nc" id="L166">	}</span>
+	
+	/**
+	 * Increases the quantity an item was mined from a source like gold, coal
+	 * 
+	 * @param item
+	 * @param count
+	 */
+	public void incMinedForItem(String item, int count) {
+<span class="fc" id="L175">		handlePrefixedCounting(item, count, &quot;mined.&quot;, mined);</span>
+<span class="fc" id="L176">	}</span>
+	
+	/**
+	 * Increases the quantity an item was harvested
+	 * 
+	 * @param item
+	 * @param count
+	 */
+	public void incHarvestedForItem(String item, int count) {
+<span class="fc" id="L185">		handlePrefixedCounting(item, count, &quot;harvested.&quot;, harvested);</span>
+<span class="fc" id="L186">	}</span>
+	
+	/**
+	 * Increases the quantity an item was bought
+	 * 
+	 * @param item
+	 * @param count
+	 */
+	public void incBoughtForItem(String item, int count) {
+<span class="fc" id="L195">		handlePrefixedCounting(item, count, &quot;bought.&quot;, bought);</span>
+<span class="fc" id="L196">	}</span>
+	
+	/**
+	 * Increases the quantity an item was sold
+	 * 
+	 * @param item
+	 * @param count
+	 */
+	public void incSoldForItem(String item, int count) {
+<span class="fc" id="L205">		handlePrefixedCounting(item, count, &quot;sold.&quot;, sold);</span>
+<span class="fc" id="L206">	}</span>
+
+	/**
+	 * handles redundant storage of counted items in player object and a separate map
+	 * 
+	 * @param item the item to count
+	 * @param count how much to increment
+	 * @param prefix the prefix to use for the map withing the player object
+	 * @param redundantMap additional map for storing
+	 */
+	private void handlePrefixedCounting(String item, int count, String prefix, Map&lt;String, Integer&gt; redundantMap) {
+<span class="fc" id="L217">		StringBuilder key = new StringBuilder(prefix);</span>
+<span class="fc" id="L218">		key.append(item);</span>
+<span class="fc bfc" id="L219" title="All 2 branches covered.">		if(!player.has(LOOTED_ITEMS, key.toString())) {</span>
+<span class="fc" id="L220">			player.put(LOOTED_ITEMS, key.toString(), 0);</span>
+		}
+<span class="fc bfc" id="L222" title="All 2 branches covered.">		if(!redundantMap.containsKey(item)) {</span>
+<span class="fc" id="L223">			redundantMap.put(item, 0);</span>
+		}
+<span class="fc" id="L225">		int current = player.getInt(LOOTED_ITEMS, key.toString());</span>
+<span class="fc" id="L226">		int increased = current + count;</span>
+<span class="fc" id="L227">		redundantMap.put(item, increased);</span>
+<span class="fc" id="L228">		player.put(LOOTED_ITEMS, key.toString(), increased);</span>
+<span class="fc" id="L229">	}</span>
+
+	/**
+	 * @return the whole number of items a player has obtained from the well
+	 */
+	public int getQuantityOfObtainedItems() {
+<span class="nc" id="L235">		int sum = 0;</span>
+<span class="nc bnc" id="L236" title="All 2 branches missed.">		for(Integer count : obtained.values()) {</span>
+<span class="nc" id="L237">			sum = sum + count.intValue();</span>
+<span class="nc" id="L238">		}</span>
+<span class="nc" id="L239">		return sum;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>AddItemToCollectionAction.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.entity.npc.action</a> &gt; <span class="el_source">AddItemToCollectionAction.java</span></div><h1>AddItemToCollectionAction.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2003-2013 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.entity.npc.action;
+
+import static com.google.common.base.Preconditions.checkNotNull;
+import games.stendhal.common.parser.Sentence;
+import games.stendhal.server.entity.npc.ChatAction;
+import games.stendhal.server.entity.npc.EventRaiser;
+import games.stendhal.server.entity.player.Player;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.google.common.base.Joiner;
+
+/**
+ * Adds an item to a player's quest slot string
+ * 
+ * @author AntumDeluge
+ */
+public class AddItemToCollectionAction implements ChatAction {
+
+	private String item;
+	private int quantity;
+	private String questname;
+<span class="pc" id="L35">	private int index = -1;</span>
+
+	/**
+	 * Creates a new AddItemToCollectionAction
+	 * 
+	 * @param quest
+	 * 			Quest slot name
+	 * @param item
+	 * 			Item name
+	 * @param quantity
+	 * 			Item quantity
+	 */
+<span class="fc" id="L47">	public AddItemToCollectionAction(final String quest, final String item, int quantity) {</span>
+<span class="fc" id="L48">		this.questname = checkNotNull(quest);</span>
+<span class="fc" id="L49">		this.item = checkNotNull(item);</span>
+<span class="fc" id="L50">		this.quantity = quantity;</span>
+<span class="fc" id="L51">	}</span>
+	
+	/**
+	 * Creates a new StartItemsCollectionWithLimitsAction
+	 * 
+	 * @param quest
+	 * 			Quest slot name
+	 * @param index
+	 * 			index of sub state
+	 * @param item
+	 * 			Item name
+	 * @param quantity
+	 * 			Item quantity
+	 */
+<span class="nc" id="L65">	public AddItemToCollectionAction(final String quest, final int index, final String item, int quantity) {</span>
+<span class="nc" id="L66">		this.questname = checkNotNull(quest);</span>
+<span class="nc" id="L67">		this.index = index;</span>
+<span class="nc" id="L68">		this.item = checkNotNull(item);</span>
+<span class="nc" id="L69">		this.quantity = quantity;</span>
+<span class="nc" id="L70">	}</span>
+	
+	@Override
+	public void fire(final Player player, final Sentence sentence, final EventRaiser npc) {
+<span class="fc" id="L74">		String result = item + &quot;=&quot; + quantity;</span>
+<span class="fc" id="L75">		String[] itemList = player.getQuest(questname).split(&quot;;&quot;);</span>
+
+<span class="pc bpc" id="L77" title="1 of 2 branches missed.">		if (index &lt; 0) {</span>
+<span class="fc" id="L78">			index = itemList.length;</span>
+<span class="fc" id="L79">			player.setQuest(questname, index, result);</span>
+		} else {
+<span class="nc" id="L81">			List&lt;String&gt; itemListArray = new ArrayList&lt;String&gt;();</span>
+
+			// add the original elements
+<span class="nc bnc" id="L84" title="All 2 branches missed.">			for (int x = 0; x &lt; itemList.length; x++) {</span>
+<span class="nc" id="L85">				itemListArray.add(itemList[x]);</span>
+			}
+
+			// Add the new element
+<span class="nc bnc" id="L89" title="All 2 branches missed.">			if (index &gt; itemListArray.size()) {</span>
+<span class="nc" id="L90">				itemListArray.add(result);</span>
+			} else {
+<span class="nc" id="L92">				itemListArray.add(index, result);</span>
+			}
+
+<span class="nc" id="L95">			itemList = itemListArray.toArray(itemList);</span>
+<span class="nc" id="L96">			player.setQuest(questname, Joiner.on(&quot;;&quot;).join(itemList));</span>
+		}
+<span class="fc" id="L98">	}</span>
+
+	@Override
+	public int hashCode() {
+<span class="nc" id="L102">		return 5009 * (item.hashCode() + 5011 * (quantity + 5021 * (questname.hashCode() + 5023 * index)));</span>
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+<span class="nc bnc" id="L107" title="All 2 branches missed.">		if (!(obj instanceof AddItemToCollectionAction)) {</span>
+<span class="nc" id="L108">			return false;</span>
+		}
+<span class="nc" id="L110">		AddItemToCollectionAction other = (AddItemToCollectionAction) obj;</span>
+<span class="nc bnc" id="L111" title="All 8 branches missed.">		return (quantity == other.quantity)</span>
+			&amp;&amp; (index == other.index)
+			&amp;&amp; questname.equals(other.questname)
+			&amp;&amp; item.equals(other.item);
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

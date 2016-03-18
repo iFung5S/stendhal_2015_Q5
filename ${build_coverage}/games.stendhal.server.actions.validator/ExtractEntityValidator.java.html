@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ExtractEntityValidator.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.server.actions.validator</a> &gt; <span class="el_source">ExtractEntityValidator.java</span></div><h1>ExtractEntityValidator.java</h1><pre class="source lang-java linenums">/***************************************************************************
+ *                   (C) Copyright 2012-2013 Faiumoni                      *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.server.actions.validator;
+
+import static games.stendhal.common.constants.Actions.TARGET;
+import games.stendhal.common.constants.Actions;
+import games.stendhal.server.actions.admin.AdministrationAction;
+import games.stendhal.server.entity.Entity;
+import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.util.EntityHelper;
+import marauroa.common.game.RPAction;
+
+/**
+ * extracts the entity
+ *
+ * @author hendrik
+ */
+<span class="fc" id="L27">public class ExtractEntityValidator implements ActionValidator {</span>
+
+	@Override
+	public String validate(Player player, RPAction action, ActionData data) {
+<span class="fc" id="L31">		Entity entity = null;</span>
+<span class="pc bpc" id="L32" title="1 of 2 branches missed.">		if (action.has(Actions.TARGET_PATH)) {</span>
+<span class="nc" id="L33">			entity = EntityHelper.getEntityFromPath(player, action.getList(Actions.TARGET_PATH));</span>
+		} else {
+<span class="fc" id="L35">			entity = EntityHelper.entityFromSlot(player, action);</span>
+
+<span class="pc bpc" id="L37" title="1 of 2 branches missed.">			if (entity == null) {</span>
+<span class="fc" id="L38">				entity = EntityHelper.entityFromTargetName(action.get(TARGET), player);</span>
+			}
+		}
+
+<span class="fc bfc" id="L42" title="All 2 branches covered.">		if (entity instanceof Player) {</span>
+<span class="fc bfc" id="L43" title="All 4 branches covered.">			if (((Player) entity).isGhost()</span>
+					&amp;&amp; (player.getAdminLevel() &lt; AdministrationAction.getLevelForCommand(Actions.GHOSTMODE))) {
+<span class="fc" id="L45">				entity = null;</span>
+			}
+		}
+<span class="fc" id="L48">		data.setEntity(entity);</span>
+<span class="fc" id="L49">		return null;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

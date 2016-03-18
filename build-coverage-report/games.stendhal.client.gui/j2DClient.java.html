@@ -1,0 +1,1279 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>j2DClient.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.gui</a> &gt; <span class="el_source">j2DClient.java</span></div><h1>j2DClient.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                      (C) Copyright 2003 - Marauroa                      *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.gui;
+
+import games.stendhal.client.ClientSingletonRepository;
+import games.stendhal.client.GameLoop;
+import games.stendhal.client.GameObjects;
+import games.stendhal.client.GameScreen;
+import games.stendhal.client.PerceptionListenerImpl;
+import games.stendhal.client.StendhalClient;
+import games.stendhal.client.StendhalClient.ZoneChangeListener;
+import games.stendhal.client.UserContext;
+import games.stendhal.client.WeatherSoundManager;
+import games.stendhal.client.World;
+import games.stendhal.client.Zone;
+import games.stendhal.client.stendhal;
+import games.stendhal.client.actions.SlashActionRepository;
+import games.stendhal.client.entity.User;
+import games.stendhal.client.entity.factory.EntityMap;
+import games.stendhal.client.gui.buddies.BuddyPanelController;
+import games.stendhal.client.gui.chatlog.EventLine;
+import games.stendhal.client.gui.chatlog.HeaderLessEventLine;
+import games.stendhal.client.gui.chattext.CharacterMap;
+import games.stendhal.client.gui.chattext.ChatCompletionHelper;
+import games.stendhal.client.gui.chattext.ChatTextController;
+import games.stendhal.client.gui.group.GroupPanelController;
+import games.stendhal.client.gui.layout.FreePlacementLayout;
+import games.stendhal.client.gui.layout.SBoxLayout;
+import games.stendhal.client.gui.layout.SLayout;
+import games.stendhal.client.gui.map.MapPanelController;
+import games.stendhal.client.gui.spells.Spells;
+import games.stendhal.client.gui.stats.StatsPanelController;
+import games.stendhal.client.gui.styled.Style;
+import games.stendhal.client.gui.styled.StyleUtil;
+import games.stendhal.client.gui.styled.StyledTabbedPaneUI;
+import games.stendhal.client.gui.wt.core.SettingChangeAdapter;
+import games.stendhal.client.gui.wt.core.WtWindowManager;
+import games.stendhal.client.listener.PositionChangeMulticaster;
+import games.stendhal.client.sound.facade.SoundFileType;
+import games.stendhal.client.sound.facade.SoundGroup;
+import games.stendhal.client.sound.facade.SoundSystemFacade;
+import games.stendhal.client.sound.nosound.NoSoundFacade;
+import games.stendhal.client.sprite.DataLoader;
+import games.stendhal.common.Debug;
+import games.stendhal.common.MathHelper;
+import games.stendhal.common.NotificationType;
+import games.stendhal.common.constants.SoundLayer;
+import games.stendhal.common.constants.Testing;
+
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.Dimension;
+import java.awt.Frame;
+import java.awt.GraphicsEnvironment;
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.awt.Transparency;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
+import java.awt.event.KeyListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.util.ArrayList;
+import java.util.BitSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Locale;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
+import javax.swing.InputMap;
+import javax.swing.JComponent;
+import javax.swing.JFrame;
+import javax.swing.JLayeredPane;
+import javax.swing.JPanel;
+import javax.swing.JSplitPane;
+import javax.swing.JTabbedPane;
+import javax.swing.KeyStroke;
+import javax.swing.SwingUtilities;
+import javax.swing.Timer;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
+import javax.swing.plaf.TabbedPaneUI;
+
+import marauroa.client.net.IPerceptionListener;
+import marauroa.common.game.RPObject;
+
+import org.apache.log4j.Logger;
+
+/** The main class that create the screen and starts the arianne client. */
+public class j2DClient implements UserInterface {
+	static {
+		// This is potentially the first loaded GUI component (happens when
+		// using web start)
+<span class="fc" id="L110">		Initializer.init();</span>
+	}
+
+	/** Scrolling speed when using the mouse wheel. */
+	private static final int SCROLLING_SPEED = 8;
+	/** Background color of the private chat tab. Light blue. */
+	private static final String PRIVATE_TAB_COLOR = &quot;0xdcdcff&quot;;
+	/** Property name used to determine if scaling is wanted. */
+	private static final String SCALE_PREFERENCE_PROPERTY = &quot;ui.scale_screen&quot;;
+
+	/**
+	 * A shared [singleton] copy.
+	 */
+	private static j2DClient sharedUI;
+
+	/** the logger instance. */
+<span class="fc" id="L126">	private static final Logger logger = Logger.getLogger(j2DClient.class);</span>
+
+	/** Main window. */
+	private JFrame frame;
+	private final Dimension frameDefaultSize;
+	private QuitDialog quitDialog;
+
+	private GameScreen screen;
+	private final ScreenController screenController;
+
+	private JLayeredPane pane;
+
+	/** Chat channels. */
+	private NotificationChannelManager channelManager;
+
+	private ContainerPanel containerPanel;
+
+	private boolean gameRunning;
+
+<span class="pc" id="L145">	private final ChatTextController chatText = new ChatTextController();</span>
+
+	/** the Character panel. */
+	private Character character;
+
+	/** the Key ring panel. */
+	private KeyRing keyring;
+
+	/** the minimap panel. */
+	private MapPanelController minimap;
+
+	/** the inventory. */
+	private SlotWindow inventory;
+
+	private Spells spells;
+
+	private User lastuser;
+
+	private boolean offline;
+
+	private OutfitDialog outfitDialog;
+
+<span class="pc" id="L167">	private final PositionChangeMulticaster positionChangeListener = new PositionChangeMulticaster();</span>
+
+	private UserContext userContext;
+
+	/** Key handling. */
+	private GameKeyHandler gameKeyHandler;
+
+	/**
+	 * Get the default UI.
+	 * 
+	 * @return the instance
+	 */
+	public static j2DClient get() {
+<span class="nc" id="L180">		return sharedUI;</span>
+	}
+
+	/**
+	 * Set the shared [singleton] value.
+	 *
+	 * @param sharedUI
+	 *        The Stendhal UI.
+	 */
+	private static void setDefault(final j2DClient sharedUI) {
+<span class="fc" id="L190">		j2DClient.sharedUI = sharedUI;</span>
+<span class="fc" id="L191">		ClientSingletonRepository.setUserInterface(sharedUI);</span>
+<span class="fc" id="L192">	}</span>
+
+<span class="pc" id="L194">	private final IPerceptionListener perceptionListener = new PerceptionListenerImpl() {</span>
+		int times;
+
+		@Override
+		public void onSynced() {
+<span class="nc" id="L199">			setOffline(false);</span>
+<span class="nc" id="L200">			times = 0;</span>
+<span class="nc" id="L201">			logger.debug(&quot;Synced with server state.&quot;);</span>
+<span class="nc" id="L202">			addEventLine(new HeaderLessEventLine(&quot;Synchronized&quot;,</span>
+					NotificationType.CLIENT));
+<span class="nc" id="L204">		}</span>
+
+		@Override
+		public void onUnsynced() {
+<span class="nc" id="L208">			times++;</span>
+
+<span class="nc bnc" id="L210" title="All 2 branches missed.">			if (times &gt; 3) {</span>
+<span class="nc" id="L211">				logger.debug(&quot;Request resync&quot;);</span>
+<span class="nc" id="L212">				addEventLine(new HeaderLessEventLine(</span>
+						&quot;Unsynced: Resynchronizing...&quot;,
+						NotificationType.CLIENT));
+			}
+<span class="nc" id="L216">		}</span>
+	};
+
+	/**
+	 * The stendhal client.
+	 */
+	private StendhalClient client;
+
+	private SoundSystemFacade soundSystemFacade;
+
+	/**
+	 * A constructor for JUnit tests.
+	 */
+<span class="fc" id="L229">	public j2DClient() {</span>
+<span class="fc" id="L230">		setDefault(this);</span>
+<span class="fc" id="L231">		screenController = null;</span>
+<span class="fc" id="L232">		frameDefaultSize = null;</span>
+<span class="fc" id="L233">	}</span>
+
+	/**
+	 * Create new j2DClient.
+	 *
+	 * @param client
+	 * @param userContext
+	 * @param splash
+	 *        splash screen or &lt;code&gt;null&lt;/code&gt;. If not
+	 *        &lt;code&gt;null&lt;/code&gt;, it will be used as the main window
+	 */
+	public j2DClient(final StendhalClient client,
+			final UserContext userContext,
+<span class="nc" id="L246">			JFrame splash) {</span>
+<span class="nc" id="L247">		this.client = client;</span>
+<span class="nc" id="L248">		this.userContext = userContext;</span>
+<span class="nc" id="L249">		setDefault(this);</span>
+
+<span class="nc" id="L251">		final Dimension displaySize = stendhal.getDisplaySize();</span>
+
+		/*
+		 * Add a layered pane for the game area, so that we can have
+		 * windows on top of it
+		 */
+<span class="nc" id="L257">		pane = new JLayeredPane();</span>
+<span class="nc" id="L258">		pane.setLayout(new FreePlacementLayout());</span>
+
+		/*
+		 * Create the main game screen
+		 */
+<span class="nc" id="L263">		screen = new GameScreen(client);</span>
+<span class="nc" id="L264">		screenController = new ScreenController(screen);</span>
+<span class="nc" id="L265">		GameScreen.setDefaultScreen(screen);</span>
+
+		// ... and put it on the ground layer of the pane
+<span class="nc" id="L268">		pane.add(screen, Component.LEFT_ALIGNMENT, JLayeredPane.DEFAULT_LAYER);</span>
+
+<span class="nc" id="L270">		client.addZoneChangeListener(screen);</span>
+<span class="nc" id="L271">		client.addZoneChangeListener(new WeatherSoundManager());</span>
+		// Disable side panel animation while changing zone
+<span class="nc" id="L273">		client.addZoneChangeListener(new ZoneChangeListener() {</span>
+			@Override
+			public void onZoneUpdate(Zone zone) {
+<span class="nc" id="L276">			}</span>
+			
+			@Override
+			public void onZoneChangeCompleted(Zone zone) {
+<span class="nc" id="L280">				containerPanel.setAnimated(true);</span>
+<span class="nc" id="L281">			}</span>
+			
+			@Override
+			public void onZoneChange(Zone zone) {
+<span class="nc" id="L285">				containerPanel.setAnimated(false);</span>
+<span class="nc" id="L286">			}</span>
+		});
+<span class="nc" id="L288">		positionChangeListener.add(screenController);</span>
+
+		/*
+		 * Register the slash actions in the client side command line parser.
+		 * This needs to be at least before getting the actions to
+		 * ChatCompletionHelper.
+		 */
+<span class="nc" id="L295">		SlashActionRepository.register();</span>
+
+<span class="nc" id="L297">		final KeyListener tabcompletion = new ChatCompletionHelper(chatText,</span>
+				World.get().getPlayerList().getNamesList(),
+				SlashActionRepository.getCommandNames());
+<span class="nc" id="L300">		chatText.addKeyListener(tabcompletion);</span>
+
+		/*
+		 * Always redirect focus to chat field
+		 */
+<span class="nc" id="L305">		screen.addFocusListener(new FocusAdapter() {</span>
+			@Override
+			public void focusGained(final FocusEvent e) {
+<span class="nc" id="L308">				chatText.getPlayerChatText().requestFocus();</span>
+<span class="nc" id="L309">			}</span>
+		});
+
+		/* 
+		 * Flush direction key states when chat box loses focus.
+		 */
+<span class="nc" id="L315">		chatText.getPlayerChatText().addFocusListener(new FocusAdapter() {</span>
+			@Override
+			public void focusLost(final FocusEvent e) {
+				/* TODO: Remove condition when movement testing is finished. */
+<span class="nc bnc" id="L319" title="All 2 branches missed.">				if (Testing.MOVEMENT) {</span>
+<span class="nc" id="L320">					client.clearPressedKeys();</span>
+				}
+<span class="nc" id="L322">			}</span>
+		});
+		
+		// On Screen windows
+		/*
+		 * Quit dialog
+		 */
+<span class="nc" id="L329">		quitDialog = new QuitDialog();</span>
+<span class="nc" id="L330">		pane.add(quitDialog.getQuitDialog(), JLayeredPane.MODAL_LAYER);</span>
+
+		/*
+		 * Game log
+		 */
+<span class="nc" id="L335">		final JTabbedPane chatLogArea = createLogArea();</span>
+<span class="nc" id="L336">		chatLogArea.setPreferredSize(new Dimension(screen.getWidth(), 171));</span>
+
+		// *** Key handling ***
+<span class="nc" id="L339">		gameKeyHandler = new GameKeyHandler(client, screen);</span>
+		// add a key input system (defined below) to our canvas so we can
+		// respond to key pressed
+<span class="nc" id="L342">		chatText.addKeyListener(gameKeyHandler);</span>
+<span class="nc" id="L343">		screen.addKeyListener(gameKeyHandler);</span>
+
+		// Display a hint if this is a debug client
+<span class="nc bnc" id="L346" title="All 2 branches missed.">		if (Debug.PRE_RELEASE_VERSION != null) {</span>
+<span class="nc" id="L347">			addEventLine(new HeaderLessEventLine(&quot;This is a pre release test client: &quot; + Debug.VERSION + &quot; - &quot; + Debug.PRE_RELEASE_VERSION, NotificationType.CLIENT));</span>
+		}
+
+		// set some default window positions
+<span class="nc" id="L351">		final WtWindowManager windowManager = WtWindowManager.getInstance();</span>
+<span class="nc" id="L352">		windowManager.setDefaultProperties(&quot;corpse&quot;, false, 0, 190);</span>
+<span class="nc" id="L353">		windowManager.setDefaultProperties(&quot;chest&quot;, false, 100, 190);</span>
+
+		/*
+		 * Finally create the window, and place all the components in it
+		 */
+<span class="nc" id="L358">		frame = MainFrame.prepare(splash);</span>
+<span class="nc" id="L359">		JComponent glassPane = DragLayer.get();</span>
+<span class="nc" id="L360">		frame.setGlassPane(glassPane);</span>
+<span class="nc" id="L361">		glassPane.setVisible(true);</span>
+
+		// Bind the tab changing keys of the chat log to global key map
+<span class="nc" id="L364">		InputMap input = chatLogArea.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);</span>
+<span class="nc" id="L365">		input.put(KeyStroke.getKeyStroke(&quot;control PAGE_UP&quot;), &quot;navigatePrevious&quot;);</span>
+<span class="nc" id="L366">		input.put(KeyStroke.getKeyStroke(&quot;control PAGE_DOWN&quot;), &quot;navigateNext&quot;);</span>
+
+		// *** Create the layout ***
+		// left side panel
+<span class="nc" id="L370">		final JComponent leftColumn = createLeftPanel();</span>
+<span class="nc" id="L371">		client.addZoneChangeListener(minimap);</span>
+
+		// Set maximum size to prevent the entry requesting massive widths, but
+		// force expand if there's extra space anyway
+<span class="nc" id="L375">		chatText.getPlayerChatText().setMaximumSize(new Dimension(displaySize.width, Integer.MAX_VALUE));</span>
+		// Container for chat entry and character map
+<span class="nc" id="L377">		JComponent chatEntryBox = SBoxLayout.createContainer(SBoxLayout.HORIZONTAL);</span>
+<span class="nc" id="L378">		chatEntryBox.add(chatText.getPlayerChatText(), SLayout.EXPAND_X);</span>
+		
+<span class="nc bnc" id="L380" title="All 2 branches missed.">		if (Testing.CHAT) {</span>
+<span class="nc" id="L381">			chatEntryBox.add(new CharacterMap(chatText.getPlayerChatText()));</span>
+		}
+		
+		// Chat entry and chat log. The chatlogs are in tabs so they need a
+		// patterned background.
+<span class="nc" id="L386">		final JComponent chatBox = new JPanel();</span>
+<span class="nc" id="L387">		chatBox.setBorder(null);</span>
+<span class="nc" id="L388">		chatBox.setLayout(new SBoxLayout(SBoxLayout.VERTICAL));</span>
+<span class="nc" id="L389">		chatBox.add(chatEntryBox, SLayout.EXPAND_X);</span>
+<span class="nc" id="L390">		chatBox.add(chatLogArea, SBoxLayout.constraint(SLayout.EXPAND_X, SLayout.EXPAND_Y));</span>
+
+		// Give the user the ability to make the the game area less tall
+<span class="nc" id="L393">		final JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, pane, chatBox);</span>
+<span class="nc" id="L394">		splitPane.setBorder(null);</span>
+		// Works for showing the resize, but is extremely flickery
+		//splitPane.setContinuousLayout(true);
+		// Moving either divider will result in the screen resized. Pass it to
+		// the game screen so that it can recenter the player.
+<span class="nc" id="L399">		pane.addComponentListener(new SplitPaneResizeListener(screen));</span>
+
+<span class="nc" id="L401">		containerPanel = createContainerPanel();</span>
+
+		// Avoid panel drawing overhead
+<span class="nc" id="L404">		final Container windowContent = SBoxLayout.createContainer(SBoxLayout.HORIZONTAL);</span>
+<span class="nc" id="L405">		frame.setContentPane(windowContent);</span>
+
+		// Finally add the left pane, and the games screen + chat combo
+		// Make the panel take any horizontal resize
+<span class="nc" id="L409">		leftColumn.setMinimumSize(new Dimension());</span>
+		/*
+		 * Fix the container panel size, so that it is always visible
+		 */
+<span class="nc" id="L413">		containerPanel.setMinimumSize(containerPanel.getPreferredSize());</span>
+		
+		// Splitter between the left column and game screen
+<span class="nc" id="L416">		final JSplitPane horizSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftColumn, splitPane);</span>
+
+		// Ensure that the limits are obeyed even when the component is resized
+<span class="nc" id="L419">		horizSplit.addComponentListener(new ComponentAdapter() {</span>
+			// Start with a large value, so that the divider is placed as left
+			// as possible
+<span class="nc" id="L422">			private int oldWidth = Integer.MAX_VALUE;</span>
+			
+			@Override
+			public void componentResized(ComponentEvent e) {
+<span class="nc bnc" id="L426" title="All 2 branches missed.">				if (screen.isScaled()) {</span>
+					/*
+					 * Default behavior is otherwise reasonable, except the
+					 * user will likely want to use the vertical space for the
+					 * game screen.
+					 * 
+					 * Try to keep the aspect ratio near the optimum; the sizes
+					 * have not changed when this gets called, so push it to the
+					 * EDT.
+					 */
+<span class="nc" id="L436">					SwingUtilities.invokeLater(new Runnable() {</span>
+						@Override
+						public void run() {
+<span class="nc" id="L439">							double hScale = screen.getWidth() / (double) displaySize.width;</span>
+<span class="nc" id="L440">							int preferredLocation = (int) (hScale * displaySize.height);</span>
+<span class="nc" id="L441">							splitPane.setDividerLocation(preferredLocation);</span>
+<span class="nc" id="L442">						}</span>
+					});
+				} else {
+<span class="nc" id="L445">					int position = horizSplit.getDividerLocation();</span>
+					/*
+					 * The trouble: the size of the game screen is likely the one
+					 * that the player wants to preserve when making the window
+					 * smaller. Swing provides no default way to the old component
+					 * size, so we stash the interesting dimension in oldWidth. 
+					 */
+<span class="nc" id="L452">					int width = horizSplit.getWidth();</span>
+<span class="nc" id="L453">					int oldRightDiff = oldWidth - position;</span>
+<span class="nc" id="L454">					int widthChange = width - oldWidth;</span>
+<span class="nc" id="L455">					int underflow = widthChange + position;</span>
+<span class="nc bnc" id="L456" title="All 2 branches missed.">					if (underflow &lt; 0) {</span>
+						/*
+						 * Extreme size reduction. The divider location would have
+						 * changed as the result. Use the previous location instead
+						 * of the current.
+						 */
+<span class="nc" id="L462">						oldRightDiff = oldWidth - horizSplit.getLastDividerLocation();</span>
+					}
+<span class="nc" id="L464">					position = MathHelper.clamp(width - oldRightDiff,</span>
+							horizSplit.getMinimumDividerLocation(),
+							horizSplit.getMaximumDividerLocation());
+
+<span class="nc" id="L468">					horizSplit.setDividerLocation(position);</span>
+<span class="nc" id="L469">					oldWidth = horizSplit.getWidth();</span>
+				}
+<span class="nc" id="L471">			}</span>
+		});
+		/** Used as a workaround for BasicSplitPaneUI bugs */
+<span class="nc" id="L474">		final int divWidth = splitPane.getDividerSize();</span>
+		
+<span class="nc" id="L476">		pane.setPreferredSize(new Dimension(displaySize.width + divWidth, displaySize.height));</span>
+<span class="nc" id="L477">		horizSplit.setBorder(null);</span>
+		
+<span class="nc" id="L479">		windowContent.add(horizSplit, SBoxLayout.constraint(SLayout.EXPAND_Y, SLayout.EXPAND_X));</span>
+		
+		// The contents of the right side
+<span class="nc" id="L482">		JComponent rightSidePanel = SBoxLayout.createContainer(SBoxLayout.VERTICAL);</span>
+<span class="nc" id="L483">		JComponent settings = new SettingsPanel();</span>
+<span class="nc" id="L484">		rightSidePanel.add(settings, SLayout.EXPAND_X);</span>
+<span class="nc" id="L485">		rightSidePanel.add(containerPanel, SBoxLayout.constraint(SLayout.EXPAND_Y, SLayout.EXPAND_X));</span>
+<span class="nc" id="L486">		windowContent.add(rightSidePanel, SLayout.EXPAND_Y);</span>
+		
+<span class="nc" id="L488">		windowManager.registerSettingChangeListener(SCALE_PREFERENCE_PROPERTY,</span>
+<span class="nc" id="L489">				new SettingChangeAdapter(SCALE_PREFERENCE_PROPERTY, &quot;true&quot;) {</span>
+			@Override
+			public void changed(String newValue) {
+<span class="nc" id="L492">				boolean scale = Boolean.parseBoolean(newValue);</span>
+<span class="nc" id="L493">				screen.setUseScaling(scale);</span>
+<span class="nc bnc" id="L494" title="All 2 branches missed.">				if (scale) {</span>
+					// Clear the resize limits
+<span class="nc" id="L496">					splitPane.setMaximumSize(null);</span>
+<span class="nc" id="L497">					pane.setMaximumSize(null);</span>
+				} else {
+					// Set the limits
+<span class="nc" id="L500">					splitPane.setMaximumSize(new Dimension(displaySize.width + divWidth, Integer.MAX_VALUE));</span>
+<span class="nc" id="L501">					pane.setMaximumSize(displaySize);</span>
+					// The user may have resized the screen outside allowed
+					// parameters
+<span class="nc" id="L504">					int overflow = horizSplit.getWidth() - horizSplit.getDividerLocation() - displaySize.width - divWidth;</span>
+<span class="nc bnc" id="L505" title="All 2 branches missed.">					if (overflow &gt; 0) {</span>
+<span class="nc" id="L506">						horizSplit.setDividerLocation(horizSplit.getDividerLocation() + overflow);</span>
+					}
+<span class="nc bnc" id="L508" title="All 2 branches missed.">					if (splitPane.getDividerLocation() &gt; displaySize.height) {</span>
+<span class="nc" id="L509">						splitPane.setDividerLocation(displaySize.height);</span>
+					}
+				}
+<span class="nc" id="L512">			}</span>
+		});
+		
+		/*
+		 * Handle focus assertion and window closing
+		 */
+<span class="nc" id="L518">		frame.addWindowListener(new WindowAdapter() {</span>
+			@Override
+			public void windowOpened(final WindowEvent ev) {
+<span class="nc" id="L521">				chatText.getPlayerChatText().requestFocus();</span>
+<span class="nc" id="L522">			}</span>
+
+			@Override
+			public void windowActivated(final WindowEvent ev) {
+<span class="nc" id="L526">				chatText.getPlayerChatText().requestFocus();</span>
+<span class="nc" id="L527">			}</span>
+
+			@Override
+			public void windowGainedFocus(final WindowEvent ev) {
+<span class="nc" id="L531">				chatText.getPlayerChatText().requestFocus();</span>
+<span class="nc" id="L532">			}</span>
+
+			@Override
+			public void windowClosing(final WindowEvent e) {
+<span class="nc" id="L536">				requestQuit();</span>
+<span class="nc" id="L537">			}</span>
+		});
+
+<span class="nc" id="L540">		frame.pack();</span>
+<span class="nc" id="L541">		horizSplit.setDividerLocation(leftColumn.getPreferredSize().width);</span>
+<span class="nc" id="L542">		setInitialWindowStates();</span>
+
+		/*
+		 *  A bit roundabout way to calculate the desired minsize, but
+		 *  different java versions seem to take the window decorations
+		 *  in account in rather random ways.
+		 */
+<span class="nc" id="L549">		final int width = frame.getWidth()</span>
+				- minimap.getComponent().getWidth() - containerPanel.getWidth();
+<span class="nc" id="L551">		final int height = frame.getHeight() - chatLogArea.getHeight();</span>
+
+<span class="nc" id="L553">		frame.setMinimumSize(new Dimension(width, height));</span>
+<span class="nc" id="L554">		frame.setVisible(true);</span>
+
+		/*
+		 * For small screens. Setting the maximum window size does
+		 * not help - pack() happily ignores it.
+		 */
+<span class="nc" id="L560">		Rectangle maxBounds = GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();</span>
+<span class="nc" id="L561">		Dimension current = frame.getSize();</span>
+<span class="nc" id="L562">		frame.setSize(Math.min(current.width, maxBounds.width),</span>
+				Math.min(current.height, maxBounds.height));
+		
+		/*
+		 * Used by settings dialog to restore the client's dimensions back to
+		 * the original width and height. Needs to be called after
+		 * frame.setSize().
+		 */
+<span class="nc" id="L570">		frameDefaultSize = frame.getSize();</span>
+		
+		/*
+		 * Needed for small screens; Sometimes the divider is placed
+		 * incorrectly unless we explicitly set it. Try to fit it on the
+		 * screen and show a bit of the chat.
+		 */
+<span class="nc" id="L577">		splitPane.setDividerLocation(Math.min(displaySize.height,</span>
+				maxBounds.height  - 80));
+
+<span class="nc" id="L580">		checkAndComplainAboutJavaImplementation();</span>
+<span class="nc" id="L581">		positionChangeListener.add(getSoundSystemFacade());</span>
+<span class="nc" id="L582">		WindowUtils.watchFontSize(frame);</span>
+		
+		/*
+		 * On some systems the window may end up occasionally unresponsive
+		 * to keyboard use unless these are delayed.
+		 */
+<span class="nc" id="L588">		SwingUtilities.invokeLater(new Runnable() {</span>
+			@Override
+			public void run() {
+				/*
+				 * A massive kludge to ensure that the window position is
+				 * treated properly. Without this popup menus can be misplaced
+				 * and unusable until the user moves the game window. This
+				 * can happen with certain window managers if the window manager
+				 * moves the window as a result of resizing the window.
+				 * &quot;ui.dimensions&quot;
+				 * Description of the bug:
+				 * 	https://bugzilla.redhat.com/show_bug.cgi?id=698295
+				 * 
+				 * As of 2013-09-07 it is reproducible at least when using
+				 * Mate desktop's marco window manager. Metacity and mutter
+				 * have a workaround for the same issue in AWT.
+				 */
+<span class="nc" id="L605">				Point location = frame.getLocation();</span>
+<span class="nc" id="L606">				frame.setLocation(location.x + 1, location.y);</span>
+<span class="nc" id="L607">				frame.setLocation(location.x, location.y);</span>
+				
+				// The keyboard fix mentioned above
+<span class="nc" id="L610">				frame.setEnabled(true);</span>
+<span class="nc" id="L611">				chatText.getPlayerChatText().requestFocus();</span>
+<span class="nc" id="L612">			}</span>
+		});
+		
+		/*
+		 * Restore client's window dimensions from config (set by previous
+		 * session) if available. Call after ???.
+		 */
+<span class="nc" id="L619">		WindowUtils.restoreSize(frame);</span>
+<span class="nc" id="L620">	} // constructor</span>
+
+	/**
+	 * Create the left side panel of the client.
+	 *
+	 * @return A component containing the components left of the game screen
+	 */
+	private JComponent createLeftPanel() {
+<span class="nc" id="L628">		minimap = new MapPanelController(client);</span>
+<span class="nc" id="L629">		positionChangeListener.add(minimap);</span>
+<span class="nc" id="L630">		final StatsPanelController stats = StatsPanelController.get();</span>
+<span class="nc" id="L631">		final BuddyPanelController buddies = BuddyPanelController.get();</span>
+<span class="nc" id="L632">		ScrolledViewport buddyScroll = new ScrolledViewport((JComponent) buddies.getComponent());</span>
+<span class="nc" id="L633">		buddyScroll.setScrollingSpeed(SCROLLING_SPEED);</span>
+<span class="nc" id="L634">		final JComponent buddyPane = buddyScroll.getComponent();</span>
+<span class="nc" id="L635">		buddyPane.setBorder(null);</span>
+
+<span class="nc" id="L637">		final JComponent leftColumn = SBoxLayout.createContainer(SBoxLayout.VERTICAL);</span>
+<span class="nc" id="L638">		leftColumn.add(minimap.getComponent(), SLayout.EXPAND_X);</span>
+<span class="nc" id="L639">		leftColumn.add(stats.getComponent(), SLayout.EXPAND_X);</span>
+
+		// Add a background for the tabs. The column itself has none.
+<span class="nc" id="L642">		JPanel tabBackground = new JPanel();</span>
+<span class="nc" id="L643">		tabBackground.setBorder(null);</span>
+<span class="nc" id="L644">		tabBackground.setLayout(new SBoxLayout(SBoxLayout.VERTICAL));</span>
+<span class="nc" id="L645">		JTabbedPane tabs = new JTabbedPane(JTabbedPane.BOTTOM);</span>
+		// Adjust the Tab Width, if we can. The default is pretty if there's
+		// space, but in the column there are no pixels to waste.
+<span class="nc" id="L648">		TabbedPaneUI ui = tabs.getUI();</span>
+<span class="nc bnc" id="L649" title="All 2 branches missed.">		if (ui instanceof StyledTabbedPaneUI) {</span>
+<span class="nc" id="L650">			((StyledTabbedPaneUI) ui).setTabLabelMargins(1);</span>
+		}
+<span class="nc" id="L652">		tabs.setFocusable(false);</span>
+<span class="nc" id="L653">		tabs.add(&quot;Friends&quot;, buddyPane);</span>
+
+<span class="nc" id="L655">		tabs.add(&quot;Group&quot;, GroupPanelController.get().getComponent());</span>
+
+<span class="nc" id="L657">		tabBackground.add(tabs, SBoxLayout.constraint(SLayout.EXPAND_X, SLayout.EXPAND_Y));</span>
+<span class="nc" id="L658">		leftColumn.add(tabBackground, SBoxLayout.constraint(SLayout.EXPAND_X, SLayout.EXPAND_Y));</span>
+
+<span class="nc" id="L660">		return leftColumn;</span>
+	}
+
+	/**
+	 * Create the container panel (right side panel), and its child components.
+	 *
+	 * @return container panel
+	 */
+	private ContainerPanel createContainerPanel() {
+<span class="nc" id="L669">		ContainerPanel containerPanel = new ContainerPanel();</span>
+<span class="nc" id="L670">		containerPanel.setAnimated(false);</span>
+<span class="nc" id="L671">		containerPanel.setMinimumSize(new Dimension(0, 0));</span>
+
+		/*
+		 * Contents of the containerPanel
+		 */
+		// Character window
+<span class="nc" id="L677">		character = new Character();</span>
+<span class="nc" id="L678">		containerPanel.addRepaintable(character);</span>
+
+		// Create the bag window
+<span class="nc" id="L681">		inventory = new SlotWindow(&quot;bag&quot;, 3, 4);</span>
+<span class="nc" id="L682">		inventory.setAcceptedTypes(EntityMap.getClass(&quot;item&quot;, null, null));</span>
+<span class="nc" id="L683">		inventory.setCloseable(false);</span>
+<span class="nc" id="L684">		containerPanel.addRepaintable(inventory);</span>
+
+<span class="nc" id="L686">		keyring = new KeyRing();</span>
+		// keyring's types are more limited, but it's simpler to let the server
+		// handle those
+<span class="nc" id="L689">		keyring.setAcceptedTypes(EntityMap.getClass(&quot;item&quot;, null, null));</span>
+<span class="nc" id="L690">		containerPanel.addRepaintable(keyring);</span>
+<span class="nc" id="L691">		userContext.addFeatureChangeListener(keyring);</span>
+
+<span class="nc" id="L693">		spells = new Spells();</span>
+<span class="nc" id="L694">		spells.setAcceptedTypes(EntityMap.getClass(&quot;spell&quot;, null, null));</span>
+<span class="nc" id="L695">		containerPanel.addRepaintable(spells);</span>
+<span class="nc" id="L696">		userContext.addFeatureChangeListener(spells);</span>
+
+<span class="nc" id="L698">		return containerPanel;</span>
+	}
+
+	/**
+	 * Modify the states of the on screen windows. The window manager normally
+	 * restores the state of the window as it was on the previous session. For
+	 * some windows this is not desirable.
+	 * &lt;p&gt;
+	 * &lt;em&gt;Note:&lt;/em&gt; This need to be called from the event dispatch thread.
+	 */
+	private void setInitialWindowStates() {
+		/*
+		 * Window manager may try to restore the visibility of the dialog when
+		 * it's added to the pane.
+		 */
+<span class="nc" id="L713">		quitDialog.getQuitDialog().setVisible(false);</span>
+		// Windows may have been closed in old clients
+<span class="nc" id="L715">		character.setVisible(true);</span>
+<span class="nc" id="L716">		inventory.setVisible(true);</span>
+		/*
+		 * Keyring, on the other hand, *should* be hidden until revealed
+		 * by feature change
+		 */
+<span class="nc" id="L721">		keyring.setVisible(false);</span>
+
+		// spells should also be invisible until revealed by a feature change
+<span class="nc" id="L724">		spells.setVisible(false);</span>
+<span class="nc" id="L725">	}</span>
+
+	/**
+	 * Check the used java version, and show a warning if it's not known to be
+	 * a compatible one.
+	 */
+	private void checkAndComplainAboutJavaImplementation() {
+<span class="nc" id="L732">		final String vmName = System.getProperty(&quot;java.vm.name&quot;, &quot;unknown&quot;).toLowerCase(Locale.ENGLISH);</span>
+<span class="nc bnc" id="L733" title="All 4 branches missed.">		if ((vmName.indexOf(&quot;hotspot&quot;) &lt; 0) &amp;&amp; (vmName.indexOf(&quot;openjdk&quot;) &lt; 0)) {</span>
+<span class="nc" id="L734">			final String text = &quot;Stendhal is developed and tested on Sun Java and OpenJDK. You are using &quot;</span>
+				+ System.getProperty(&quot;java.vm.vendor&quot;, &quot;unknown&quot;) + &quot; &quot;
+				+ System.getProperty(&quot;java.vm.name&quot;, &quot;unknown&quot;)
+				+ &quot; so there may be some problems like a black or grey screen.\n&quot;
+				+ &quot; If you have coding experience with your JDK, we are looking for help.&quot;;
+<span class="nc" id="L739">			addEventLine(new HeaderLessEventLine(text, NotificationType.ERROR));</span>
+		}
+<span class="nc" id="L741">	}</span>
+
+	/**
+	 * Called at quit.
+	 */
+	private void cleanup() {
+<span class="nc" id="L747">		chatText.saveCache();</span>
+		
+		// Fall back in case sound system hangs. Can happen at least when using
+		// the pulseaudio driver and the sound daemon is shut down while the
+		// client has the line open.
+<span class="nc" id="L752">		Runnable quit = new Runnable() {</span>
+			@Override
+			public void run() {
+<span class="nc" id="L755">				logger.warn(&quot;Forced exit, sound system likely locked up&quot;);</span>
+<span class="nc" id="L756">				System.exit(1);</span>
+<span class="nc" id="L757">			}</span>
+		};
+<span class="nc" id="L759">		Executors.newSingleThreadScheduledExecutor().schedule(quit, 3, TimeUnit.SECONDS);</span>
+<span class="nc" id="L760">		getSoundSystemFacade().exit();</span>
+		
+		// Normal shutdown
+<span class="nc" id="L763">		logger.debug(&quot;Exit&quot;);</span>
+<span class="nc" id="L764">		System.exit(0);</span>
+<span class="nc" id="L765">	}</span>
+
+	/**
+	 * Add a native in-window dialog to the screen.
+	 *
+	 * @param comp
+	 *            The component to add.
+	 */
+	private void addDialog(final Component comp) {
+<span class="nc" id="L774">		pane.add(comp, JLayeredPane.PALETTE_LAYER);</span>
+<span class="nc" id="L775">	}</span>
+
+	/**
+	 * Start the game loop thread.
+	 */
+	public void startGameLoop() {
+		try {
+<span class="nc" id="L782">			SoundGroup group = initSoundSystem();</span>
+<span class="nc" id="L783">			group.play(&quot;harp-1&quot;, 0, null, null, false, true);</span>
+<span class="nc" id="L784">		} catch (RuntimeException e) {</span>
+<span class="nc" id="L785">			logger.error(e, e);</span>
+<span class="nc" id="L786">		}</span>
+
+<span class="nc" id="L788">		GameLoop loop = GameLoop.get();</span>
+<span class="nc" id="L789">		final GameObjects gameObjects = client.getGameObjects();</span>
+
+<span class="nc" id="L791">		loop.runAllways(new GameLoop.PersistentTask() {</span>
+			@Override
+			public void run(int delta) {
+<span class="nc" id="L794">				gameLoop(delta, gameObjects);</span>
+<span class="nc" id="L795">			}</span>
+		});
+
+<span class="nc" id="L798">		loop.runAtQuit(new Runnable() {</span>
+			@Override
+			public void run() {
+<span class="nc" id="L801">				cleanup();</span>
+<span class="nc" id="L802">			}</span>
+		});
+
+<span class="nc" id="L805">		gameRunning = true;</span>
+
+<span class="nc" id="L807">		loop.start();</span>
+<span class="nc" id="L808">	}</span>
+
+	/**
+	 * Main game loop contents. Updates objects, and requests redraws.
+	 *
+	 * @param delta difference to previous calling time
+	 * @param gameObjects
+	 */
+	private void gameLoop(final int delta, final GameObjects gameObjects) {
+		// Check logouts first, in case something goes wrong with the drawing
+		// code
+
+<span class="nc bnc" id="L820" title="All 2 branches missed.">		if (!gameRunning) {</span>
+<span class="nc" id="L821">			logger.info(&quot;Request logout&quot;);</span>
+			try {
+				/*
+				 * We request server permision to logout. Server can deny
+				 * it, unless we are already offline.
+				 */
+<span class="nc bnc" id="L827" title="All 4 branches missed.">				if (offline || client.logout()) {</span>
+<span class="nc" id="L828">					GameLoop.get().stop();</span>
+				} else {
+<span class="nc" id="L830">					logger.warn(&quot;You can't logout now.&quot;);</span>
+<span class="nc" id="L831">					gameRunning = true;</span>
+				}
+<span class="nc" id="L833">			} catch (final Exception e) { // catch InvalidVersionException, TimeoutException and BannedAddressException</span>
+				/*
+				 * If we get a timeout exception we accept exit request.
+				 */
+<span class="nc" id="L837">				logger.error(e, e);</span>
+<span class="nc" id="L838">				GameLoop.get().stop();</span>
+<span class="nc" id="L839">			}</span>
+		}
+
+		// Shows a offline icon if the connection is broken
+<span class="nc bnc" id="L843" title="All 2 branches missed.">		setOffline(!client.getConnectionState());</span>
+
+		// figure out what time it is right after the screen flip then
+		// later we can figure out how long we have been doing redrawing
+		// / networking, then we know how long we need to sleep to make
+		// the next flip happen at the right time
+<span class="nc" id="L849">		screenController.nextFrame();</span>
+
+<span class="nc" id="L851">		logger.debug(&quot;Move objects&quot;);</span>
+<span class="nc" id="L852">		gameObjects.update(delta);</span>
+
+<span class="nc" id="L854">		final User user = User.get();</span>
+
+		// check if the player object has changed.
+		// Note: this is an exact object reference check
+<span class="nc bnc" id="L858" title="All 4 branches missed.">		if ((user != null) &amp;&amp; (user != lastuser)) {</span>
+<span class="nc" id="L859">			character.setPlayer(user);</span>
+<span class="nc" id="L860">			keyring.setSlot(user, &quot;keyring&quot;);</span>
+<span class="nc" id="L861">			spells.setSlot(user, &quot;spells&quot;);</span>
+<span class="nc" id="L862">			inventory.setSlot(user, &quot;bag&quot;);</span>
+<span class="nc" id="L863">			lastuser = user;</span>
+		}
+
+<span class="nc" id="L866">		triggerPainting();</span>
+
+<span class="nc" id="L868">		logger.debug(&quot;Query network&quot;);</span>
+
+<span class="nc" id="L870">		client.loop(0);</span>
+
+<span class="nc" id="L872">		gameKeyHandler.processDelayedDirectionRelease();</span>
+<span class="nc" id="L873">	}</span>
+
+	private int paintCounter;
+	
+	/**
+	 * Requests repaint at the window areas that are painted according to the
+	 * game loop frame rate.
+	 */
+	private void triggerPainting() {
+<span class="nc bnc" id="L882" title="All 2 branches missed.">		if (frame.getState() != Frame.ICONIFIED) {</span>
+<span class="nc" id="L883">			paintCounter++;</span>
+<span class="nc bnc" id="L884" title="All 6 branches missed.">			if (frame.isActive() || System.getProperty(&quot;stendhal.skip.inactive&quot;, &quot;false&quot;).equals(&quot;false&quot;) || paintCounter &gt;= 20) {</span>
+<span class="nc" id="L885">				paintCounter = 0;</span>
+<span class="nc" id="L886">				logger.debug(&quot;Draw screen&quot;);</span>
+<span class="nc" id="L887">				minimap.refresh();</span>
+<span class="nc" id="L888">				containerPanel.repaintChildren();</span>
+<span class="nc" id="L889">				screen.repaint();</span>
+			}
+		}
+<span class="nc" id="L892">    }</span>
+
+	/**
+	 * Initialize the sounds used by the user interfase.
+	 * 
+	 * @return user interface sound group
+	 */
+	private SoundGroup initSoundSystem() {
+<span class="nc" id="L900">		SoundGroup group = getSoundSystemFacade().getGroup(SoundLayer.USER_INTERFACE.groupName);</span>
+<span class="nc" id="L901">		group.loadSound(&quot;harp-1&quot;, &quot;harp-1.ogg&quot;, SoundFileType.OGG, false);</span>
+<span class="nc" id="L902">		group.loadSound(&quot;click-4&quot;, &quot;click-4.ogg&quot;, SoundFileType.OGG, false);</span>
+<span class="nc" id="L903">		group.loadSound(&quot;click-5&quot;, &quot;click-5.ogg&quot;, SoundFileType.OGG, false);</span>
+<span class="nc" id="L904">		group.loadSound(&quot;click-6&quot;, &quot;click-6.ogg&quot;, SoundFileType.OGG, false);</span>
+<span class="nc" id="L905">		group.loadSound(&quot;click-8&quot;, &quot;click-8.ogg&quot;, SoundFileType.OGG, false);</span>
+<span class="nc" id="L906">		group.loadSound(&quot;click-10&quot;, &quot;click-10.ogg&quot;, SoundFileType.OGG, false);</span>
+<span class="nc" id="L907">		return group;</span>
+	}
+
+	/**
+	 * Shutdown the client. Save state and tell the main loop to stop.
+	 */
+	void shutdown() {
+<span class="nc" id="L914">		gameRunning = false;</span>
+		
+		// try to save the window configuration
+<span class="nc" id="L917">		WtWindowManager.getInstance().save();</span>
+<span class="nc" id="L918">	}</span>
+
+	//
+	// &lt;StendhalGUI&gt;
+	//
+
+	/**
+	 * Add a new window.
+	 *
+	 * @param mw A managed window.
+	 */
+	public void addWindow(final ManagedWindow mw) {
+<span class="nc bnc" id="L930" title="All 2 branches missed.">		if (mw instanceof InternalManagedWindow) {</span>
+<span class="nc" id="L931">			addDialog((InternalManagedWindow) mw);</span>
+		} else {
+<span class="nc" id="L933">			throw new IllegalArgumentException(&quot;Unsupport ManagedWindow type: &quot;</span>
+					+ mw.getClass().getName());
+		}
+<span class="nc" id="L936">	}</span>
+
+	//
+	// j2DClient
+	//
+
+	@Override
+	public void addEventLine(final EventLine line) {
+<span class="nc" id="L944">		channelManager.addEventLine(line);</span>
+<span class="nc" id="L945">	}</span>
+
+	@Override
+	public void addGameScreenText(final double x, final double y, final String text, final NotificationType type,
+			final boolean isTalking) {
+<span class="nc" id="L950">		screenController.addText(x, y, text, type, isTalking);</span>
+<span class="nc" id="L951">	}</span>
+
+	@Override
+	public void addAchievementBox(String title, String description, String category) {
+<span class="nc" id="L955">		screen.addAchievementBox(title, description, category);</span>
+<span class="nc" id="L956">	}</span>
+	
+	/**
+	 * Initiate outfit selection by the user.
+	 */
+	public void chooseOutfit() {
+<span class="nc" id="L962">		final RPObject player = userContext.getPlayer();</span>
+		
+		final int outfit;
+		
+<span class="nc bnc" id="L966" title="All 2 branches missed.">		if (player.has(&quot;outfit_org&quot;)) {</span>
+<span class="nc" id="L967">			outfit = player.getInt(&quot;outfit_org&quot;);</span>
+		} else {
+<span class="nc" id="L969">			outfit = player.getInt(&quot;outfit&quot;);</span>
+		}
+		
+<span class="nc bnc" id="L972" title="All 2 branches missed.">		if (outfitDialog == null) {</span>
+			// Here we actually want to call new OutfitColor(). Modifying
+			// OutfitColor.PLAIN would be a bad thing.
+<span class="nc" id="L975">			outfitDialog = new OutfitDialog(frame, &quot;Set outfit&quot;, outfit,</span>
+					new OutfitColor(player));
+			
+<span class="nc" id="L978">			outfitDialog.setVisible(true);</span>
+		} else {
+<span class="nc" id="L980">			outfitDialog.setState(outfit, OutfitColor.get(player));</span>
+			
+<span class="nc" id="L982">			outfitDialog.setVisible(true);</span>
+<span class="nc" id="L983">			outfitDialog.toFront();</span>
+		}
+<span class="nc" id="L985">	}</span>
+	
+	/**
+	 * Create the chat log tabs.
+	 *
+	 * @return chat log area
+	 */
+	private JTabbedPane createLogArea() {
+<span class="nc" id="L993">		final JTabbedPane tabs = new JTabbedPane(JTabbedPane.BOTTOM);</span>
+<span class="nc" id="L994">		tabs.setFocusable(false);</span>
+<span class="nc" id="L995">		final Timer animator = new Timer(100, null);</span>
+<span class="nc" id="L996">		List&lt;JComponent&gt; logs = createNotificationChannels();</span>
+<span class="nc" id="L997">		final BitSet changedChannels = new BitSet(logs.size());</span>
+		
+<span class="nc" id="L999">		tabs.addChangeListener(new ChangeListener() {</span>
+			@Override
+			public void stateChanged(ChangeEvent e) {
+<span class="nc" id="L1002">				int i = tabs.getSelectedIndex();</span>
+<span class="nc" id="L1003">				NotificationChannel channel = channelManager.getChannels().get(i);</span>
+<span class="nc" id="L1004">				channelManager.setVisibleChannel(channel);</span>
+<span class="nc bnc" id="L1005" title="All 2 branches missed.">				if (changedChannels.get(i)) {</span>
+<span class="nc" id="L1006">					changedChannels.set(i, false);</span>
+					// Remove modified marker
+<span class="nc" id="L1008">					tabs.setBackgroundAt(i, null);</span>
+<span class="nc bnc" id="L1009" title="All 2 branches missed.">					if (changedChannels.isEmpty()) {</span>
+<span class="nc" id="L1010">						animator.stop();</span>
+					}
+				}
+<span class="nc" id="L1013">			}</span>
+		});
+		
+<span class="nc" id="L1016">		Iterator&lt;NotificationChannel&gt; it = channelManager.getChannels().iterator();</span>
+<span class="nc bnc" id="L1017" title="All 2 branches missed.">		for (JComponent tab : logs) {</span>
+<span class="nc" id="L1018">			tabs.add(it.next().getName(), tab);</span>
+<span class="nc" id="L1019">		}</span>
+
+<span class="nc" id="L1021">		channelManager.addHiddenChannelListener(new NotificationChannelManager.HiddenChannelListener() {</span>
+			@Override
+			public void channelModified(int index) {
+				// Mark the tab as modified so that the user can see there's
+				// new text
+<span class="nc bnc" id="L1026" title="All 2 branches missed.">				if (!changedChannels.get(index)) {</span>
+<span class="nc" id="L1027">					changedChannels.set(index);</span>
+<span class="nc bnc" id="L1028" title="All 2 branches missed.">					if (!animator.isRunning()) {</span>
+<span class="nc" id="L1029">						animator.start();</span>
+					}
+				}
+<span class="nc" id="L1032">			}</span>
+		});
+		
+<span class="nc" id="L1035">		animator.addActionListener(new ActionListener() {</span>
+			private static final int STEPS = 10;
+			private final Color[] colors;
+			private int colorIndex;
+<span class="nc" id="L1039">			private int change = 1;</span>
+			{
+<span class="nc" id="L1041">				colors = new Color[STEPS];</span>
+				Color endColor;
+				
+<span class="nc" id="L1044">				Style style = StyleUtil.getStyle();</span>
+<span class="nc bnc" id="L1045" title="All 2 branches missed.">				if (style != null) {</span>
+<span class="nc" id="L1046">					colors[0] = style.getHighLightColor();</span>
+<span class="nc" id="L1047">					endColor = style.getPlainColor();</span>
+				} else {
+<span class="nc" id="L1049">					colors[0] = Color.BLUE;</span>
+<span class="nc" id="L1050">					endColor = Color.DARK_GRAY;</span>
+				}
+				
+<span class="nc" id="L1053">				int r = colors[0].getRed();</span>
+<span class="nc" id="L1054">				int g = colors[0].getGreen();</span>
+<span class="nc" id="L1055">				int b = colors[0].getBlue();</span>
+<span class="nc" id="L1056">				int alpha = 0xff;</span>
+<span class="nc" id="L1057">				int dR = r - endColor.getRed();</span>
+<span class="nc" id="L1058">				int dG = g - endColor.getGreen();</span>
+<span class="nc" id="L1059">				int dB = b - endColor.getBlue();</span>
+				int dA;
+<span class="nc bnc" id="L1061" title="All 2 branches missed.">				if (TransparencyMode.TRANSPARENCY == Transparency.TRANSLUCENT) {</span>
+<span class="nc" id="L1062">					dA = 0xff / STEPS;</span>
+				} else {
+<span class="nc" id="L1064">					dA = 0;</span>
+				}
+<span class="nc bnc" id="L1066" title="All 2 branches missed.">				for (int i = 1; i &lt; STEPS; i++) {</span>
+<span class="nc" id="L1067">					alpha -= dA;</span>
+<span class="nc" id="L1068">					colors[i] = new Color(r - i * dR / STEPS, g - i * dG / STEPS, b - i * dB / STEPS, alpha);</span>
+				}
+<span class="nc" id="L1070">			}</span>
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+<span class="nc" id="L1074">				colorIndex += change;</span>
+<span class="nc bnc" id="L1075" title="All 4 branches missed.">				if (colorIndex &gt;= colors.length || colorIndex &lt; 0) {</span>
+<span class="nc" id="L1076">					change = -change;</span>
+<span class="nc" id="L1077">					colorIndex += change;</span>
+				}
+
+<span class="nc bnc" id="L1080" title="All 2 branches missed.">				for (int i = changedChannels.nextSetBit(0); i &gt;= 0; i = changedChannels.nextSetBit(i + 1)) {</span>
+<span class="nc" id="L1081">					tabs.setBackgroundAt(i, colors[colorIndex]);</span>
+				}
+<span class="nc" id="L1083">			}</span>
+		});
+
+<span class="nc" id="L1086">		return tabs;</span>
+	}
+
+	/**
+	 * Create chat channels.
+	 *
+	 * @return Chat log components of the notification channels
+	 */
+	private List&lt;JComponent&gt; createNotificationChannels() {
+<span class="nc" id="L1095">		List&lt;JComponent&gt; list = new ArrayList&lt;JComponent&gt;();</span>
+<span class="nc" id="L1096">		channelManager = new NotificationChannelManager();</span>
+<span class="nc" id="L1097">		KTextEdit edit = new KTextEdit();</span>
+<span class="nc" id="L1098">		list.add(edit);</span>
+
+		// ** Main channel **
+		// Follow settings changes for the main channel
+<span class="nc" id="L1102">		WtWindowManager wm = WtWindowManager.getInstance();</span>
+<span class="nc" id="L1103">		final NotificationChannel mainChannel = new NotificationChannel(&quot;Main&quot;, edit, true, &quot;&quot;);</span>
+<span class="nc" id="L1104">		wm.registerSettingChangeListener(&quot;ui.healingmessage&quot;, new SettingChangeAdapter(&quot;ui.healingmessage&quot;, &quot;false&quot;) {</span>
+			@Override
+			public void changed(String newValue) {
+<span class="nc" id="L1107">				mainChannel.setTypeFiltering(NotificationType.HEAL, Boolean.parseBoolean(newValue));</span>
+<span class="nc" id="L1108">			}</span>
+		});
+<span class="nc" id="L1110">		wm.registerSettingChangeListener(&quot;ui.poisonmessage&quot;, new SettingChangeAdapter(&quot;ui.poisonmessage&quot;, &quot;false&quot;) {</span>
+			@Override
+			public void changed(String newValue) {
+<span class="nc" id="L1113">				mainChannel.setTypeFiltering(NotificationType.POISON, Boolean.parseBoolean(newValue));</span>
+<span class="nc" id="L1114">			}</span>
+		});
+
+<span class="nc" id="L1117">		channelManager.addChannel(mainChannel);</span>
+
+		// ** Private channel **
+<span class="nc" id="L1120">		edit = new KTextEdit();</span>
+<span class="nc" id="L1121">		edit.setChannelName(&quot;Personal&quot;);</span>
+		/*
+		 * Give it a different background color to make it different from the
+		 * main chat log.
+		 */
+<span class="nc" id="L1126">		edit.setDefaultBackground(Color.decode(PRIVATE_TAB_COLOR));</span>
+<span class="nc" id="L1127">		list.add(edit);</span>
+		/*
+		 * Types shown by default in the private/group tab. Admin messages
+		 * should occur everywhere, of course, and not be possible to be
+		 * disabled in preferences.
+		 */
+<span class="nc" id="L1133">		String personalDefault = NotificationType.PRIVMSG.toString() + &quot;,&quot;</span>
+				+ NotificationType.CLIENT + &quot;,&quot; + NotificationType.GROUP + &quot;,&quot;
+				+ NotificationType.TUTORIAL + &quot;,&quot; + NotificationType.SUPPORT;
+<span class="nc" id="L1136">		channelManager.addChannel(new NotificationChannel(&quot;Personal&quot;, edit, false, personalDefault));</span>
+
+<span class="nc" id="L1138">		return list;</span>
+	}
+
+	/**
+	 * Get the main window component.
+	 *
+	 * @return main window
+	 */
+	public Frame getMainFrame() {
+<span class="nc" id="L1147">		return frame;</span>
+	}
+	
+	/**
+	 * Gets the default width and height of the client defined upon
+	 * frame (JFrame) construction.
+	 * 
+	 * @return
+	 *         Default dimension of client
+	 */
+	public Dimension getFrameDefaultSize() {
+<span class="nc" id="L1158">		return frameDefaultSize;</span>
+	}
+
+	/**
+	 * Set the input chat line text.
+	 *
+	 * @param text
+	 *            The text.
+	 */
+	public void setChatLine(final String text) {
+<span class="nc" id="L1168">		chatText.setChatLine(text);</span>
+
+<span class="nc" id="L1170">	}</span>
+
+	/**
+	 * Clear the visible channel log.
+	 */
+	public void clearGameLog() {
+<span class="nc" id="L1176">		channelManager.getVisibleChannel().clear();</span>
+<span class="nc" id="L1177">	}</span>
+
+	/**
+	 * Set the user's position.
+	 *
+	 * @param x
+	 *            The user's X coordinate.
+	 * @param y
+	 *            The user's Y coordinate.
+	 */
+	public void setPosition(final double x, final double y) {
+<span class="nc" id="L1188">		positionChangeListener.positionChanged(x, y);</span>
+<span class="nc" id="L1189">	}</span>
+
+	/**
+	 * Sets the offline indication state.
+	 *
+	 * @param offline
+	 *            &lt;code&gt;true&lt;/code&gt; if offline.
+	 */
+	public void setOffline(final boolean offline) {
+<span class="nc" id="L1198">		screenController.setOffline(offline);</span>
+<span class="nc" id="L1199">		this.offline = offline;</span>
+<span class="nc" id="L1200">	}</span>
+
+	/**
+	 * Called when the user presses ESC, or tries to close the main game window.
+	 */
+	public void requestQuit() {
+<span class="nc bnc" id="L1206" title="All 4 branches missed.">		if (client.getConnectionState() || !offline) {</span>
+			/* XXX: Will &quot;lastuser&quot; always be the correct entity to use for
+			 *      logging out?
+			 */
+<span class="nc" id="L1210">			quitDialog.requestQuit(this.lastuser);</span>
+		} else {
+<span class="nc" id="L1212">			System.exit(0);</span>
+		}
+<span class="nc" id="L1214">	}</span>
+
+	/**
+	 * PerceptionListener for the game window.
+	 * 
+	 * @return listener
+	 */
+	public IPerceptionListener getPerceptionListener() {
+<span class="nc" id="L1222">		return perceptionListener;</span>
+	}
+
+	/**
+	 * Get the client.
+	 *
+	 * @return The client.
+	 */
+	public StendhalClient getClient() {
+<span class="nc" id="L1231">		return client;</span>
+	}
+
+	/**
+	 * The layered pane where the game screen is does not automatically resize
+	 * the game screen. This handler is needed to do that work.
+	 */
+	private static class SplitPaneResizeListener extends ComponentAdapter {
+		private final Component child;
+
+		/**
+		 * Create a SplitPaneResizeListener.
+		 * 
+		 * @param child the component that needs to be resized
+		 */
+<span class="nc" id="L1246">		public SplitPaneResizeListener(Component child) {</span>
+<span class="nc" id="L1247">			this.child = child;</span>
+<span class="nc" id="L1248">		}</span>
+
+		@Override
+		public void componentResized(ComponentEvent e) {
+			// Pass on resize event
+<span class="nc" id="L1253">			child.setSize(e.getComponent().getSize());</span>
+<span class="nc" id="L1254">		}</span>
+	}
+
+	@Override
+	public final SoundSystemFacade getSoundSystemFacade() {
+<span class="fc bfc" id="L1259" title="All 2 branches covered.">		if (soundSystemFacade == null) {</span>
+			try {
+<span class="pc bpc" id="L1261" title="2 of 4 branches missed.">				if ((DataLoader.getResource(&quot;data/sound/harp-1.ogg&quot;) != null)</span>
+						|| (DataLoader.getResource(&quot;data/music/the_old_tavern.ogg&quot;) != null)) {
+<span class="fc" id="L1263">					soundSystemFacade = new games.stendhal.client.sound.sound.SoundSystemFacadeImpl();</span>
+				} else {
+<span class="nc" id="L1265">					soundSystemFacade = new NoSoundFacade();</span>
+				}
+<span class="nc" id="L1267">			} catch (RuntimeException e) {</span>
+<span class="nc" id="L1268">				soundSystemFacade = new NoSoundFacade();</span>
+<span class="nc" id="L1269">				logger.error(e, e);</span>
+<span class="fc" id="L1270">			}</span>
+		}
+<span class="fc" id="L1272">		return soundSystemFacade;</span>
+	}
+
+	public void switchToSpellState(RPObject spell) {
+<span class="nc" id="L1276">		this.screen.switchToSpellCastingState(spell);</span>
+<span class="nc" id="L1277">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

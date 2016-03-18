@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SpriteTileset.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">stendhal</a> &gt; <a href="index.source.html" class="el_package">games.stendhal.client.sprite</a> &gt; <span class="el_source">SpriteTileset.java</span></div><h1>SpriteTileset.java</h1><pre class="source lang-java linenums">/* $Id$ */
+/***************************************************************************
+ *                   (C) Copyright 2003-2010 - Stendhal                    *
+ ***************************************************************************
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+package games.stendhal.client.sprite;
+
+
+import java.awt.Color;
+import java.awt.Composite;
+
+import games.stendhal.client.IGameScreen;
+
+/**
+ * A tileset that is created from a source sprite.
+ */
+public class SpriteTileset implements Tileset {
+	/**
+	 * The sprite tiles.
+	 */
+	private Sprite[] tiles;
+
+	/**
+	 * Create a tileset.
+	 * 
+	 * @param store
+	 *            A sprite store.
+	 * @param filename
+	 *            A sprite resource path.
+	 * @param color Adjustment color for the tileset, or &lt;code&gt;null&lt;/code&gt;
+	 * @param blend Blend mode for applying the adjustment color, or
+	 * 	&lt;code&gt;null&lt;/code&gt;
+	 */
+	public SpriteTileset(final SpriteStore store, final String filename,
+			final Color color, final Composite blend) {
+<span class="nc" id="L43">		this(store, store.getModifiedSprite(filename, color, blend), IGameScreen.SIZE_UNIT_PIXELS);</span>
+<span class="nc" id="L44">	}</span>
+
+	/**
+	 * Create a tileset.
+	 * 
+	 * @param store
+	 *            A sprite store.
+	 * @param sprite
+	 *            A source sprite.
+	 * @param size
+	 *            The tile size.
+	 */
+	public SpriteTileset(final SpriteStore store, final Sprite sprite,
+<span class="nc" id="L57">			final int size) {</span>
+<span class="nc bnc" id="L58" title="All 2 branches missed.">		if (sprite == null) {</span>
+<span class="nc" id="L59">			tiles = new Sprite[0];</span>
+		} else {
+<span class="nc" id="L61">			tiles = extractTiles(store, sprite, size);</span>
+		}
+<span class="nc" id="L63">	}</span>
+
+	//
+	// SpriteTileset
+	//
+
+	/**
+	 * Extract all the tiles from a source sprite in left-right, top-bottom scan
+	 * order.
+	 * 
+	 * @param store
+	 *            A sprite store.
+	 * @param sprite
+	 *            The master sprite.
+	 * @param size
+	 *            The tile size.
+	 * 
+	 * @return An array of sprites.
+	 */
+	private Sprite[] extractTiles(final SpriteStore store,
+			final Sprite sprite, final int size) {
+<span class="nc" id="L84">		final int rows = sprite.getHeight() / size;</span>
+<span class="nc" id="L85">		final int cols = sprite.getWidth() / size;</span>
+
+<span class="nc" id="L87">		final Sprite[] sprites = new Sprite[rows * cols];</span>
+<span class="nc" id="L88">		int idx = 0;</span>
+
+<span class="nc" id="L90">		int y = 0;</span>
+
+<span class="nc bnc" id="L92" title="All 2 branches missed.">		for (int row = 0; row &lt; rows; row++) {</span>
+<span class="nc" id="L93">			int x = 0;</span>
+
+<span class="nc bnc" id="L95" title="All 2 branches missed.">			for (int col = 0; col &lt; cols; col++) {</span>
+<span class="nc" id="L96">				sprites[idx++] = store.getTile(sprite, x, y, size, size);</span>
+
+<span class="nc" id="L98">				x += size;</span>
+			}
+
+<span class="nc" id="L101">			y += size;</span>
+		}
+
+<span class="nc" id="L104">		return sprites;</span>
+	}
+
+	//
+	// Tileset
+	//
+
+	/**
+	 * Get the number of tiles.
+	 * 
+	 * @return The number of tiles.
+	 */
+	@Override
+	public int getSize() {
+<span class="nc" id="L118">		return tiles.length;</span>
+	}
+
+	/**
+	 * Get the sprite for an index tile of a tileset.
+	 * 
+	 * @param index
+	 *            The index with-in the tileset.
+	 * 
+	 * @return A sprite, or &lt;code&gt;null&lt;/code&gt; if no mapped sprite.
+	 */
+	@Override
+	public Sprite getSprite(final int index) {
+<span class="nc bnc" id="L131" title="All 2 branches missed.">		if (index &lt; tiles.length) {</span>
+<span class="nc" id="L132">			return tiles[index];</span>
+		} else {
+<span class="nc" id="L134">			return null;</span>
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>
