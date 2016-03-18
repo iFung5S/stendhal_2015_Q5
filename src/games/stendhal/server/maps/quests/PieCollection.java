@@ -1,5 +1,5 @@
 package games.stendhal.server.maps.quests;
- 
+
 import games.stendhal.common.grammar.Grammar;
 import games.stendhal.server.entity.npc.ChatAction;
 import games.stendhal.server.entity.npc.ConversationPhrases;
@@ -34,62 +34,59 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * QUEST: Fruits for Coralia
+ * QUEST: Pie collection for Peter
  * 
  * PARTICIPANTS:
  * <ul>
- * <li>Coralia (Bar-maid of Ado tavern)</li>
+ * <li>Peter (Goatherd in 0_semos_mountain_n2_w)</li>
  * </ul>
  * 
  * STEPS:
  * <ul>
- * <li>Coralia introduces herself and asks for a variety of fresh fruits for her hat.</li>
+ * <li>Peter introduces himself and asks for a variety of pies.</li>
  * <li>You collect the items.</li>
- * <li>Coralia sees your items, asks for them then thanks you.</li>
+ * <li>Peter sees your items, asks for them then thanks you.</li>
  * </ul>
  * 
  * REWARD:
  * <ul>
- * <li>XP: 300</li>
- * <li><1-5> Crepes Suzettes</li>
- * <li><2-8> Minor Potions</li>
- * <li>Karma: 5</li>
+ * <li>XP: 500</li>
+ * <li><1-5> Milk</li>
+ * <li><2-8> Cheese</li>
  * </ul>
  * 
  * REPETITIONS:
  * <ul>
- * <li>After 1 week, fit with the withering of the fruits</li>
+ * <li>After 1 day</li>
  * </ul>
  * 
- * @author pinchanzee
+ * @author Zhenzhong Xiao
  */
-public class FruitsForCoralia extends AbstractQuest {
- 
-	
-	
+public class PieCollection extends AbstractQuest {
+
 	/**
 	 * NOTE: Reward has not been set, nor has the XP.
 	 * left them default here, but in the JUnit test
 	 * called reward item "REWARD" temporarily
 	 */
 	
-    public static final String QUEST_SLOT = "fruits_coralia";
+    public static final String QUEST_SLOT = "pies_peter";
     
     /** 
      * The delay between repeating quests.
-     * 1 week
+     * 1 day
      */
 	private static final int REQUIRED_MINUTES = 1440;
     
     /**
 	 * Required items for the quest.
 	 */
-	protected static final String NEEDED_ITEMS = "apple=4;banana=5;cherry=9;grapes=2;pear=4;watermelon=1;pomegranate=2";
+	protected static final String NEEDED_ITEMS = "apple pie=1;cherry pie=1;pie=1;fish pie=1";
  
     @Override
     public void addToWorld() {
-        fillQuestInfo("Fruits for Coralia",
-				"The Ados Tavern barmaid, Coralia, searches for fresh fruits for her exotic hat.",
+        fillQuestInfo("Pie collection for Peter",
+				"The goatherd in semo mountain, Peter, searches for different pies for his stomach.",
 				true);
         prepareQuestStep();
         prepareBringingStep();
@@ -102,7 +99,7 @@ public class FruitsForCoralia extends AbstractQuest {
  
     @Override
     public String getName() {
-        return "FruitsForCoralia";
+        return "PieCollection";
     }
     
  	@Override
@@ -119,7 +116,7 @@ public class FruitsForCoralia extends AbstractQuest {
  	
  	@Override
  	public String getRegion() {
- 		return Region.ADOS_CITY;
+ 		return Region.SEMOS_SURROUNDS;
  	}
  
  	@Override
@@ -128,69 +125,69 @@ public class FruitsForCoralia extends AbstractQuest {
 		if (!player.hasQuest(QUEST_SLOT)) {
 			return res;
 		}
-		res.add("Coralia asked me for some fresh fruits for her hat.");
+		res.add("Peter asked me for all kind of hot pies for his stomach.");
 		final String questState = player.getQuest(QUEST_SLOT);
 		
 		if ("rejected".equals(questState)) {
 			// quest rejected
-			res.add("I decided not find Coralia some fruits, I have better things to do.");
+			res.add("I decided not find Peter any pie, someone else will help him.");
 		} else if (!player.isQuestCompleted(QUEST_SLOT)) {
 			// not yet finished
 			final ItemCollection missingItems = new ItemCollection();
 			missingItems.addFromQuestStateString(questState);
-			res.add("I still need to bring Coralia " + Grammar.enumerateCollection(missingItems.toStringList()) + ".");
+			res.add("I still need to bring Peter " + Grammar.enumerateCollection(missingItems.toStringList()) + ".");
 		} else if (isRepeatable(player)) {
 			// may be repeated now
-			res.add("It's been a while since I brought Coralia fresh fruits for her hat, I wonder if the fruits have withered?");
+			res.add("It's been a while since I brought Peter hot pies, I wonder if the he is hungry again?");
         } else {
         	// not (currently) repeatable
-        	res.add("I brought Coralia the fruits she needed for her hat and she restored it to its old radiance.");
+        	res.add("I brought Peter lots of pies, he don't want to see any pie for now.");
 		}
 		return res;
 	}
     
     public void prepareQuestStep() {
-    	SpeakerNPC npc = npcs.get("Coralia");
+    	SpeakerNPC npc = npcs.get("Peter");
     	
     	// various quest introductions
     	
     	// offer quest first time
     	npc.add(ConversationStates.ATTENDING,
-    		ConversationPhrases.combine(ConversationPhrases.QUEST_MESSAGES, "fruit"),
+    		ConversationPhrases.combine(ConversationPhrases.QUEST_MESSAGES, "pie"),
     		new AndCondition(
     			new QuestNotStartedCondition(QUEST_SLOT),
     			new QuestNotInStateCondition(QUEST_SLOT, "rejected")),
     		ConversationStates.QUEST_OFFERED,
-    		"Would you be kind enough to find me some fresh fruits for my hat? I'd be ever so grateful!",
+    		"There are not much hot food around here. I really want to eat some pies. Could you please get me some pies?",
     		null);
     	
     	// ask for quest again after rejected
     	npc.add(ConversationStates.ATTENDING, 
-    		ConversationPhrases.combine(ConversationPhrases.QUEST_MESSAGES, "hat"),
+    		ConversationPhrases.combine(ConversationPhrases.QUEST_MESSAGES, "food"),
     		new QuestInStateCondition(QUEST_SLOT, "rejected"),
     		ConversationStates.QUEST_OFFERED, 
-    		"Are you willing to find me some fresh fruits for my hat yet?",
+    		"Are you willing to find me some hot pies yet?",
     		null);
     	
     	// repeat quest
     	npc.add(ConversationStates.ATTENDING,
-            ConversationPhrases.combine(ConversationPhrases.QUEST_MESSAGES, "hat"),
+            ConversationPhrases.combine(ConversationPhrases.QUEST_MESSAGES, "food"),
             new AndCondition(
             	new QuestCompletedCondition(QUEST_SLOT),
             	new TimePassedCondition(QUEST_SLOT, 1, REQUIRED_MINUTES)),
             ConversationStates.QUEST_OFFERED,
-            "I'm sorry to say that the fruits you brought for my hat aren't very fresh anymore. " +
+            "I'm sorry to say that I am hungry again. " +
             "Would you be kind enough to find me some more?",
             null);
     	    	
     	// quest inactive    	
     	npc.add(ConversationStates.ATTENDING,
-        	ConversationPhrases.combine(ConversationPhrases.QUEST_MESSAGES, "hat"),
+        	ConversationPhrases.combine(ConversationPhrases.QUEST_MESSAGES, "food"),
         	new AndCondition(
         		new QuestCompletedCondition(QUEST_SLOT),
         		new NotCondition(new TimePassedCondition(QUEST_SLOT, 1, REQUIRED_MINUTES))),
         	ConversationStates.ATTENDING,
-        	"Doesn't my hat look so fresh? I don't need any new fresh fruits for it yet, but thanks for enquiring!",
+        	"I am sooooooooo full, let me take a rest....",
         	null);
     	
     	// end of quest introductions
@@ -198,12 +195,12 @@ public class FruitsForCoralia extends AbstractQuest {
     	
     	// introduction chat    	
     	npc.add(ConversationStates.ATTENDING,
-        	"hat",
+        	"food",
         	new AndCondition(
         		new QuestNotStartedCondition(QUEST_SLOT),
         		new QuestNotInStateCondition(QUEST_SLOT, "rejected")),
         	ConversationStates.ATTENDING,
-        	"It's a shame for you to see it all withered like this, it really needs some fresh #fruits...",
+        	"I WANT FOOD!!!! Save me please!! I love #pies...",
         	null);
     	
     	// accept quest response
@@ -214,14 +211,14 @@ public class FruitsForCoralia extends AbstractQuest {
     		null,
 			new MultipleActions(
 				new SetQuestAction(QUEST_SLOT, NEEDED_ITEMS),
-				new SayRequiredItemsFromCollectionAction(QUEST_SLOT, "That's wonderful! I'd like these fresh fruits: [items].")));
+				new SayRequiredItemsFromCollectionAction(QUEST_SLOT, "You are so kind!! I'd like all kind of pie: [items].")));
     	
     	// reject quest response
     	npc.add(ConversationStates.QUEST_OFFERED,
         	ConversationPhrases.NO_MESSAGES,
         	null,
         	ConversationStates.ATTENDING,
-        	"These exotic hats don't keep themselves you know...",
+        	"Ok, just let me starve to death then...",
         	new SetQuestAndModifyKarmaAction(QUEST_SLOT, "rejected", -5.0));
     	
     	// meet again during quest
@@ -231,69 +228,18 @@ public class FruitsForCoralia extends AbstractQuest {
 				new QuestActiveCondition(QUEST_SLOT),
 				new GreetingMatchesNameCondition(npc.getName())),
 			ConversationStates.ATTENDING,
-			"Hello again. If you've brought me some fresh fruits for my #hat, I'll happily take them!",
+			"Hello again. If you've brought me some hot #pies as my food, I'll happily take them!",
 			null);
 
-   	
-    	
-    	// specific fruit info
-    	npc.add(ConversationStates.QUESTION_1,
-        	"apple",
-        	new QuestActiveCondition(QUEST_SLOT),
-        	ConversationStates.QUESTION_1,
-        	"Glowing, radiant apples! The ones I have just now came from somewhere east of Semos.",
-        	null);
-    	
-    	npc.add(ConversationStates.QUESTION_1,
-            "banana",
-            new QuestActiveCondition(QUEST_SLOT),
-            ConversationStates.QUESTION_1,
-            "There's one particularly exotic island with bananas.. Keep west, though - lets just say the bananas aren't meaty or fleshy enough for those in the east.",
-            null);
-    	
-    	npc.add(ConversationStates.QUESTION_1,
-        	"cherry",
-        	new QuestActiveCondition(QUEST_SLOT),
-        	ConversationStates.QUESTION_1,
-        	"There's an old lady in Fado who sells the most beautifully vibrant cherries.",
-        	null);
-    	
-    	npc.add(ConversationStates.QUESTION_1,
-            "grapes",
-            new QuestActiveCondition(QUEST_SLOT),
-            ConversationStates.QUESTION_1,
-            "There's a beautiful little temple in the mountains north of Semos that's covered in grape vines!  I've also heard of some by an old house in Or'ril mountains.",
-            null);
-    	
-    	npc.add(ConversationStates.QUESTION_1,
-        	"pear",
-        	new QuestActiveCondition(QUEST_SLOT),
-        	ConversationStates.QUESTION_1,
-        	"I think I saw some pear trees in the northern mountains near a beautiful waterfall.",
-        	null);
-    	
-    	npc.add(ConversationStates.QUESTION_1,
-            "watermelon",
-            new QuestActiveCondition(QUEST_SLOT),
-            ConversationStates.QUESTION_1,
-            "One of the huge watermelons from Kalavan gardens would make a nice new centrepiece for my hat.",
-            null);
-    	
-    	npc.add(ConversationStates.QUESTION_1,
-            "pomegranate",
-            new QuestActiveCondition(QUEST_SLOT),
-            ConversationStates.QUESTION_1,
-            "I've never seen pomegranate trees growing wild, but I heard of a man living south of the great river cultivating them in his garden.",
-            null);
     }
     
     
     private void prepareBringingStep() {
-		final SpeakerNPC npc = npcs.get("Coralia");
+		final SpeakerNPC npc = npcs.get("Peter");
 		
 		// ask for required items
     	npc.add(ConversationStates.ATTENDING, 
-    		ConversationPhrases.combine(ConversationPhrases.QUEST_MESSAGES, "hat"),
+    		ConversationPhrases.combine(ConversationPhrases.QUEST_MESSAGES, "pie"),
     		new QuestActiveCondition(QUEST_SLOT),
     		ConversationStates.QUESTION_2, 
     		null,
@@ -312,17 +258,18 @@ public class FruitsForCoralia extends AbstractQuest {
 			ConversationPhrases.YES_MESSAGES,
 			new QuestActiveCondition(QUEST_SLOT),
 			ConversationStates.QUESTION_2, 
-			"Wonderful, what fresh delights have you brought?",
+			"Wonderful, which pie have you brought?",
 			null);
     	
 		// set up next step
     	ChatAction completeAction = new  MultipleActions(
 			new SetQuestAction(QUEST_SLOT, "done"),
-			new SayTextAction("My hat has never looked so delightful! Thank you ever so much! Here, take this as a reward."),
-			new IncreaseXPAction(300),
+			new SayTextAction("I have never been this happy before!!! If you want, you can have closer look of me goat."
+								+ " Here are some rewards for you."),
+			new IncreaseXPAction(500),
 			new IncreaseKarmaAction(5),
-			new EquipRandomAmountOfItemAction("crepes suzette", 1, 5),
-			new EquipRandomAmountOfItemAction("minor potion", 2, 8),
+			new EquipRandomAmountOfItemAction("milk", 1, 5),
+			new EquipRandomAmountOfItemAction("cheese", 2, 8),
 			new SetQuestToTimeStampAction(QUEST_SLOT, 1)
 		);
     	
@@ -345,6 +292,6 @@ public class FruitsForCoralia extends AbstractQuest {
 
 	@Override
 	public String getNPCName() {
-		return "Coralia";
+		return "Peter";
 	}
 }
