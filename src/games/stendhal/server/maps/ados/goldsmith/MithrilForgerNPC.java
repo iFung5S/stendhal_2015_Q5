@@ -98,7 +98,7 @@ public class MithrilForgerNPC implements ZoneConfigurator {
 		          );
 
 				new MultiProducerAdder().addMultiProducer(this, behaviour,
-				        "Greetings. I sense you may be interested in mithril. If you desire me to #make you a #'mithril bar' or #stealth #ring just say the word.");
+				        "Greetings. I sense you may be interested in mithril. If you desire me to #make you a #'mithril bar' or #'stealth ring' just say the word.");
 				addReply("wood",
 		        		"The wood is for the fire. I hope you collect yours from the forest, and not the barbaric practise of killing ents.");
 				addReply(Arrays.asList("mithril ore", "mithril nugget"),
