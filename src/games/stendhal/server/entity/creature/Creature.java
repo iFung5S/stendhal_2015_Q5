@@ -697,6 +697,10 @@ public class Creature extends NPC {
 		// calculate the distance of all possible enemies
 		final Map<RPEntity, Double> distances = new HashMap<RPEntity, Double>();
 		for (final RPEntity enemy : enemyList) {
+			boolean stealthRing = false;
+			/*if (enemy.getSlot("finger").getName().equals("stealth ring")){
+				stealthRing = true;
+			}*/
 			if (enemy == this) {
 				continue;
 			}
@@ -706,8 +710,15 @@ public class Creature extends NPC {
 			}
 
 			final double squaredDistance = this.squaredDistance(enemy);
-			if (squaredDistance <= (range * range)) {
-				distances.put(enemy, squaredDistance);
+			if(stealthRing){
+				if (squaredDistance <= (range * range/4)) {
+					distances.put(enemy, squaredDistance);
+				}
+			}
+			else{
+				if (squaredDistance <= (range * range)) {
+					distances.put(enemy, squaredDistance);
+				}	
 			}
 		}
 
@@ -740,8 +751,10 @@ public class Creature extends NPC {
 	}
 
 	public boolean isEnemyNear(final double range) {
+
 		final int x = getX();
 		final int y = getY();
+		
 
 		List<RPEntity> enemyList = getEnemyList();
 		if (enemyList.isEmpty()) {
@@ -750,10 +763,13 @@ public class Creature extends NPC {
 		}
 
 		for (final RPEntity playerOrFriend : enemyList) {
+			boolean stealthRing = false;
 			if (playerOrFriend == this) {
 				continue;
 			}
-
+			if (playerOrFriend.getSlot("finger").getName().equals("stealth ring")){
+				stealthRing = true;
+			}
 			if (playerOrFriend.isInvisibleToCreatures()) {
 				continue;
 			}
@@ -761,9 +777,15 @@ public class Creature extends NPC {
 			if (playerOrFriend.getZone() == getZone()) {
 				final int fx = playerOrFriend.getX();
 				final int fy = playerOrFriend.getY();
-
-				if ((Math.abs(fx - x) < range) && (Math.abs(fy - y) < range)) {
-					return true;
+				if(stealthRing){
+					if ((Math.abs(fx - x) < range/2) && (Math.abs(fy - y) < range/2)) {
+						return true;
+					}
+				}
+				else{
+					if ((Math.abs(fx - x) < range) && (Math.abs(fy - y) < range)) {
+						return true;
+					}
 				}
 			}
 		}
