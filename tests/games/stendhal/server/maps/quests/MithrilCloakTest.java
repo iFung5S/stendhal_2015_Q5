@@ -644,7 +644,7 @@ public class MithrilCloakTest {
 		Item item = ItemTestHelper.createItem("mithril bar", 1);
 		player.getSlot("bag").add(item);
 		
-		assertEquals("Greetings. I sense you may be interested in mithril. If you desire me to #make you a #'mithril bar' or #stealth #ring just say the word.", getReply(npc));
+		assertEquals("Greetings. I sense you may be interested in mithril. If you desire me to #make you a #'mithril bar' or #'stealth ring' just say the word.", getReply(npc));
 		en.step(player, "clasp");
 		assertEquals("A clasp? Whatever you say! I am still so happy from that letter you brought me, it would be my pleasure to make something for you. I only need one mithril bar. Do you have it?", getReply(npc));
 		en.step(player, "yes");
@@ -654,7 +654,7 @@ public class MithrilCloakTest {
 		
 		player.setQuest(questSlot, "forgingclasp;0");
 		en.step(player, "hi");
-		assertEquals("Greetings. I sense you may be interested in mithril. If you desire me to #make you a #'mithril bar' or #stealth #ring just say the word.", getReply(npc));
+		assertEquals("Greetings. I sense you may be interested in mithril. If you desire me to #make you a #'mithril bar' or #'stealth ring' just say the word.", getReply(npc));
 		en.step(player, "clasp");
 		assertEquals("Here, your clasp is ready!", getReply(npc));
 		// [22:27] jammyjam earns 100 experience points.
