@@ -697,6 +697,10 @@ public class Creature extends NPC {
 		// calculate the distance of all possible enemies
 		final Map<RPEntity, Double> distances = new HashMap<RPEntity, Double>();
 		for (final RPEntity enemy : enemyList) {
+			boolean stealthRing = false;
+			if (enemy.getSlot("finger").getName().equals("stealth ring")){
+				stealthRing = true;
+			}
 			if (enemy == this) {
 				continue;
 			}
@@ -706,8 +710,15 @@ public class Creature extends NPC {
 			}
 
 			final double squaredDistance = this.squaredDistance(enemy);
-			if (squaredDistance <= (range * range)) {
-				distances.put(enemy, squaredDistance);
+			if(stealthRing){
+				if (squaredDistance <= (range * range/4)) {
+					distances.put(enemy, squaredDistance);
+				}
+			}
+			else{
+				if (squaredDistance <= (range * range)) {
+					distances.put(enemy, squaredDistance);
+				}	
 			}
 		}
 
