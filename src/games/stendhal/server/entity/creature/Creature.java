@@ -698,9 +698,9 @@ public class Creature extends NPC {
 		final Map<RPEntity, Double> distances = new HashMap<RPEntity, Double>();
 		for (final RPEntity enemy : enemyList) {
 			boolean stealthRing = false;
-			if (enemy.getSlot("finger").getName().equals("stealth ring")){
+			/*if (enemy.getSlot("finger").getName().equals("stealth ring")){
 				stealthRing = true;
-			}
+			}*/
 			if (enemy == this) {
 				continue;
 			}
