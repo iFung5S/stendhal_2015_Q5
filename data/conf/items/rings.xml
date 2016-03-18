@@ -121,4 +121,24 @@
     </equipable>
   </item>
   
+
+  <item name="stealth ring">
+    <type class="ring" subclass="emerald-ring" tileid="-1"/>
+    <description>Stealth Ring. One ring to rule them all...</description>
+    <implementation class-name="games.stendhal.server.entity.item.RingOfLife"/>
+    <attributes>
+      <amount value="1"/>
+      <persistent value="1"/>
+    </attributes>
+    <weight value="0.1"/>
+    <value value="10000000"/>
+    <equipable>
+      <slot name="ground"/>
+      <slot name="content"/>
+      <slot name="bag"/>
+      <slot name="trade"/>
+      <slot name="finger"/>
+      <slot name="keyring"/>
+    </equipable>
+  </item>
 </items>
