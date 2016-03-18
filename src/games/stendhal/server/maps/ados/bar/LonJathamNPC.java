@@ -10,7 +10,7 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
-package games.stendhal.server.maps.semos.tavern;
+package games.stendhal.server.maps.ados.bar;
 
 import games.stendhal.common.Direction;
 import games.stendhal.server.core.config.ZoneConfigurator;
@@ -19,7 +19,7 @@ import games.stendhal.server.entity.npc.SpeakerNPC;
 
 import java.util.Map;
 
-public class StichardRallmanNPC implements ZoneConfigurator {
+public class LonJathamNPC implements ZoneConfigurator {
 	/**
 	 * Configure a zone.
 	 *
@@ -32,7 +32,7 @@ public class StichardRallmanNPC implements ZoneConfigurator {
 	}
 
 	private void buildNPC(final StendhalRPZone zone) {
-		final SpeakerNPC stallman = new SpeakerNPC("Stichard Rallman") {
+		final SpeakerNPC latham = new SpeakerNPC("Lon Jatham") {
 
 			@Override
 			public void say(final String text) {
@@ -47,25 +47,24 @@ public class StichardRallmanNPC implements ZoneConfigurator {
 
 			@Override
 			protected void createDialog() {
-				addGreeting("Welcome to Stendhal! True #free software!");
-				addJob("I am the #free software evangelizer!");
-				addHelp("Help #Stendhal to be even better. Donate your time, tell your friends to play, create maps.");
-				addReply("free",
-					"''Free software'' is a matter of liberty, not price. To understand the concept, you should think of ''free'' as in ''free speech,'' not as in ''free beer''.");
+				addGreeting("Welcome to #Stendhal! Built with #Java it's like arcade, except it works.");
+				addReply("java",
+					"Java is awesome, buy my #book.");
+				addReply("book",
+						"Yes! It can teach you everything! Get down to SSO in Kilburn now!");
 				addReply("stendhal",
-					"Stendhal is completely #free software (client, server, graphics, everything) under #GNU #GPL. You can run, copy, distribute, study, change and improve this software.");
-				addReply("gnu", "http://www.gnu.org/");
-				addReply("gpl", "http://www.gnu.org/licenses/gpl.html");
-
-				addGoodbye();
+					"Stendhal is completely #free software.");
+				addReply("free",
+						"You must know that, you're playing it.");
+				addGoodbye("Remember, 80 chars per line or I will hunt you down.");
 			}
 		};
 
-		stallman.setEntityClass("richardstallmannpc");
-		stallman.setDescription("Stichard Rallman knows everything about free software and licences.");
-		stallman.setPosition(24, 19);
-		stallman.setDirection(Direction.DOWN);
-		stallman.initHP(100);
-		zone.add(stallman);
+		latham.setEntityClass("mithrilforgernpc");
+		latham.setDescription("Lon Jatham knows everything about Java.");
+		latham.setPosition(24, 19);
+		latham.setDirection(Direction.DOWN);
+		latham.initHP(100);
+		zone.add(latham);
 	}
 }
