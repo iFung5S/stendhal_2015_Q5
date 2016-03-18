@@ -21,12 +21,15 @@ import static org.junit.Assert.assertTrue;
 import games.stendhal.server.core.engine.SingletonRepository;
 import games.stendhal.server.entity.creature.impl.DropItem;
 import games.stendhal.server.core.engine.StendhalRPZone;
+import games.stendhal.server.entity.Entity;
 import games.stendhal.server.entity.RPEntity;
 import games.stendhal.server.entity.player.Player;
 import games.stendhal.server.maps.MockStendlRPWorld;
 
 import java.util.LinkedList;
 import java.util.List;
+
+import marauroa.common.game.RPSlot;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -112,7 +115,33 @@ public class CreatureTest {
 		}
 		assertThat(counter, is(2));
 	}
-	
+
+	  @Test
+	  public void testStealthRing() {
+	    
+	    final Player onebyone = PlayerTestHelper.createPlayer("bob");
+	    
+	    
+	    onebyone.setPosition(6, 0);
+	    final MockCreature sevenbyseven = new MockCreature();
+	  
+	    
+	    final StendhalRPZone zone = new StendhalRPZone("test", 20 , 20);
+	    zone.add(sevenbyseven);
+	    zone.add(onebyone);
+	    enemies.add(onebyone);
+	    assertSame(onebyone, sevenbyseven.getNearestEnemy(6));
+	    assertSame(onebyone, sevenbyseven.getNearestEnemy(5));
+	    assertNull(sevenbyseven.getNearestEnemy(4));
+	    
+	    //onebyone.addSlot("finger");
+	    RPSlot slot = onebyone.getSlot("finger");
+	    Entity entity = SingletonRepository.getEntityManager().getItem("stealth ring");
+	    slot.add(entity);
+	    // this should return false as the stealth ring is worn
+	    assertNull(sevenbyseven.getNearestEnemy(3));
+	    
+	  }
 
 	@Test 
 	public void mageGnomeTest(){
