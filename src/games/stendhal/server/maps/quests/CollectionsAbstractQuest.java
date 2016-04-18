@@ -12,6 +12,41 @@ import games.stendhal.server.entity.player.Player;
 import java.util.List;
 
 public abstract class CollectionsAbstractQuest extends AbstractQuest{
+	
+	/***
+	 * information required to set up a collection-based quest
+	 */
+	private String name;
+	private String questSlot;
+	private String stateStart;
+	private String priorMessage;
+	private String completionMessage;
+	private String inQuestMessage;
+	
+	/***
+	 * the following three methods are public methods for assigning values to
+	 * the class variables above, which will be used to set the quest conditions 
+	 * with the private method step_1
+	 */
+	public void setPreQuestConditions(final String requiredName, final String requiredSlot, final String requiredMessage) {
+		name = requiredName;
+		questSlot = requiredSlot;
+		priorMessage = requiredMessage;
+	}
+	public void setDuringQuestConditions(final String requiredState, final String requiredMessage) {
+		stateStart = requiredState;
+		inQuestMessage = requiredMessage;
+	}
+	public void setPostQuestConditions(final String requiredMessage) {
+		completionMessage = requiredMessage;
+	}
+	
+	/***
+	 * this method sets the quest conditions by calling the private method step_1
+	 */
+	public void setQuestConditions() {
+		step_1(name, questSlot, stateStart, priorMessage, completionMessage, inQuestMessage);
+	}
 
 	@Override
 	public abstract String getSlotName();
