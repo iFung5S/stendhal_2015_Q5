@@ -30,12 +30,11 @@ public class FishForFlorence extends StatedAbstractQuest {
     // Cool down time before the quest become repeatable
    	private static final int REQUIRED_MINUTES = 1;
    	
-   	public static final String PW_FLORENCE = "done";
-   	
-   // Replies from each NPC at the end of each state
-   	private static final String QUEST_DETAIL = "Please bring me one salmon fish, 2 seabass and one cod from the fishmonger.";
-   	private static final String FISHMONGER_REPLY = "Here are all the fish that you need";
-   	private static final String FLORENCE_REPLY = "Thank you for your help young one! Let me make you a bowl of hot soup!";
+  	public static final String PW_FLORENCE = "done";
+// Replies from each NPC at the end of each state
+	private static final String QUEST_DETAIL = "Please bring me one salmon fish, 2 seabass and one cod from the fishmonger.";
+	private static final String FISHMONGER_REPLY = "Here are all the fish that you need";
+	private static final String FLORENCE_REPLY = "Thank you for your help young one! Let me make you a bowl of hot soup!";
    	
    // The list that stores all the states
    private  List<AbstractQuestState> statesList = new LinkedList<AbstractQuestState>();
@@ -53,7 +52,7 @@ public class FishForFlorence extends StatedAbstractQuest {
 	@Override
 	public void addToWorld() {
 		// Three arguments:
-		// Name of the quest; 
+	// Name of the quest; 
 		// Short description of the quest;
 		// Whether the quest is repeatable or not;
 		fillQuestInfo("Fish collection for Florence",
@@ -63,7 +62,7 @@ public class FishForFlorence extends StatedAbstractQuest {
 	    // All the NPCs involved
 		SpeakerNPC npc1 = npcs.get("Florence");
 		SpeakerNPC npc2 = npcs.get("Fishmonger");
-				
+		
 		// Set the quest to be repeatable
 		setRepeatable(REQUIRED_MINUTES);
 		
@@ -82,12 +81,12 @@ public class FishForFlorence extends StatedAbstractQuest {
 		StatePaperChase paperChase = new StatePaperChase(npc1, STATE_FISHMONGER, STATE_DONE, 
 																QUEST_SLOT, PW_FLORENCE, FLORENCE_REPLY);
 				// End of the quest reward (Add to the final state)
-		paperChase.setXP(300);
-	   paperChase.addRewardItem("fish soup", 1);
-		statesList.add(paperChase);		    	
+				paperChase.setXP(300);
+				paperChase.addRewardItem("fish soup", 1);
+				statesList.add(paperChase);
 
-		// Add all the states into the World
-		StatedAbstractQuest.addAllState(statesList);
+				// Add all the states into the World
+		    	StatedAbstractQuest.addAllState(statesList);
 	}
 	
 	@Override
@@ -99,7 +98,6 @@ public class FishForFlorence extends StatedAbstractQuest {
 	public String getNPCName() {
 	  return "Florence";
 	}
-
 	@Override
 	public String getName() {
 	
@@ -108,6 +106,6 @@ public class FishForFlorence extends StatedAbstractQuest {
 	
 	@Override
 		public int getMinLevel() {
-		return 0;
+	 		return 0;
 	 	}
 }
