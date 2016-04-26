@@ -179,7 +179,9 @@ public class StendhalQuestSystem {
 		loadQuest(new PieCollection());
 		
 		loadQuest(new GordonCollection());
-		
+		loadQuest(new BreadForAdena());
+		loadQuest(new FishForFlorence());
+		loadQuest(new PaperChaseForAlexander());
 
 		if (System.getProperty("stendhal.christmas") != null) {
 			loadQuest(new GoodiesForRudolph());
