@@ -148,6 +148,7 @@ public class MedicineForTad extends StatedAbstractQuest {
 		
 		// Create the Collecting items state
 		StateCollectItems collectingState = new StateCollectItems(npc1, STATE_NEEDED_ITEMS_TAD, STATE_NEEDED_ITEMS_ILISA , QUEST_SLOT);
+		collectingState.setConversationPhraseForRequiredItem(Arrays.asList("flask"));
 		collectingState.setFinishReply(TAD_TALK_GOT_FLASK + " " + TAD_TALK_REWARD_MONEY + " " + TAD_TALK_FLASK_ILISA + " " + TAD_TALK_INTRODUCE_ILISA);
 		collectingState.setXP(10);
 		collectingState.addRewardItem("money", 10);
@@ -156,6 +157,7 @@ public class MedicineForTad extends StatedAbstractQuest {
 		
 		// Create the Collecting items state
 		StateCollectItems collectingState2 = new StateCollectItems(npc3, STATE_NEEDED_ITEMS_ILISA, STATE_SHOWN_DRAWING, QUEST_SLOT);
+		collectingState2.setConversationPhraseForRequiredItem(Arrays.asList("flask"));
 		collectingState2.setFinishReply(ILISA_TALK_INTRODUCE_TAD + " " + ILISA_TALK_ASK_FOR_HERB);
 		collectingState2.setXP(10);
 		statesList.add(collectingState2);
@@ -174,6 +176,7 @@ public class MedicineForTad extends StatedAbstractQuest {
 		
 		// Create the Collecting items state
 		StateCollectItems collectingState3 = new StateCollectItems(npc3, STATE_NEEDED_ITEMS_HERB, STATE_TAD, QUEST_SLOT);
+		collectingState3.setConversationPhraseForRequiredItem(Arrays.asList("arandula"));
 		collectingState3.setFinishReply(ILISA_TALK_PREPARE_MEDICINE);
 		collectingState3.setXP(50);
 		statesList.add(collectingState3);
