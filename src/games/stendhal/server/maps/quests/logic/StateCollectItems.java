@@ -39,6 +39,7 @@ public class StateCollectItems extends AbstractQuestState {
 	private String ITEM_LIST;
 	private List<ChatAction> completeAction = new LinkedList<ChatAction>();
 	private int xp = 0;
+	private List<String> conversationPhraseForRequiredItem;
 	
 	/**
 	 * Build a state for items collection
@@ -51,6 +52,7 @@ public class StateCollectItems extends AbstractQuestState {
 	public StateCollectItems(SpeakerNPC npc, String thisState, String endState, String QUEST_SLOT) {
 		super(npc, thisState, endState, QUEST_SLOT);
 		
+		conversationPhraseForRequiredItem = ConversationPhrases.QUEST_MESSAGES;
 		ITEM_LIST = thisState;
 	}
 	
@@ -69,6 +71,15 @@ public class StateCollectItems extends AbstractQuestState {
 	
 	public void setXP(int xp){
 		this.xp = xp;
+	}
+	
+	/**
+	 * Set the phrase to trigger NPC ask for required items
+	 *
+	 * @param A list of string as triggers
+	 */
+	public void setConversationPhraseForRequiredItem(List<String> list){
+		conversationPhraseForRequiredItem = list;
 	}
 	
 	/**
@@ -102,7 +113,7 @@ public class StateCollectItems extends AbstractQuestState {
 	
 		// ask for required items
     	getNPC().add(ConversationStates.ATTENDING, 
-		    		ConversationPhrases.QUEST_MESSAGES,
+    				conversationPhraseForRequiredItem,
 		    		new QuestActiveCondition(getQUEST_SLOT()),
 		    		ConversationStates.QUESTION_1, 
 		    		null,
