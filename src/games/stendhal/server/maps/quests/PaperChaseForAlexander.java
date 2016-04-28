@@ -38,9 +38,9 @@ package games.stendhal.server.maps.quests;
 	   // Replies from each NPC at the end of each state
 	   	private static final String QUEST_DETAIL = "Pass around messages from person to person, please";
 	   	
-	   	private static final String START_PAPERCHASE = "Please go and tell Coralia I like her" + PW_Coralia;
+	   	private static final String START_PAPERCHASE = "Please go and tell Coralia I like her " + PW_Coralia;
 	   	private static final String Coralia_REPLY = "Please go and tell Dale he is " + PW_Dale;
-	  	private static final String Dale_REPLY = "Please go and tell David I like his" + PW_David;
+	  	private static final String Dale_REPLY = "Please go and tell David I like his " + PW_David;
 	   	private static final String David_REPLY = "Please go and tell Alexander to " + PW_Alexander;
 	   	private static final String Alexander_REPLY = "Thanks for your help!";
 	   
