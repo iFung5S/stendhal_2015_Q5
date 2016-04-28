@@ -104,13 +104,13 @@ public class MedicineForTad extends StatedAbstractQuest {
 	private static final String QUEST_SLOT = "introduce_players";
 	
 	// All the name of the states in the quest
-	private static final String STATE_START = "start_state";
-	private static final String STATE_NEEDED_ITEMS_TAD = "flask=1";
-	private static final String STATE_NEEDED_ITEMS_ILISA = "flask=1";
+	static final String STATE_START = "start_state";
+	static final String STATE_NEEDED_ITEMS_TAD = "flask=1";
+	static final String STATE_NEEDED_ITEMS_ILISA = "flask=1";
 	static final String STATE_SHOWN_DRAWING = "shownDrawing";
-	private static final String STATE_NEEDED_ITEMS_HERB = "arandula=1";
-	private static final String STATE_TAD = "find tad";
-	private static final String STATE_COMPLETE = "done";
+	static final String STATE_NEEDED_ITEMS_HERB = "arandula=1";
+	static final String STATE_TAD = "find tad";
+	static final String STATE_COMPLETE = "done";
 	
 	private static final String PW_Tad = "finished";
 	
