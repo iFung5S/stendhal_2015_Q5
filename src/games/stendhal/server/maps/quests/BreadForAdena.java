@@ -23,7 +23,7 @@ public class BreadForAdena extends StatedAbstractQuest {
     
     // All the name of the states in the quest
    	public static final String STATE_START = "start_state";
-   	public static final String STATE_NEEDED_ITEMS = "pumpkin bread = 1; cheesy bread = 2; garlic bread = 1;";
+   	public static final String STATE_NEEDED_ITEMS = "bread = 2;";
    	public static final String STATE_BAKER = "baker";
    	public static final String STATE_DONE = "done";	
    	
@@ -33,7 +33,7 @@ public class BreadForAdena extends StatedAbstractQuest {
    	public static final String PW_ADENA = "done";
    	
    // Replies from each NPC at the end of each state
-   	private static final String QUEST_DETAIL = "Please bring me one pumpkin bread, 2 cheesy breads and one garlic bread from #Erna the baker.";
+   	private static final String QUEST_DETAIL = "Please bring me two breads from #Erna the baker.";
    	private static final String BAKER_REPLY = "Here are all the bread that you need";
    	private static final String ADENA_REPLY = "Thank you for your help young one! Let me give you some apples as a reward";
    	
