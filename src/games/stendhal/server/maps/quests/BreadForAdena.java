@@ -33,7 +33,7 @@ public class BreadForAdena extends StatedAbstractQuest {
    	public static final String PW_ADENA = "done";
    	
    // Replies from each NPC at the end of each state
-   	private static final String QUEST_DETAIL = "Please bring me two breads from #Erna the baker.";
+   	private static final String QUEST_DETAIL = "Please bring me two breads from Erna the baker.";
    	private static final String BAKER_REPLY = "Here are all the bread that you need";
    	private static final String ADENA_REPLY = "Thank you for your help young one! Let me give you some apples as a reward";
    	
@@ -62,7 +62,7 @@ public class BreadForAdena extends StatedAbstractQuest {
 				
 	    // All the NPCs involved
 		SpeakerNPC npc1 = npcs.get("Adena");
-		SpeakerNPC npc2 = npcs.get("erna");
+		//SpeakerNPC npc2 = npcs.get("erna");
 				
 		// Set the quest to be repeatable
 		setRepeatable(REQUIRED_MINUTES);
@@ -73,7 +73,7 @@ public class BreadForAdena extends StatedAbstractQuest {
 		statesList.add(startState);
 		
 		// Create the Collecting items state
-		StateCollectItems collectingState = new StateCollectItems(npc2, STATE_NEEDED_ITEMS, STATE_BAKER, QUEST_SLOT);
+		StateCollectItems collectingState = new StateCollectItems(npc1, STATE_NEEDED_ITEMS, STATE_BAKER, QUEST_SLOT);
 		collectingState.setFinishReply(BAKER_REPLY);
 		statesList.add(collectingState);
 	
