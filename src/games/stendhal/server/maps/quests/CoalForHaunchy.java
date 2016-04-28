@@ -71,7 +71,7 @@ public class CoalForHaunchy extends StatedAbstractQuest
 	private static final String HAUNCHY_WANT_COAL = "I cannot use wood for this huge BBQ. To keep the heat I need some really old stone coal but there isn't much left. The problem is, that I can't fetch it myself because my steaks would burn then so I have to stay here. Can you bring me 25 pieces of #coal for my BBQ please?";
 	private static final String HAUNCHY_RECEIVE_COAL = "I can go on with grilling my tasty steaks now! Thank you!";
 	private static final String HAUNCHY_ASK_FOR_COAL_AGAIN = "The last coal you brought me is mostly gone again. Will you bring me some more?";
-	private static final String HAUNCHY_DOES_NOT_NEED_MORE_COAL_FOR_NOW = "The coal amount behind my counter is still high enough. I will not need more at the moment";
+	private static final String HAUNCHY_DOES_NOT_NEED_MORE_COAL_FOR_NOW = "The coal amount behind my counter is still high enough. I will not need more for 2 days.";
 	private static final String PLAYER_AGREE_GET_COAL = "Thank you! If you have found 25 pieces, say #coal to me so I know you have it. I'll be sure to give you a nice and tasty reward.";
 	private static final String PLAYER_DOES_NOT_AGREE_GET_COAL = "Oh, never mind. I thought you love BBQs like I do. Bye then.";
 	
