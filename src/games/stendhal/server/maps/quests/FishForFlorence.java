@@ -60,8 +60,8 @@ public class FishForFlorence extends StatedAbstractQuest {
 	 	     			true);
 				
 	    // All the NPCs involved
-		SpeakerNPC npc1 = npcs.get("Florence");
-		SpeakerNPC npc2 = npcs.get("Fishmonger");
+		SpeakerNPC npc1 = npcs.get("Florence Boullabaisse");
+		//SpeakerNPC npc2 = npcs.get("Fishmonger");
 		
 		// Set the quest to be repeatable
 		setRepeatable(REQUIRED_MINUTES);
@@ -72,7 +72,7 @@ public class FishForFlorence extends StatedAbstractQuest {
 		statesList.add(startState);
 		
 		// Create the Collecting items state
-		StateCollectItems collectingState = new StateCollectItems(npc2, STATE_NEEDED_ITEMS, STATE_FISHMONGER, QUEST_SLOT);
+		StateCollectItems collectingState = new StateCollectItems(npc1, STATE_NEEDED_ITEMS, STATE_FISHMONGER, QUEST_SLOT);
 		collectingState.setFinishReply(FISHMONGER_REPLY);
 		statesList.add(collectingState);
 	
