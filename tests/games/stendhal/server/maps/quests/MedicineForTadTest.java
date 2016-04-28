@@ -29,6 +29,8 @@ import games.stendhal.server.entity.npc.SpeakerNPC;
 import games.stendhal.server.entity.npc.condition.QuestStartedCondition;
 import games.stendhal.server.entity.npc.fsm.Engine;
 import games.stendhal.server.entity.player.Player;
+import games.stendhal.server.maps.quests.logic.StateAskForQuest;
+import games.stendhal.server.maps.quests.logic.StateCollectItems;
 import games.stendhal.server.maps.semos.hostel.BoyNPC;
 import games.stendhal.server.maps.semos.temple.HealerNPC;
 import games.stendhal.server.maps.semos.townhall.DecencyAndMannersWardenNPC;
@@ -108,7 +110,7 @@ public class MedicineForTadTest extends ZonePlayerAndNPCTestImpl {
 		startTalkingToNpc("Ketteh Wehoh");
 
 		en.step(player, "bye");
-		assertEquals(MedicineForTad.KETTEH_TALK_BYE_INTRODUCES_TAD, getReply(npc));
+		assertEquals("Bye.", getReply(npc));
 	}
 	
 	@Test
@@ -118,7 +120,7 @@ public class MedicineForTadTest extends ZonePlayerAndNPCTestImpl {
 		startTalkingToNpc("Ketteh Wehoh");
 		
 		en.step(player, "bye");
-		assertEquals(MedicineForTad.KETTEH_TALK_BYE_REMINDS_OF_TAD, getReply(npc));
+		assertEquals("Bye.", getReply(npc));
 	}
 
 	@Test
@@ -132,10 +134,11 @@ public class MedicineForTadTest extends ZonePlayerAndNPCTestImpl {
 		assertEquals(MedicineForTad.TAD_TALK_ASK_FOR_EMPTY_FLASK, getReply(npc));
 
 		en.step(player, "yes");
-		assertEquals(MedicineForTad.TAD_TALK_QUEST_ACCEPTED, getReply(npc));
+		String expectedReply = MedicineForTad.TAD_TALK_QUEST_ACCEPTED + " " + MedicineForTad.TAD_TALK_FLASK_MARGARET + " "
+								+ MedicineForTad.TAD_TALK_INTRODUCE_MARGARET;
+		assertEquals(expectedReply, getReply(npc));
 
-		assertEquals(MedicineForTad.STATE_START, player.getQuest(questSlot));
-		assertHistory(MedicineForTad.HISTORY_MET_TAD, MedicineForTad.HISTORY_QUEST_OFFERED);
+		assertEquals(MedicineForTad.STATE_NEEDED_ITEMS_TAD, player.getQuest(questSlot));
 	}
 	
 	@Test
@@ -152,89 +155,98 @@ public class MedicineForTadTest extends ZonePlayerAndNPCTestImpl {
 		assertEquals(MedicineForTad.TAD_TALK_QUEST_REFUSED, getReply(npc));
 
 		assertEquals(null, player.getQuest(questSlot));
-		assertHistory(MedicineForTad.HISTORY_MET_TAD);
 	}
 
 	@Test
 	public void testBackToTadWithFlask() {
-		player.setQuest(questSlot, MedicineForTad.STATE_START);
+		player.setQuest(questSlot, MedicineForTad.STATE_NEEDED_ITEMS_TAD);
 		PlayerTestHelper.equipWithItem(player, "flask");
 
 		String firstReply = startTalkingToNpc("Tad");
+		assertEquals("Hello again. If you've brought me the things I need, I'll happily take them!" , firstReply);
+		
+		en.step(player, "flask");
+		assertEquals("I'd still need a #flask. Have you brought any?", getReply(npc));
 
+		en.step(player, "flask");
 		String expectedReply = MedicineForTad.TAD_TALK_GOT_FLASK + " " 
 				+ MedicineForTad.TAD_TALK_REWARD_MONEY + " "
-				+ MedicineForTad.TAD_TALK_FLASK_ILISA;
-		assertEquals(expectedReply, firstReply);
-		assertEquals(MedicineForTad.STATE_ILISA, player.getQuest(questSlot));
+				+ MedicineForTad.TAD_TALK_FLASK_ILISA + " "
+				+ MedicineForTad.TAD_TALK_INTRODUCE_ILISA;
+		assertEquals(expectedReply, getReply(npc));
+		assertEquals(MedicineForTad.STATE_NEEDED_ITEMS_ILISA, player.getQuest(questSlot));
 	}
 
 	@Test
 	public void testGoToIlisaWithFlask() {
-		player.setQuest(questSlot, MedicineForTad.STATE_ILISA);
+		player.setQuest(questSlot, MedicineForTad.STATE_NEEDED_ITEMS_ILISA);
 		PlayerTestHelper.equipWithItem(player, "flask");
 
 		String firstReply = startTalkingToNpc("Ilisa");
-
-		assertEquals(MedicineForTad.ILISA_TALK_ASK_FOR_HERB, firstReply);
-		assertEquals(MedicineForTad.STATE_HERB, player.getQuest(questSlot));
+		assertEquals("Hello again. If you've brought me the things I need, I'll happily take them!", firstReply);
+		
+		en.step(player, "flask");
+		assertEquals("I'd still need a #flask. Have you brought any?", getReply(npc));
+		
+		en.step(player, "flask");
+		assertEquals(MedicineForTad.ILISA_TALK_INTRODUCE_TAD + " " + MedicineForTad.ILISA_TALK_ASK_FOR_HERB, getReply(npc));
+		
+		assertEquals(MedicineForTad.STATE_SHOWN_DRAWING, player.getQuest(questSlot));
 
 		en.step(player, "yes");
 		assertEquals(MedicineForTad.ILISA_TALK_DESCRIBE_HERB, getReply(npc));
-
-		en.step(player, "yes");
-		assertEquals(null, getReply(npc));
-
-		en.step(player, "tad");
-		assertEquals(MedicineForTad.ILISA_TALK_INTRODUCE_TAD, getReply(npc));
 	}
 
 	@Test
 	public void testBackToTadWithoutPotion() {
-		player.setQuest(questSlot, MedicineForTad.STATE_HERB);
+		player.setQuest(questSlot, MedicineForTad.STATE_NEEDED_ITEMS_TAD);
 		PlayerTestHelper.equipWithItem(player, "flask");
 
 		String firstReply = startTalkingToNpc("Tad");
 
-		assertEquals(TAD_TALK_REMIND_TASK, firstReply);
+		assertEquals("Hello again. If you've brought me the things I need, I'll happily take them!", firstReply);
 	}
 
 	@Test
 	public void testBackToIlisaWithoutHerb() {
-		player.setQuest(questSlot, MedicineForTad.STATE_HERB);
+		player.setQuest(questSlot, MedicineForTad.STATE_NEEDED_ITEMS_HERB);
 		PlayerTestHelper.equipWithItem(player, "flask");
 
 		String firstReply = startTalkingToNpc("Ilisa");
-
-		assertEquals(MedicineForTad.ILISA_TALK_REMIND_HERB, firstReply);
+		assertEquals("Hello again. If you've brought me the things I need, I'll happily take them!", firstReply);
+		
+		en.step(player, "arandula");
+		assertEquals("I'd still need a #'sprig of arandula'. Have you brought any?", getReply(npc));
 	}
 
 	@Test
 	public void testBackToIlisaWithHerb() {
-		player.setQuest(questSlot, MedicineForTad.STATE_HERB);
+		player.setQuest(questSlot, MedicineForTad.STATE_NEEDED_ITEMS_HERB);
 		PlayerTestHelper.equipWithItem(player, "flask");
 		PlayerTestHelper.equipWithItem(player, "arandula");
 
 		String firstReply = startTalkingToNpc("Ilisa");
 
-		assertEquals(MedicineForTad.ILISA_TALK_PREPARE_MEDICINE, firstReply);
+		assertEquals("Hello again. If you've brought me the things I need, I'll happily take them!", firstReply);
 		
-		assertEquals("potion", player.getQuest(questSlot));
+		assertEquals("arandula=1", player.getQuest(questSlot));
 	}
 
 	@Test
 	public void testBackToTadWithPotion() {
-		player.setQuest(questSlot, MedicineForTad.STATE_POTION);
+		player.setQuest(questSlot, MedicineForTad.STATE_TAD);
 
-		String firstReply = startTalkingToNpc("Tad");
+		startTalkingToNpc("Tad");
 
-		assertEquals(MedicineForTad.TAD_TALK_COMPLETE_QUEST, firstReply);
-		assertEquals("done", player.getQuest(questSlot));
+		en.step(player, MedicineForTad.PW_Tad);
+		assertEquals(MedicineForTad.TAD_TALK_COMPLETE_QUEST + " " + MedicineForTad.TAD_TALK_REMIND_MEDICINE, getReply(npc));
+		
+		assertEquals(MedicineForTad.STATE_COMPLETE, player.getQuest(questSlot, 0));
 	}
 	
 	@Test
 	public void testKettehDoesNotMentionTad() {
-		player.setQuest(questSlot, MedicineForTad.STATE_DONE);
+		player.setQuest(questSlot, MedicineForTad.STATE_COMPLETE);
 
 		startTalkingToNpc("Ketteh Wehoh");
 
@@ -252,7 +264,4 @@ public class MedicineForTadTest extends ZonePlayerAndNPCTestImpl {
 		assertFalse(new QuestStartedCondition(questSlot).fire(player, null, null));
 	}
 
-	private void assertHistory(String... entries) {
-		assertEquals(Arrays.asList(entries), quest.getHistory(player));
-	}
 }
