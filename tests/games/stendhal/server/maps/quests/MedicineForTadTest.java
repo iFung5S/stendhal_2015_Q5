@@ -16,8 +16,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static utilities.SpeakerNPCTestHelper.getReply;
 
-import java.util.Arrays;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -29,8 +27,6 @@ import games.stendhal.server.entity.npc.SpeakerNPC;
 import games.stendhal.server.entity.npc.condition.QuestStartedCondition;
 import games.stendhal.server.entity.npc.fsm.Engine;
 import games.stendhal.server.entity.player.Player;
-import games.stendhal.server.maps.quests.logic.StateAskForQuest;
-import games.stendhal.server.maps.quests.logic.StateCollectItems;
 import games.stendhal.server.maps.semos.hostel.BoyNPC;
 import games.stendhal.server.maps.semos.temple.HealerNPC;
 import games.stendhal.server.maps.semos.townhall.DecencyAndMannersWardenNPC;
