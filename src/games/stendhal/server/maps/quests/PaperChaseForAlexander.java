@@ -66,7 +66,7 @@ package games.stendhal.server.maps.quests;
 			// Whether the quest is repeatable or not;
 			fillQuestInfo("Paper chase for Alexander",
 		    				"Alexander wants information passed around",
-		 	     			true);
+		 	     			false);
 					
 		    // All the NPCs involved
 			SpeakerNPC npc1 = npcs.get("Alexander");
