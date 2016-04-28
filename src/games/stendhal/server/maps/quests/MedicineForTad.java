@@ -63,12 +63,25 @@ import java.util.List;
  */
 public class MedicineForTad extends StatedAbstractQuest {
 
+	private static final String QUEST_SLOT = "introduce_players";
+	
+	// All the name of the states in the quest
+	static final String STATE_START = "start_state";
+	static final String STATE_NEEDED_ITEMS_TAD = "flask=1";
+	static final String STATE_NEEDED_ITEMS_ILISA = "flask=1";
+	static final String STATE_SHOWN_DRAWING = "shownDrawing";
+	static final String STATE_NEEDED_ITEMS_HERB = "arandula=1";
+	static final String STATE_TAD = "find tad";
+	static final String STATE_COMPLETE = "done";
+	
+	static final String PW_Tad = "finished";
+	
 	static final String ILISA_TALK_ASK_FOR_FLASK = "Medicine for #Tad? Didn't he tell you to bring a flask?";
 	static final String ILISA_TALK_ASK_FOR_HERB = "Ah, I see you have that flask. #Tad needs medicine, right? Hmm... I'll need a #herb. Can you help?";
 	static final String ILISA_TALK_DESCRIBE_HERB = "North of Semos, near the tree grove, grows a herb called #arandula. Here is a picture I drew so you know what to look for.";
 	static final String ILISA_TALK_INTRODUCE_TAD = "He needs a very powerful potion to heal himself. He offers a good reward to anyone who will help him.";
 	static final String ILISA_TALK_REMIND_HERB = "Can you fetch those #herbs for the #medicine?";
-	static final String ILISA_TALK_PREPARE_MEDICINE = "Okay! Thank you. Now I will just mix these... a pinch of this... and a few drops... there! Can you ask #Tad to stop by and collect it? I want to see how he's doing. Tell him you have #finished.";
+	static final String ILISA_TALK_PREPARE_MEDICINE = "Okay! Thank you. Now I will just mix these... a pinch of this... and a few drops... there! Can you ask #Tad to stop by and collect it? I want to see how he's doing. Tell him you have #" + PW_Tad + ".";
 	static final String ILISA_TALK_EXPLAIN_MEDICINE = "The medicine that #Tad is waiting for.";
 
 	static final String KETTEH_TALK_BYE_INTRODUCES_TAD = "Farewell. Have you met Tad, in the hostel? If you get a chance, please check in on him. I heard he was not feeling well. You can find the hostel in Semos village, close to Nishiya.";
@@ -100,19 +113,6 @@ public class MedicineForTad extends StatedAbstractQuest {
 	static final String HISTORY_GOT_HERB = "I found some Arandula herbs and will bring them to Ilisa.";
 	static final String HISTORY_POTION_READY = "Ilisa created a powerful potion to help Tad. She asked me to tell him that it is ready.";
 	static final String HISTORY_DONE = "Tad thanked me.";
-
-	private static final String QUEST_SLOT = "introduce_players";
-	
-	// All the name of the states in the quest
-	static final String STATE_START = "start_state";
-	static final String STATE_NEEDED_ITEMS_TAD = "flask=1";
-	static final String STATE_NEEDED_ITEMS_ILISA = "flask=1";
-	static final String STATE_SHOWN_DRAWING = "shownDrawing";
-	static final String STATE_NEEDED_ITEMS_HERB = "arandula=1";
-	static final String STATE_TAD = "find tad";
-	static final String STATE_COMPLETE = "done";
-	
-	private static final String PW_Tad = "finished";
 	
 	// The list that stores all the states
 	private  List<AbstractQuestState> statesList = new LinkedList<AbstractQuestState>();
