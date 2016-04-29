@@ -178,7 +178,6 @@ public class StendhalQuestSystem {
 		loadQuest(new ZooFood());
 		loadQuest(new PieCollection());
 		
-		loadQuest(new GordonCollection());
 		loadQuest(new BreadForAdena());
 		loadQuest(new PaperChaseForAlexander());
 
