@@ -133,7 +133,7 @@ public class MedicineForTadTest extends ZonePlayerAndNPCTestImpl {
 								+ MedicineForTad.TAD_TALK_INTRODUCE_MARGARET;
 		assertEquals(expectedReply, getReply(npc));
 
-		assertEquals(MedicineForTad.STATE_NEEDED_ITEMS_TAD, player.getQuest(questSlot));
+		assertEquals("flask=1", player.getQuest(questSlot));
 	}
 	
 	@Test
@@ -154,7 +154,7 @@ public class MedicineForTadTest extends ZonePlayerAndNPCTestImpl {
 
 	@Test
 	public void testBackToTadWithFlask() {
-		player.setQuest(questSlot, MedicineForTad.STATE_NEEDED_ITEMS_TAD);
+		player.setQuest(questSlot, "flask=1");
 		PlayerTestHelper.equipWithItem(player, "flask");
 
 		String firstReply = startTalkingToNpc("Tad");
@@ -169,12 +169,12 @@ public class MedicineForTadTest extends ZonePlayerAndNPCTestImpl {
 				+ MedicineForTad.TAD_TALK_FLASK_ILISA + " "
 				+ MedicineForTad.TAD_TALK_INTRODUCE_ILISA;
 		assertEquals(expectedReply, getReply(npc));
-		assertEquals(MedicineForTad.STATE_NEEDED_ITEMS_ILISA, player.getQuest(questSlot));
+		assertEquals("flask=1", player.getQuest(questSlot));
 	}
 
 	@Test
 	public void testGoToIlisaWithFlask() {
-		player.setQuest(questSlot, MedicineForTad.STATE_NEEDED_ITEMS_ILISA);
+		player.setQuest(questSlot, "flask=1");
 		PlayerTestHelper.equipWithItem(player, "flask");
 
 		String firstReply = startTalkingToNpc("Ilisa");
@@ -186,7 +186,7 @@ public class MedicineForTadTest extends ZonePlayerAndNPCTestImpl {
 		en.step(player, "flask");
 		assertEquals(MedicineForTad.ILISA_TALK_INTRODUCE_TAD + " " + MedicineForTad.ILISA_TALK_ASK_FOR_HERB, getReply(npc));
 		
-		assertEquals(MedicineForTad.STATE_SHOWN_DRAWING, player.getQuest(questSlot));
+		assertEquals("shownDrawing", player.getQuest(questSlot));
 
 		en.step(player, "yes");
 		assertEquals(MedicineForTad.ILISA_TALK_DESCRIBE_HERB, getReply(npc));
@@ -194,7 +194,7 @@ public class MedicineForTadTest extends ZonePlayerAndNPCTestImpl {
 
 	@Test
 	public void testBackToTadWithoutPotion() {
-		player.setQuest(questSlot, MedicineForTad.STATE_NEEDED_ITEMS_TAD);
+		player.setQuest(questSlot, "flask=1");
 		PlayerTestHelper.equipWithItem(player, "flask");
 
 		String firstReply = startTalkingToNpc("Tad");
@@ -204,7 +204,7 @@ public class MedicineForTadTest extends ZonePlayerAndNPCTestImpl {
 
 	@Test
 	public void testBackToIlisaWithoutHerb() {
-		player.setQuest(questSlot, MedicineForTad.STATE_NEEDED_ITEMS_HERB);
+		player.setQuest(questSlot, "arandula=1");
 		PlayerTestHelper.equipWithItem(player, "flask");
 
 		String firstReply = startTalkingToNpc("Ilisa");
@@ -216,7 +216,7 @@ public class MedicineForTadTest extends ZonePlayerAndNPCTestImpl {
 
 	@Test
 	public void testBackToIlisaWithHerb() {
-		player.setQuest(questSlot, MedicineForTad.STATE_NEEDED_ITEMS_HERB);
+		player.setQuest(questSlot, "arandula=1");
 		PlayerTestHelper.equipWithItem(player, "flask");
 		PlayerTestHelper.equipWithItem(player, "arandula");
 
@@ -229,19 +229,19 @@ public class MedicineForTadTest extends ZonePlayerAndNPCTestImpl {
 
 	@Test
 	public void testBackToTadWithPotion() {
-		player.setQuest(questSlot, MedicineForTad.STATE_TAD);
+		player.setQuest(questSlot, "find tad");
 
 		startTalkingToNpc("Tad");
 
 		en.step(player, MedicineForTad.PW_Tad);
 		assertEquals(MedicineForTad.TAD_TALK_COMPLETE_QUEST + " " + MedicineForTad.TAD_TALK_REMIND_MEDICINE, getReply(npc));
 		
-		assertEquals(MedicineForTad.STATE_COMPLETE, player.getQuest(questSlot, 0));
+		assertEquals("done", player.getQuest(questSlot, 0));
 	}
 	
 	@Test
 	public void testKettehDoesNotMentionTad() {
-		player.setQuest(questSlot, MedicineForTad.STATE_COMPLETE);
+		player.setQuest(questSlot, "done");
 
 		startTalkingToNpc("Ketteh Wehoh");
 
