@@ -41,7 +41,6 @@ public class MedicineForTadTest extends ZonePlayerAndNPCTestImpl {
 	private static final String TOWNHALL_ZONE_NAME = "int_semos_townhall";
 
 	private static final String TAD_TALK_SSSHH_COME_HERE = "Ssshh! Come here, player! I have a #task for you.";
-	private static final String TAD_TALK_REMIND_TASK = "*sniff* *sniff* I still feel ill, please hurry with that #favour for me.";
 
 	private Player player;
 	private SpeakerNPC npc;
