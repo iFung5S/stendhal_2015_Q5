@@ -109,6 +109,7 @@ public class PaperchaseForAlexanderTest extends ZonePlayerAndNPCTestImpl {
 	} /* testQuestSlot() */
 
 	
+	@Test
 	public void testName() {
 		
 		assertEquals("PaperChaseForAlexander", quest.getName());
@@ -116,6 +117,7 @@ public class PaperchaseForAlexanderTest extends ZonePlayerAndNPCTestImpl {
 	}
 
 	
+	@Test
 	public void testMinLevel() {
 		
 		assertEquals(0, quest.getMinLevel());
