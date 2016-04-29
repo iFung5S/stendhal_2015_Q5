@@ -767,7 +767,8 @@ public class Creature extends NPC {
 			if (playerOrFriend == this) {
 				continue;
 			}
-			if (playerOrFriend.getSlot("finger").getName().equals("stealth ring")){
+			if (playerOrFriend.getSlot("finger") != null 
+					&& playerOrFriend.getSlot("finger").getName().equals("stealth ring")){
 				stealthRing = true;
 			}
 			if (playerOrFriend.isInvisibleToCreatures()) {
