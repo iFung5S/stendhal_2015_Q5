@@ -14,7 +14,6 @@ package games.stendhal.server.maps.quests.logic;
 
 import games.stendhal.server.core.engine.StendhalRPZone;
 import games.stendhal.server.entity.npc.SpeakerNPC;
-import games.stendhal.server.entity.npc.fsm.Engine;
 import games.stendhal.server.maps.MockStendlRPWorld;
 import games.stendhal.server.maps.semos.city.RudolphNPC;
 import static org.junit.Assert.assertEquals;
@@ -38,14 +37,11 @@ import utilities.ZonePlayerAndNPCTestImpl;
  */
 public class AbstractQuestStateTest extends ZonePlayerAndNPCTestImpl{
 	
-	
-
 	private static final class Mockquest extends AbstractQuestState {
 
 		public Mockquest(SpeakerNPC npc, String thisState, String nextState,
 				String QUEST_SLOT) {
 			super(npc, thisState, nextState, QUEST_SLOT);
-			// TODO Auto-generated constructor stub
 		}
 
 		@Override
@@ -54,9 +50,9 @@ public class AbstractQuestStateTest extends ZonePlayerAndNPCTestImpl{
 		}
 
 		@Override
-		public void addToWorld() {
-			// do nothing
+		public void addToWorld() {			
 		}
+
 	}
 	
 	public AbstractQuestStateTest() throws Exception {
@@ -85,7 +81,6 @@ public class AbstractQuestStateTest extends ZonePlayerAndNPCTestImpl{
 	}
 
 	private SpeakerNPC npc;
-	private Engine en;
 	
 	private static final String ZONE_SEMOS = "0_semos_city";
 
