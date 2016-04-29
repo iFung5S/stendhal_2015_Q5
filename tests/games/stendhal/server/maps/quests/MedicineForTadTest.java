@@ -189,7 +189,7 @@ public class MedicineForTadTest extends ZonePlayerAndNPCTestImpl {
 		assertEquals("shownDrawing", player.getQuest(questSlot));
 
 		en.step(player, "yes");
-		assertEquals(MedicineForTad.ILISA_TALK_DESCRIBE_HERB, getReply(npc));
+		assertEquals("North of Semos, near the tree grove, grows a herb called #arandula. Here is a picture I drew so you know what to look for.", getReply(npc));
 	}
 
 	@Test
