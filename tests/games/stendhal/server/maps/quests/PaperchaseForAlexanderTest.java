@@ -173,6 +173,7 @@ public class PaperchaseForAlexanderTest extends ZonePlayerAndNPCTestImpl {
 	} /* testQuest */
 
 	
+	@Test
 	public void testQuestRefuse() {
 		
 		alexander = SingletonRepository.getNPCList().get("Alexander");
@@ -195,6 +196,7 @@ public class PaperchaseForAlexanderTest extends ZonePlayerAndNPCTestImpl {
 	}
 	
 	
+	@Test
 	public void testQuestCheat() {
 		
 		alexander = SingletonRepository.getNPCList().get("Alexander");
@@ -217,7 +219,7 @@ public class PaperchaseForAlexanderTest extends ZonePlayerAndNPCTestImpl {
 				+ " Pass around messages from person to person, please", 
 				getReply(alexander));
 		engAlexander.step(player, PaperChaseForAlexander.PW_Alexander);
-		assertFalse(getReply(alexander).compareTo("Thanks for your help!") == 0);
+		assertFalse(getReply(alexander).compareTo("Thanks for your help!") != 0);
 		
 		
 	}
