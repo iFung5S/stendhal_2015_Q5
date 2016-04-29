@@ -177,6 +177,10 @@ public class StendhalQuestSystem {
 		loadQuest(new ZekielsPracticalTestQuest());
 		loadQuest(new ZooFood());
 		loadQuest(new PieCollection());
+		
+		loadQuest(new GordonCollection());
+		loadQuest(new BreadForAdena());
+		loadQuest(new PaperChaseForAlexander());
 
 		if (System.getProperty("stendhal.christmas") != null) {
 			loadQuest(new GoodiesForRudolph());
