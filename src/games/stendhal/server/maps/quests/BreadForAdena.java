@@ -73,7 +73,7 @@ public class BreadForAdena extends StatedAbstractQuest {
 		collectingState.setFinishReply(ADENA_REPLY);
 		// End of the quest reward (Add to the final state)
 		collectingState.setXP(300);
-		collectingState.addRewardItem("apples", 10);
+		collectingState.addRewardItem("apple", 10);
 		statesList.add(collectingState);	    	
 
 		// Add all the states into the World
