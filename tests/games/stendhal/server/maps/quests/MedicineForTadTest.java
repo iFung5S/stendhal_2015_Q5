@@ -233,7 +233,7 @@ public class MedicineForTadTest extends ZonePlayerAndNPCTestImpl {
 
 		startTalkingToNpc("Tad");
 
-		en.step(player, MedicineForTad.PW_Tad);
+		en.step(player, "finished");
 		assertEquals(MedicineForTad.TAD_TALK_COMPLETE_QUEST + " " + MedicineForTad.TAD_TALK_REMIND_MEDICINE, getReply(npc));
 		
 		assertEquals("done", player.getQuest(questSlot, 0));
