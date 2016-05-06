@@ -64,6 +64,8 @@
       class-name="games.stendhal.server.maps.kalavan.castle.SadScientistNPC" />
     <configurator
       class-name="games.stendhal.server.maps.kalavan.castle.SadScientsBrother" />
+    <configurator
+      class-name="games.stendhal.server.maps.kalavan.castle.OffworldTouristNPC" />
     <portal x="31" y="39" ref="upstairs">
       <destination zone="int_kalavan_castle" ref="downstairs" />
     </portal>

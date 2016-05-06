@@ -2333,6 +2333,7 @@ Ahh nice, you can already smell it. And in small letters below is added: "New! L
   <zone name="int_semos_temple" file="interiors/semos/temple.tmx">
     <configurator class-name="games.stendhal.server.maps.semos.temple.HealerNPC" />
     <configurator class-name="games.stendhal.server.maps.semos.temple.TelepathNPC" />
+    <configurator class-name="games.stendhal.server.maps.semos.temple.BooksellerNPC" />
 
     <entity x="1" y="1">
       <implementation

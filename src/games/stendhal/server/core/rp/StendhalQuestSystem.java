@@ -180,6 +180,7 @@ public class StendhalQuestSystem {
 		
 		loadQuest(new BreadForAdena());
 		loadQuest(new PaperChaseForAlexander());
+		loadQuest(new SouvenirsForSark());
 
 		if (System.getProperty("stendhal.christmas") != null) {
 			loadQuest(new GoodiesForRudolph());
