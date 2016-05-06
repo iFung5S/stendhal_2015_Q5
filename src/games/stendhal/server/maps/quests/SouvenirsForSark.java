@@ -59,7 +59,7 @@ public class SouvenirsForSark extends StatedAbstractQuest
 				"Coal for Haunchy",
 				"Haunchy Meatoch is afraid of his BBQ grillfire. Will his coal last till the steaks are ready or will he need some more?",
 				true);
-		SpeakerNPC npc = npcs.get("Haunchy Meatoch");
+		SpeakerNPC npc = npcs.get("Sark");
 	
 		// Set the quest to be repeatable
 		setRepeatable(REQUIRED_MINUTES);
