@@ -51,7 +51,7 @@ public class OffworldTouristNPC implements ZoneConfigurator {
 			}
 		};
 
-		npc.setDescription("You see Venethiel. She wants to learn about magic.");
+		npc.setDescription("You see a small alien-like creature.  It is carrying a strange flat box, which it looks at often.");
 		npc.setEntityClass("magicianhousegreeternpc");
 		npc.setPosition(70, 52);
 		npc.setDirection(Direction.DOWN);
